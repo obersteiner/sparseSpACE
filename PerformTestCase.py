@@ -13,10 +13,10 @@ def performTestStandard(f, a, b, grid, lmin,maxLmax,dim,realIntegral):
     distinctFEvalArray = []
     standardCombi = StandardCombi(a, b, grid)
     for i in range(lmin+1,maxLmax):
-        scheme, error, result = standardCombi.performCombi(lmin,i,f,dim)
+        scheme, error, result = standardCombi.perform_combi(lmin, i, f, dim)
         errorArrayStandard.append(error/realIntegral)
-        pointArray.append(standardCombi.getTotalNumPoints())
-        distinctFEvalArray.append(standardCombi.getTotalNumPoints(True))
+        pointArray.append(standardCombi.get_total_num_points())
+        distinctFEvalArray.append(standardCombi.get_total_num_points(True))
     return  pointArray, distinctFEvalArray, errorArrayStandard
 
 def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, maxtol, dim,maxLmax,grid = TrapezoidalGrid(),minLmin=1,maxLmin=3):
@@ -44,9 +44,9 @@ def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, ma
                     coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f,errorOperator,10**-i,coarsening)
             errorArrayAlgorithm.append(abs(integral - realIntegral)/abs(realIntegral))
             numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
-            numIdealAlgorithm.append(algorithm[0].getTotalNumPointsArbitraryDim(False))
-            numNaiveAlgorithm.append(algorithm[0].getTotalNumPointsArbitraryDim(True))
-            numFEvalIdealAlgorithm.append(algorithm[0].getTotalNumPointsArbitraryDim(False,True))
+            numIdealAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(False))
+            numNaiveAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(True))
+            numFEvalIdealAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(False, True))
             end = time.time()
             print("time spent in case", i, end - start)
         errorArray.append(errorArrayAlgorithm)

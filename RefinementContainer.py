@@ -8,185 +8,187 @@ import abc,logging
 # This class implements a general container that can be filled with refinementObjects (typically specified by the refinement strategy)
 # In addition it stores accumulated values over all refinementObjects (like integral, numberOfEvaluations)
 class RefinementContainer(object):
-    def __init__(self, initialObjects, dim, errorEstimator):
-        self.refinementObjects = initialObjects
+    def __init__(self, initial_objects, dim, error_estimator):
+        self.refinementObjects = initial_objects
         self.dim = dim
         self.evaluationstotal = 0
         self.integral = 0
         self.popArray = []
         self.startNewObjects = 0
-        self.errorEstimator = errorEstimator
+        self.errorEstimator = error_estimator
         self.searchPosition = 0
 
     # returns the error that is associated with the specified refinementObject
-    def getError(self, objectID):
-        return self.refinementObjects[objectID].error
+    def get_error(self, object_id):
+        return self.refinementObjects[object_id].error
 
     # refines the specified refinementObject
-    def refine(self, objectID):
+    def refine(self, object_id):
         # at first refinement in current refinement round we have
         # to save where the new RefinementObjects start
-        if (self.startNewObjects == 0):
+        if self.startNewObjects == 0:
             self.startNewObjects = len(self.refinementObjects)
         # refine RefinementObject;
         # returns the new RefinementObjects a possible update to lmax and update information for other RefinementObjects
-        newObjects, lmaxUpdate, updateInformation = self.refinementObjects[objectID].refine()
+        new_objects, lmax_update, update_information = self.refinementObjects[object_id].refine()
         # update other RefinementObjects if necessary
-        if updateInformation != None:
+        if update_information is not None:
             for r in self.refinementObjects:
-                r.update(updateInformation)
+                r.update(update_information)
         # remove refined (and now outdated) RefinementObject
-        self.prepareRemove(objectID)
+        self.prepare_remove(object_id)
         # add new RefinementObjects
-        self.add(newObjects)
-        return lmaxUpdate
+        self.add(new_objects)
+        return lmax_update
 
     # if strategy decides from outside to update elements this function can be used
-    def updateObjects(self, updateInfo):
+    def update_objects(self, update_info):
         for r in self.refinementObjects:
-            r.update(updateInfo)
+            r.update(update_info)
 
     # reset everything so that all RefinementObjects will be iterated
-    def reinitNewObjects(self):
+    def reinit_new_objects(self):
         self.startNewObjects = 0
         self.integral = 0
         self.evaluationstotal = 0
 
     # return the maximal error among all RefinementObjects
-    def getMaxError(self):
-        maxError = 0
+    def get_max_error(self):
+        max_error = 0
         for i in self.refinementObjects:
-            if (i.error > maxError):
-                maxError = i.error
-        return maxError
+            if i.error > max_error:
+                max_error = i.error
+        return max_error
 
     # indicate that all objects have been processed and new RefinementObjects will be added at the end
-    def clearNewObjects(self):
+    def clear_new_objects(self):
         self.startNewObjects = len(self.refinementObjects)
 
         # returns only newly added RefinementObjects
 
-    def getNewObjects(self):
+    def get_new_objects(self):
         return self.refinementObjects[self.startNewObjects:]
 
     # returns amount of newly added RefinementObjects
-    def newObjectsSize(self):
+    def new_objects_size(self):
         return len(self.refinementObjects) - self.startNewObjects
 
     # prepares removing a RefinementObject (will be removed after refinement round)
-    def prepareRemove(self, objectID):
+    def prepare_remove(self, objectID):
         self.popArray.append(objectID)
 
     # remove all RefinementObjects that are outdated from container
-    def applyRemove(self):
+    def apply_remove(self):
         for position in reversed(sorted(self.popArray)):
             self.integral -= self.refinementObjects[position].integral
             self.evaluationstotal -= self.refinementObjects[position].evaluations
             self.refinementObjects.pop(position)
-            if (self.startNewObjects != 0):
+            if self.startNewObjects != 0:
                 self.startNewObjects -= 1
         self.popArray = []
         self.searchPosition = 0
 
     # add new RefinementObjects to the container
-    def add(self, newRefinementObjects):
-        self.refinementObjects.extend(newRefinementObjects)
+    def add(self, new_refinement_objects):
+        self.refinementObjects.extend(new_refinement_objects)
 
     # calculate the error according to the error estimator for specified RefinementObjects
-    def calcError(self, objectID, f):
-        refineObject = self.refinementObjects[objectID]
-        refineObject.setError(self.errorEstimator.calcError(f, refineObject))
+    def calc_error(self, object_id, f):
+        refine_object = self.refinementObjects[object_id]
+        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object))
 
     # returns all RefinementObjects in the container
-    def getObjects(self):
+    def get_objects(self):
         return self.refinementObjects
 
-    def getNextObjectForRefinement(self, tolerance):
-        if (self.startNewObjects == 0):
+    def get_next_object_for_refinement(self, tolerance):
+        if self.startNewObjects == 0:
             end = self.size()
         else:
             end = self.startNewObjects
         for i in range(self.searchPosition, end):
-            if (self.refinementObjects[i].error >= tolerance):
+            if self.refinementObjects[i].error >= tolerance:
                 self.searchPosition = i + 1
                 return True, i, self.refinementObjects[i]
         return False, None, None
 
     # returns the specified RefinementObject from container
-    def getObject(self, objectID):
-        return self.refinementObjects[objectID]
+    def getObject(self, object_id):
+        return self.refinementObjects[object_id]
 
     # returns amount of RefinementObjects in container
     def size(self):
         return len(self.refinementObjects)
 
     # sets the number of evaluations associated with specified RefinementObject
-    def setEvaluations(self, objectID, evaluations):
+    def set_evaluations(self, object_id, evaluations):
         # add evaluations also to total number of evaluations
         self.evaluationstotal += evaluations
-        self.refinementObjects[objectID].evaluations = evaluations
+        self.refinementObjects[object_id].evaluations = evaluations
 
     # sets the integral for area associated with specified RefinementObject
-    def setIntegral(self, objectID, integral):
+    def set_integral(self, object_id, integral):
         # also add integral to global integral value
         self.integral += integral
-        self.refinementObjects[objectID].setIntegral(integral)
+        self.refinementObjects[object_id].set_integral(integral)
 
 
 # this class defines a container of refinement containers for each dimension in the single dimension test case
 # it delegates methods to subcontainers and coordinates everything
 class MetaRefinementContainer(object):
-    def __init__(self, refinementContainers):
-        self.refinementContainers = refinementContainers
+    def __init__(self, refinement_containers):
+        self.refinementContainers = refinement_containers
+        self.evaluations = 0
+        self.integral = None
 
     # return the maximal error among all RefinementContainers
-    def getMaxError(self):
-        maxError = 0
+    def get_max_error(self):
+        max_error = 0
         for c in self.refinementContainers:
-            error = c.getMaxError()
-            if (maxError < error):
-                maxError = error
-        return maxError
+            error = c.get_max_error()
+            if max_error < error:
+                max_error = error
+        return max_error
 
     # sets the integral for area associated with whole meta container
-    def setIntegral(self, objectID, integral):
+    def set_integral(self, objectID, integral):
         self.integral = integral
 
     # sets the number of evaluations associated with whole meta container
-    def setEvaluations(self, objectID, evaluations):
+    def set_evaluations(self, objectID, evaluations):
         self.evaluations = evaluations
 
     # delegate to containers
-    def reinitNewObjects(self):
+    def reinit_new_objects(self):
         for c in self.refinementContainers:
-            c.reinitNewObjects()
+            c.reinit_new_objects()
 
     def size(self):
         return 1
 
-    def newObjectsSize(self):
+    def new_objects_size(self):
         return 1
 
-    def clearNewObjects(self):
+    def clear_new_objects(self):
         pass
 
-    def getNextObjectForRefinement(self, tolerance):
+    def get_next_object_for_refinement(self, tolerance):
         pass
         # toDo
 
     # delegate to containers
-    def applyRemove(self):
+    def apply_remove(self):
         for c in self.refinementContainers:
-            c.applyRemove()
+            c.apply_remove()
 
-    def getRefinementContainerForDim(self, d):
+    def get_refinement_container_for_dim(self, d):
         return self.refinementContainers[d]
 
     # apply refinement
     def refine(self, position):
-        lmaxChange = self.refinementContainers[position[0]].refine(position[1])
-        if (lmaxChange != None):
+        lmax_change = self.refinementContainers[position[0]].refine(position[1])
+        if lmax_change is not None:
             for d, c in enumerate(self.refinementContainers):
-                if (d != position[0]):
+                if d != position[0]:
                     c.update(1)
-        return lmaxChange
+        return lmax_change

@@ -36,7 +36,7 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         '''
 
     # returns the points of a single component grid with refinement
-    def getPointsArbitraryDim(self ,levelvec, numSubDiagonal):
+    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
         pass
         '''
         array2 = []
@@ -60,8 +60,8 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         dim = len(refinement)
         fig ,ax = plt.subplots(ncols=1 ,nrows=dim ,figsize=(20 ,10))
         for d in range(dim):
-            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].getObjects()]
-            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].getObjects()]
+            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].get_objects()]
+            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].get_objects()]
             for i in range(len(starts)):
                 ax[d].add_patch(
                     patches.Rectangle(
@@ -141,12 +141,12 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
 
     def getAreas(self):
         # get a list of lists which contains range(refinements[d]) for each dimension d where the refinements[d] are the number of subintervals in this dimension
-        indices = [list(range(len(refineDim))) for refineDim in self.refinement.getNewObjects()]
+        indices = [list(range(len(refineDim))) for refineDim in self.refinement.get_new_objects()]
         # this command creates tuples of size dim of all combinations of indices (e.g. dim = 2 indices = ([0,1],[0,1,2,3]) -> areas = [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3)] )
         return list(zip(*[g.ravel() for g in np.meshgrid(*indices)]))
 
     def getNewAreas(self):
-        return self.getAreas()
+        return self.get_areas()
 
     def prepareRefinement(self):
         pass
@@ -177,8 +177,8 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
                 for position in reversed(sorted(list(set(self.popArray[d])))):
                     self.refinement[d].pop(position)
         '''
-        self.refinement.applyRemove()
-        self.refinement.reinitNewObjects()
+        self.refinement.apply_remove()
+        self.refinement.reinit_new_objects()
         # self.combiintegral = 0.0
     '''
     def getErrors(self,integralarrayComplete, errorOperator, f):

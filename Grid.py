@@ -360,7 +360,7 @@ class EquidistantGridGlobal(Grid):
         self.weights = []
         self.numPoints = np.zeros(self.dim, dtype=int)
         for d in range(self.dim):
-            refinementDim = refinement.getRefinementContainerForDim(d)
+            refinementDim = refinement.get_refinement_container_for_dim(d)
             coordsD = self.mapPoints(
                 refinementDim.getPointsLine()[self.lowerBorder[d]: -1 * int(self.boundary == False)], self.levelvec[d],
                 d)
