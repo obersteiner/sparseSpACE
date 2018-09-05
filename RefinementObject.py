@@ -6,8 +6,8 @@ import abc,logging
 
 # This class defines the general template of a Refinement Object that can be stored in the refinement container
 class RefinementObject(object):
-    def __init__(self, errorEstimator):
-        self.errorEstimator = errorEstimator
+    def __init__(self, error_estimator):
+        self.errorEstimator = error_estimator
         self.integral = None
 
     # set the local integral for area associated with RefinementObject
@@ -189,12 +189,12 @@ class RefinementObjectSingleDimension(RefinementObject):
             # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.dim)
             # self.newScheme = True
         # add new refined interval to refinement array (it has half of the width)
-        newWidth = (self.end - self.start) / 2.0
-        newObjects = []
-        newObjects.append(RefinementObjectSingleDimension(self.start, self.start + newWidth, self.dim, coarsening_value))
-        newObjects.append(RefinementObjectSingleDimension(self.start + newWidth, self.end, self.dim, coarsening_value))
-        # self.finestWidth = min(newWidth,self.finestWidth)
-        return newObjects, lmax_increase, update
+        new_width = (self.end - self.start) / 2.0
+        new_objects = []
+        new_objects.append(RefinementObjectSingleDimension(self.start, self.start + new_width, self.dim, coarsening_value))
+        new_objects.append(RefinementObjectSingleDimension(self.start + new_width, self.end, self.dim, coarsening_value))
+        # self.finestWidth = min(new_width,self.finestWidth)
+        return new_objects, lmax_increase, update
 
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
     def update(self, update_info):
