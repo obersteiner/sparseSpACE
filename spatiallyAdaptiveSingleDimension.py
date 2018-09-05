@@ -1,9 +1,11 @@
 from spatiallyAdaptiveBase import *
 
+
 class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
-    def __init__(self ,a ,b ,grid=TrapezoidalGrid()):
-        SpatiallyAdaptivBase.__init__(self ,a ,b ,grid)
-    def coarsenGrid(self ,area ,levelvec):
+    def __init__(self, a, b, grid=TrapezoidalGrid()):
+        SpatiallyAdaptivBase.__init__(self, a, b, grid)
+
+    def coarsenGrid(self, area, levelvec):
         pass
         '''
         #a = self.a[0]
@@ -54,11 +56,11 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         '''
 
     # this method draws the 1D refinement of each dimension individually
-    def drawRefinement(self, filename = None):  # update with meta container
+    def drawRefinement(self, filename=None):  # update with meta container
         plt.rcParams.update({'font.size': 32})
         refinement = self.refinement
         dim = len(refinement)
-        fig ,ax = plt.subplots(ncols=1 ,nrows=dim ,figsize=(20 ,10))
+        fig, ax = plt.subplots(ncols=1, nrows=dim, figsize=(20, 10))
         for d in range(dim):
             starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].get_objects()]
             ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].get_objects()]
@@ -66,25 +68,25 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
                 ax[d].add_patch(
                     patches.Rectangle(
                         (starts[i], -0.1),
-                        ends[i ] -starts[i],
+                        ends[i] - starts[i],
                         0.2,
-                        fill=False      # remove background
+                        fill=False  # remove background
                     )
                 )
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
-            ax[d].plot(xValues ,yValues ,'bo', markersize=10, color="black")
-            ax[d].set_xlim([self.a[d] ,self.b[d]])
-            ax[d].set_ylim([-0.1 ,0.1])
+            ax[d].plot(xValues, yValues, 'bo', markersize=10, color="black")
+            ax[d].set_xlim([self.a[d], self.b[d]])
+            ax[d].set_ylim([-0.1, 0.1])
             ax[d].set_yticks([])
-        i f(filename != None):
+        if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         plt.show()
         return fig
 
     # evaluate the integral of f in a specific area with numPoints many points using the specified integrator set in the grid
     # We also interpolate the function to the finest width to calculate the error of the combination in each
-    def evaluateArea(self ,f ,area ,levelvec):
+    def evaluateArea(self, f, area, levelvec):
         pass
         # redo with hierarchization
         '''
@@ -113,31 +115,35 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         '''
 
     # calculate the position of the partial integral in the variance array
-    def getPosition(self ,partialIntegralInfo ,dim):
-        refinementArray = self.refinement
-        startPartialIntegral = partialIntegralInfo[1]
-        endPartialIntegral = partialIntegralInfo[2]
+    def getPosition(self, partialIntegralInfo, dim):
+        refinement_array = self.refinement
+        start_partial_integral = partialIntegralInfo[1]
+        end_partial_integral = partialIntegralInfo[2]
         positions = []
         for d in range(dim):
-            positionDim = []
-            for i in range(len(refinementArray[d])):
-                r = refinementArray[d][i]
-                startRef = r[0]
-                endRef = r[1]
-                i f(startPartialIntegral[d] >= startRef and endPartialIntegral[d] <= endRef):
-                    positionDim.append(i)
-            positions.append(positionDim)
+            position_dim = []
+            for i in range(len(refinement_array[d])):
+                r = refinement_array[d][i]
+                start_ref = r[0]
+                end_ref = r[1]
+                if start_partial_integral[d] >= start_ref and end_partial_integral[d] <= end_ref:
+                    position_dim.append(i)
+            positions.append(position_dim)
         return positions
 
     def initializeRefinement(self):
         # toDo self, start, end, dim, coarseningLevel = 0
         RefinementObjectSingleDimension
-        initialObjects = []
+        initial_points = []
         for d in range(self.dim):
-            initialPoints.append(np.linspace(self.a[0] ,self.b[0] , 2* * 1 +1))
+            initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 1 + 1))
         self.refinement = MetaRefinementContainer([RefinementContainer
-            ([RefinementObjectSingleDimension(initialPoints[d][i] ,initialPoints[d][ i +1], self.dim, self.lmax[d ] -1) for i in range( 2* *1)], self.dim, self.errorEstimator) for d in range(self.dim)])
-        # self.finestWidth = (initialPoints[0][1]-initialPoints[0][0])/(self.b[0] - self.a[0])
+                                                   ([RefinementObjectSingleDimension(initial_points[d][i],
+                                                                                     initial_points[d][i + 1], self.dim,
+                                                                                     self.lmax[d] - 1) for i in
+                                                     range(2 ** 1)], self.dim, self.errorEstimator) for d in
+                                                   range(self.dim)])
+        # self.finestWidth = (initial_points[0][1]-initial_points[0][0])/(self.b[0] - self.a[0])
 
     def getAreas(self):
         # get a list of lists which contains range(refinements[d]) for each dimension d where the refinements[d] are the number of subintervals in this dimension
@@ -155,12 +161,13 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         self.popArray = [[] for d in range(self.dim)]
         self.newScheme = False
         '''
-    def doRefinement(self ,area ,position):
+
+    def doRefinement(self, area, position):
         lmaxChange = self.refinement.refine(position)
-        if lmaxChange != None:
+        if lmaxChange is not None:
             self.lmax = [self.lmax[d] + lmaxChange[d] for d in range(self.dim)]
             print("New scheme")
-            self.scheme = getCombiScheme(self.lmin[0] ,self.lmax[0] ,self.dim)
+            self.scheme = getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             return True
         return False
 
@@ -180,6 +187,7 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         self.refinement.apply_remove()
         self.refinement.reinit_new_objects()
         # self.combiintegral = 0.0
+
     '''
     def getErrors(self,integralarrayComplete, errorOperator, f):
         #errorArray = np.zeros(len(self.getAreas()))
