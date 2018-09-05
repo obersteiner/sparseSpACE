@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from Grid import *
 import time
+from StandardCombi import *
 
 def performTestStandard(f, a, b, grid, lmin,maxLmax,dim,realIntegral):
     #calculate standard combination scheme results

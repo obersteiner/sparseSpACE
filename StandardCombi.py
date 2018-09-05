@@ -3,7 +3,8 @@ import combiScheme
 import Grid
 import math
 import logging
-import combiScheme
+from combiScheme import *
+from Grid import *
 
 #This class implements the standard combination technique
 class StandardCombi(object):
