@@ -64,19 +64,30 @@ class SpatiallyAdaptivBase(object):
             return None
         fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
         # get points of each component grid and plot them individually
-        for i in range(lmax[0] - lmin[0] + 1):
-            for j in range(lmax[1] - lmin[1] + 1):
-                ax[i, j].xaxis.set_ticks_position('none')
-                ax[i, j].yaxis.set_ticks_position('none')
-                ax[i, j].set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
-                ax[i, j].set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
-        for ss in scheme:
-            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-            points = self.get_points_arbitrary_dim(ss[0], num_sub_diagonal)
+        if(lmax == lmin):
+            ax.xaxis.set_ticks_position('none')
+            ax.yaxis.set_ticks_position('none')
+            ax.set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
+            ax.set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
+            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(lmax)
+            points = self.get_points_arbitrary_dim(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
-            ax[lmax[1] - lmin[1] - (ss[0][1] - lmin[1]), (ss[0][0] - lmin[0])].plot(x_array, y_array, 'o', markersize=6,
-                                                                                    color="black")
+            ax.plot(x_array, y_array, 'o', markersize=6, color="black")
+        else:
+            for i in range(lmax[0] - lmin[0] + 1):
+                for j in range(lmax[1] - lmin[1] + 1):
+                    ax[i, j].xaxis.set_ticks_position('none')
+                    ax[i, j].yaxis.set_ticks_position('none')
+                    ax[i, j].set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
+                    ax[i, j].set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
+            for ss in scheme:
+                num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
+                points = self.get_points_arbitrary_dim(ss[0], num_sub_diagonal)
+                x_array = [p[0] for p in points]
+                y_array = [p[1] for p in points]
+                ax[lmax[1] - lmin[1] - (ss[0][1] - lmin[1]), (ss[0][0] - lmin[0])].plot(x_array, y_array, 'o', markersize=6,
+                                                                                        color="black")
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         plt.show()
@@ -157,6 +168,7 @@ class SpatiallyAdaptivBase(object):
 
     def init_adaptive_combi(self, f, minv, maxv, refinement_container, tol):
         self.tolerance = tol
+        self.f = f
         self.realIntegral = f.getAnalyticSolutionIntegral(self.a, self.b)
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
@@ -166,7 +178,7 @@ class SpatiallyAdaptivBase(object):
             self.refinement = refinement_container
             self.refinement.reinit_new_objects()
         # calculate the combination scheme
-        self.scheme = getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+        self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
         # initialize values
         self.refinements = 0
         # self.combiintegral = 0
@@ -192,7 +204,7 @@ class SpatiallyAdaptivBase(object):
                 numSubDiagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
                 integral = 0
                 # iterate over all areas and calculate the integral
-
+                #print(ss)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
                 if area_integral != -2 ** 30:
                     number_of_evaluations += evaluations
@@ -244,7 +256,7 @@ class SpatiallyAdaptivBase(object):
     def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False):
         self.errorEstimator = errorOperator
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
-        while (True):
+        while True:
             error = self.evaluate_integral(f)
             print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
@@ -287,6 +299,7 @@ class SpatiallyAdaptivBase(object):
     # this is a default implementation that should be overritten if necessary
     def refinement_postprocessing(self):
         self.refinement.apply_remove()
+        self.refinement.refinement_postprocessing()
 
     # this is a default implementation that should be overritten if necessary
     def calc_error(self, objectID, f):

@@ -108,11 +108,13 @@ class IntegratorArbitraryGrid(IntegratorBase):
             for d in reversed(list(range(dim))):
                 indexvector[d] = int(rest / offsets[d])
                 rest = rest % offsets[d]
-            position = self.grid.getCoordinate(indexvector)
-            result += f.eval(position) * self.grid.getWeight(indexvector)
+            result += self.integrate_point(f, indexvector)
         del offsets
         return result
 
+    def integrate_point(self, f, indexvector):
+        position = self.grid.getCoordinate(indexvector)
+        return f.eval(position) * self.grid.getWeight(indexvector)
 
 '''
 #This integrator computes the integral of an arbitrary grid from the Grid class

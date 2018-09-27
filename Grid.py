@@ -7,9 +7,14 @@ class Grid(object):
 
     # integrates the grid on the specified area for function f
     def integrate(self, f, levelvec, start, end):
-        if (not self.isGlobal()):
+        if not self.isGlobal():
             self.setCurrentArea(start, end, levelvec)
         return self.integrator(f, self.levelToNumPoints(levelvec), start, end)
+
+    #def integrate_point(self, f, levelvec, start, end, point):
+    #    if not self.isGlobal():
+    #        self.setCurrentArea(start, end, levelvec)
+    #    return self.integrator.integrate_point(f, point)
 
     # the default case is that a grid is nested; overwrite this if not nested!
     def isNested(self):

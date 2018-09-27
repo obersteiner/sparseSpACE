@@ -3,6 +3,7 @@ import math
 import numpy as np
 import ErrorCalculator
 import abc,logging
+from combiScheme import CombiScheme
 
 
 # This class implements a general container that can be filled with refinementObjects (typically specified by the refinement strategy)
@@ -40,6 +41,9 @@ class RefinementContainer(object):
         # add new RefinementObjects
         self.add(new_objects)
         return lmax_update
+
+    def refinement_postprocessing(self):
+        self.searchPosition = 0
 
     # if strategy decides from outside to update elements this function can be used
     def update_objects(self, update_info):
@@ -86,7 +90,6 @@ class RefinementContainer(object):
             if self.startNewObjects != 0:
                 self.startNewObjects -= 1
         self.popArray = []
-        self.searchPosition = 0
 
     # add new RefinementObjects to the container
     def add(self, new_refinement_objects):

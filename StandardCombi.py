@@ -30,7 +30,7 @@ class StandardCombi(object):
         lmin = [minv for i in range(dim)]
         lmax = [maxv for i in range(dim)]
         combiintegral = 0
-        self.scheme = getCombiScheme(lmin[0], lmax[0], dim)
+        self.scheme = CombiScheme.getCombiScheme(lmin[0], lmax[0], dim)
         for ss in self.scheme:
             integral = self.grid.integrate(f, ss[0], start, end) * ss[1]
             combiintegral += integral

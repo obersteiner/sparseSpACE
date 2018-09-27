@@ -167,7 +167,7 @@ class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
         if lmaxChange is not None:
             self.lmax = [self.lmax[d] + lmaxChange[d] for d in range(self.dim)]
             print("New scheme")
-            self.scheme = getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             return True
         return False
 
