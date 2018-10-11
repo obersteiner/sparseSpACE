@@ -170,11 +170,11 @@ class SpatiallyAdaptivBase(object):
         self.tolerance = tol
         self.f = f
         self.realIntegral = f.getAnalyticSolutionIntegral(self.a, self.b)
-        # calculate the combination scheme
-        self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
+            # calculate the combination scheme
+            self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             self.initialize_refinement()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
