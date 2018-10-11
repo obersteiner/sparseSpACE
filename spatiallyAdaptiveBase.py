@@ -189,36 +189,34 @@ class SpatiallyAdaptivBase(object):
 
     def evaluate_integral(self, f):
         # initialize values
-        integralarrayComplete = []
         number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
+        integralarrayComplete = np.zeros(len(areas))
+        evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for ss in self.scheme:  # iterate over component grids
             # initialize component grid specific variables
             numSubDiagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
             integral = 0
             # iterate over all areas and calculate the integral
-            for area in areas:
-                integralArrayIndividual = []
-                evaluationsArea = 0
-
+            for k, area in enumerate(areas):
                 #print(ss)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
                 if area_integral != -2 ** 30:
                     number_of_evaluations += evaluations
-                    if partial_integrals is not None:
-                        integralArrayIndividual.extend(partial_integrals)
+                    if partial_integrals is not None: #outdated
+                        pass
+                        #integralArrayIndividual.extend(partial_integrals)
                     else:
-                        integralArrayIndividual.append(ss[1] * area_integral)
+                        integralarrayComplete[k] += ss[1] * area_integral
                     # self.combiintegral += area_integral * ss[1]
-                    evaluationsArea += evaluations
-            integralarrayComplete.append(integralArrayIndividual)
+                        evaluation_array[k] += evaluations
 
-        for k in len(integralarrayComplete):
+        for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
-            self.refinement.set_integral(i, sum(integralArrayIndividual))
-            self.refinement.set_evaluations(i, evaluationsArea / len(self.scheme))
+            self.refinement.set_integral(i, integralarrayComplete[k])
+            self.refinement.set_evaluations(i, evaluation_array[k] / len(self.scheme))
             self.calc_error(i, f)
 
         # getArea with maximal error
