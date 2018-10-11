@@ -64,7 +64,7 @@ class SpatiallyAdaptivBase(object):
             return None
         fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
         # get points of each component grid and plot them individually
-        if(lmax == lmin):
+        if lmax == lmin:
             ax.xaxis.set_ticks_position('none')
             ax.yaxis.set_ticks_position('none')
             ax.set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
@@ -170,6 +170,8 @@ class SpatiallyAdaptivBase(object):
         self.tolerance = tol
         self.f = f
         self.realIntegral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        # calculate the combination scheme
+        self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
@@ -177,8 +179,6 @@ class SpatiallyAdaptivBase(object):
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
             self.refinement.reinit_new_objects()
-        # calculate the combination scheme
-        self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
         # initialize values
         self.refinements = 0
         # self.combiintegral = 0
@@ -194,16 +194,15 @@ class SpatiallyAdaptivBase(object):
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
         # calculate integrals
-        i = self.refinement.size() - self.refinement.new_objects_size()
-        for area in areas:
-            integralArrayIndividual = []
-            evaluationsArea = 0
-            for ss in self.scheme:  # iterate over component grids
-                # initialize component grid specific variables
+        for ss in self.scheme:  # iterate over component grids
+            # initialize component grid specific variables
+            numSubDiagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            integral = 0
+            # iterate over all areas and calculate the integral
+            for area in areas:
+                integralArrayIndividual = []
+                evaluationsArea = 0
 
-                numSubDiagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-                integral = 0
-                # iterate over all areas and calculate the integral
                 #print(ss)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
                 if area_integral != -2 ** 30:
@@ -214,11 +213,15 @@ class SpatiallyAdaptivBase(object):
                         integralArrayIndividual.append(ss[1] * area_integral)
                     # self.combiintegral += area_integral * ss[1]
                     evaluationsArea += evaluations
+            integralarrayComplete.append(integralArrayIndividual)
+
+        for k in len(integralarrayComplete):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, sum(integralArrayIndividual))
             self.refinement.set_evaluations(i, evaluationsArea / len(self.scheme))
             self.calc_error(i, f)
-            i += 1
-            # getArea with maximal error
+
+        # getArea with maximal error
         self.errorMax = self.refinement.get_max_error()
         print("max error:", self.errorMax)
         return abs(self.refinement.integral - self.realIntegral)
