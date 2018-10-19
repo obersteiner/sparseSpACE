@@ -137,6 +137,23 @@ class GenzOszillatory(Function):
             result += self.coeffs[d] * coordinates[d]
         return math.cos(result)
 
+    def getAnalyticSolutionIntegral(self, start, end):
+        factor = ((-1)**int(math.floor(self.dim/2))) * 1.0/ np.prod(self.coeffs)
+        combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
+        result = 0
+        for c in combinations:
+            partial_result = 2 * math.pi * self.offset
+            for d in range(self.dim):
+                if c[d] == 1:
+                    value = start[d]
+                else:
+                    value = end[d]
+                partial_result += value * self.coeffs[d]
+            if self.dim % 2 == 1:
+                result += (-1)**sum(c) * math.sin(partial_result)
+            else:
+                result += (-1)**sum(c) * math.cos(partial_result)
+        return factor * result
 
 class GenzDiscontinious(Function):
     def __init__(self, coeffs, border):
@@ -209,7 +226,7 @@ class Function2Jakeman(Function):
         assert (dim == len(self.coefficients))
         summation = 0.0
         for d in range(dim):
-            summation -= self.coefficients[d] * (coordinates[d] - self.midpoints[d]) ** 2
+            summation -= self.coefficients[d] * (coordinates[d] - self.midpoint[d]) ** 2
         return np.exp(summation)
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -219,9 +236,9 @@ class Function2Jakeman(Function):
         sqPiHalve = np.sqrt(np.pi) * 0.5
         for d in range(dim):
             result = result * (
-                        sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoints[d])) -
+                        sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoint[d])) -
                         sqPiHalve * scipy.special.erf(
-                    np.sqrt(self.coefficients[d]) * (start[d] - self.midpoints[d]))) / np.sqrt(self.coefficients[d])
+                    np.sqrt(self.coefficients[d]) * (start[d] - self.midpoint[d]))) / np.sqrt(self.coefficients[d])
         return result
 
 
