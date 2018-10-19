@@ -79,7 +79,7 @@ class FunctionCompose(Function):
 # This Function represents the corner Peak f the genz test functions
 class GenzCornerPeak(Function):
     def __init__(self, coeffs):
-        self.coeffs = coeffs
+        self.coeffs = np.array(coeffs)
         self.dim = len(coeffs)
 
     def eval(self, coordinates):
@@ -88,12 +88,27 @@ class GenzCornerPeak(Function):
             result += self.coeffs[d] * coordinates[d]
         return result ** (-self.dim - 1)
 
+    def getAnalyticSolutionIntegral(self, start, end):
+        factor = ((-1)**self.dim) * 1.0/ (math.factorial(self.dim) * np.prod(self.coeffs))
+        combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
+        result = 0
+        for c in combinations:
+            partial_result = 1
+            for d in range(self.dim):
+                if c[d] == 1:
+                    value = start[d]
+                else:
+                    value = end[d]
+                partial_result += value * self.coeffs[d]
+            result += (-1)**sum(c) * partial_result**-1
+        return factor * result
+
 
 class GenzProductPeak(Function):
-    def __init__(self, coeffs, midPoint):
-        self.coeffs = coeffs
-        self.midPoint = midPoint
-        self.dim = len(coeffs)
+    def __init__(self, coefficients, midpoint):
+        self.coeffs = coefficients
+        self.midPoint = midpoint
+        self.dim = len(coefficients)
         self.factor = 10 ** (-self.dim)
 
     def eval(self, coordinates):
@@ -139,6 +154,7 @@ class GenzDiscontinious(Function):
 
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
+        end = list(end)
         for d in range(self.dim):
             if start[d] >= self.border[d]:
                 return 0.0
@@ -149,9 +165,9 @@ class GenzDiscontinious(Function):
 
 
 class GenzC0(Function):
-    def __init__(self, coeffs, midPoint):
+    def __init__(self, coeffs, midpoint):
         self.coeffs = coeffs
-        self.midPoint = midPoint
+        self.midPoint = midpoint
         self.dim = len(coeffs)
 
     def eval(self, coordinates):
@@ -165,17 +181,27 @@ class GenzC0(Function):
         for d in range(self.dim):
             one_d_integral = 0
             if start[d] < self.midPoint[d]:
-                one_d_integral += (np.exp(self.coeffs[d] * (start[d] - self.midPoint[d])) - 1) / self.coeffs[d]
+                if end[d] < self.midPoint[d]:
+                    one_d_integral += (np.exp(self.coeffs[d] * (end[d] - self.midPoint[d]))) / self.coeffs[d] - (
+                        np.exp(self.coeffs[d] * (start[d] - self.midPoint[d]))) / self.coeffs[d]
+                else:
+                    one_d_integral += 1.0 / self.coeffs[d] - (
+                        np.exp(self.coeffs[d] * (start[d] - self.midPoint[d]))) / self.coeffs[d]
             if end[d] > self.midPoint[d]:
-                one_d_integral += (np.exp(self.coeffs[d] * (end[d] - self.midPoint[d])) - 1) / self.coeffs[d]
+                if start[d] > self.midPoint[d]:
+                    one_d_integral += (np.exp(self.coeffs[d] * (self.midPoint[d] - start[d]))) / self.coeffs[d] - (
+                        np.exp(self.coeffs[d] * (self.midPoint[d] - end[d]))) / self.coeffs[d]
+                else:
+                    one_d_integral += 1.0 / self.coeffs[d] - (
+                        np.exp(self.coeffs[d] * (self.midPoint[d] - end[d]))) / self.coeffs[d]
             result *= one_d_integral
         return result
 
 
 # This function is the test case function 2 of the paper from Jakeman and Roberts: https://arxiv.org/pdf/1110.0010.pdf
 class Function2Jakeman(Function):
-    def __init__(self, midpoints, coefficients):
-        self.midpoints = midpoints
+    def __init__(self, midpoint, coefficients):
+        self.midpoint = midpoint
         self.coefficients = coefficients
 
     def eval(self, coordinates):
