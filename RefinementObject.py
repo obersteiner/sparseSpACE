@@ -120,7 +120,7 @@ class RefinementObjectExtendSplit(RefinementObject):
 class RefinementObjectCell(RefinementObject):
     cell_dict = {}
     cells_for_level = []
-
+    punish_depth = False
     def __init__(self, start, end, levelvec, a, b, lmin, father=None):
         self.a = a
         self.b = b
@@ -258,7 +258,9 @@ class RefinementObjectCell(RefinementObject):
     def set_error(self, error):
         # only define an error if active cell
         if self.active:
-            self.error = error * np.prod(np.array(self.end) - np.array(self.start))
+            self.error = error
+            if self.punish_depth:
+                self.error *= np.prod(np.array(self.end) - np.array(self.start))
         else:
             self.error = 0
         #print("Error of refine object:", self.get_key(), "is:", self.error)
