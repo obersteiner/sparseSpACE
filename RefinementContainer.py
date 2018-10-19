@@ -195,3 +195,39 @@ class MetaRefinementContainer(object):
                 if d != position[0]:
                     c.update(1)
         return lmax_change
+
+'''
+class RefinementContainerCell(RefinementContainer):
+    def __init__(self, initial_objects, dim, error_estimator, a, b):
+        super().__init__(self, initial_objects, dim, error_estimator)
+        self.grid_dictionary = {}
+        index_set = CombiScheme.get_index_set()
+        for object in initial_objects:
+            if tuple(object.levelvec) in self.grid_dictionary:
+                self.grid_dictionary[tuple(object.levelvec)].append((object.start,object.end))
+            else:
+                self.grid_dictionary[tuple(object.levelvec)] = [(object.start,object.end)]
+
+    def refinement_postprocessing(self, new_objects, object_id):
+        for object in new_objects:
+            previous_levelvec = [max(CombiScheme.lmin,object.levelvec - 1) for d in range(self.dim)]
+
+            self.grid_dictionary[tuple(object.levelvec)] = self.grid_dictionary[tuple(previous_levelvec)]
+
+            area_info_old = (self.grid_dictionary[tuple(self.getObject(object_id).levelvec)].start, self.grid_dictionary[tuple(self.getObject(object_id).levelvec)].end)
+            self.grid_dictionary[tuple(object.levelvec)].remove(area_info_old)
+
+        for object in new_objects:
+            self.grid_dictionary[tuple(object.levelvec)].append((object.start, object.end))
+
+    def set_integral(self, object_id, integral):
+        self.integral += integral
+
+    def set_evaluations(self, object_id, evaluations):
+        self.evaluationstotal += evaluations
+
+    def calc_error(self, object_id, f):
+        pass
+'''
+
+
