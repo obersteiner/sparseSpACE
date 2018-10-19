@@ -39,6 +39,10 @@ class RefinementObjectExtendSplit(RefinementObject):
         # indicates after how many splits only extends are performed
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
+        self.integral = None
+        #dictionary that maps all coarsened levelvectors to there uncoarsened ones
+        #the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
+        self.levelvec_dict = {}
 
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
@@ -58,14 +62,6 @@ class RefinementObjectExtendSplit(RefinementObject):
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end,
                                                                   self.numberOfRefinementsBeforeExtend,
                                                                   self.coarseningValue, self.needExtendScheme)
-                # self.refinement.append((lowerBorder, upperBorder , factor, coarseningValue, needExtendScheme))
-                # self.newRefinementArray.append((lowerBorder, upperBorder , factor, coarseningValue, needExtendScheme))
-                # self.errorArray = list(self.errorArrayWithoutCost)
-                # self.combiintegral = 0.0
-                # self.subAreaIntegrals = []
-                # self.evaluationPerArea = []
-                # self.evaluationsTotal = 0
-                # self.checkCombiScheme()
                 return [newRefinementObject], lmaxIncrease, 1
             else:
                 # add to integralArray
@@ -85,6 +81,18 @@ class RefinementObjectExtendSplit(RefinementObject):
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
     def update(self, update_info):
         self.coarseningValue += update_info
+        self.levelvec_dict = {}
+
+    def add_level(self, levelvec_coarsened, levelvec):
+        #print("adding", levelvec_coarsened, levelvec)
+        self.levelvec_dict[levelvec_coarsened] = levelvec
+
+    def is_already_calculated(self, levelvec_coarsened, levelvec):
+        if levelvec_coarsened not in self.levelvec_dict:
+            return False
+        else:
+            #print(levelvec_coarsened, levelvec, self.levelvec_dict[levelvec_coarsened])
+            return self.levelvec_dict[levelvec_coarsened] != levelvec
 
     # splits the current area into 2**dim smaller ones and returns them
     def split_area_arbitrary_dim(self):

@@ -2,12 +2,17 @@ from spatiallyAdaptiveBase import *
 
 
 class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend, grid=TrapezoidalGrid(), no_initial_splitting=False,
-                 top_diag_increase_coarsening=False):
+    def __init__(self, a, b, number_of_refinements_before_extend, grid=TrapezoidalGrid(), no_initial_splitting = False,
+                 version=0):
+        # there are three different version that coarsen grids slightly different
+        # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
+        # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
+        # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
+        assert 2 >= version >= 0
+        self.version = version
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
-        self.topDiagIncreaseCoarsening = top_diag_increase_coarsening
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
@@ -43,10 +48,27 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
             self.grid.setCurrentArea(start, end, level_interval)
             points = self.grid.getPoints()
             array2.extend(points)
+        return array2
+
+    # returns the points of a single component grid with refinement
+    def get_points_arbitrary_dim_not_null(self, levelvec, numSubDiagonal):
+        assert (numSubDiagonal < self.dim)
+        array2 = []
+        for area in self.refinement.get_objects():
+            start = area.start
+            end = area.end
+            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            if not is_null:
+                self.grid.setCurrentArea(start, end, level_interval)
+                points = self.grid.getPoints()
+                array2.extend(points)
+                #print("considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
+            #else:
+                #print("not considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
         return array2
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
@@ -56,35 +78,61 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
         coarsening = area.coarseningValue
         temp = list(levelvector)
         coarsening_save = coarsening
-        while coarsening > 0:
+        area_is_null = False
+        if self.version == 0:
+
             maxLevel = max(temp)
-            if maxLevel == self.lmin[0]:  # we assume here that lmin is equal everywhere
-                break
-            occurences_of_max = 0
-            for i in temp:
-                if i == maxLevel:
-                    occurences_of_max += 1
-            is_top_diag = num_sub_diagonal == 0
-            if self.topDiagIncreaseCoarsening:
-                no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
-                            self.dim - 2) - maxLevel + 1
-                do_coarsen = no_forward_problem and coarsening >= occurences_of_max - is_top_diag
+            temp2 = list(reversed(sorted(list(temp))))
+            if temp2[0] - temp2[1] < coarsening:
+                while coarsening > 0:
+                    maxLevel = max(temp)
+                    if maxLevel == self.lmin[0]:  # we assume here that lmin is equal everywhere
+                        break
+                    for d in range(self.dim):
+                        if temp[d] == maxLevel:
+                            temp[d] -= 1
+                            coarsening -= 1
+                            break
+                area_is_null = True
             else:
-                no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
-                            self.dim - 2) - maxLevel + 2
-                do_coarsen = no_forward_problem and coarsening >= occurences_of_max
-            if do_coarsen:
                 for d in range(self.dim):
                     if temp[d] == maxLevel:
-                        temp[d] -= 1
-                        coarsening -= 1
-            else:
-                break
+                        temp[d] -= coarsening
+                        break
+                if area.is_already_calculated(tuple(temp), tuple(levelvector)):
+                    area_is_null = True
+                else:
+                    area.add_level(tuple(temp), tuple(levelvector))
+        else:
+            while coarsening > 0:
+                maxLevel = max(temp)
+                if maxLevel == self.lmin[0]:  # we assume here that lmin is equal everywhere
+                    break
+                occurences_of_max = 0
+                for i in temp:
+                    if i == maxLevel:
+                        occurences_of_max += 1
+                is_top_diag = num_sub_diagonal == 0
+                if self.version == 1:
+                    no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
+                                self.dim - 2) - maxLevel + 1
+                    do_coarsen = no_forward_problem and coarsening >= occurences_of_max - is_top_diag
+                else:
+                    no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
+                                self.dim - 2) - maxLevel + 2
+                    do_coarsen = no_forward_problem and coarsening >= occurences_of_max
+                if do_coarsen:
+                    for d in range(self.dim):
+                        if temp[d] == maxLevel:
+                            temp[d] -= 1
+                            coarsening -= 1
+                else:
+                    break
         level_coarse = [temp[d] - self.lmin[d] + int(self.noInitialSplitting) for d in range(len(temp))]
         if print_point is not None:
             if all([start[d] <= print_point[d] and end[d] >= print_point[d] for d in range(self.dim)]):
                 print("Level: ", levelvector, "Coarsened level:", level_coarse, coarsening_save, start, end)
-        return level_coarse
+        return level_coarse, area_is_null
 
     def initialize_refinement(self):
         if (self.noInitialSplitting):
@@ -99,8 +147,11 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
 
     def evaluate_area(self, f, area, levelvec):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvec)
-        level_for_evaluation = self.coarsen_grid(levelvec, area, num_sub_diagonal)
-        return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
+        level_for_evaluation, is_null = self.coarsen_grid(levelvec, area, num_sub_diagonal)
+        if is_null:
+            return 0, None, 0
+        else:
+            return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
             self.grid.levelToNumPoints(level_for_evaluation))
 
     def do_refinement(self, area, position):
