@@ -38,7 +38,7 @@ def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, ma
         for i in range(1,maxtol):
             start = time.time()
             if(i == 1):
-                coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f,errorOperator,10**-i)
+                coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f, algorithm[3],10**-i)
             else:
                 if (abs(integral - realIntegral) > 10**-i):
                     coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f,errorOperator,10**-i,coarsening)
@@ -68,16 +68,16 @@ def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, ma
     for i in range(maxLmin-minLmin):
         print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i+minLmin))
         print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evaks Standard lmin= " + str(i+minLmin))
-        plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
+        #plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
         plt.loglog(xFEvalArrayStandard[i],errorArrayStandard[i],label='standardCombination distinct f evals lmin='+ str(i+minLmin))
 
     for i in range(len(adaptiveAlgorithmVector)):
-        print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][3] +' Naive evaluation')
-        print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][3] +' total points')
-        print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][3] +' distinct f evals')
-        plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
-        plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        plt.loglog(numFEvalIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' distinct f evals')
+        print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] +' Naive evaluation')
+        print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] +' total points')
+        print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] +' distinct f evals')
+        #plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
+        #plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
+        plt.loglog(numFEvalIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][4] +' distinct f evals')
     plt.legend(bbox_to_anchor=(3,1), loc="upper right")
     plt.xlabel('Number of points')
     plt.ylabel('Approximation error')
