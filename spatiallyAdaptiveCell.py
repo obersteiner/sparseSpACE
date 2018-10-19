@@ -5,8 +5,9 @@ from scipy.interpolate import griddata
 from scipy.interpolate import interpn
 
 class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, grid=TrapezoidalGrid):
+    def __init__(self, a, b, grid=TrapezoidalGrid, punish_depth=False):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
+        RefinementObjectCell.punish_depth = punish_depth
         # dummy container
         self.refinement = RefinementContainer([], self.dim, None)
         self.max_level = np.ones(self.dim)
@@ -254,5 +255,3 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
                 if levelvec is None or (levelvecNew is not None and levelvecNew <= levelvec):
                     levelvec = levelvecNew
         return cell_list, levelvec
-
-    #def calc_error(self, objectID, f):
