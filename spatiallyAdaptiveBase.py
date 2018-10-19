@@ -128,7 +128,8 @@ class SpatiallyAdaptivBase(object):
         for ss in self.scheme:
             num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
             # print num_sub_diagonal , ii ,ss
-            points = set(self.get_points_arbitrary_dim(ss[0], num_sub_diagonal))
+            points = self.get_points_arbitrary_dim_not_null(ss[0], num_sub_diagonal)
+            points = set(points)
             for p in points:
                 if p in dictionary:
                     dictionary[p] += ss[1]
@@ -138,7 +139,10 @@ class SpatiallyAdaptivBase(object):
         for key, value in dictionary.items():
             # print(key, value)
             if value != 1:
+                print(dictionary)
                 print("Failed for:", key, " with value: ", value)
+                for area in self.refinement.get_objects():
+                    print("area dict", area.levelvec_dict)
                 '''
                 for area in self.refinement.getObjects():
                     print("new area:",area)
@@ -237,13 +241,14 @@ class SpatiallyAdaptivBase(object):
                 tolerance=self.errorMax * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
-                print("Refining position", position)
+                #print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
                 print("Finished refinement")
                 self.refinement_postprocessing()
                 break
+        '''
         if self.refinements / 100 > self.counter:
             self.refinement.reinit_new_objects()
             self.combiintegral = 0
@@ -252,6 +257,7 @@ class SpatiallyAdaptivBase(object):
             self.evaluationsTotal = 0
             self.counter += 1
             print("recalculating errors")
+        '''
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False):
@@ -284,6 +290,9 @@ class SpatiallyAdaptivBase(object):
     @abc.abstractmethod
     def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
         return
+
+    def get_points_arbitrary_dim_not_null(self, levelvec, numSubDiagonal):
+        return self.get_points_arbitrary_dim(levelvec, numSubDiagonal)
 
     @abc.abstractmethod
     def evaluate_area(self, f, area, levelvec):
