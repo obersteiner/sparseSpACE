@@ -35,7 +35,7 @@ class SpatiallyAdaptivBase(object):
         for ss in self.scheme:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
             pointsgrid = self.get_num_points_arbitrary_dim(ss[0], doNaive, num_sub_diagonal)
-            if distinctFunctionEvals:
+            if distinctFunctionEvals and self.grid.isNested():
                 numpoints += pointsgrid * int(ss[1])
             else:
                 numpoints += pointsgrid
