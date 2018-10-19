@@ -71,7 +71,7 @@ class FunctionCompose(Function):
 
     def getAnalyticSolutionIntegral(self, start, end):
         result = 0.0
-        for f in self.functions:
+        for (f, factor) in self.functions:
             result += f.getAnalyticSolutionIntegral(start, end) * factor
         return result
 
