@@ -18,7 +18,7 @@ class ErrorCalculator(object):
         return
 
 
-# This error estimator doea a comparison to analytic solution. It outputs the absolut error.
+# This error estimator doea a comparison to analytic solution. It outputs the absolute error.
 class ErrorCalculatorAnalytic(ErrorCalculator):
     def calc_error(self, f, refine_object):
         lower_bounds = refine_object.start
@@ -36,32 +36,23 @@ class ErrorCalculatorAnalyticRelative(ErrorCalculator):
         real_integral_complete = f.getAnalyticSolutionIntegral(a, b)
         return abs((refine_object.integral - real_integral_value) / real_integral_complete)
 
-from RefinementObject import RefinementObjectCell
 
-# This error estimator doea a comparison to analytic solution. It outputs the absolut error.
-class ErrorCalculatorAnalyticCell(ErrorCalculator):
+# This error estimator does a surplus estimation. It outputs the absolute error.
+class ErrorCalculatorSurplusCell(ErrorCalculator):
     def calc_error(self, f, refine_object):
-        lower_bounds = refine_object.start
-        upper_bounds = refine_object.end
-        real_integral_value = f.getAnalyticSolutionIntegral(lower_bounds, upper_bounds)
-        #integral = refine_object.integral
-        error = self.calc_area_error(refine_object.sub_integrals, real_integral_value)
-        '''
-        for d in range(refine_object.dim):
-            levelvec_copy = list(refine_object.levelvec)
-            levelvec_copy[d] += 1
-            for child in RefinementObjectCell.children_cell_arbitrary_dim(d, refine_object.start, refine_object.end, refine_object.dim):
-                for parent in RefinementObjectCell.get_parents(levelvec_copy, child[0], child[1], refine_object.a, refine_object.b, refine_object.dim):
-                    if parent in RefinementObjectCell.cell_dict:
-                        new_error = self.calc_area_error(RefinementObjectCell.cell_dict[parent].sub_integrals, real_integral_value)
-                        if new_error > error:
-                            error = new_error
-        #print(refine_object.get_key(), integral, real_integral_value, abs(integral - real_integral_value))
-        '''
+        error = self.calc_area_error(refine_object.sub_integrals)
         return error
 
-    def calc_area_error(self, sub_integrals, real_integral_value):
-        error = 0
+    def calc_area_error(self, sub_integrals):
+        error = 0.0
         for sub_integral in sub_integrals:
             error += sub_integral[0] * sub_integral[1]
         return abs(error)
+
+
+class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
+    def calc_error(self, f, refine_object):
+        lower_bounds = np.array(refine_object.start)
+        upper_bounds = np.array(refine_object.end)
+        error = self.calc_area_error(refine_object.sub_integrals)
+        return error * np.prod(upper_bounds - lower_bounds)
