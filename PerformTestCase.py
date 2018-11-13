@@ -19,7 +19,7 @@ def performTestStandard(f, a, b, grid, lmin,maxLmax,dim,realIntegral):
         distinctFEvalArray.append(standardCombi.get_total_num_points(True))
     return  pointArray, distinctFEvalArray, errorArrayStandard
 
-def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, maxtol, dim,maxLmax,grid = TrapezoidalGrid(),minLmin=1,maxLmin=3):
+def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, maxtol, dim,maxLmax,grid = None,minLmin=1,maxLmin=3, minTol = -1):
     #realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     realIntegral = f.getAnalyticSolutionIntegral(a,b)
     print("Exact integral", realIntegral)
@@ -35,12 +35,12 @@ def performTestcaseArbitraryDim(f,a,b,adaptiveAlgorithmVector, errorOperator, ma
         numNaiveAlgorithm = []
         numIdealAlgorithm = []
         numFEvalIdealAlgorithm = []
-        for i in range(1,maxtol):
+        for i in range(minTol,maxtol):
             start = time.time()
-            if(i == 1):
+            if(i == minTol):
                 coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f, algorithm[3],10**-i)
             else:
-                if (abs(integral - realIntegral) > 10**-i):
+                if abs(integral - realIntegral)/abs(realIntegral) > 10**-i:
                     coarsening,combischeme,lmax,integral,numberOfEvaluations= algorithm[0].performSpatiallyAdaptiv(algorithm[1],algorithm[2],f,errorOperator,10**-i,coarsening)
             errorArrayAlgorithm.append(abs(integral - realIntegral)/abs(realIntegral))
             numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
