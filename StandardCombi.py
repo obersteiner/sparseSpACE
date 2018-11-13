@@ -12,7 +12,7 @@ class StandardCombi(object):
     # initialization
     # a = lower bound of integral; b = upper bound of integral
     # grid = specified grid (e.g. Trapezoidal);
-    def __init__(self, a, b, grid=TrapezoidalGrid()):
+    def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -44,10 +44,11 @@ class StandardCombi(object):
     def get_total_num_points(self, distinct_function_evals=False):
         num_points = 0
         for ss in self.scheme:
-            if distinct_function_evals:
+            if distinct_function_evals and self.grid.isNested():
                 factor = int(ss[1])
             else:
                 factor = 1
             self.grid.setCurrentArea(self.a, self.b, ss[0])
-            num_points += np.prod(np.array(self.grid.levelToNumPoints(ss[0]))) * factor
+            num_points_array = np.array(self.grid.levelToNumPoints(ss[0]))
+            num_points += np.prod(num_points_array) * factor
         return num_points
