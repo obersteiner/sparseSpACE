@@ -2,7 +2,7 @@ from spatiallyAdaptiveBase import *
 
 
 class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend, grid=TrapezoidalGrid(), no_initial_splitting = False,
+    def __init__(self, a, b, number_of_refinements_before_extend, grid=None, no_initial_splitting = False,
                  version=0):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
@@ -13,6 +13,7 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
+        self.refinements_for_recalculate = 100
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
