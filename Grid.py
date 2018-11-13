@@ -5,6 +5,11 @@ from Integrator import *
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
 
+    def __init__(self, a, b, boundary=True):
+        self.boundary = boundary
+        self.a = a
+        self.b = b
+
     # integrates the grid on the specified area for function f
     def integrate(self, f, levelvec, start, end):
         if not self.isGlobal():
@@ -54,6 +59,14 @@ class Grid(object):
     # this method translates a point in an equidistant mesh of level self.levelvec to its corresponding index
     def getIndexTo1DCoordinate(self, coordinate, level):
         return coordinate * 2 ** level
+
+    def point_not_zero(self, p):
+        #print(p, self.grid.boundary or not (self.point_on_boundary(p)))
+        return self.boundary or not (self.point_on_boundary(p))
+
+    def point_on_boundary(self, p):
+        #print("2",p, (p == self.a).any() or (p == self.b).any())
+        return (p == self.a).any() or (p == self.b).any()
 
 
 from scipy.optimize import fmin
@@ -210,12 +223,14 @@ class LejaGrid(Grid):
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
-    def __init__(self, boundary=True):
+    def __init__(self, a, b, boundary=True):
+        self.a = a
+        self.b = b
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
 
     def levelToNumPoints(self, levelvec):
-        return [2 ** levelvec[d] + 1 - int(self.boundary == False) * (int(self.start[d] == 0) + int(self.end[d] == 1))
+        return [2 ** levelvec[d] + 1 - (1 if self.boundary == False else 0) * (int(1 if self.start[d] == self.a[0] else 0) + int(1 if self.end[d] == self.b[0] else 0))
                 for d in range(self.dim)]
 
     def setCurrentArea(self, start, end, levelvec):
@@ -234,11 +249,11 @@ class TrapezoidalGrid(Grid):
         # lower border indicates if boundary is at lower end; upper border if boundary is at upper end
         self.lowerBorder = np.zeros(self.dim, dtype=int)
         self.upperBorder = np.array(self.numPoints, dtype=int)
-        if (self.boundary == False):
+        if not self.boundary:
             for i in range(self.dim):
-                if start[i] == 0:
+                if start[i] == self.a[i]:
                     self.lowerBorder[i] = 1
-                if end[i] == 1:
+                if end[i] == self.b[i]:
                     self.upperBorder[i] = self.numPointsWithBoundary[i] - 1
                 else:
                     self.upperBorder[i] = self.numPointsWithBoundary[i]
@@ -272,7 +287,9 @@ class TrapezoidalGrid(Grid):
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
-    def __init__(self, boundary=True):
+    def __init__(self, a, b, boundary=True):
+        self.a = a
+        self.b = b
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
 
@@ -292,10 +309,10 @@ class ClenshawCurtisGrid(Grid):
         self.upperBorder = np.array(self.numPoints, dtype=int)
         if (self.boundary == False):
             for i in range(self.dim):
-                if start[i] == 0:
+                if start[i] == self.a[i]:
                     self.numPointsWithBoundary[i] += 1
                     self.lowerBorder[i] = 1
-                if end[i] == 1:
+                if end[i] == self.b[i]:
                     self.numPointsWithBoundary[i] += 1
                     self.upperBorder[i] = self.numPoints[i] - 1
                 else:
