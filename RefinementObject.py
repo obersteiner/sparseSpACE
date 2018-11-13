@@ -26,7 +26,7 @@ class RefinementObject(object):
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
-    def __init__(self, start, end, number_of_refinements_before_extend, coarseningValue=0, needExtendScheme=0):
+    def __init__(self, start, end, number_of_refinements_before_extend, coarseningValue=0, needExtendScheme=0, punish_depth = False):
         # start of subarea
         self.start = start
         # end of subarea
@@ -43,6 +43,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         #dictionary that maps all coarsened levelvectors to there uncoarsened ones
         #the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
+        self.punish_depth = punish_depth
 
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
@@ -115,6 +116,11 @@ class RefinementObjectExtendSplit(RefinementObject):
             sub_area_array.append(new_refinement_object)
         return sub_area_array
 
+    # set the local error associated with RefinementObject
+    def set_error(self, error):
+        if(self.punish_depth):
+            error = error * np.prod(np.array(self.end) - np.array(self.start)) * 2**self.coarseningValue
+        self.error = error
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectCell(RefinementObject):
