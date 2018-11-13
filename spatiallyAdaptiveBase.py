@@ -20,12 +20,13 @@ from ErrorCalculator import *
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(object):
-    def __init__(self, a, b, grid=TrapezoidalGrid()):
+    def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
         self.grid = grid
+        self.refinements_for_recalculate = 100
         assert (len(a) == len(b))
 
     # calculate the total number of points used in the complete combination scheme
@@ -193,7 +194,7 @@ class SpatiallyAdaptivBase(object):
 
     def evaluate_integral(self, f):
         # initialize values
-        number_of_evaluations = 0
+        #number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
         integralarrayComplete = np.zeros(len(areas))
@@ -208,7 +209,6 @@ class SpatiallyAdaptivBase(object):
                 #print(ss)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
                 if area_integral != -2 ** 30:
-                    number_of_evaluations += evaluations
                     if partial_integrals is not None: #outdated
                         pass
                         #integralArrayIndividual.extend(partial_integrals)
@@ -226,7 +226,7 @@ class SpatiallyAdaptivBase(object):
         # getArea with maximal error
         self.errorMax = self.refinement.get_max_error()
         print("max error:", self.errorMax)
-        return abs(self.refinement.integral - self.realIntegral)
+        return abs(self.refinement.integral - self.realIntegral)/abs(self.realIntegral)
 
     def refine(self):
         # split all cells that have an error close to the max error
@@ -248,8 +248,8 @@ class SpatiallyAdaptivBase(object):
                 print("Finished refinement")
                 self.refinement_postprocessing()
                 break
-        '''
-        if self.refinements / 100 > self.counter:
+
+        if self.recalculate_frequently and self.refinements / self.refinements_for_recalculate > self.counter:
             self.refinement.reinit_new_objects()
             self.combiintegral = 0
             self.subAreaIntegrals = []
@@ -257,11 +257,12 @@ class SpatiallyAdaptivBase(object):
             self.evaluationsTotal = 0
             self.counter += 1
             print("recalculating errors")
-        '''
+
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False):
+    def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False, recalculate_frequently=False):
         self.errorEstimator = errorOperator
+        self.recalculate_frequently = recalculate_frequently
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         while True:
             error = self.evaluate_integral(f)
@@ -281,7 +282,7 @@ class SpatiallyAdaptivBase(object):
         self.check_combi_scheme()
         # evaluate final integral
         combiintegral, number_of_evaluations = self.evaluate_final_combi(f)
-        return self.refinement, self.scheme, self.lmax, self.refinement.integral, number_of_evaluations
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations
 
     @abc.abstractmethod
     def initialize_refinement(self):
