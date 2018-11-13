@@ -3,69 +3,62 @@ import math
 
 
 class CombiScheme:
-    initialized_adaptive = False
-    active_index_set = set()
-    old_index_set = set()
-    dim = None
+    def __init__(self, dim):
+        self.initialized_adaptive = False
+        self.active_index_set = set()
+        self.old_index_set = set()
+        self.dim = dim
 
-    @staticmethod
-    def init_adaptive_combi_scheme(dim, lmax, lmin):
+    def init_adaptive_combi_scheme(self, lmax, lmin):
         assert lmax >= lmin
-        CombiScheme.dim = dim
-        CombiScheme.lmin = lmin
-        CombiScheme.lmax = lmax
-        CombiScheme.initialized_adaptive = True
-        CombiScheme.active_index_set = CombiScheme.init_active_index_set(lmax, lmin)
-        CombiScheme.old_index_set = CombiScheme.init_old_index_set(lmax, lmin)
+        self.lmin = lmin
+        self.lmax = lmax
+        self.initialized_adaptive = True
+        self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin)
+        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin)
 
-    @staticmethod
-    def extendable_level(levelvec):
-        assert CombiScheme.initialized_adaptive
+    def extendable_level(self, levelvec):
+        assert self.initialized_adaptive
         counter = 0
         extendable_dim = 0
-        for d in range(CombiScheme.dim):
+        for d in range(self.dim):
             if levelvec[d] > 1:
                 counter += 1
                 extendable_dim = d
-
         return counter == 1, extendable_dim
 
-    @staticmethod
-    def is_refinable(levelvec):
-        assert CombiScheme.initialized_adaptive
-        return tuple(levelvec) in CombiScheme.active_index_set
+    def is_refinable(self, levelvec):
+        assert self.initialized_adaptive
+        return tuple(levelvec) in self.active_index_set
 
-    @staticmethod
-    def update_adaptive_combi(levelvec):
-        assert CombiScheme.initialized_adaptive
-        if not CombiScheme.is_refinable(levelvec):
+    def update_adaptive_combi(self, levelvec):
+        assert self.initialized_adaptive
+        if not self.is_refinable(levelvec):
             return
         refined_dims = []
         # remove this levelvec from active_index_set and add to old_index_set
-        CombiScheme.active_index_set.remove(tuple(levelvec))
-        CombiScheme.old_index_set.add(tuple(levelvec))
+        self.active_index_set.remove(tuple(levelvec))
+        self.old_index_set.add(tuple(levelvec))
         for d in range(CombiScheme.dim):
-            if CombiScheme.refine_scheme(d, levelvec):
+            if self.refine_scheme(d, levelvec):
                 refined_dims.append(d)
         return refined_dims
 
-    @staticmethod
-    def refine_scheme(d, levelvec):
-        assert CombiScheme.initialized_adaptive
+    def refine_scheme(self, d, levelvec):
+        assert self.initialized_adaptive
         # print(CombiScheme.old_index_set, CombiScheme.active_index_set, levelvec, CombiScheme.lmin)
         levelvec = list(levelvec)
         levelvec[d] += 1
-        for dim in range(CombiScheme.dim):
+        for dim in range(self.dim):
             levelvec_copy = list(levelvec)
             levelvec_copy[dim] = levelvec[dim] - 1
-            if tuple(levelvec_copy) not in CombiScheme.old_index_set and not levelvec_copy[dim] < CombiScheme.lmin:
+            if tuple(levelvec_copy) not in self.old_index_set and not levelvec_copy[dim] < self.lmin:
                 return False
-        CombiScheme.active_index_set.add(tuple(levelvec))
+        self.active_index_set.add(tuple(levelvec))
         return True
 
     @staticmethod
     def init_active_index_set(lmax, lmin):
-        assert CombiScheme.initialized_adaptive
         grids = CombiScheme.getGrids(CombiScheme.dim, lmax - lmin + 1)
         grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
         print(grids)
@@ -81,14 +74,12 @@ class CombiScheme:
         print(grid_array)
         return set(grid_array)
 
-    @staticmethod
-    def get_index_set():
-        return CombiScheme.old_index_set | CombiScheme.active_index_set
+    def get_index_set(self):
+        return self.old_index_set | self.active_index_set
 
-    @staticmethod
-    def getCombiScheme(lmin, lmax, dim, do_print=True):
+    def getCombiScheme(self, lmin, lmax, dim, do_print=True):
         grid_array = []
-        if not CombiScheme.initialized_adaptive:  # use default scheme
+        if not self.initialized_adaptive:  # use default scheme
             for q in range(min(dim, lmax-lmin+1)):
                 coefficient = (-1)**q * math.factorial(dim-1)/(math.factorial(q)*math.factorial(dim-1-q))
                 grids = CombiScheme.getGrids(dim, lmax - lmin + 1 - q)
@@ -97,19 +88,18 @@ class CombiScheme:
                 if do_print:
                     print(i, list(grid_array[i][0]), grid_array[i][1])
         else:  # use adaptive schem
-            assert(False)
-            grid_array = CombiScheme.get_coefficients_to_index_set(CombiScheme.active_index_set | CombiScheme.old_index_set)
+            assert self.initialized_adaptive
+            grid_array = self.get_coefficients_to_index_set(self.active_index_set | self.old_index_set)
             # print(grid_dict.items())
         return grid_array
 
-    @staticmethod
-    def get_coefficients_to_index_set(index_set):
+    def get_coefficients_to_index_set(self, index_set):
         grid_array = []
         grid_dict = {}
         for grid_levelvec in index_set:
             stencils = []
-            for d in range(CombiScheme.dim):
-                if grid_levelvec[d] <= CombiScheme.lmin:
+            for d in range(self.dim):
+                if grid_levelvec[d] <= self.lmin:
                     stencils.append([0])
                 else:
                     stencils.append([0, -1])
@@ -127,9 +117,8 @@ class CombiScheme:
                 grid_array.append((levelvec, coefficient))
         return grid_array
 
-    @staticmethod
-    def is_old_index(levelvec):
-        return tuple(levelvec) in CombiScheme.old_index_set
+    def is_old_index(self, levelvec):
+        return tuple(levelvec) in self.old_index_set
 
     @staticmethod
     def getGrids(dim_left, values_left):
@@ -141,7 +130,5 @@ class CombiScheme:
             grids.extend([levelvector + g for g in CombiScheme.getGrids(dim_left - 1, values_left - index)])
         return grids
 
-
-    @staticmethod
-    def in_index_set(levelvec):
-        return tuple(levelvec) in CombiScheme.active_index_set or tuple(levelvec) in CombiScheme.old_index_set
+    def in_index_set(self, levelvec):
+        return tuple(levelvec) in self.active_index_set or tuple(levelvec) in self.old_index_set
