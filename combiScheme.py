@@ -14,8 +14,8 @@ class CombiScheme:
         self.lmin = lmin
         self.lmax = lmax
         self.initialized_adaptive = True
-        self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin)
-        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin)
+        self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin, self.dim)
+        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)
 
     def extendable_level(self, levelvec):
         assert self.initialized_adaptive
@@ -39,12 +39,12 @@ class CombiScheme:
         # remove this levelvec from active_index_set and add to old_index_set
         self.active_index_set.remove(tuple(levelvec))
         self.old_index_set.add(tuple(levelvec))
-        for d in range(CombiScheme.dim):
-            if self.refine_scheme(d, levelvec):
+        for d in range(self.dim):
+            if self.__refine_scheme(d, levelvec):
                 refined_dims.append(d)
         return refined_dims
 
-    def refine_scheme(self, d, levelvec):
+    def __refine_scheme(self, d, levelvec):
         assert self.initialized_adaptive
         # print(CombiScheme.old_index_set, CombiScheme.active_index_set, levelvec, CombiScheme.lmin)
         levelvec = list(levelvec)
@@ -58,17 +58,17 @@ class CombiScheme:
         return True
 
     @staticmethod
-    def init_active_index_set(lmax, lmin):
-        grids = CombiScheme.getGrids(CombiScheme.dim, lmax - lmin + 1)
+    def init_active_index_set(lmax, lmin, dim):
+        grids = CombiScheme.getGrids(dim, lmax - lmin + 1)
         grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
         print(grids)
         return set(grids)
 
     @staticmethod
-    def init_old_index_set(lmax, lmin):
+    def init_old_index_set(lmax, lmin, dim):
         grid_array = []
-        for q in range(1, min(CombiScheme.dim, lmax - lmin + 1)):
-            grids = CombiScheme.getGrids(CombiScheme.dim, lmax - lmin + 1 - q)
+        for q in range(1, min(dim, lmax - lmin + 1)):
+            grids = CombiScheme.getGrids(dim, lmax - lmin + 1 - q)
             grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
             grid_array.extend(grids)
         print(grid_array)
@@ -91,6 +91,9 @@ class CombiScheme:
             assert self.initialized_adaptive
             grid_array = self.get_coefficients_to_index_set(self.active_index_set | self.old_index_set)
             # print(grid_dict.items())
+            for i in range(len(grid_array)):
+                if do_print:
+                    print(i, list(grid_array[i][0]), grid_array[i][1])
         return grid_array
 
     def get_coefficients_to_index_set(self, index_set):
