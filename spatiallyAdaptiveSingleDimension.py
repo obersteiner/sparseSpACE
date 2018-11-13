@@ -2,7 +2,7 @@ from spatiallyAdaptiveBase import *
 
 
 class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
-    def __init__(self, a, b, grid=TrapezoidalGrid()):
+    def __init__(self, a, b, grid=None):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
 
     def coarsenGrid(self, area, levelvec):
