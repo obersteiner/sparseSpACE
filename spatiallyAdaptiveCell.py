@@ -4,17 +4,20 @@ import itertools
 from scipy.interpolate import griddata
 from scipy.interpolate import interpn
 
+
 class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, grid=TrapezoidalGrid, punish_depth=False):
+    def __init__(self, a, b, grid=None, punish_depth=False):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
         RefinementObjectCell.punish_depth = punish_depth
         # dummy container
         self.refinement = RefinementContainer([], self.dim, None)
         self.max_level = np.ones(self.dim)
         self.full_interaction_size = 1
+        self.refinements_for_recalculate = 1000000
         for d in range(1, self.dim+1):
             self.full_interaction_size += math.factorial(self.dim)/(math.factorial(d)*math.factorial(self.dim - d)) * 2**d
         #print("full interaction size:", self.full_interaction_size)
+
     # returns the points of a single component grid with refinement
     def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
         return self.grid_points
@@ -49,7 +52,6 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
 
     def initialize_refinement(self):
         RefinementObjectCell.cell_dict = {}
-
         CombiScheme.dim = self.dim
         CombiScheme.lmin = self.lmin[0]
         #CombiScheme.init_adaptive_combi_scheme(self.dim, self.lmax, self.lmin)
@@ -65,9 +67,9 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
         self.grid_points = set(zip(*[g.ravel() for g in np.meshgrid(*[np.linspace(self.a[d], self.b[d], 2**self.lmin[d] + 1) for d in range(self.dim)])]))
         self.f_dict = {}
         for p in self.grid_points:
-            self.f_dict[p] = self.f.eval(p)
+            if self.grid.point_not_zero(p):
+                self.f_dict[p] = self.f.eval(p)
         self.refinement = RefinementContainer(initial_objects, self.dim, self.errorEstimator)
-
 
     def evaluate_area(self, f, area, levelvec):  # area is a cell here
         relevant_parents_of_cell = [(area.get_key(), area.levelvec, 1)]
@@ -82,10 +84,11 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
                 end_subarea = subarea[0][1]
                 coefficient = subarea[2]
                 parent_area = RefinementObjectCell.parent_cell_arbitrary_dim(d, list(subarea[1]), start_subarea, end_subarea, self.a, self.b, self.lmin)
+                assert((parent_area is not None) or (subarea[1][d] == self.lmin[d]))
                 if parent_area is not None:
                     new_parents.append((parent_area, levelvec_parent, coefficient*-1))
             relevant_parents_of_cell.extend(new_parents)
-
+        assert(len(relevant_parents_of_cell) <= 2**self.dim)
         integral = 0
         evaluations = 0
         #print(len(relevant_parents_of_cell))
@@ -97,8 +100,8 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
                 integral += sub_integral * coefficient
                 #print(self.integrate_subcell_with_interpolation(area.get_key(), subcell) * coefficient)
                 evaluations += 2**self.dim
-        else:
-            pass
+        #else:
+            #pass
             #print("Nothing to do in this region")
         #print("integral of cell", area.get_key(), "is:", integral)
         '''
@@ -119,7 +122,7 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
         '''
         return integral, None, evaluations
 
-
+    '''
     def evaluate_area2(self, f, area, levelvec):  # area is a cell here
         subareas_in_cell = [(area.get_key(), area.levelvec, 1)]
         subareas_fused = {}
@@ -164,7 +167,7 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
             pass
             #print("Nothing to do in this region")
         #print("integral of cell", area.get_key(), "is:", integral)
-        '''
+        
         for p in self.grid_points:
             print(RefinementObjectCell.cell_dict)
             value = 0
@@ -179,9 +182,10 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
                 if coefficient[1] != 0:
                 value += self.interpolate_point(level_to_cell_dict[coefficient[0]], p) * coefficient[1]
             print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f_dict[p])
-        '''
+        
         return integral, None, evaluations
-
+        '''
+    # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def integrate_subcell_with_interpolation(self, cell, subcell):
         #print("Cell and subcell", cell, subcell)
         start_subcell = subcell[0]
@@ -196,11 +200,12 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
         #print("integral of subcell", subcell, "of cell", cell, "is", integral, "interpolated values", interpolated_values, "on points", subcell_points, "factor", factor)
         return integral
 
+    # interpolates the cell corner function values at the given points
     def interpolate_points(self, cell, points):
         start = cell[0]
         end = cell[1]
         corner_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start[d], end[d]] for d in range(self.dim)])]))
-        values = np.array([self.f_dict[p] for p in corner_points])
+        values = np.array([self.f_dict[p] if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
         values = values.reshape(*[2 for d in range(self.dim)])
         values = np.transpose(values)
         corner_points_grid = [[start[d], end[d]] for d in range(self.dim)]
@@ -225,7 +230,8 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
             #print(points_in_object)
             for p in points_in_object:
                 self.grid_points.add(p)
-                self.f_dict[p] = self.f.eval(p)
+                if self.grid.point_not_zero(p):
+                    self.f_dict[p] = self.f.eval(p)
         #self.refinement.apply_remove()
         self.refinement.refinement_postprocessing()
         #self.refinement.reinit_new_objects()
@@ -237,9 +243,11 @@ class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
         #return self.refinement.get_objects()
         return self.refinement.get_new_objects()
 
+    # returns all cells that contain the defined point (if it is on a edge it is still inside cell)
     def get_cells_to_point(self, point):
         return self.get_children_with_point(self.rootCell, point)
 
+    #returns all children of current cell including itself that contain the defined point
     def get_children_with_point(self, cell, point):
         #print("cell:", cell.get_key(),"children:", cell.children)
         cell_list = set()
