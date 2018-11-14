@@ -16,6 +16,7 @@ class CombiScheme:
         self.initialized_adaptive = True
         self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin, self.dim)
         self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)
+        self.lmax_adaptive = lmax
 
     def extendable_level(self, levelvec):
         assert self.initialized_adaptive
@@ -55,6 +56,7 @@ class CombiScheme:
             if tuple(levelvec_copy) not in self.old_index_set and not levelvec_copy[dim] < self.lmin:
                 return False
         self.active_index_set.add(tuple(levelvec))
+        self.lmax_adaptive = max(self.lmax_adaptive, levelvec[d])
         return True
 
     @staticmethod
@@ -116,7 +118,7 @@ class CombiScheme:
                     grid_dict[levelvec] = update_coefficient
 
         for levelvec, coefficient in grid_dict.items():
-            if coefficient != 0:
+            if coefficient != 0 and sum(levelvec) > self.lmax + (self.dim - 1) * self.lmin - self.dim:
                 grid_array.append((levelvec, coefficient))
         return grid_array
 
