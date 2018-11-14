@@ -5,7 +5,7 @@ from scipy.interpolate import griddata
 from scipy.interpolate import interpn
 
 
-class SpatiallyAdaptivCellScheme(SpatiallyAdaptivBase):
+class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, grid=None, punish_depth=False):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
         RefinementObjectCell.punish_depth = punish_depth

@@ -1,7 +1,7 @@
 from spatiallyAdaptiveBase import *
 
 
-class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
+class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend, grid=None, no_initial_splitting=False,
                  version=0, dim_adaptive=False):
         # there are three different version that coarsen grids slightly different

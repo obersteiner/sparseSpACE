@@ -1,7 +1,7 @@
 from spatiallyAdaptiveBase import *
 
 
-class SpatiallyAdaptivFixedScheme(SpatiallyAdaptivBase):
+class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
 
     # returns the points of a single component grid with refinement
     def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
