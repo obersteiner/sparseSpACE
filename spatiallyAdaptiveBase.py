@@ -16,10 +16,11 @@ from RefinementObject import *
 from combiScheme import *
 from Grid import *
 from ErrorCalculator import *
+from StandardCombi import *
 
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
-class SpatiallyAdaptivBase(object):
+class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
@@ -53,107 +54,7 @@ class SpatiallyAdaptivBase(object):
         # print(len(array2new))
         return len(array2new)
 
-    # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename=None):
-        plt.rcParams.update({'font.size': 22})
-        scheme = self.scheme
-        lmin = self.lmin
-        lmax = self.lmax
-        dim = self.dim
-        if dim != 2:
-            print("Cannot print combischeme of dimension > 2")
-            return None
-        fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
-        # get points of each component grid and plot them individually
-        if lmax == lmin:
-            ax.xaxis.set_ticks_position('none')
-            ax.yaxis.set_ticks_position('none')
-            ax.set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
-            ax.set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
-            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(lmax)
-            points = self.get_points_arbitrary_dim(lmax, num_sub_diagonal)
-            x_array = [p[0] for p in points]
-            y_array = [p[1] for p in points]
-            ax.plot(x_array, y_array, 'o', markersize=6, color="black")
-        else:
-            for i in range(lmax[0] - lmin[0] + 1):
-                for j in range(lmax[1] - lmin[1] + 1):
-                    ax[i, j].xaxis.set_ticks_position('none')
-                    ax[i, j].yaxis.set_ticks_position('none')
-                    ax[i, j].set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
-                    ax[i, j].set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
-            for ss in scheme:
-                num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-                points = self.get_points_arbitrary_dim(ss[0], num_sub_diagonal)
-                x_array = [p[0] for p in points]
-                y_array = [p[1] for p in points]
-                ax[lmax[1] - lmin[1] - (ss[0][1] - lmin[1]), (ss[0][0] - lmin[0])].plot(x_array, y_array, 'o', markersize=6,
-                                                                                        color="black")
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
-        plt.show()
-        return fig
 
-    # prints the sparse grid which results from the combination
-    def print_resulting_sparsegrid(self, filename=None):
-        plt.rcParams.update({'font.size': 32})
-        scheme = self.scheme
-        dim = self.dim
-        if dim != 2:
-            print("Cannot print sparse grid of dimension > 2")
-            return None
-        fig, ax = plt.subplots(figsize=(20, 20))
-        ax.set_xlim([self.a[0] - 0.01, self.b[0] + 0.01])
-        ax.set_ylim([self.a[1] - 0.01, self.b[1] + 0.01])
-        ax.xaxis.set_ticks_position('none')
-        ax.yaxis.set_ticks_position('none')
-        # ax.axis('off')
-        # get points of each component grid and plot them in one plot
-        for ss in scheme:
-            numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-            points = self.get_points_arbitrary_dim(ss[0], numSubDiagonal)
-            xArray = [p[0] for p in points]
-            yArray = [p[1] for p in points]
-            plt.plot(xArray, yArray, 'o', markersize=10, color="black")
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
-        plt.show()
-        return fig
-
-    # check if combischeme is right
-    def check_combi_scheme(self):
-        if not self.grid.isNested():
-            return
-        dim = self.dim
-        dictionary = {}
-        for ss in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-            # print num_sub_diagonal , ii ,ss
-            points = self.get_points_arbitrary_dim_not_null(ss[0], num_sub_diagonal)
-            points = set(points)
-            for p in points:
-                if p in dictionary:
-                    dictionary[p] += ss[1]
-                else:
-                    dictionary[p] = ss[1]
-        # print(dictionary.items())
-        for key, value in dictionary.items():
-            # print(key, value)
-            if value != 1:
-                print(dictionary)
-                print("Failed for:", key, " with value: ", value)
-                for area in self.refinement.get_objects():
-                    print("area dict", area.levelvec_dict)
-                '''
-                for area in self.refinement.getObjects():
-                    print("new area:",area)
-                    for ss in self.scheme:
-                        num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-                        self.coarsenGrid(ss[0],area, num_sub_diagonal,key)
-                #print(self.refinement)
-                #print(dictionary.items())
-                '''
-            assert (value == 1)
 
     def evaluate_final_combi(self, f):
         combiintegral = 0
