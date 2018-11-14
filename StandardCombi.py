@@ -18,6 +18,7 @@ class StandardCombi(object):
         self.a = a
         self.b = b
         self.grid = grid
+        self.combischeme = CombiScheme(self.dim)
         assert (len(a) == len(b))
 
     # standard combination scheme for quadrature
@@ -30,7 +31,7 @@ class StandardCombi(object):
         lmin = [minv for i in range(dim)]
         lmax = [maxv for i in range(dim)]
         combiintegral = 0
-        self.scheme = CombiScheme.getCombiScheme(lmin[0], lmax[0], dim)
+        self.scheme = self.combischeme.getCombiScheme(lmin[0], lmax[0], dim)
         for ss in self.scheme:
             integral = self.grid.integrate(f, ss[0], start, end) * ss[1]
             combiintegral += integral
