@@ -1,7 +1,7 @@
 from spatiallyAdaptiveBase import *
 
 
-class SpatiallyAdaptivSingleDimensions(SpatiallyAdaptivBase):
+class SpatiallyAdaptiveSingleDimensions(SpatiallyAdaptivBase):
     def __init__(self, a, b, grid=None):
         SpatiallyAdaptivBase.__init__(self, a, b, grid)
 
