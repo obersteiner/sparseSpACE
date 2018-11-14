@@ -2,8 +2,8 @@ from spatiallyAdaptiveBase import *
 
 
 class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend, grid=None, no_initial_splitting = False,
-                 version=0):
+    def __init__(self, a, b, number_of_refinements_before_extend, grid=None, no_initial_splitting=False,
+                 version=0, dim_adaptive=False):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
@@ -14,6 +14,7 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
+        self.dim_adaptive = dim_adaptive
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
@@ -67,9 +68,9 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
                 self.grid.setCurrentArea(start, end, level_interval)
                 points = self.grid.getPoints()
                 array2.extend(points)
-                #print("considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
-            #else:
-                #print("not considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
+                # print("considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
+            # else:
+            # print("not considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
         return array2
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
@@ -116,11 +117,11 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
                 is_top_diag = num_sub_diagonal == 0
                 if self.version == 1:
                     no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
-                                self.dim - 2) - maxLevel + 1
+                            self.dim - 2) - maxLevel + 1
                     do_coarsen = no_forward_problem and coarsening >= occurences_of_max - is_top_diag
                 else:
                     no_forward_problem = coarsening_save >= self.lmax[0] + self.dim - 1 - maxLevel - (
-                                self.dim - 2) - maxLevel + 2
+                            self.dim - 2) - maxLevel + 2
                     do_coarsen = no_forward_problem and coarsening >= occurences_of_max
                 if do_coarsen:
                     for d in range(self.dim):
@@ -136,14 +137,16 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
         return level_coarse, area_is_null
 
     def initialize_refinement(self):
-        if (self.noInitialSplitting):
+        if self.dim_adaptive:
+            self.combischeme.init_adaptive_combi_scheme(self.lmax, self.lmin)
+        if self.noInitialSplitting:
             new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b),
-                                                              self.numberOfRefinementsBeforeExtend, 0, 0)
+                                                                self.numberOfRefinementsBeforeExtend, 0, 0)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             new_refinement_objects = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b),
-                                                               self.numberOfRefinementsBeforeExtend, 0,
-                                                               0).split_area_arbitrary_dim()
+                                                                 self.numberOfRefinementsBeforeExtend, 0,
+                                                                 0).split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
 
     def evaluate_area(self, f, area, levelvec):
@@ -153,13 +156,13 @@ class SpatiallyAdaptivExtendScheme(SpatiallyAdaptivBase):
             return 0, None, 0
         else:
             return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
-            self.grid.levelToNumPoints(level_for_evaluation))
+                self.grid.levelToNumPoints(level_for_evaluation))
 
     def do_refinement(self, area, position):
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
             print("New scheme")
-            self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             return True
         return False

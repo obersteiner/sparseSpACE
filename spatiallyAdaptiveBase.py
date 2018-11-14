@@ -179,7 +179,8 @@ class SpatiallyAdaptivBase(object):
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
             # calculate the combination scheme
-            self.scheme = CombiScheme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.combischeme = CombiScheme(self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             self.initialize_refinement()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
@@ -257,7 +258,6 @@ class SpatiallyAdaptivBase(object):
             self.evaluationsTotal = 0
             self.counter += 1
             print("recalculating errors")
-
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False, recalculate_frequently=False):
