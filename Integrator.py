@@ -38,7 +38,7 @@ class IntegratorTrapezoidalFast(IntegratorBase):
                 if int(rest / offsets[d]) == 0 or int(rest / offsets[d]) == numPoints[d] - 1:
                     factor += 1
                 rest = rest % offsets[d]
-            result += f.eval(position) * 0.5 ** factor * h_prod
+            result += f(position) * 0.5 ** factor * h_prod
         del length
         del offsets
         del spacing
@@ -68,7 +68,7 @@ class IntegratorGenerateGridTrapezoidal(IntegratorBase):
             for d in reversed(list(range(dim))):
                 position[d] = start[d] + int(rest / offsets[d]) * spacing[d]
                 rest = rest % offsets[d]
-            gridValues[i] = f.eval(position)
+            gridValues[i] = f(position)
         endTime = time.time()
         startTime = time.time()
         currentSliceSize = gridsize
@@ -114,7 +114,7 @@ class IntegratorArbitraryGrid(IntegratorBase):
 
     def integrate_point(self, f, indexvector):
         position = self.grid.getCoordinate(indexvector)
-        return f.eval(position) * self.grid.getWeight(indexvector)
+        return f(position) * self.grid.getWeight(indexvector)
 
 '''
 #This integrator computes the integral of an arbitrary grid from the Grid class
@@ -147,7 +147,7 @@ class IntegratorArbitraryGridNoBoundary(IntegratorBase):
                 indexvector[d] = int(rest / offsets[d]  + indexOffset[d])
                 rest = rest % offsets[d]
             position = self.grid.getCoordinate(indexvector)
-            result += f.eval(position) * self.grid.getWeight(indexvector)
+            result += f(position) * self.grid.getWeight(indexvector)
         del offsets
         return result
 '''
@@ -181,7 +181,7 @@ def integrateVariableStartNumpyArbitraryDimAndInterpolate(f, numPoints, start, e
         for d in reversed(list(range(dim))):
             position[d] = start[d] + int(rest / offsets[d]) * spacing[d]
             rest = rest % offsets[d]
-        gridValues[i] = f.eval(position)
+        gridValues[i] = f(position)
     # number of Points of extended Array
     extendedNumPoints = [(numPoints[d] - 1) * numberOfGridsContained[d] + 1 for d in range(dim)]
     # corresponding Points
