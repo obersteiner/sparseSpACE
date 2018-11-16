@@ -20,7 +20,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
 
     # returns the points of a single component grid with refinement
     def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
-        return self.grid_points
+        return self.f.get_f_dict_points()
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
@@ -63,12 +63,6 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
                 initial_objects = [i.split_cell_arbitrary_dim(d) for i in initial_objects]  # is now a list of lists
                 # flatten list again
                 initial_objects = list(itertools.chain(*initial_objects))
-
-        self.grid_points = set(zip(*[g.ravel() for g in np.meshgrid(*[np.linspace(self.a[d], self.b[d], 2**self.lmin[d] + 1) for d in range(self.dim)])]))
-        self.f_dict = {}
-        for p in self.grid_points:
-            if self.grid.point_not_zero(p):
-                self.f_dict[p] = self.f.eval(p)
         self.refinement = RefinementContainer(initial_objects, self.dim, self.errorEstimator)
 
     def evaluate_area(self, f, area, levelvec):  # area is a cell here
@@ -118,7 +112,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             for i, coefficient in enumerate(coefficients):
                 if coefficient[1] != 0:
                 value += self.interpolate_point(level_to_cell_dict[coefficient[0]], p) * coefficient[1]
-            print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f_dict[p])
+            print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f(p))
         '''
         return integral, None, evaluations
 
@@ -181,7 +175,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             for i, coefficient in enumerate(coefficients):
                 if coefficient[1] != 0:
                 value += self.interpolate_point(level_to_cell_dict[coefficient[0]], p) * coefficient[1]
-            print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f_dict[p])
+            print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f(p))
         
         return integral, None, evaluations
         '''
@@ -205,7 +199,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         start = cell[0]
         end = cell[1]
         corner_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start[d], end[d]] for d in range(self.dim)])]))
-        values = np.array([self.f_dict[p] if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
+        values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
         values = values.reshape(*[2 for d in range(self.dim)])
         values = np.transpose(values)
         corner_points_grid = [[start[d], end[d]] for d in range(self.dim)]
@@ -224,14 +218,6 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         return False
 
     def refinement_postprocessing(self):
-        new_objects = self.refinement.get_new_objects()
-        for object in new_objects:
-            points_in_object = object.get_points()
-            #print(points_in_object)
-            for p in points_in_object:
-                self.grid_points.add(p)
-                if self.grid.point_not_zero(p):
-                    self.f_dict[p] = self.f.eval(p)
         #self.refinement.apply_remove()
         self.refinement.refinement_postprocessing()
         #self.refinement.reinit_new_objects()

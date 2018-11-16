@@ -23,6 +23,8 @@ class StandardCombi(object):
     def perform_combi(self, minv, maxv, f):
         start = self.a
         end = self.b
+        self.f = f
+        self.f.reset_dictionary()
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
@@ -39,6 +41,8 @@ class StandardCombi(object):
 
     # calculate the number of points for a standard combination scheme
     def get_total_num_points(self, distinct_function_evals=False):
+        if(distinct_function_evals):
+            return self.f.get_f_dict_size()
         num_points = 0
         for ss in self.scheme:
             if distinct_function_evals and self.grid.isNested():

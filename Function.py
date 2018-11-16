@@ -14,6 +14,33 @@ class Function(object):
     # initialization if necessary
     def __init__(self):
         self.log = logging.getLogger(__name__)
+        self.f_dict = {}
+        self.old_f_dict = {}
+
+    def reset_dictionary(self):
+        self.old_f_dict = {**self.old_f_dict, **self.f_dict}
+        self.f_dict = {}
+
+    def __call__(self, coordinates):
+        coords = tuple(coordinates)
+        if coords in self.f_dict:
+            return self.f_dict[coords]
+        if coords in self.old_f_dict:
+            f_value = self.old_f_dict[coords]
+            self.f_dict[coords] = f_value
+            return f_value
+        f_value = self.eval(coords)
+        self.f_dict[coords] = f_value
+        return f_value
+
+    def get_f_dict_size(self):
+        return len(self.f_dict)
+
+    def get_f_dict_points(self):
+        return list(self.f_dict.keys())
+
+    def get_f_dict_values(self):
+        return list(self.f_dict.values())
 
     # evaluates the function at the specified coordinate
     @abc.abstractmethod
@@ -61,6 +88,7 @@ class Function(object):
 # Each Function can be weighted by a factor to allow for a flexible composition
 class FunctionCompose(Function):
     def __init__(self, functions):
+        super().__init__()
         self.functions = functions
 
     def eval(self, coordinates):
@@ -79,6 +107,7 @@ class FunctionCompose(Function):
 # This Function represents the corner Peak f the genz test functions
 class GenzCornerPeak(Function):
     def __init__(self, coeffs):
+        super().__init__()
         self.coeffs = np.array(coeffs)
         self.dim = len(coeffs)
 
@@ -106,6 +135,7 @@ class GenzCornerPeak(Function):
 
 class GenzProductPeak(Function):
     def __init__(self, coefficients, midpoint):
+        super().__init__()
         self.coeffs = coefficients
         self.midPoint = midpoint
         self.dim = len(coefficients)
@@ -127,6 +157,7 @@ class GenzProductPeak(Function):
 
 class GenzOszillatory(Function):
     def __init__(self, coeffs, offset):
+        super().__init__()
         self.coeffs = coeffs
         self.dim = len(coeffs)
         self.offset = offset
@@ -157,6 +188,7 @@ class GenzOszillatory(Function):
 
 class GenzDiscontinious(Function):
     def __init__(self, coeffs, border):
+        super().__init__()
         self.coeffs = coeffs
         self.border = border
         self.dim = len(coeffs)
@@ -183,6 +215,7 @@ class GenzDiscontinious(Function):
 
 class GenzC0(Function):
     def __init__(self, coeffs, midpoint):
+        super().__init__()
         self.coeffs = coeffs
         self.midPoint = midpoint
         self.dim = len(coeffs)
@@ -218,6 +251,7 @@ class GenzC0(Function):
 # This function is the test case function 2 of the paper from Jakeman and Roberts: https://arxiv.org/pdf/1110.0010.pdf
 class Function2Jakeman(Function):
     def __init__(self, midpoint, coefficients):
+        super().__init__()
         self.midpoint = midpoint
         self.coefficients = coefficients
 
@@ -265,6 +299,7 @@ class FunctionGriebel(Function):
 # Currently the analytic solution is not correct!!!
 class FunctionGeneralizedNormal(Function):
     def __init__(self, midpoints, coefficients, exp):
+        super().__init__()
         self.midpoints = midpoints
         self.coefficients = coefficients
         self.exponent = exp
