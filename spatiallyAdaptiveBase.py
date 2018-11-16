@@ -75,6 +75,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def init_adaptive_combi(self, f, minv, maxv, refinement_container, tol):
         self.tolerance = tol
         self.f = f
+        self.f.reset_dictionary()
         self.realIntegral = f.getAnalyticSolutionIntegral(self.a, self.b)
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
@@ -165,8 +166,12 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
+        error_array = []
+        num_point_array = []
         while True:
             error = self.evaluate_integral(f)
+            error_array.append(error)
+            num_point_array.append(self.get_total_num_points(True))
             print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
@@ -183,7 +188,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.check_combi_scheme()
         # evaluate final integral
         combiintegral, number_of_evaluations = self.evaluate_final_combi(f)
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array
 
     @abc.abstractmethod
     def initialize_refinement(self):
