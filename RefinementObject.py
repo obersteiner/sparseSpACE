@@ -62,13 +62,13 @@ class RefinementObjectExtendSplit(RefinementObject): #TODO
                 # increase lmax by dim
                 lmaxIncrease = [1 for d in range(self.dim)]
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end,
-                                                                  self.numberOfRefinementsBeforeExtend,
+                                                                  self.numberOfRefinementsBeforeExtend, self.integral,
                                                                   self.coarseningValue, self.needExtendScheme)
                 return [newRefinementObject], lmaxIncrease, 1
             else:
                 # add to integralArray
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end,
-                                                                  self.numberOfRefinementsBeforeExtend,
+                                                                  self.numberOfRefinementsBeforeExtend, self.integral,
                                                                   self.coarseningValue, self.needExtendScheme)
                 return [newRefinementObject], None, None
         elif self.needExtendScheme >= 0:  # split the array
@@ -112,7 +112,7 @@ class RefinementObjectExtendSplit(RefinementObject): #TODO
                 end_sub_area[d] = start[d] + (int(rest / 2 ** d) + 1) * spacing[d]
                 rest = rest % 2 ** d
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area,
-                                                                self.numberOfRefinementsBeforeExtend, self.integral, #TODO
+                                                                self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim, #TODO
                                                                 self.coarseningValue, self.needExtendScheme)
             sub_area_array.append(new_refinement_object)
         return sub_area_array

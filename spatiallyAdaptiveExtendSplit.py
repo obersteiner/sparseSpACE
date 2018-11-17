@@ -145,9 +145,11 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             parent_integral = self.grid.integrate(self.f, np.zeros(self.dim), self.a, self.b) #TODO
-            new_refinement_objects = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b),
-                                                                 self.numberOfRefinementsBeforeExtend, 0,
-                                                                 0).split_area_arbitrary_dim()
+            parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b),
+                                                                 self.numberOfRefinementsBeforeExtend, None, 0,
+                                                                 0)
+            parent.set_integral(parent_integral)
+            new_refinement_objects = parent.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
 
     def evaluate_area(self, f, area, levelvec):

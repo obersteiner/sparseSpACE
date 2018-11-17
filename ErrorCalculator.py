@@ -60,4 +60,4 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
 
 class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
     def calc_error(self, f, refine_object):
-        return abs(refine_object.integral - refine_object.parent_integral / 2**refine_object.dim) #TODO How to differentiate between split and extend?
+        return abs(refine_object.integral - refine_object.parent_integral) #TODO How to differentiate between split and extend?
