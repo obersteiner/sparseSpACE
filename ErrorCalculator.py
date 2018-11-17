@@ -56,3 +56,8 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
         upper_bounds = np.array(refine_object.end)
         error = self.calc_area_error(refine_object.sub_integrals)
         return error * np.prod(upper_bounds - lower_bounds)
+        
+
+class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
+    def calc_error(self, f, refine_object):
+        return abs(refine_object.integral - refine_object.parent_integral / 2**refine_object.dim) #TODO How to differentiate between split and extend?
