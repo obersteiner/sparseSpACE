@@ -83,6 +83,24 @@ class Function(object):
             fig.savefig(filename, bbox_inches='tight')
         plt.show()
 
+from scipy import integrate
+
+class FunctionUQ(Function):
+    def eval(self, coordinates):
+        assert(len(coordinates) == 3)
+        parameter1 = coordinates[0]
+        parameter2 = coordinates[1]
+        parameter3 = coordinates[2]
+
+        # Model with discontinuity
+        # Nicholas Zabarras Paper: „Sparse grid collocation schemes for stochastic natural convection problems“
+        # e^(-x^2 + 2*sign(y))
+        value_of_interest = math.exp(-parameter1 ** 2 + 2 * np.sign(parameter2)) + parameter3
+        return value_of_interest
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        f = lambda x, y, z: self.eval([x,y,z])
+        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
 
 # This class composes different functions that fullfill the function interface to generate a composition of functions
 # Each Function can be weighted by a factor to allow for a flexible composition
