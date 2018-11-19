@@ -177,5 +177,7 @@ class StandardCombi(object):
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
             points, weights = self.get_points_and_weights_component_grid(ss[0], num_sub_diagonal)
             total_points.extend(points)
+            # adjust weights for combination -> multiply with combi coefficient
+            weights = [w * ss[1] for w in weights]
             total_weights.extend(weights)
         return total_points, total_weights
