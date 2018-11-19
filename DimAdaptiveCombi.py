@@ -48,7 +48,7 @@ class DimAdaptiveCombi(StandardCombi):
                 error_array[i] = abs(integral - real_integral)/abs(real_integral) / np.prod(self.grid.levelToNumPoints(ss[0])) if self.combischeme.is_refinable(ss[0]) else 0
                 combiintegral += integral * ss[1]
             do_refine = True
-            if abs(combiintegral - real_integral) / abs(real_integral) > tolerance:
+            if abs(combiintegral - real_integral) / abs(real_integral) < tolerance:
                 break
             print("Current combi integral:", combiintegral)
             print("Currentrelative error:", abs(combiintegral - real_integral) / abs(real_integral))
