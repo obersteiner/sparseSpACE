@@ -17,6 +17,13 @@ class StandardCombi(object):
         self.combischeme = CombiScheme(self.dim)
         assert (len(a) == len(b))
 
+    def set_combi_parameters(self, minv, maxv):
+        # compute minimum and target level vector
+        self.lmin = [minv for i in range(self.dim)]
+        self.lmax = [maxv for i in range(self.dim)]
+        # get combi scheme
+        self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.dim)
+
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
     # f = function to integrate; dim=dimension of problem
@@ -25,11 +32,8 @@ class StandardCombi(object):
         end = self.b
         self.f = f
         self.f.reset_dictionary()
-        # compute minimum and target level vector
-        self.lmin = [minv for i in range(self.dim)]
-        self.lmax = [maxv for i in range(self.dim)]
+        self.set_combi_parameters(minv, maxv)
         combiintegral = 0
-        self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.dim)
         for ss in self.scheme:
             integral = self.grid.integrate(f, ss[0], start, end) * ss[1]
             combiintegral += integral
