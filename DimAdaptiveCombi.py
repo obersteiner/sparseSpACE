@@ -34,6 +34,8 @@ class DimAdaptiveCombi(StandardCombi):
         combiintegral = 0
         self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
         integral_dict = {}
+        errors = []  # tracks the error evolution during the refinement procedure
+        num_points = []  # tracks the number of points during the refinement procedure
         while True:
             combiintegral = 0
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
@@ -52,7 +54,8 @@ class DimAdaptiveCombi(StandardCombi):
                 break
             print("Current combi integral:", combiintegral)
             print("Currentrelative error:", abs(combiintegral - real_integral) / abs(real_integral))
-
+            errors.append(abs(combiintegral - real_integral) / abs(real_integral))
+            num_points.append(self.get_total_num_points(distinct_function_evals=True))
             while do_refine:
                 grid_id = np.argmax(error_array)
                 #print(error_array)
@@ -64,17 +67,4 @@ class DimAdaptiveCombi(StandardCombi):
         print("CombiSolution", combiintegral)
         print("Analytic Solution", real_integral)
         print("Difference", abs(combiintegral - real_integral))
-        return self.scheme, abs(combiintegral - real_integral), combiintegral
-
-    # calculate the number of points for a standard combination scheme
-    def get_total_num_points(self, distinct_function_evals=False):
-        num_points = 0
-        for ss in self.scheme:
-            if distinct_function_evals and self.grid.isNested():
-                factor = int(ss[1])
-            else:
-                factor = 1
-            self.grid.setCurrentArea(self.a, self.b, ss[0])
-            num_points_array = np.array(self.grid.levelToNumPoints(ss[0]))
-            num_points += np.prod(num_points_array) * factor
-        return num_points
+        return self.scheme, abs(combiintegral - real_integral), combiintegral, errors, num_points

@@ -66,15 +66,11 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numNaive.append(numNaiveAlgorithm)
         numIdeal.append(numIdealAlgorithm)
         numFEvalIdeal.append(numFEvalIdealAlgorithm)
-    numFEvalIdealDimAdaptive = []
-    errorArrayDimAdaptive = []
+
     if doDimAdaptive:
         dimAdaptiveCombi = DimAdaptiveCombi(a,b, grid)
-        for i in range(minTol, maxtol):
-            scheme, error, result = dimAdaptiveCombi.perform_combi(1,2,f,10**-i)
-            errorArrayDimAdaptive.append(error / abs(realIntegral))
-            #pointArray.append(standardCombi.get_total_num_points())
-            numFEvalIdealDimAdaptive.append(dimAdaptiveCombi.get_total_num_points(True))
+        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1,2,f,10**-maxtol)
+
     # calculate different standard combination scheme results
     xArrayStandard = []
     xFEvalArrayStandard = []
