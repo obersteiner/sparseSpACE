@@ -14,10 +14,9 @@ from PerformTestCase import *
 from Function import *
 from ErrorCalculator import *
 import math
-
+dim = 2
 a = np.zeros(dim)
 b = np.ones(dim)
-dim = 2
 midpoint = np.ones(dim) * 0.5
 coefficients = np.array([ 10**0 * (d+1) for d in range(dim)])
 f = GenzDiscontinious(border=midpoint,coeffs=coefficients)
