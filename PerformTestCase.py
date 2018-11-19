@@ -38,7 +38,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numNaiveAlgorithm = []
         numIdealAlgorithm = []
         numFEvalIdealAlgorithm = []
-        for i in range(minTol, maxtol):
+        for i in range(minTol, maxtol+1):
             start = time.time()
             if i == minTol:
                 coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new = algorithm[0].performSpatiallyAdaptiv(
