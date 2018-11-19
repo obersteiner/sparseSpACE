@@ -38,7 +38,7 @@ class DimAdaptiveCombi(StandardCombi):
         num_points = []  # tracks the number of points during the refinement procedure
         while True:
             combiintegral = 0
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=False)
             error_array = np.zeros(len(self.scheme))
             for i, ss in enumerate(self.scheme):
                 if tuple(ss[0]) not in integral_dict:
@@ -64,6 +64,8 @@ class DimAdaptiveCombi(StandardCombi):
                 refined_dims = self.combischeme.update_adaptive_combi(self.scheme[grid_id][0])
                 do_refine = refined_dims == []
                 error_array[grid_id] = 0.0
+        print("Final scheme:")
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=True)
         print("CombiSolution", combiintegral)
         print("Analytic Solution", real_integral)
         print("Difference", abs(combiintegral - real_integral))
