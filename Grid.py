@@ -530,3 +530,9 @@ class GaussLegendreGrid(Grid):
         for d in range(self.dim):
             weight *= self.weights[d][indexvector[d]]
         return weight
+
+    def get_weights(self):
+        return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*self.numPoints)]))
+
+    def get_points_and_weights(self):
+        return self.getPoints(), self.get_weights()
