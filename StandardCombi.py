@@ -166,7 +166,7 @@ class StandardCombi(object):
         points = self.grid.getPoints()
         return points
 
-    def get_points_and_weights(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         return self.grid.get_points_and_weights()
 
@@ -175,7 +175,7 @@ class StandardCombi(object):
         total_weights = []
         for ss in self.scheme:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            points, weights = self.get_points_and_weights(ss[0], num_sub_diagonal)
+            points, weights = self.get_points_and_weights_component_grid(ss[0], num_sub_diagonal)
             total_points.extend(points)
             total_weights.extend(weights)
         return total_points, total_weights
