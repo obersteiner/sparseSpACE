@@ -90,7 +90,7 @@ class LejaGrid(Grid):
         self.dim = len(start)
         self.levelvec = levelvec
         self.numPoint = self.levelToNumPoints(levelvec)
-        self.coords = []
+        self.coordinate_array = []
         self.weights = []
         self.length = np.array(end) - np.array(start)
         # prepare coordinates and weights
@@ -101,7 +101,7 @@ class LejaGrid(Grid):
             coordsD = np.array(coordsD)
             coordsD *= self.length[d]
             coordsD += self.start[d]
-            self.coords.append(coordsD)
+            self.coordinate_array.append(coordsD)
             self.weights.append(weightsD)
         # print(coords)
 
@@ -119,13 +119,7 @@ class LejaGrid(Grid):
         return numPoints
 
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
+        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
 
     def getWeight(self, indexvector):
         weight = 1
