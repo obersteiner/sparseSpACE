@@ -23,10 +23,11 @@ class Function(object):
 
     def __call__(self, coordinates):
         coords = tuple(coordinates)
-        if coords in self.f_dict:
-            return self.f_dict[coords]
-        if coords in self.old_f_dict:
-            f_value = self.old_f_dict[coords]
+        f_value = self.f_dict.get(coords, None)
+        if f_value is not None:
+            return f_value
+        f_value = self.old_f_dict.get(coords, None)
+        if f_value is not None:
             self.f_dict[coords] = f_value
             return f_value
         f_value = self.eval(coords)
