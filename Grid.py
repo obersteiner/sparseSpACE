@@ -37,9 +37,12 @@ class Grid(object):
 
     # this method returns the actual coordinate of a point specified by the indexvector of the point
     # (e.g. in a 3 by 3 equdistant grid on the unit interval, the point [1,1] would have coordinate (0.5,0.5) and point [0,2] coordinate (0,1)
-    @abc.abstractmethod
+    # overwrite if necessary
     def getCoordinate(self, indexvector):
-        pass
+        position = np.empty(self.dim)
+        for d in range(self.dim):
+            position[d] = self.coordinate_array[d][indexvector[d]]
+        return position
 
     # this method returns all the coordinate tuples of all points in the grid
     @abc.abstractmethod
@@ -257,8 +260,16 @@ class TrapezoidalGrid(Grid):
                     self.upperBorder[i] = self.numPointsWithBoundary[i] - 1
                 else:
                     self.upperBorder[i] = self.numPointsWithBoundary[i]
+
         # spacing between two points in each dimension
         self.spacing = (np.array(end) - np.array(start)) / (np.array(self.numPointsWithBoundary) - np.ones(self.dim))
+        self.coordinate_array = []
+        for d in range(self.dim):
+            coordinates = np.empty(self.numPoints[d])
+            for i in range(self.numPoints[d]):
+                coordinates[i] = self.start[d] + (i + self.lowerBorder[d]) * self.spacing[d]
+            self.coordinate_array.append(coordinates)
+        self.weight_base = np.prod(self.spacing)
 
     # return equidistant points generated with numpy.linspace
     def getPoints(self):
@@ -267,21 +278,22 @@ class TrapezoidalGrid(Grid):
             np.linspace(self.start[i], self.end[i], self.numPointsWithBoundary[i])[
             self.lowerBorder[i]:self.upperBorder[i]] for i in range(self.dim)])]))
 
+    '''
     def getCoordinate(self, indexvector):
         position = np.zeros(self.dim)
         for d in range(self.dim):
             position[d] = self.start[d] + (indexvector[d] + self.lowerBorder[d]) * self.spacing[d]
         return position
+        '''
 
     def getWeight(self, indexvector):
-        # volume of full pagoda function
-        hprod = np.prod(self.spacing)
+
         factor = 0  # if point is at the border volume is halfed for each of border dimension
         for d in range(self.dim):
             if indexvector[d] + self.lowerBorder[d] == 0 or indexvector[d] + self.lowerBorder[d] == \
                     self.numPointsWithBoundary[d] - 1:
                 factor += 1
-        return hprod * 2 ** (-factor)
+        return self.weight_base * 2 ** -factor
 
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
@@ -317,6 +329,15 @@ class ClenshawCurtisGrid(Grid):
                     self.upperBorder[i] = self.numPoints[i] - 1
                 else:
                     self.upperBorder[i] = self.numPoints[i]
+
+        self.coordinate_array = []
+        for d in range(self.dim):
+            coordinates = np.empty(self.numPoints[d])
+            for i in range(self.numPoints[d]):
+                coordinates[i] = self.start[d] + (
+                    1 - math.cos(math.pi * (i + self.lowerBorder[d]) / (self.numPointsWithBoundary[d] - 1))) * \
+               self.length[d] / 2
+            self.coordinate_array.append(coordinates)
 
     def getPoints(self):
         return list(zip(*[g.ravel() for g in np.meshgrid(
@@ -503,7 +524,7 @@ class GaussLegendreGrid(Grid):
         self.levelvec = levelvec
         self.dim = len(levelvec)
         self.numPoints = self.levelToNumPoints(levelvec)
-        self.coords = []
+        self.coordinate_array = []
         self.weights = []
         # prepare coordinates and weights
         for d in range(self.dim):
@@ -513,17 +534,11 @@ class GaussLegendreGrid(Grid):
             coordsD *= self.length[d] / 2.0
             coordsD += self.start[d]
             weightsD = np.array(weightsD) * self.length[d] / 2
-            self.coords.append(coordsD)
+            self.coordinate_array.append(coordsD)
             self.weights.append(weightsD)
 
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
+        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
 
     def getWeight(self, indexvector):
         weight = 1
