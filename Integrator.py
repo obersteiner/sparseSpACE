@@ -17,9 +17,9 @@ class IntegratorBase(object):
 class IntegratorTrapezoidalFast(IntegratorBase):
     def __call__(self, f, numPoints, start, end):
         dim = len(start)
-        length = np.zeros(dim)
+        length = np.empty(dim)
         offsets = np.ones(dim, dtype=np.int64)
-        spacing = np.zeros(dim)
+        spacing = np.empty(dim)
         gridsize = np.int64(1)
         for i in range(dim):
             length[i] = end[i] - start[i]
@@ -103,9 +103,9 @@ class IntegratorArbitraryGrid(IntegratorBase):
                 offsets[i] = offsets[i - 1] * int(numPoints[i - 1])
         result = 0.0
         for i in range(gridsize):
-            indexvector = np.zeros(dim, dtype=int)
+            indexvector = np.empty(dim, dtype=int)
             rest = i
-            for d in reversed(list(range(dim))):
+            for d in range(dim - 1, -1, -1):
                 indexvector[d] = int(rest / offsets[d])
                 rest = rest % offsets[d]
             result += self.integrate_point(f, indexvector)
