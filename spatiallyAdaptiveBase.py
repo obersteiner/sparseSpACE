@@ -30,30 +30,15 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.refinements_for_recalculate = 100
         assert (len(a) == len(b))
 
-    # calculate the total number of points used in the complete combination scheme
-    def get_total_num_points_arbitrary_dim(self, doNaive,
-                                           distinctFunctionEvals=False):  # we assume here that all lmax entries are equal
-        numpoints = 0
-        for ss in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            pointsgrid = self.get_num_points_arbitrary_dim(ss[0], doNaive, num_sub_diagonal)
-            if distinctFunctionEvals and self.grid.isNested():
-                numpoints += pointsgrid * int(ss[1])
-            else:
-                numpoints += pointsgrid
-        # print(numpoints)
-        return numpoints
-
     # returns the number of points in a single component grid with refinement
-    def get_num_points_arbitrary_dim(self, levelvec, do_naive, num_sub_diagonal):
-        array2 = self.get_points_arbitrary_dim(levelvec, num_sub_diagonal)
+    def get_num_points_component_grid(self, levelvec, do_naive, num_sub_diagonal):
+        array2 = self.get_points_component_grid(levelvec, num_sub_diagonal)
         if do_naive:
             array2new = array2
         else:  # remove points that appear in the list multiple times
             array2new = list(set(array2))
         # print(len(array2new))
         return len(array2new)
-
 
 
     def evaluate_final_combi(self, f):
@@ -195,11 +180,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         pass
 
     @abc.abstractmethod
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         return
-
-    def get_points_arbitrary_dim_not_null(self, levelvec, numSubDiagonal):
-        return self.get_points_arbitrary_dim(levelvec, numSubDiagonal)
 
     @abc.abstractmethod
     def evaluate_area(self, f, area, levelvec):

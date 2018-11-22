@@ -43,21 +43,24 @@ class StandardCombi(object):
         print("Difference", abs(combiintegral - real_integral))
         return self.scheme, abs(combiintegral - real_integral), combiintegral
 
-    # calculate the number of points for a standard combination scheme
-    def get_total_num_points(self, distinct_function_evals=False):
-        if(distinct_function_evals):
-            return self.f.get_f_dict_size()
-        num_points = 0
-        for ss in self.scheme:
-            if distinct_function_evals and self.grid.isNested():
-                factor = int(ss[1])
-            else:
-                factor = 1
-            self.grid.setCurrentArea(self.a, self.b, ss[0])
-            num_points_array = np.array(self.grid.levelToNumPoints(ss[0]))
-            num_points += np.prod(num_points_array) * factor
-        return num_points
+    def get_num_points_component_grid(self, levelvector, doNaive, num_sub_diagonal):
+        return np.prod(self.grid.levelToNumPoints(levelvector))
 
+    # calculate the total number of points used in the complete combination scheme
+    def get_total_num_points(self, doNaive,
+                                           distinct_function_evals=False):  # we assume here that all lmax entries are equal
+        if distinct_function_evals:
+            return self.f.get_f_dict_size()
+        numpoints = 0
+        for ss in self.scheme:
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            pointsgrid = self.get_num_points_component_grid(ss[0], doNaive, num_sub_diagonal)
+            if distinct_function_evals and self.grid.isNested():
+                numpoints += pointsgrid * int(ss[1])
+            else:
+                numpoints += pointsgrid
+        # print(numpoints)
+        return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
     def print_resulting_combi_scheme(self, filename=None):
@@ -77,7 +80,7 @@ class StandardCombi(object):
             ax.set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
             ax.set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
             num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(lmax)
-            points = self.get_points_arbitrary_dim(lmax, num_sub_diagonal)
+            points = self.get_points_component_grid(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
             ax.plot(x_array, y_array, 'o', markersize=6, color="black")
@@ -90,7 +93,7 @@ class StandardCombi(object):
                     ax[i, j].set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
             for ss in scheme:
                 num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-                points = self.get_points_arbitrary_dim(ss[0], num_sub_diagonal)
+                points = self.get_points_component_grid(ss[0], num_sub_diagonal)
                 x_array = [p[0] for p in points]
                 y_array = [p[1] for p in points]
                 ax[lmax[1] - lmin[1] - (ss[0][1] - lmin[1]), (ss[0][0] - lmin[0])].plot(x_array, y_array, 'o', markersize=6,
@@ -117,7 +120,7 @@ class StandardCombi(object):
         # get points of each component grid and plot them in one plot
         for ss in scheme:
             numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
-            points = self.get_points_arbitrary_dim(ss[0], numSubDiagonal)
+            points = self.get_points_component_grid(ss[0], numSubDiagonal)
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
             plt.plot(xArray, yArray, 'o', markersize=10, color="black")
@@ -135,7 +138,7 @@ class StandardCombi(object):
         for ss in self.scheme:
             num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
             # print num_sub_diagonal , ii ,ss
-            points = self.get_points_arbitrary_dim_not_null(ss[0], num_sub_diagonal)
+            points = self.get_points_component_grid_not_null(ss[0], num_sub_diagonal)
             points = set(points)
             for p in points:
                 if p in dictionary:
@@ -161,7 +164,10 @@ class StandardCombi(object):
                 '''
             assert (value == 1)
 
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal):
+        return self.get_points_component_grid(levelvec, numSubDiagonal)
+
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.getPoints()
         return points

@@ -19,7 +19,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         #print("full interaction size:", self.full_interaction_size)
 
     # returns the points of a single component grid with refinement
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         return self.f.get_f_dict_points()
 
     # draw a visual representation of refinement tree

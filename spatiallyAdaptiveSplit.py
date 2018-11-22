@@ -4,7 +4,7 @@ from spatiallyAdaptiveBase import *
 class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
 
     # returns the points of a single component grid with refinement
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         dim = len(levelvec)
         array2 = []
         for area in self.refinement.get_objects():

@@ -44,7 +44,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         return fig
 
     # returns the points of a single component grid with refinement
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         assert (numSubDiagonal < self.dim)
         array2 = []
         for area in self.refinement.get_objects():
@@ -57,7 +57,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         return array2
 
     # returns the points of a single component grid with refinement
-    def get_points_arbitrary_dim_not_null(self, levelvec, numSubDiagonal):
+    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal):
         assert (numSubDiagonal < self.dim)
         array2 = []
         for area in self.refinement.get_objects():

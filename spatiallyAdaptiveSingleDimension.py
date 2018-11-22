@@ -38,7 +38,7 @@ class SpatiallyAdaptiveSingleDimensions(SpatiallyAdaptivBase):
         '''
 
     # returns the points of a single component grid with refinement
-    def get_points_arbitrary_dim(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal):
         pass
         '''
         array2 = []
