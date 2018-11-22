@@ -156,7 +156,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         while True:
             error = self.evaluate_integral(f)
             error_array.append(error)
-            num_point_array.append(self.get_total_num_points(True))
+            num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement

@@ -47,8 +47,8 @@ class StandardCombi(object):
         return np.prod(self.grid.levelToNumPoints(levelvector))
 
     # calculate the total number of points used in the complete combination scheme
-    def get_total_num_points(self, doNaive,
-                                           distinct_function_evals=False):  # we assume here that all lmax entries are equal
+    def get_total_num_points(self, doNaive = False,
+                                           distinct_function_evals=True):  # we assume here that all lmax entries are equal
         if distinct_function_evals:
             return self.f.get_f_dict_size()
         numpoints = 0
