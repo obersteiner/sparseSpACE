@@ -17,7 +17,7 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, realIntegral):
         scheme, error, result = standardCombi.perform_combi(lmin, i, f)
         errorArrayStandard.append(error / abs(realIntegral))
         pointArray.append(standardCombi.get_total_num_points())
-        distinctFEvalArray.append(standardCombi.get_total_num_points(True))
+        distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
     return pointArray, distinctFEvalArray, errorArrayStandard
 
 
