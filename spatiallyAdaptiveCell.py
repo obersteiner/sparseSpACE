@@ -22,6 +22,10 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
     def get_points_component_grid(self, levelvec, numSubDiagonal):
         return self.f.get_f_dict_points()
 
+    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+        print("Not yet implemented!")
+        assert(False)
+
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
         plt.rcParams.update({'font.size': 32})

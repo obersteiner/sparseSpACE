@@ -6,7 +6,7 @@ class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec, numSubDiagonal):
         dim = len(levelvec)
-        array2 = []
+        points_array = []
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
@@ -15,9 +15,26 @@ class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
                 levelInterval[d] = int(levelvec[d] - self.lmin[d])
             self.grid.setCurrentArea(start, end, levelInterval)
             points = self.grid.getPoints()
-            array2.extend(points)
+            points_array.extend(points)
+        # print points_array
+        return points_array
+
+    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+        dim = len(levelvec)
+        points_array = []
+        weights_array = []
+        for area in self.refinement.get_objects():
+            start = area.start
+            end = area.end
+            levelInterval = np.zeros(dim, dtype=int)
+            for d in range(dim):
+                levelInterval[d] = int(levelvec[d] - self.lmin[d])
+            self.grid.setCurrentArea(start, end, levelInterval)
+            points, weights = self.grid.get_points_and_weights()
+            points_array.extend(points)
+            weights_array.extend(weights)
         # print array2
-        return array2
+        return points_array, weights_array
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):

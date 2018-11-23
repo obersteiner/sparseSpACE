@@ -46,15 +46,29 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec, numSubDiagonal):
         assert (numSubDiagonal < self.dim)
-        array2 = []
+        points_array = []
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
             level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
             self.grid.setCurrentArea(start, end, level_interval)
             points = self.grid.getPoints()
-            array2.extend(points)
-        return array2
+            points_array.extend(points)
+        return points_array
+
+    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+        assert (numSubDiagonal < self.dim)
+        points_array = []
+        weights_array = []
+        for area in self.refinement.get_objects():
+            start = area.start
+            end = area.end
+            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            self.grid.setCurrentArea(start, end, level_interval)
+            points, weights = self.grid.get_points_and_weights()
+            points_array.extend(points)
+            weights_array.extend(weights)
+        return points_array, weights_array
 
     # returns the points of a single component grid with refinement
     def get_points_component_grid_not_null(self, levelvec, numSubDiagonal):

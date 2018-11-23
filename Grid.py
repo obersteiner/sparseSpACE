@@ -71,6 +71,13 @@ class Grid(object):
         #print("2",p, (p == self.a).any() or (p == self.b).any())
         return (p == self.a).any() or (p == self.b).any()
 
+    def get_points_and_weights(self):
+        return self.getPoints(), self.get_weights()
+
+    @abc.abstractmethod
+    def get_weights(self):
+        return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
+
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -89,7 +96,7 @@ class LejaGrid(Grid):
         self.end = end
         self.dim = len(start)
         self.levelvec = levelvec
-        self.numPoint = self.levelToNumPoints(levelvec)
+        self.numPoints = self.levelToNumPoints(levelvec)
         self.coordinate_array = []
         self.weights = []
         self.length = np.array(end) - np.array(start)
@@ -216,6 +223,8 @@ class LejaGrid(Grid):
         unsorted_points = np.array(unsorted_points, dtype=np.float64)
 
         return unsorted_points
+
+
 
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
@@ -542,6 +551,3 @@ class GaussLegendreGrid(Grid):
 
     def get_weights(self):
         return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
-
-    def get_points_and_weights(self):
-        return self.getPoints(), self.get_weights()
