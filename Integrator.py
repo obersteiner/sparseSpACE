@@ -116,6 +116,18 @@ class IntegratorArbitraryGrid(IntegratorBase):
         position = self.grid.getCoordinate(indexvector)
         return f(position) * self.grid.getWeight(indexvector)
 
+
+# This integrator computes the integral of an arbitrary grid from the Grid class
+# using the predefined interfaces and weights. The grid is explicitly constructed and efficiently evaluated using numpy.
+class IntegratorArbitraryGridScalarProduct(IntegratorBase):
+    def __init__(self, grid):
+        self.grid = grid
+
+    def __call__(self, f, numPoints, start, end):
+        points, weights = self.grid.get_points_and_weights()
+        f_values = [f(point) for point in points]
+        return np.inner(f_values, weights)
+
 '''
 #This integrator computes the integral of an arbitrary grid from the Grid class
 #using the predefined interfaces and weights. The grid is not explicitly constructed.

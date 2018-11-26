@@ -86,9 +86,15 @@ from scipy.special import eval_hermitenorm, eval_sh_legendre
 # this class generates a Leja grid which constructs 1D Leja grid structures
 # and constructs the tensorized grid according to the levelvector
 class LejaGrid(Grid):
-    def __init__(self, boundary=True):
+    def __init__(self, boundary=True, integrator=None):
         self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
         self.linear_growth_factor = 2
 
     def setCurrentArea(self, start, end, levelvec):
@@ -229,11 +235,17 @@ class LejaGrid(Grid):
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, a, b, boundary=True, integrator=None):
         self.a = a
         self.b = b
         self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
 
     def levelToNumPoints(self, levelvec):
         return [2 ** levelvec[d] + 1 - (1 if self.boundary == False else 0) * (int(1 if self.start[d] == self.a[0] else 0) + int(1 if self.end[d] == self.b[0] else 0))
@@ -302,11 +314,17 @@ class TrapezoidalGrid(Grid):
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, a, b, boundary=True, integrator=None):
         self.a = a
         self.b = b
         self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
 
     def levelToNumPoints(self, levelvec):
         return [2 ** levelvec[d] + 1 - int(self.boundary == False) * (int(self.start[d] == 0) + int(self.end[d] == 1))
@@ -509,9 +527,15 @@ import numpy.polynomial.legendre as legendre
 
 # this class generates a grid according to the Gauss-Legendre quadrature
 class GaussLegendreGrid(Grid):
-    def __init__(self, boundary=True):
+    def __init__(self, integrator=None):
         self.boundary = True  # never points on boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
 
     def levelToNumPoints(self, levelvec):
         return [2 ** levelvec[d] for d in range(self.dim)]
