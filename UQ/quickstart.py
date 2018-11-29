@@ -63,9 +63,9 @@ model = FunctionUQ()
 a = [parameter1_min, parameter2_min, parameter3_min]
 b = [parameter1_max, parameter2_max, parameter3_max]
 grid = GaussLegendreGrid()
-errorOperator2=ErrorCalculatorAnalytic()
-adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
-adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-2, do_plot=True)
+errorOperator2=ErrorCalculatorExtendSplit()
+adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,0,grid,version=0)
+adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)
 nodes, weights = adaptiveCombiInstanceExtend.get_points_and_weights()
 nodes_transpose = list(zip(*nodes))
 

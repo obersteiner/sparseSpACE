@@ -68,9 +68,9 @@ print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
 
 
 grid = TruncatedNormalDistributionGrid(mean, std_dev, a, b)
-errorOperator2=ErrorCalculatorAnalytic()
+errorOperator2=ErrorCalculatorExtendSplit()
 adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,0,grid,version=0)
-adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=True)
+adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)
 nodes, weights = adaptiveCombiInstanceExtend.get_points_and_weights()
 nodes_transpose = list(zip(*nodes))
 
