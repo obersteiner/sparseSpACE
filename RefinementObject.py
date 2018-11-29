@@ -1,4 +1,3 @@
-
 import math
 import numpy as np
 import abc,logging
@@ -112,7 +111,7 @@ class RefinementObjectExtendSplit(RefinementObject): #TODO
                 end_sub_area[d] = start[d] + (int(rest / 2 ** d) + 1) * spacing[d]
                 rest = rest % 2 ** d
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area,
-                                                                self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim, #TODO
+                                                                self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim,
                                                                 self.coarseningValue, self.needExtendScheme)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
