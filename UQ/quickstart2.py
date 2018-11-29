@@ -32,16 +32,16 @@ from ErrorCalculator import *
 
 #################################################################################################
 # parameter setup
-parameter1 = 0 # 0.3
-parameter1_var = 1
+parameter1 = 0.3 # 0.3
+parameter1_var = 0.03
 parameter1_min = 0.1 #0.1
 parameter1_max = 0.3 #0.5
-parameter2 = 0
-parameter2_var = 1 #0.03
+parameter2 = 1.0
+parameter2_var = 0.5 #0.03
 parameter2_min = 1.0 #0.8
 parameter2_max = 1.2 #1.2
-parameter3 = 0
-parameter3_var = 1
+parameter3 = 1.6
+parameter3_var = 0.3
 parameter3_min = 1.4 #1.4
 parameter3_max = 1.8 #1.8
 
@@ -61,13 +61,16 @@ dist = cp.J(parameter1Dist, parameter2Dist, parameter3Dist)
 #nodes, weights = cp.generate_quadrature(q, dist, rule="G")
 mean=[parameter1,parameter2,parameter3]
 std_dev=[math.sqrt(parameter1_var), math.sqrt(parameter2_var), math.sqrt(parameter3_var)]
-model = FunctionUQNormal(function=FunctionUQ(), mean=mean, std_dev=std_dev)
-a = np.ones(3) * -1
-b = np.ones(3) * 1
-grid = TruncatedNormalDistributionGrid(mean, std_dev)
+a = np.ones(3) * -5
+b = np.ones(3) * 5
+model = FunctionUQNormal(function=FunctionUQ(), mean=mean, std_dev=std_dev, a=a, b=b)
+print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
+
+
+grid = TruncatedNormalDistributionGrid(mean, std_dev, a, b)
 errorOperator2=ErrorCalculatorAnalytic()
-adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
-adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-2, do_plot=True)
+adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,0,grid,version=0)
+adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=True)
 nodes, weights = adaptiveCombiInstanceExtend.get_points_and_weights()
 nodes_transpose = list(zip(*nodes))
 

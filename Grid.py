@@ -577,14 +577,16 @@ class GaussLegendreGrid(Grid):
         return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
 from scipy.stats import norm
-from numpy.linalg import cholesky
+from scipy.linalg import cholesky
 from scipy.sparse import diags
 from scipy.sparse.linalg import lobpcg, LinearOperator
+from scipy import integrate
+from scipy.stats import truncnorm
 # this class generates a grid according to the quadrature rule of a truncated normal distribution
 # We basically compute: N * \int_a^b f(x) e^(-(x-mean)^2/(2 stddev)) dx. Where N is a normalization factor.
 # The code is based on the work in "The Truncated Normal Distribution" by John Burkhardt
 class TruncatedNormalDistributionGrid(Grid):
-    def __init__(self, mean, std_dev, integrator = None):
+    def __init__(self, mean, std_dev, global_a, global_b, integrator = None):
         self.mean = mean  # this is the mean of the corresponding untruncated normal distribution
         self.std_dev = std_dev  # this is the standard deviation of the corresponding untruncated normal distribution
         self.boundary = True  # never points on boundary
@@ -595,6 +597,8 @@ class TruncatedNormalDistributionGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
+        self.normalization = [1.0 / (norm.cdf(global_b[d], loc=mean[d], scale=std_dev[d]) - norm.cdf(global_a[d], loc=mean[d], scale=std_dev[d])) for d in range(len(global_a))]
+        #print(self.normalization, global_a, global_b)
 
     def setCurrentArea(self, start, end, levelvec):
         self.dim = len(levelvec)
@@ -609,10 +613,11 @@ class TruncatedNormalDistributionGrid(Grid):
             self.L_i_dict = {}
             self.moment_dict = {}
             coordsD, weightsD = self.compute_truncated_normal_dist(d)
-            print(coordsD, weightsD)
+            #print(coordsD, weightsD)
             self.coordinate_array.append(coordsD)
-            S = norm.cdf(self.end[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.start[d], loc=self.mean[d], scale=self.std_dev[d])
-            weightsD = 1.0/(S * math.sqrt(2*math.pi* self.std_dev[d]**2)) * np.asarray(weightsD)
+            #S = norm.cdf(self.end[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.start[d], loc=self.mean[d], scale=self.std_dev[d])
+            #print("Normalization", 1.0/(S * math.sqrt(2*math.pi* self.std_dev[d]**2)))
+            #weightsD = 1.0/(S * math.sqrt(2*math.pi* self.std_dev[d]**2)) * np.asarray(weightsD)
             self.weights.append(weightsD)
 
     def levelToNumPoints(self, levelvec):
@@ -640,11 +645,19 @@ class TruncatedNormalDistributionGrid(Grid):
         b = self.end[d]
         mean = self.mean[d]
         std_dev = self.std_dev[d]
-        M = self.calculate_moment_matrix(num_points, a,b, mean, std_dev)
-        print(M)
-        print(scipy.linalg.eig(M))
+        M = self.calculate_moment_matrix(num_points, a,b, mean, std_dev, self.normalization[d])
+        #max_value = np.amax(M)
+        for i in range(num_points + 1):
+            M[i, i] += 10**-15
+        min_ev = np.amin(scipy.linalg.eig(M)[0])
+        if min_ev < 0:
+            print("Bad Conditioning! Negative EV of", min_ev)
+            for i in range(num_points+1):
+                M[i,i] += min_ev * 1.1
+        #print(M)
+        #print(scipy.linalg.eig(M)[0])
         # get cholesky factorization of M
-        R = np.linalg.cholesky(M).T
+        R = scipy.linalg.cholesky(M)
         alpha_vec = np.empty(num_points)
         alpha_vec[0] = R[0,1]/ R[0,0]
         for i in range(1, num_points):
@@ -670,20 +683,20 @@ class TruncatedNormalDistributionGrid(Grid):
         X = np.random.rand(num_points, num_points)
         evals, evecs = scipy.sparse.linalg.lobpcg(J, X)
         '''
-        points = evals
+        points = [ev.real for ev in evals]
         alpha = float((a - mean)) / std_dev
         beta = float((b - mean)) / std_dev
-        mu0 = self.get_moment(0,alpha, beta, mean, std_dev)
+        mu0 = self.get_moment_normalized(0,alpha, beta, mean, std_dev, self.normalization[d])
         weights = [mu0 * value * value for value in evecs[0]]
         return points, weights
 
-    def calculate_moment_matrix(self, num_points, a, b, mean, std_dev):
+    def calculate_moment_matrix(self, num_points, a, b, mean, std_dev, normalization):
         alpha = float((a - mean)) / std_dev
         beta = float((b - mean)) / std_dev
         M = np.empty((num_points+1, num_points+1))
         for i in range(num_points+1):
             for j in range(num_points+1):
-                M[i,j] = self.get_moment2(i+j, alpha, beta, mean, std_dev)
+                M[i,j] = self.get_moment_normalized(i+j, alpha, beta, mean, std_dev, normalization)
         return M
 
     def get_moment(self, index, alpha, beta, mean, std_dev):
@@ -692,29 +705,66 @@ class TruncatedNormalDistributionGrid(Grid):
 
     def get_L_i(self, index, alpha, beta):
         if index == 0:
-            return 1.0
+            return 1.0 * (norm.cdf(beta) - norm.cdf(alpha))
         if index == 1:
-            return - float((norm.pdf(beta) - norm.pdf(alpha)))/(norm.cdf(beta) - norm.cdf(alpha))
+            return - float((norm.pdf(beta) - norm.pdf(alpha)))
         L_i = self.L_i_dict.get(index, None)
         if L_i is None:
             moment_m2 = self.get_L_i(index - 2, alpha, beta)  # recursive search
-            L_i = -(beta**(index - 1) * norm.pdf(beta) - alpha**(index - 1) * norm.pdf(alpha)/
-                        (norm.cdf(beta) - norm.cdf(alpha))) + (index - 1) * moment_m2
-        self.L_i_dict[index] = L_i
+            L_i = -(beta**(index - 1) * norm.pdf(beta) - alpha**(index - 1) * norm.pdf(alpha)) + (index - 1) * moment_m2
+            self.L_i_dict[index] = L_i
         return L_i
 
     def get_moment2(self, index, alpha, beta, mean, std_dev):
         if index == -1:
             return 0.0
         if index == 0:
-            return 1.0
-        value = self.moment_dict.get(index, None)
-        if value is None:
+            return 1.0 * (norm.cdf(beta) - norm.cdf(alpha))
+        moment = self.moment_dict.get(index, None)
+        if moment is None:
             a = alpha * std_dev + mean
             b = beta * std_dev + mean
-            m_m2 = self.get_moment(index - 2, alpha, beta, mean, std_dev)
-            m_m1 = self.get_moment(index - 1, alpha, beta, mean, std_dev)
-            value = (index - 1) * std_dev**2 * m_m2
-            value += mean * m_m1
-            value -= std_dev * (b**(index-1) * norm.pdf(beta) - a**(index - 1) * norm.pdf(alpha)) / (norm.cdf(beta)-norm.cdf(alpha))
-            return value
+            m_m2 = self.get_moment2(index - 2, alpha, beta, mean, std_dev)
+            m_m1 = self.get_moment2(index - 1, alpha, beta, mean, std_dev)
+            moment = (index - 1) * std_dev**2 * m_m2
+            moment += mean * m_m1
+            moment -= std_dev * (b**(index-1) * norm.pdf(beta) - a**(index - 1) * norm.pdf(alpha))
+            self.moment_dict[index] = moment
+        return moment
+
+    def get_moment3(self, index, alpha, beta, mean, std_dev):
+        moment = self.moment_dict.get(index, None)
+        if moment is None:
+            #a = alpha * std_dev + mean
+            #b = beta * std_dev + mean
+            def integrant(x):
+                return x**index * norm.pdf(x)
+            print(alpha, beta)
+            moment = integrate.quad(func=integrant, a=alpha, b=beta, epsrel=10**-15, epsabs=10**-15)[0]
+            '''
+            if alpha < -1 and beta > 1:
+                moment = integrate.quad(func=integrant, a=alpha, b=-1, epsrel=10**-15)[0]
+                moment += integrate.quad(func=integrant, a=1, b=beta, epsrel=10**-15)[0]
+                moment += integrate.quad(func=integrant, a=-1, b=-0, epsrel=10**-15)[0]
+                moment += integrate.quad(func=integrant, a=0, b=1, epsrel=10**-15)[0]
+            '''
+            print(norm.pdf(0), norm.pdf(1), norm.pdf(-1))
+            print(index, moment)
+            #self.moment_dict[index] = moment
+        return moment
+
+    def get_moment4(self, index, alpha, beta, mean, std_dev):
+        moment = self.moment_dict.get(index, None)
+        if moment is None:
+            a = alpha * std_dev + mean
+            b = beta * std_dev + mean
+            moment = truncnorm.moment(index, a=a, b=b, loc=mean, scale=std_dev)
+            normalization_local = 1.0 / (norm.cdf(b, loc=mean, scale=std_dev) - norm.cdf(a, loc=mean, scale=std_dev))
+            moment /= normalization_local # denormalize
+            #self.moment_dict[index] = moment
+        return moment
+
+    def get_moment_normalized(self, index, alpha, beta, mean, std_dev, normalization):
+        #print("Moment:", index, " variants:", self.get_moment(index,alpha,beta,mean,std_dev), self.get_moment2(index,alpha,beta,mean,std_dev), self.get_moment4(index,alpha,beta,mean,std_dev) )
+        return self.get_moment2(index,alpha,beta,mean,std_dev) * normalization
+
