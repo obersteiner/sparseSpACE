@@ -158,7 +158,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                                 self.numberOfRefinementsBeforeExtend, 0, 0)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
-            parent_integral = self.grid.integrate(self.f, np.zeros(self.dim), self.a, self.b) #TODO
+            parent_integral = self.grid.integrate(self.f, np.zeros(self.dim, dtype=int), self.a, self.b) #TODO
             parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b),
                                                                  self.numberOfRefinementsBeforeExtend, None, 0,
                                                                  0)
