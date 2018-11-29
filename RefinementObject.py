@@ -1,4 +1,3 @@
-
 import math
 import numpy as np
 import abc,logging
@@ -26,7 +25,7 @@ class RefinementObject(object):
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
-    def __init__(self, start, end, number_of_refinements_before_extend, coarseningValue=0, needExtendScheme=0, punish_depth = False):
+    def __init__(self, start, end, number_of_refinements_before_extend, parent_integral, coarseningValue=0, needExtendScheme=0, punish_depth = False):
         # start of subarea
         self.start = start
         # end of subarea
@@ -40,6 +39,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
         self.integral = None
+        self.parent_integral = parent_integral
         #dictionary that maps all coarsened levelvectors to there uncoarsened ones
         #the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
@@ -61,13 +61,13 @@ class RefinementObjectExtendSplit(RefinementObject):
                 # increase lmax by dim
                 lmaxIncrease = [1 for d in range(self.dim)]
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end,
-                                                                  self.numberOfRefinementsBeforeExtend,
+                                                                  self.numberOfRefinementsBeforeExtend, self.integral,
                                                                   self.coarseningValue, self.needExtendScheme)
                 return [newRefinementObject], lmaxIncrease, 1
             else:
                 # add to integralArray
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end,
-                                                                  self.numberOfRefinementsBeforeExtend,
+                                                                  self.numberOfRefinementsBeforeExtend, self.integral,
                                                                   self.coarseningValue, self.needExtendScheme)
                 return [newRefinementObject], None, None
         elif self.needExtendScheme >= 0:  # split the array
@@ -111,7 +111,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                 end_sub_area[d] = start[d] + (int(rest / 2 ** d) + 1) * spacing[d]
                 rest = rest % 2 ** d
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area,
-                                                                self.numberOfRefinementsBeforeExtend,
+                                                                self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim,
                                                                 self.coarseningValue, self.needExtendScheme)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
