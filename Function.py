@@ -85,6 +85,34 @@ class Function(object):
         plt.show()
 
 from scipy import integrate
+from scipy.stats import norm
+class FunctionUQNormal(Function):
+    def __init__(self, function, mean, std_dev):
+        super().__init__()
+        self.mean = mean
+        self.std_dev = std_dev
+        self.function = function
+
+    def eval(self, coordinates):
+        return self.function(coordinates)
+
+    def eval_with_normal(self, coordinates):
+        value = self.function(coordinates)
+        dim = len(coordinates)
+        # add contribution of normal distribution
+        summation = 0
+        for d in range(dim):
+            summation -= (coordinates[d] - self.mean[d])**2 / (2 * self.std_dev[d]**2)
+        return value * np.exp(summation)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        f = lambda x, y, z: self.eval_with_normal([x,y,z])
+        normalization = 1
+        for d in range(len(start)):
+            S = norm.cdf(end[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(start[d], loc=self.mean[d], scale=self.std_dev[d])
+            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * self.std_dev[d]))
+        return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+
 
 class FunctionUQ(Function):
     def eval(self, coordinates):
