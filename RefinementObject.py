@@ -24,7 +24,7 @@ class RefinementObject(object):
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme
-class RefinementObjectExtendSplit(RefinementObject): #TODO
+class RefinementObjectExtendSplit(RefinementObject):
     def __init__(self, start, end, number_of_refinements_before_extend, parent_integral, coarseningValue=0, needExtendScheme=0, punish_depth = False):
         # start of subarea
         self.start = start
