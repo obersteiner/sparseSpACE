@@ -64,13 +64,14 @@ std_dev=[parameter1_var, parameter2_var, parameter3_var]
 #a = (np.ones(3)* (-5) - np.array(mean)) / np.array(std_dev)
 #b = (np.ones(3)* (5) - np.array(mean)) / np.array(std_dev)
 #print(a,b)
-a = np.ones(3) * -4
-b = np.ones(3) * 4
-model = FunctionUQNormal2(function=FunctionUQ(), mean=mean, std_dev=std_dev, a=a, b=b)
+a = np.ones(3) * -3
+b = np.ones(3) * 3
+model = FunctionUQNormal(function=FunctionUQ(), mean=mean, std_dev=std_dev, a=a, b=b)
 print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
 
 
-grid = GaussLegendreGrid()
+#grid = GaussLegendreGrid()
+grid = TruncatedNormalDistributionGrid(a,b)
 errorOperator2=ErrorCalculatorExtendSplit()
 adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
 adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)

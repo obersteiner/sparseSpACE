@@ -116,6 +116,8 @@ class FunctionUQNormal(Function):
             S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
             normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
         return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+
+
 class FunctionUQNormal2(Function):
     def __init__(self, function, mean, std_dev, a, b):
         super().__init__()
@@ -137,20 +139,17 @@ class FunctionUQNormal2(Function):
         normalization = 1
 
         for d in range(dim):
-            S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
+            S = norm.cdf(self.b_global[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.a_global[d], loc=self.mean[d], scale=self.std_dev[d])
             normalization *= 1.0 / (S * math.sqrt(2 * math.pi * self.std_dev[d] ** 2))
-            summation -= (coordinates[d] - self.mean[d])**2 / (2 * self.std_dev[d])
+            summation -= (coordinates[d] - self.mean[d])**2 / (2 * self.std_dev[d]**2)
         return value * np.exp(summation) * normalization
 
     def getAnalyticSolutionIntegral(self, start, end):
 
         f = lambda x, y, z: self.eval([x, y, z])
-        normalization = 1
-        for d in range(self.dim):
-            S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
-            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * self.std_dev[d] ** 2))
 
-        return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+
+        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
 
 class FunctionUQ(Function):
     def eval(self, coordinates):

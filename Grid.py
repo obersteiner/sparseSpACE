@@ -625,7 +625,7 @@ class TruncatedNormalDistributionGrid(Grid):
         return norm.ppf(middle_cdf)
 
     def levelToNumPoints(self, levelvec):
-        return [2 ** levelvec[d] for d in range(self.dim)]
+        return [1 + 2 ** levelvec[d] for d in range(self.dim)]
 
     # This grid is not nested!
     def isNested(self):
@@ -643,56 +643,38 @@ class TruncatedNormalDistributionGrid(Grid):
     def get_weights(self):
         return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
+    # this method implements the moment method for calculation the quadrature points and weights
+    # a description can be found in "The Truncated Normal Distribution" from John Burkardt and
+    # in "Gene Golub, John Welsch: Calculation of Gaussian Quadrature Rules"
     def compute_truncated_normal_dist(self, d):
         num_points = int(self.numPoints[d])
         a = self.start[d]
         b = self.end[d]
         M = self.calculate_moment_matrix(num_points, a,b, self.normalization[d])
-        max_value = np.amax(M)
+
+        # the stability can be improved by adding small delta to diagonal -> shifting eigenvalues away from 0
+        # currently not needed
         #for i in range(num_points + 1):
             #M[i, i] += 10**-15
-        min_ev = np.amin(scipy.linalg.eig(M)[0])
-        #print(a,b, num_points, min_ev)
-        #if min_ev < 0:
-            #print("Bad Conditioning! Negative EV of", min_ev)
-            #for i in range(num_points+1):
-                #M[i,i] += max(abs(min_ev) * 10, 10**-15)
-        #print(M)
-        #print(scipy.linalg.eig(M)[0])
-        # get cholesky factorization of M
-        #LU, diag, perm = scipy.linalg.ldl(M, lower=True)
+
+        # compute ldl decomposition (a bit more stable than cholesky)
         LU, diag = self.ldl_decomp(M)
-        #print("Directly from ldl", LU, diag)
-        Dia=np.zeros((num_points+1,num_points+1))
-        for i in range(len(Dia)):
-            Dia[i,i] = diag[i]
-        #print(LU.dot(Dia).dot(LU.T))
-        #print(perm)
-        #diag = diag[perm,:]
-        #print(diag)
+
+        # calculate cholesky factorization based on ldl decomposition -> apply sqrt(diagonal element) to both matrices
         for i in range(num_points + 1):
             for j in range(num_points + 1):
-                if (diag[j] < 0):
-                    #print(LU, diag)
+                if (diag[j] < 0): # in case we encounter a negative diagonal value due to instability / conditioning
+                    # fill up with small value > 0
                     LU[i, j] *= 10**-15
-
                 else:
                     LU[i, j] *= math.sqrt(diag[j])
-        #print("Normalize", LU)
-        #print("Permute", LU[perm, :])
 
-        R = LU.T
-        #print("Transpose", LU.T)
+        R = LU.T  # we need the upper not the lower triangular part
 
-        #print(R, diag)
+        # other version using scipy cholesky factorization; tends to crash earlier
+        # R = scipy.linalg.cholesky(M)
 
-        #print(np.matmul(R.T,R), M, np.matmul(R.T,R) == M)
-        #print(LU, diag, perm)
-        #print("LDL",R)
-        #R_old = R
-        #R = scipy.linalg.cholesky(M)
-        #print("Cholesky",R)
-        #print("Mult",np.matmul(R.T,R), np.matmul(R_old.T, R_old))
+
         alpha_vec = np.empty(num_points)
         alpha_vec[0] = R[0,1]/ R[0,0]
         for i in range(1, num_points):
@@ -722,6 +704,7 @@ class TruncatedNormalDistributionGrid(Grid):
         #print(a, b, self.normalization[d])
         mu0 = self.get_moment_normalized(0, a, b, self.normalization[d])
         weights = [mu0 * value * value for value in evecs[0]]
+        #print("points and weights", num_points, a, b, points, weights)
         return points, weights
 
     def ldl_decomp(self,M):
@@ -747,9 +730,9 @@ class TruncatedNormalDistributionGrid(Grid):
                 M[i,j] = self.get_moment_normalized(i+j, a, b, normalization)
         return M
 
+    # Calculation of the moments of the truncated normal distribution according to "The Truncated Normal Distribution" from John Burkardt
+    # It is slightly simplified as we assume mean=0 and std_dev=1 here.
     def get_moment(self, index, a, b):
-        if a == -b:
-            return 0 if index % 2 == 1 else 1.0 * (norm.cdf(b) - norm.cdf(a))
         return self.get_L_i(index, a, b)
 
     def get_L_i(self, index, a, b):
@@ -762,11 +745,12 @@ class TruncatedNormalDistributionGrid(Grid):
             moment_m2 = self.get_L_i(index - 2, a, b)  # recursive search
             L_i = -(b**(index - 1) * norm.pdf(b) - a**(index - 1) * norm.pdf(a)) + (index - 1) * moment_m2
             self.L_i_dict[index] = L_i
+        #print(index,L_i)
         return L_i
 
+    # Different version of calculating moments according to: "A Recursive Formula for the Moments of a Truncated
+    # Univariate Normal Distribution" by Eric Orjebin
     def get_moment2(self, index, a, b):
-        if a == -b:
-            return 0 if index % 2 == 1 else 1.0 * (norm.cdf(b) - norm.cdf(a))
         if index == -1:
             return 0.0
         if index == 0:
@@ -779,9 +763,8 @@ class TruncatedNormalDistributionGrid(Grid):
             self.moment_dict[index] = moment
         return moment
 
+    #Slight modification of 2nd version by restructuring computation; tends to be less stable
     def get_moment5(self, index, a, b):
-        if a == -b:
-            return 0 if index % 2 == 1 else 1.0 * (norm.cdf(b) - norm.cdf(a))
         moment = self.moment_dict.get(index, None)
         if moment is None:
             moment = self.get_moment5_fac(index, b) * norm.pdf(b) - self.get_moment5_fac(index,a) * norm.pdf(a)
@@ -798,6 +781,7 @@ class TruncatedNormalDistributionGrid(Grid):
             return 0
         return - (boundary**(index - 1)) + (index - 1) * self.get_moment5_fac(index - 2, boundary)
 
+    # Calculating moments by numerical quadrature; tends to be inaccurate
     def get_moment3(self, index, a, b):
         moment = self.moment_dict.get(index, None)
         if moment is None:
@@ -814,6 +798,7 @@ class TruncatedNormalDistributionGrid(Grid):
             #self.moment_dict[index] = moment
         return moment
 
+    # Calculating moments using scipy
     def get_moment4(self, index, a, b):
         moment = self.moment_dict.get(index, None)
         if moment is None:
