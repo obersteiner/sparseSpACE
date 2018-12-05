@@ -70,9 +70,15 @@ class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
         return fig
 
     def initialize_refinement(self):
-        new_refinement_objects = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), 1000, 0,
-                                                             0).split_area_arbitrary_dim()
+        parent_integral = self.grid.integrate(self.f, np.zeros(self.dim, dtype=int), self.a, self.b)
+        parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
+                                             self.numberOfRefinementsBeforeExtend, None, 0,
+                                             0)
+        parent.set_integral(parent_integral)
+        new_refinement_objects = parent.split_area_arbitrary_dim()
         self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
+        if self.errorEstimator is None:
+            self.errorEstimator = ErrorCalculatorExtendSplit()
 
     def evaluate_area(self, f, area, levelvec):
         levelEval = np.zeros(self.dim, dtype=int)

@@ -71,6 +71,8 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
                 initial_objects = list(itertools.chain(*initial_objects))
         # initialize the refinement with cells of lmin grid
         self.refinement = RefinementContainer(initial_objects, self.dim, self.errorEstimator)
+        if self.errorEstimator is None:
+            self.errorEstimator = ErrorCalculatorSurplusCell()
 
     def evaluate_area(self, f, area, levelvec):  # area is a cell here
         # calculates all parents of the cell for which the level vector l >= l_cell - e
