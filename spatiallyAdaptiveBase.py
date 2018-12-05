@@ -147,7 +147,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             print("recalculating errors")
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False, recalculate_frequently=False):
+    def performSpatiallyAdaptiv(self, minv, maxv, f, errorOperator, tol, refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False, reevaluate_at_end=False):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
@@ -170,9 +170,14 @@ class SpatiallyAdaptivBase(StandardCombi):
                 break
         # finished adaptive algorithm
         print("Number of refinements", self.refinements)
-        self.check_combi_scheme()
-        # evaluate final integral
-        combiintegral, number_of_evaluations = self.evaluate_final_combi(f)
+        if test_scheme:
+            self.check_combi_scheme()
+        if reevaluate_at_end:
+            # evaluate final integral
+            combiintegral, number_of_evaluations = self.evaluate_final_combi(f)
+        else:
+            combiintegral = self.refinement.integral
+            number_of_evaluations = self.refinement.evaluationstotal
         return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array
 
     @abc.abstractmethod

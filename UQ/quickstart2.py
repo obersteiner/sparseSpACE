@@ -47,12 +47,12 @@ parameter3_max = 1.8 #1.8
 
 #################################################################################################
 # setup uncertain parameter
-parameter1Dist = cp.Uniform(parameter1_min, parameter1_max)
-#parameter1Dist = cp.Normal(parameter1, parameter1_var)
-parameter2Dist = cp.Uniform(parameter2_min, parameter2_max)
-#parameter2Dist = cp.Normal(parameter2, parameter2_var)
-parameter3Dist = cp.Uniform(parameter3_min, parameter3_max)
-
+#parameter1Dist = cp.Uniform(parameter1_min, parameter1_max)
+parameter1Dist = cp.Normal(parameter1, parameter1_var)
+#parameter2Dist = cp.Uniform(parameter2_min, parameter2_max)
+parameter2Dist = cp.Normal(parameter2, parameter2_var)
+#parameter3Dist = cp.Uniform(parameter3_min, parameter3_max)
+parameter3Dist = cp.Normal(parameter3, parameter3_var)
 dist = cp.J(parameter1Dist, parameter2Dist, parameter3Dist)
 
 #################################################################################################
@@ -60,25 +60,32 @@ dist = cp.J(parameter1Dist, parameter2Dist, parameter3Dist)
 #q = 3  # number of collocation points for each dimension
 #nodes, weights = cp.generate_quadrature(q, dist, rule="G")
 mean=[parameter1,parameter2,parameter3]
-std_dev=[math.sqrt(parameter1_var), math.sqrt(parameter2_var), math.sqrt(parameter3_var)]
-a = np.ones(3) * -5
-b = np.ones(3) * 5
+std_dev=[parameter1_var, parameter2_var, parameter3_var]
+#a = (np.ones(3)* (-5) - np.array(mean)) / np.array(std_dev)
+#b = (np.ones(3)* (5) - np.array(mean)) / np.array(std_dev)
+#print(a,b)
+a = np.ones(3) * -3
+b = np.ones(3) * 3
 model = FunctionUQNormal(function=FunctionUQ(), mean=mean, std_dev=std_dev, a=a, b=b)
 print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
 
 
-grid = TruncatedNormalDistributionGrid(mean, std_dev, a, b)
+#grid = GaussLegendreGrid()
+grid = TruncatedNormalDistributionGrid(a,b)
 errorOperator2=ErrorCalculatorExtendSplit()
-adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,0,grid,version=0)
+adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
 adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)
 nodes, weights = adaptiveCombiInstanceExtend.get_points_and_weights()
+print("Number of points:", len(nodes))
+print("Sum of weights:", sum(weights))
+weights = np.asarray(weights) * 1.0/sum(weights)
 nodes_transpose = list(zip(*nodes))
 
 #################################################################################################
 # propagate the uncertainty
 value_of_interests = [model(node) for node in nodes]
 value_of_interests = np.asarray(value_of_interests)
-
+print("Mean", np.inner(weights, value_of_interests))
 #################################################################################################
 # generate orthogonal polynomials for the distribution
 OP = cp.orth_ttr(3, dist)
