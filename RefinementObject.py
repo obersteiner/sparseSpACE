@@ -102,7 +102,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         num_sub_areas = 2 ** dim
         start = self.start
         end = self.end
-        midpoint = [self.grid.get_mid_point(start[d], end[d]) for d in range(self.dim)]
+        midpoint = [self.grid.get_mid_point(start[d], end[d], d) for d in range(self.dim)]
         sub_area_array = []
         for i in range(num_sub_areas):
             start_sub_area = np.zeros(dim)

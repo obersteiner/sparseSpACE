@@ -21,9 +21,9 @@ class Grid(object):
     #        self.setCurrentArea(start, end, levelvec)
     #    return self.integrator.integrate_point(f, point)
 
-    # the default case is that a grid is nested; overwrite this if not nested!
+    #returns if all grid components are nested
     def isNested(self):
-        return True
+        return all([self.grids[d].is_nested() for d in self.dim])
 
     # the default case is that a grid is not globally but only locally defined
     def isGlobal(self):
@@ -54,10 +54,6 @@ class Grid(object):
     def getWeight(self, indexvector):
         pass
 
-    # this method returns the number of points in the grid that correspond to the specified levelvector
-    @abc.abstractmethod
-    def levelToNumPoints(self, levelvector):
-        pass
 
     # this method translates a point in an equidistant mesh of level self.levelvec to its corresponding index
     def getIndexTo1DCoordinate(self, coordinate, level):
@@ -78,60 +74,33 @@ class Grid(object):
     def get_weights(self):
         return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
-    def get_mid_point(self,a,b):
-        return (a+b)/2.0
-
-
-from scipy.optimize import fmin
-from scipy.special import eval_hermitenorm, eval_sh_legendre
-
-
-# this class generates a Leja grid which constructs 1D Leja grid structures
-# and constructs the tensorized grid according to the levelvector
-class LejaGrid(Grid):
-    def __init__(self, boundary=True, integrator=None):
-        self.boundary = boundary
-        if integrator is None:
-            self.integrator = IntegratorArbitraryGridScalarProduct(self)
-        else:
-            if integrator == 'old':
-                self.integrator = IntegratorArbitraryGrid(self)
-            else:
-                assert False
-        self.linear_growth_factor = 2
+    def get_mid_point(self, a, b, d):
+        return self.grids[d].get_mid_point(a, b)
 
     def setCurrentArea(self, start, end, levelvec):
         self.start = start
         self.end = end
         self.dim = len(start)
         self.levelvec = levelvec
+        for d in range(self.dim):
+            self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
         self.numPoints = self.levelToNumPoints(levelvec)
         self.coordinate_array = []
         self.weights = []
         self.length = np.array(end) - np.array(start)
         # prepare coordinates and weights
         for d in range(self.dim):
-            coordsD = self.get_1D_level_points(levelvec[d], 0, 1)
-            # print(coordsD)
-            weightsD = np.array(self.compute_1D_quad_weights(coordsD)) * self.length[d]
-            coordsD = np.array(coordsD)
-            coordsD *= self.length[d]
-            coordsD += self.start[d]
+            self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
+            coordsD, weightsD = self.grids[d].get_1d_points_and_weights()
             self.coordinate_array.append(coordsD)
             self.weights.append(weightsD)
         # print(coords)
 
+    # this method returns the number of points in the grid that correspond to the specified levelvector
     def levelToNumPoints(self, levelvec):
         numPoints = np.zeros(len(levelvec), dtype=int)
         for d in range(len(levelvec)):
-            numPoints[d] = self.levelToNumPoints1D(levelvec[d])
-        return numPoints
-
-    def levelToNumPoints1D(self, level):
-        if level == 0:
-            numPoints = 1
-        else:
-            numPoints = self.linear_growth_factor * (level + 1) - 1
+            numPoints[d] = self.grids[d].level_to_num_points_1d(levelvec[d])
         return numPoints
 
     def getPoints(self):
@@ -142,6 +111,98 @@ class LejaGrid(Grid):
         for d in range(self.dim):
             weight *= self.weights[d][indexvector[d]]
         return weight
+
+from scipy.optimize import fmin
+from scipy.special import eval_hermitenorm, eval_sh_legendre
+
+class Grid1d(object):
+    def __init__(self, a=None, b=None, boundary=True):
+        self.boundary = boundary
+        self.a = a
+        self.b = b
+
+    def set_current_area(self, start, end, level):
+        self.start = start
+        self.end = end
+        self.level = level
+        self.num_points = self.level_to_num_points_1d(level)
+        boundary_save = self.boundary
+        self.boundary = True
+        self.num_points_with_boundary = self.level_to_num_points_1d(level)
+        self.boundary = boundary_save
+        self.length = end - start
+        #coords, weights = self.get_1d_points_and_weights(level)
+
+        self.lowerBorder = int(0)
+        self.upperBorder = self.num_points
+        if not self.boundary and self.num_points < self.num_points_with_boundary:
+            if start == self.a:
+                self.lowerBorder = 1
+            if end == self.b:
+                self.upperBorder = self.num_points_with_boundary - 1
+            else:
+                self.upperBorder = self.num_points_with_boundary
+        #equidistant spacing; only valid for equidistant grids
+        self.spacing = (end - start) / (self.num_points_with_boundary - 1)
+
+    @abc.abstractmethod
+    def get_1d_points_and_weights(self):
+        pass
+
+    def get_1D_level_weights(self):
+        return [self.get_1d_weight(i) for i in range(self.num_points)]
+
+    @abc.abstractmethod
+    def get_1d_weight(self, index):
+        pass
+
+    def get_mid_point(self, a, b):
+        return (a+b)/2.0
+
+    # the default case is that a grid is nested; overwrite this if not nested!
+    def is_nested(self):
+        return True
+
+# this class generates a Leja grid which constructs 1D Leja grid structures
+# and constructs the tensorized grid according to the levelvector
+class LejaGrid(Grid):
+    def __init__(self, a, b,dim, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
+        self.boundary = boundary
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
+        self.linear_growth_factor = 2
+        self.grids = [LejaGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
+
+
+
+
+class LejaGrid1D(Grid1d):
+    def __init__(self, a, b, boundary):
+        super().__init__(a=a, b=b, boundary=boundary)
+        self.linear_growth_factor = 2
+        
+    def get_1d_points_and_weights(self):
+        coordsD = self.get_1D_level_points(self.level, 0, 1)
+        # print(coordsD)
+        weightsD = np.array(self.compute_1D_quad_weights(coordsD)) * self.length
+        coordsD = np.array(coordsD)
+        coordsD *= self.length
+        coordsD += self.start
+        return coordsD, weightsD
+
+    def level_to_num_points_1d(self, level):
+        if level == 0:
+            numPoints = 1
+        else:
+            numPoints = self.linear_growth_factor * (level + 1) - 1
+        return numPoints
 
     def compute_1D_quad_weights(self, grid_1D):
         N = len(grid_1D)
@@ -190,7 +251,7 @@ class LejaGrid(Grid):
 
         sorted_points = []
         unsorted_points = []
-        no_points = self.levelToNumPoints1D(curr_level)
+        no_points = self.level_to_num_points_1d(curr_level)
 
         starting_point = self.__get_starting_point(left_bound, right_bound, weightFunction)
         sorted_points.append(starting_point)
@@ -238,7 +299,7 @@ class LejaGrid(Grid):
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
-    def __init__(self, a, b, boundary=True, integrator=None):
+    def __init__(self, a, b, dim, boundary=True, integrator=None):
         self.a = a
         self.b = b
         self.boundary = boundary
@@ -249,75 +310,33 @@ class TrapezoidalGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
+        self.grids = [TrapezoidalGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
 
-    def levelToNumPoints(self, levelvec):
-        return [2 ** levelvec[d] + 1 - (1 if self.boundary == False else 0) * (int(1 if self.start[d] == self.a[0] else 0) + int(1 if self.end[d] == self.b[0] else 0))
-                for d in range(self.dim)]
 
-    def setCurrentArea(self, start, end, levelvec):
-        # start of interval
-        self.start = start
-        # end of interval
-        self.end = end
-        # level vector per dimension
-        self.levelvec = levelvec
-        self.dim = len(levelvec)
-        # number of points per dimensin
-        self.numPoints = self.levelToNumPoints(levelvec)
-        self.numPointsWithBoundary = [2 ** levelvec[d] + 1 for d in range(self.dim)]
-        # lower and upper border define the subregion of points in the grid with boundary points (only relevant if boundary=False specified)
-        # for a grid without boundaries that has one edge at the global boundary we for example reduce the number of points by 1
-        # lower border indicates if boundary is at lower end; upper border if boundary is at upper end
-        self.lowerBorder = np.zeros(self.dim, dtype=int)
-        self.upperBorder = np.array(self.numPoints, dtype=int)
-        if not self.boundary:
-            for i in range(self.dim):
-                if start[i] == self.a[i]:
-                    self.lowerBorder[i] = 1
-                if end[i] == self.b[i]:
-                    self.upperBorder[i] = self.numPointsWithBoundary[i] - 1
-                else:
-                    self.upperBorder[i] = self.numPointsWithBoundary[i]
+class TrapezoidalGrid1D(Grid1d):
 
-        # spacing between two points in each dimension
-        self.spacing = (np.array(end) - np.array(start)) / (np.array(self.numPointsWithBoundary) - np.ones(self.dim))
-        self.coordinate_array = []
-        for d in range(self.dim):
-            coordinates = np.empty(self.numPoints[d])
-            for i in range(self.numPoints[d]):
-                coordinates[i] = self.start[d] + (i + self.lowerBorder[d]) * self.spacing[d]
-            self.coordinate_array.append(coordinates)
-        self.weight_base = np.prod(self.spacing)
+    def level_to_num_points_1d(self, level):
+        return 2 ** level + 1 - (1 if not self.boundary else 0) * (
+                    int(1 if self.start == self.a else 0) + int(1 if self.end == self.b else 0))
 
-    # return equidistant points generated with numpy.linspace
-    def getPoints(self):
-        # print(self.numPointsWithBoundary,self.numPoints,list(zip(*[g.ravel() for g in np.meshgrid(*[np.linspace(self.start[i],self.end[i],self.numPointsWithBoundary[i])[self.lowerBorder[i]:self.upperBorder[i]] for i in range(self.dim)])])))
-        return list(zip(*[g.ravel() for g in np.meshgrid(*[
-            np.linspace(self.start[i], self.end[i], self.numPointsWithBoundary[i])[
-            self.lowerBorder[i]:self.upperBorder[i]] for i in range(self.dim)])]))
+    def get_1d_points_and_weights(self):
+        coordsD = self.get_1D_level_points()
+        weightsD = self.get_1D_level_weights()
+        #print(coordsD, weightsD, self.lowerBorder, self.upperBorder, self.a, self.b, self.start, self.end)
+        return coordsD, weightsD
 
-    '''
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.start[d] + (indexvector[d] + self.lowerBorder[d]) * self.spacing[d]
-        return position
-        '''
+    def get_1D_level_points(self):
+        return np.linspace(self.start, self.end, self.num_points_with_boundary)[self.lowerBorder:self.upperBorder]
 
-    def getWeight(self, indexvector):
-
-        factor = 0  # if point is at the border volume is halfed for each of border dimension
-        for d in range(self.dim):
-            if indexvector[d] + self.lowerBorder[d] == 0 or indexvector[d] + self.lowerBorder[d] == \
-                    self.numPointsWithBoundary[d] - 1:
-                factor += 1
-        return self.weight_base * 2 ** -factor
+    def get_1d_weight(self, index):
+        return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
+                    self.num_points_with_boundary - 1 else 1)
 
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
-    def __init__(self, a, b, boundary=True, integrator=None):
+    def __init__(self, a, b, dim, boundary=True, integrator=None):
         self.a = a
         self.b = b
         self.boundary = boundary
@@ -328,80 +347,42 @@ class ClenshawCurtisGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
+        self.grid = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
 
-    def levelToNumPoints(self, levelvec):
-        return [2 ** levelvec[d] + 1 - int(self.boundary == False) * (int(self.start[d] == 0) + int(self.end[d] == 1))
-                for d in range(self.dim)]
 
-    def setCurrentArea(self, start, end, levelvec):
-        self.start = start
-        self.end = end
-        self.levelvec = levelvec
-        self.dim = len(self.levelvec)
-        self.numPoints = self.levelToNumPoints(levelvec)
-        self.numPointsWithBoundary = list(self.numPoints)
-        self.length = np.array(end) - np.array(start)
-        self.lowerBorder = np.zeros(self.dim, dtype=int)
-        self.upperBorder = np.array(self.numPoints, dtype=int)
-        if (self.boundary == False):
-            for i in range(self.dim):
-                if start[i] == self.a[i]:
-                    self.numPointsWithBoundary[i] += 1
-                    self.lowerBorder[i] = 1
-                if end[i] == self.b[i]:
-                    self.numPointsWithBoundary[i] += 1
-                    self.upperBorder[i] = self.numPoints[i] - 1
-                else:
-                    self.upperBorder[i] = self.numPoints[i]
+class ClenshawCurtisGrid1D(Grid1d):
+    def level_to_num_points_1d(self, level):
+        return 2 ** levelvec[d] + 1 - int(self.boundary == False) * (int(self.start[d] == 0) + int(self.end[d] == 1))
 
-        self.coordinate_array = []
-        for d in range(self.dim):
-            coordinates = np.empty(self.numPoints[d])
-            for i in range(self.numPoints[d]):
-                coordinates[i] = self.start[d] + (
-                    1 - math.cos(math.pi * (i + self.lowerBorder[d]) / (self.numPointsWithBoundary[d] - 1))) * \
-               self.length[d] / 2
-            self.coordinate_array.append(coordinates)
+    def get_1d_points_and_weights(self):
+        coordsD = self.get_1D_level_points()
+        weightsD = self.get_1D_level_weights()
+        return coordsD, weightsD
 
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(
-            *[[self.get1DCoordinate(p, i) for p in range(self.numPoints[i])] for i in range(self.dim)])]))
+    def get_1D_level_points(self):
+        coordinates = np.empty(self.numPoints[d])
+        for i in range(self.num_points):
+            coordinates[i] = self.start + (
+                    1 - math.cos(math.pi * (i + self.lowerBorder) / (self.num_points_with_boundary - 1))) * \
+                             self.length / 2
+        return coordinates
 
-    def get1DCoordinate(self, index, d):
-        return self.start[d] + (
-                    1 - math.cos(math.pi * (index + self.lowerBorder[d]) / (self.numPointsWithBoundary[d] - 1))) * \
-               self.length[d] / 2
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.get1DCoordinate(indexvector[d], d)
-        return position
-
-    def getWeight(self, indexvec):
-        weight = 1
-        indexvector = list(indexvec)
-        for d in range(self.dim):
-            indexvector[d] += self.lowerBorder[d]
-        for d in range(self.dim):
-            if (self.numPointsWithBoundary[d] == 2):
-                weight_index_d = 1
+    def get_1d_weight(self, index):
+        weight = self.length / 2.0
+        if self.num_points_withBoundary > 2:
+            if index == 0 or index == self.num_points_with_boundary - 1:
+                weight_factor = 1.0 / ((self.numPointsWithBoundary - 2) * self.num_points_with_boundary)
             else:
-                if indexvector[d] == 0 or indexvector[d] == self.numPointsWithBoundary[d] - 1:
-                    weight_index_d = 1.0 / ((self.numPointsWithBoundary[d] - 2) * self.numPointsWithBoundary[d])
-                else:
-                    weight_index_d = 0.0
-                    for j in range(1, math.floor((self.numPointsWithBoundary[d] - 1) / 2.0) + 1):
-                        term = 1.0 / (1.0 - 4 * j * j) * math.cos(
-                            2 * math.pi * indexvector[d] * j / (self.numPointsWithBoundary[d] - 1))
-                        if j == math.floor((self.numPointsWithBoundary[d] - 1) / 2.0):
-                            term *= 0.5
-                        weight_index_d += term
-                    weight_index_d = 2.0 / (self.numPointsWithBoundary[d] - 1) * (1 + 2 * weight_index_d)
-            weight *= weight_index_d * self.length[d] / 2
-            # print(indexvector,weight_index_d* self.length[d]/2,weight,self.numPoints)
+                weight_factor = 0.0
+                for j in range(1, math.floor((self.num_points_with_boundary - 1) / 2.0) + 1):
+                    term = 1.0 / (1.0 - 4 * j * j) * math.cos(
+                        2 * math.pi * index * j / (self.num_points_with_boundary - 1))
+                    if j == math.floor((self.num_points_with_boundary - 1) / 2.0):
+                        term *= 0.5
+                    weight_factor += term
+                weight_factor = 2.0 / (self.num_points_with_boundary - 1) * (1 + 2 * weight_factor)
+            weight *= weight_factor
         return weight
-
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
@@ -530,7 +511,10 @@ import numpy.polynomial.legendre as legendre
 
 # this class generates a grid according to the Gauss-Legendre quadrature
 class GaussLegendreGrid(Grid):
-    def __init__(self, integrator=None):
+    def __init__(self, a, b, dim, integrator=None):
+        self.a = a
+        self.b = b
+        self.dim = dim
         self.boundary = True  # never points on boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -539,45 +523,24 @@ class GaussLegendreGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
+        self.grids = [GaussLegendreGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
 
-    def levelToNumPoints(self, levelvec):
-        return [2 ** levelvec[d] for d in range(self.dim)]
 
-    # Gauss Legendre grids are not nested!
-    def isNested(self):
+class GaussLegendreGrid1D(Grid1d):
+    def level_to_num_points_1d(self, level):
+        return 2 ** level
+
+    def is_nested(self):
         return False
 
-    def setCurrentArea(self, start, end, levelvec):
-        self.start = np.array(start)
-        self.end = np.array(end)
-        self.length = np.array(end) - np.array(start)
-        self.levelvec = levelvec
-        self.dim = len(levelvec)
-        self.numPoints = self.levelToNumPoints(levelvec)
-        self.coordinate_array = []
-        self.weights = []
-        # prepare coordinates and weights
-        for d in range(self.dim):
-            coordsD, weightsD = legendre.leggauss(int(self.numPoints[d]))
-            coordsD = np.array(coordsD)
-            coordsD += np.ones(int(self.numPoints[d]))
-            coordsD *= self.length[d] / 2.0
-            coordsD += self.start[d]
-            weightsD = np.array(weightsD) * self.length[d] / 2
-            self.coordinate_array.append(coordsD)
-            self.weights.append(weightsD)
-
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
-
-    def get_weights(self):
-        return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
+    def get_1d_points_and_weights(self):
+        coordsD, weightsD = legendre.leggauss(int(self.num_points))
+        coordsD = np.array(coordsD)
+        coordsD += np.ones(int(self.num_points))
+        coordsD *= self.length / 2.0
+        coordsD += self.start
+        weightsD = np.array(weightsD) * self.length / 2
+        return coordsD, weightsD
 
 from scipy.stats import norm
 from scipy.linalg import cholesky
@@ -591,9 +554,11 @@ from scipy.stats import truncnorm
 # We basically compute: N * \int_a^b f(x) e^(-(x-mean)^2/(2 stddev)) dx. Where N is a normalization factor.
 # The code is based on the work in "The Truncated Normal Distribution" by John Burkhardt
 class TruncatedNormalDistributionGrid(Grid):
-    def __init__(self, global_a, global_b, integrator = None):
+    def __init__(self, a, b, dim, integrator=None):
         #we assume here mean = 0 and std_dev = 1 for every dimension
         self.boundary = True  # never points on boundary
+        self.dim = dim
+
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -601,56 +566,36 @@ class TruncatedNormalDistributionGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.normalization = [1.0 / (norm.cdf(global_b[d]) - norm.cdf(global_a[d])) for d in range(len(global_a))]
+        self.grids = [TruncatedNormalDistributionGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
+
         #print(self.normalization, global_a, global_b)
 
-    def setCurrentArea(self, start, end, levelvec):
-        self.dim = len(levelvec)
-        self.start = start
-        self.end = end
-        self.numPoints = self.levelToNumPoints(levelvec)
-        self.levelvec = levelvec
-        self.numPoints = self.levelToNumPoints(levelvec)
-        self.coordinate_array = []
-        self.weights = []
-        for d in range(self.dim):
-            self.L_i_dict = {}
-            self.moment_dict = {}
-            coordsD, weightsD = self.compute_truncated_normal_dist(d)
-            self.coordinate_array.append(coordsD)
-            self.weights.append(weightsD)
 
-    def get_mid_point(self,a,b):
+class TruncatedNormalDistributionGrid1D(Grid1d):
+    def __init__(self, a, b, boundary):
+        self.normalization = 1.0 / (norm.cdf(b) - norm.cdf(a))
+        super().__init__(a=a, b=b, boundary=boundary)
+
+    def get_mid_point(self, a, b):
         middle_cdf = (norm.cdf(b) + norm.cdf(a)) / 2.0
         return norm.ppf(middle_cdf)
 
-    def levelToNumPoints(self, levelvec):
-        return [1 + 2 ** levelvec[d] for d in range(self.dim)]
+    def level_to_num_points_1d(self, level):
+        return 1 + 2 ** level
 
     # This grid is not nested!
-    def isNested(self):
+    def is_nested(self):
         return False
-
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
-
-    def get_weights(self):
-        return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
     # this method implements the moment method for calculation the quadrature points and weights
     # a description can be found in "The Truncated Normal Distribution" from John Burkardt and
     # in "Gene Golub, John Welsch: Calculation of Gaussian Quadrature Rules"
-    def compute_truncated_normal_dist(self, d):
-        num_points = int(self.numPoints[d])
-        a = self.start[d]
-        b = self.end[d]
-        M = self.calculate_moment_matrix(num_points, a,b, self.normalization[d])
+    def get_1d_points_and_weights(self):
+        num_points = int(self.num_points)
+        self.L_i_dict = {}
+        a = self.start
+        b = self.end
+        M = self.calculate_moment_matrix(num_points, a, b)
 
         # the stability can be improved by adding small delta to diagonal -> shifting eigenvalues away from 0
         # currently not needed
@@ -702,7 +647,7 @@ class TruncatedNormalDistributionGrid(Grid):
         '''
         points = [ev.real for ev in evals]
         #print(a, b, self.normalization[d])
-        mu0 = self.get_moment_normalized(0, a, b, self.normalization[d])
+        mu0 = self.get_moment_normalized(0, a, b)
         weights = [mu0 * value * value for value in evecs[0]]
         #print("points and weights", num_points, a, b, points, weights)
         return points, weights
@@ -723,11 +668,12 @@ class TruncatedNormalDistributionGrid(Grid):
                 summation -= L[i,k]**2 * diag[k]
             diag[i] = M[i,i] + summation
         return L, diag
-    def calculate_moment_matrix(self, num_points, a, b, normalization):
+
+    def calculate_moment_matrix(self, num_points, a, b):
         M = np.empty((num_points+1, num_points+1))
         for i in range(num_points+1):
             for j in range(num_points+1):
-                M[i,j] = self.get_moment_normalized(i+j, a, b, normalization)
+                M[i,j] = self.get_moment_normalized(i+j, a, b)
         return M
 
     # Calculation of the moments of the truncated normal distribution according to "The Truncated Normal Distribution" from John Burkardt
@@ -808,7 +754,7 @@ class TruncatedNormalDistributionGrid(Grid):
             self.moment_dict[index] = moment
         return moment
 
-    def get_moment_normalized(self, index, a, b, normalization):
+    def get_moment_normalized(self, index, a, b):
         #print("Moment:", index, " variants:", self.get_moment(index,alpha,beta,mean,std_dev), self.get_moment2(index,alpha,beta,mean,std_dev), self.get_moment4(index,alpha,beta,mean,std_dev) )
-        return self.get_moment(index,a,b) * normalization
+        return self.get_moment(index,a,b) * self.normalization
 

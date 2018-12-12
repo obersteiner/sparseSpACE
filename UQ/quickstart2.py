@@ -71,7 +71,7 @@ print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
 
 
 #grid = GaussLegendreGrid()
-grid = TruncatedNormalDistributionGrid(a,b)
+grid = TruncatedNormalDistributionGrid(a=a,b=b,dim=3)
 errorOperator2=ErrorCalculatorExtendSplit()
 adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
 adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)
