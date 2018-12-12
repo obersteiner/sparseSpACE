@@ -16,23 +16,29 @@ class Function(object):
         self.log = logging.getLogger(__name__)
         self.f_dict = {}
         self.old_f_dict = {}
+        self.do_cache = True  # indicates whether function values should be cached
 
     def reset_dictionary(self):
         self.old_f_dict = {**self.old_f_dict, **self.f_dict}
         self.f_dict = {}
 
     def __call__(self, coordinates):
-        coords = tuple(coordinates)
-        f_value = self.f_dict.get(coords, None)
-        if f_value is not None:
-            return f_value
-        f_value = self.old_f_dict.get(coords, None)
-        if f_value is not None:
-            self.f_dict[coords] = f_value
-            return f_value
+        if self.do_cache:
+            coords = tuple(coordinates)
+            f_value = self.f_dict.get(coords, None)
+            if f_value is not None:
+                return f_value
+            f_value = self.old_f_dict.get(coords, None)
+            if f_value is not None:
+                self.f_dict[coords] = f_value
+                return f_value
         f_value = self.eval(coords)
-        self.f_dict[coords] = f_value
+        if self.do_cache:
+            self.f_dict[coords] = f_value
         return f_value
+
+    def deactivate_caching(self):
+        self.do_cache = False
 
     def get_f_dict_size(self):
         return len(self.f_dict)
