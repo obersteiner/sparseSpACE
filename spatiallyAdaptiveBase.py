@@ -62,8 +62,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.tolerance = tol
         self.f = f
         self.f.reset_dictionary()
-        self.realIntegral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
-        print("Reference solution:", self.realIntegral)
+        if self.realIntegral is not None:
+            print("Reference solution:", self.realIntegral)
+        else:
+            print("No reference solution present. Working purely on surplus error estimates.")
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
@@ -116,7 +118,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.errorMax = self.refinement.get_max_error()
         print("max error:", self.errorMax)
-        return abs(self.refinement.integral - self.realIntegral)/abs(self.realIntegral)
+        if self.realIntegral is not None:
+            return abs(self.refinement.integral - self.realIntegral)/abs(self.realIntegral)
+        else:
+            return self.errorMax
 
     def refine(self):
         # split all cells that have an error close to the max error
@@ -149,9 +154,11 @@ class SpatiallyAdaptivBase(StandardCombi):
             print("recalculating errors")
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10**-2, refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False, reevaluate_at_end=False):
+    def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10**-2, refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False, reevaluate_at_end=False, reference_solution=None):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
+        self.realIntegral = reference_solution
+
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         error_array = []
         num_point_array = []
