@@ -25,8 +25,8 @@ class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
-        self.a = grid.do_shift_back(a)
-        self.b = grid.do_shift_back(b)
+        self.a = a
+        self.b = b
         self.grid = grid
         self.refinements_for_recalculate = 100
         assert (len(a) == len(b))
@@ -60,7 +60,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def init_adaptive_combi(self, f, minv, maxv, refinement_container, tol):
         self.tolerance = tol
-        self.f = FunctionShift(function=f, shift=self.grid.do_shift)
+        self.f = f
         self.f.reset_dictionary()
         self.realIntegral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
         print("Reference solution:", self.realIntegral)

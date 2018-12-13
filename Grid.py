@@ -110,18 +110,6 @@ class Grid(object):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
-    def do_shift(self, coordinate):
-        coordinate_shifted = np.array(coordinate)
-        for i,c in enumerate(coordinate):
-            coordinate_shifted[i] = self.grids[i].shift(c)
-        return coordinate_shifted
-
-    def do_shift_back(self, coordinate):
-        coordinate_shifted = np.array(coordinate)
-        for i,c in enumerate(coordinate):
-            coordinate_shifted[i] = self.grids[i].shift_back(c)
-        return coordinate_shifted
-
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
 
@@ -144,8 +132,6 @@ class Grid1d(object):
         self.boundary = boundary
         self.a = a
         self.b = b
-        self.shift = lambda x: x
-        self.shift_back = lambda x:x
 
 
     def set_current_area(self, start, end, level):
@@ -617,8 +603,8 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
     def get_1d_points_and_weights(self):
         num_points = int(self.num_points)
         self.L_i_dict = {}
-        a = self.start
-        b = self.end
+        a = self.shift_back(self.start)
+        b = self.shift_back(self.end)
         M = self.calculate_moment_matrix(num_points, a, b)
 
         # the stability can be improved by adding small delta to diagonal -> shifting eigenvalues away from 0
@@ -669,7 +655,7 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         X = np.random.rand(num_points, num_points)
         evals, evecs = scipy.sparse.linalg.lobpcg(J, X)
         '''
-        points = [ev.real for ev in evals]
+        points = [self.shift(ev.real) for ev in evals]
         #print(a, b, self.normalization[d])
         mu0 = self.get_moment_normalized(0, a, b)
         weights = [mu0 * value * value for value in evecs[0]]
