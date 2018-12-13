@@ -23,12 +23,12 @@ class DimAdaptiveCombi(StandardCombi):
     def perform_combi(self, minv, maxv, f, tolerance):
         start = self.a
         end = self.b
-        self.f = f
+        self.f = FunctionShift(function=f, shift=self.grid.do_shift)
         self.f.reset_dictionary()
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
-        real_integral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        real_integral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
 
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
@@ -42,7 +42,7 @@ class DimAdaptiveCombi(StandardCombi):
             error_array = np.zeros(len(self.scheme))
             for i, ss in enumerate(self.scheme):
                 if tuple(ss[0]) not in integral_dict:
-                    integral = self.grid.integrate(f, ss[0], start, end)
+                    integral = self.grid.integrate(self.f, ss[0], start, end)
                     integral_dict[tuple(ss[0])] = integral
                 else:
                     integral = integral_dict[tuple(tuple(ss[0]))]

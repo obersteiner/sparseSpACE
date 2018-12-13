@@ -5,10 +5,8 @@ from Integrator import *
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
 
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, boundary=True):
         self.boundary = boundary
-        self.a = a
-        self.b = b
 
     # integrates the grid on the specified area for function f
     def integrate(self, f, levelvec, start, end):
@@ -112,14 +110,43 @@ class Grid(object):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+    def do_shift(self, coordinate):
+        coordinate_shifted = np.array(coordinate)
+        for i,c in enumerate(coordinate):
+            coordinate_shifted[i] = self.grids[i].shift(c)
+        return coordinate_shifted
+
+    def do_shift_back(self, coordinate):
+        coordinate_shifted = np.array(coordinate)
+        for i,c in enumerate(coordinate):
+            coordinate_shifted[i] = self.grids[i].shift_back(c)
+        return coordinate_shifted
+
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
+
+class MixedGrid(Grid):
+    def __init__(self, a, b, dim, grids, boundary=True, integrator=None):
+        self.boundary = boundary
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
+        self.dim = dim
+        assert(len(grids) == dim)
+        self.grids = grids
 
 class Grid1d(object):
     def __init__(self, a=None, b=None, boundary=True):
         self.boundary = boundary
         self.a = a
         self.b = b
+        self.shift = lambda x: x
+        self.shift_back = lambda x:x
+
 
     def set_current_area(self, start, end, level):
         self.start = start
@@ -167,8 +194,6 @@ class Grid1d(object):
 # and constructs the tensorized grid according to the levelvector
 class LejaGrid(Grid):
     def __init__(self, a, b,dim, boundary=True, integrator=None):
-        self.a = a
-        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -187,7 +212,7 @@ class LejaGrid1D(Grid1d):
     def __init__(self, a, b, boundary):
         super().__init__(a=a, b=b, boundary=boundary)
         self.linear_growth_factor = 2
-        
+
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points(self.level, 0, 1)
         # print(coordsD)
@@ -300,8 +325,6 @@ class LejaGrid1D(Grid1d):
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
-        self.a = a
-        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -337,8 +360,6 @@ class TrapezoidalGrid1D(Grid1d):
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
-        self.a = a
-        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -347,12 +368,12 @@ class ClenshawCurtisGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grid = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
+        self.grids = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
 
 
 class ClenshawCurtisGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
-        return 2 ** levelvec[d] + 1 - int(self.boundary == False) * (int(self.start[d] == 0) + int(self.end[d] == 1))
+        return 2 ** level + 1 - int(not self.boundary) * (int(self.start == 0) + int(self.end == 1))
 
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points()
@@ -360,7 +381,7 @@ class ClenshawCurtisGrid1D(Grid1d):
         return coordsD, weightsD
 
     def get_1D_level_points(self):
-        coordinates = np.empty(self.numPoints[d])
+        coordinates = np.empty(self.num_points)
         for i in range(self.num_points):
             coordinates[i] = self.start + (
                     1 - math.cos(math.pi * (i + self.lowerBorder) / (self.num_points_with_boundary - 1))) * \
@@ -369,9 +390,9 @@ class ClenshawCurtisGrid1D(Grid1d):
 
     def get_1d_weight(self, index):
         weight = self.length / 2.0
-        if self.num_points_withBoundary > 2:
+        if self.num_points_with_boundary > 2:
             if index == 0 or index == self.num_points_with_boundary - 1:
-                weight_factor = 1.0 / ((self.numPointsWithBoundary - 2) * self.num_points_with_boundary)
+                weight_factor = 1.0 / ((self.num_points_with_boundary - 2) * self.num_points_with_boundary)
             else:
                 weight_factor = 0.0
                 for j in range(1, math.floor((self.num_points_with_boundary - 1) / 2.0) + 1):
@@ -512,8 +533,6 @@ import numpy.polynomial.legendre as legendre
 # this class generates a grid according to the Gauss-Legendre quadrature
 class GaussLegendreGrid(Grid):
     def __init__(self, a, b, dim, integrator=None):
-        self.a = a
-        self.b = b
         self.dim = dim
         self.boundary = True  # never points on boundary
         if integrator is None:
@@ -542,6 +561,7 @@ class GaussLegendreGrid1D(Grid1d):
         weightsD = np.array(weightsD) * self.length / 2
         return coordsD, weightsD
 
+
 from scipy.stats import norm
 from scipy.linalg import cholesky
 from scipy.linalg import ldl
@@ -554,7 +574,7 @@ from scipy.stats import truncnorm
 # We basically compute: N * \int_a^b f(x) e^(-(x-mean)^2/(2 stddev)) dx. Where N is a normalization factor.
 # The code is based on the work in "The Truncated Normal Distribution" by John Burkhardt
 class TruncatedNormalDistributionGrid(Grid):
-    def __init__(self, a, b, dim, integrator=None):
+    def __init__(self, a, b, dim, mean, std_dev, integrator=None):
         #we assume here mean = 0 and std_dev = 1 for every dimension
         self.boundary = True  # never points on boundary
         self.dim = dim
@@ -566,15 +586,19 @@ class TruncatedNormalDistributionGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [TruncatedNormalDistributionGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
-
+        self.grids = [TruncatedNormalDistributionGrid1D(a=a[d], b=b[d], mean=mean[d], std_dev=std_dev[d], boundary=self.boundary) for d in range(self.dim)]
         #print(self.normalization, global_a, global_b)
 
 
 class TruncatedNormalDistributionGrid1D(Grid1d):
-    def __init__(self, a, b, boundary):
-        self.normalization = 1.0 / (norm.cdf(b) - norm.cdf(a))
-        super().__init__(a=a, b=b, boundary=boundary)
+    def __init__(self, a, b, mean, std_dev, boundary):
+        self.shift = lambda x: x*std_dev + mean
+        self.shift_back = lambda x: (x-mean)/std_dev
+        self.a = self.shift_back(a)
+        self.b = self.shift_back(b)
+        self.normalization = 1.0 / (norm.cdf(self.b) - norm.cdf(self.a))
+
+        self.boundary = boundary
 
     def get_mid_point(self, a, b):
         middle_cdf = (norm.cdf(b) + norm.cdf(a)) / 2.0

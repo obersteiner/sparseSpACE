@@ -94,9 +94,25 @@ from scipy import integrate
 from scipy.stats import norm
 
 
+class FunctionShift(Function):
+    def __init__(self, function, shift):
+        super().__init__()
+        self.function = function
+        self.shift = shift  # a list of functions that can manipulate the coordinates for every dimension
+
+    def eval(self, coordinates):
+        shifted_coordinates = self.shift(coordinates)
+        return self.function.eval(shifted_coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        start_shifted = self.shift(start)
+        end_shifted = self.shift(end)
+        return self.function.getAnalyticSolutionIntegral(start_shifted, end_shifted)
+
 class FunctionUQNormal(Function):
     def __init__(self, function, mean, std_dev, a, b):
         super().__init__()
+        self.dim = len(mean)
         self.mean = mean
         self.std_dev = std_dev
         self.function = function
@@ -116,12 +132,20 @@ class FunctionUQNormal(Function):
         return value * np.exp(summation)
 
     def getAnalyticSolutionIntegral(self, start, end):
-        f = lambda x, y, z: self.eval_with_normal([x, y, z])
-        normalization = 1
-        for d in range(len(start)):
-            S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
-            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
-        return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+        if self.dim ==3:
+            f = lambda x, y, z: self.eval_with_normal([x, y, z])
+            normalization = 1
+            for d in range(len(start)):
+                S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
+                normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
+            return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval_with_normal([x, y])
+            normalization = 1
+            for d in range(len(start)):
+                S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
+                normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
+            return normalization * integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
 
 
 class FunctionUQNormal2(Function):
@@ -135,27 +159,23 @@ class FunctionUQNormal2(Function):
         self.dim = len(mean)
 
     def eval(self, coordinates):
-        return self.eval_with_normal(coordinates)
+        return self.function.eval(coordinates)
 
     def eval_with_normal(self, coordinates):
-        value = self.function(coordinates)
         dim = len(coordinates)
         # add contribution of normal distribution
-        summation = 0
-        normalization = 1
-
-        for d in range(dim):
-            S = norm.cdf(self.b_global[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.a_global[d], loc=self.mean[d], scale=self.std_dev[d])
-            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * self.std_dev[d] ** 2))
-            summation -= (coordinates[d] - self.mean[d])**2 / (2 * self.std_dev[d]**2)
-        return value * np.exp(summation) * normalization
+        return np.prod([norm.pdf(x=coordinates[d], loc=self.mean[d], scale=self.std_dev[d]) / (norm.cdf(self.b_global[d],loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.a_global[d],loc=self.mean[d], scale=self.std_dev[d])) for d in range(dim)])
 
     def getAnalyticSolutionIntegral(self, start, end):
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval([x, y, z]) * self.eval_with_normal([x,y,z])
+            return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval([x, y]) * self.eval_with_normal([x,y])
+            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
+        else:
+            assert False
 
-        f = lambda x, y, z: self.eval([x, y, z])
-
-
-        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
 
 class FunctionUQ(Function):
     def eval(self, coordinates):
@@ -174,6 +194,25 @@ class FunctionUQ(Function):
         f = lambda x, y, z: self.eval([x,y,z])
         return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
 
+
+from scipy.stats import truncnorm
+class FunctionUQ2(Function):
+    def eval(self, coordinates):
+        # print(coordinates)
+        assert (len(coordinates) == 2)
+        parameter1 = coordinates[0]
+        parameter2 = coordinates[1]
+
+        # Model with discontinuity
+        # Nicholas Zabarras Paper: „Sparse grid collocation schemes for stochastic natural convection problems“
+        # e^(-x^2 + 2*sign(y))
+        value_of_interest = math.exp(-parameter1 ** 2 + 2 * np.sign(parameter2))
+        return value_of_interest
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        f = lambda x, y: self.eval([x, y])
+        return integrate.dblquad(f, start[1], end[1], lambda x: start[0],
+                                 lambda x: end[0])[0]
 # This class composes different functions that fullfill the function interface to generate a composition of functions
 # Each Function can be weighted by a factor to allow for a flexible composition
 class FunctionCompose(Function):

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import abc
+from Function import FunctionShift
 import logging
 from combiScheme import *
 
@@ -30,14 +31,14 @@ class StandardCombi(object):
     def perform_combi(self, minv, maxv, f):
         start = self.a
         end = self.b
-        self.f = f
+        self.f = FunctionShift(function=f, shift=self.grid.do_shift)
         self.f.reset_dictionary()
         self.set_combi_parameters(minv, maxv)
         combiintegral = 0
         for ss in self.scheme:
-            integral = self.grid.integrate(f, ss[0], start, end) * ss[1]
+            integral = self.grid.integrate(self.f, ss[0], start, end) * ss[1]
             combiintegral += integral
-        real_integral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        real_integral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
         print("CombiSolution", combiintegral)
         print("Analytic Solution", real_integral)
         print("Difference", abs(combiintegral - real_integral))

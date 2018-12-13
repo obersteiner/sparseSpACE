@@ -25,8 +25,8 @@ class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
-        self.a = a
-        self.b = b
+        self.a = grid.do_shift_back(a)
+        self.b = grid.do_shift_back(b)
         self.grid = grid
         self.refinements_for_recalculate = 100
         assert (len(a) == len(b))
@@ -42,7 +42,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         return len(array2new)
 
 
-    def evaluate_final_combi(self, f):
+    def evaluate_final_combi(self):
         combiintegral = 0
         dim = self.dim
         # print "Dim:",dim
@@ -50,7 +50,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         for ss in self.scheme:
             integral = 0
             for area in self.get_areas():
-                area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
                 if area_integral != -2 ** 30:
                     num_evaluations += evaluations
                     integral += area_integral
@@ -60,9 +60,10 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def init_adaptive_combi(self, f, minv, maxv, refinement_container, tol):
         self.tolerance = tol
-        self.f = f
+        self.f = FunctionShift(function=f, shift=self.grid.do_shift)
         self.f.reset_dictionary()
-        self.realIntegral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        self.realIntegral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
+        print("Reference solution:", self.realIntegral)
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
@@ -81,7 +82,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         # self.evaluationsTotal = 0 #number of evaluations in current grid
         # self.evaluationPerArea = [] #number of evaluations per area
 
-    def evaluate_integral(self, f):
+    def evaluate_integral(self):
         # initialize values
         #number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
@@ -96,7 +97,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
                 #print(ss)
-                area_integral, partial_integrals, evaluations = self.evaluate_area(f, area, ss[0])
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
                 if area_integral != -2 ** 30:
                     if partial_integrals is not None: #outdated
                         pass
@@ -110,7 +111,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
             self.refinement.set_evaluations(i, evaluation_array[k] / len(self.scheme))
-            self.calc_error(i, f)
+            self.calc_error(i, self.f)
 
         # getArea with maximal error
         self.errorMax = self.refinement.get_max_error()
@@ -155,7 +156,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         error_array = []
         num_point_array = []
         while True:
-            error = self.evaluate_integral(f)
+            error = self.evaluate_integral()
             error_array.append(error)
             num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             print("combiintegral:", self.refinement.integral)
@@ -175,7 +176,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.check_combi_scheme()
         if reevaluate_at_end:
             # evaluate final integral
-            combiintegral, number_of_evaluations = self.evaluate_final_combi(f)
+            combiintegral, number_of_evaluations = self.evaluate_final_combi()
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
