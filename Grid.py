@@ -1,6 +1,7 @@
 import numpy as np
-import abc,logging
+import abc, logging
 from Integrator import *
+
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -14,12 +15,12 @@ class Grid(object):
             self.setCurrentArea(start, end, levelvec)
         return self.integrator(f, self.levelToNumPoints(levelvec), start, end)
 
-    #def integrate_point(self, f, levelvec, start, end, point):
+    # def integrate_point(self, f, levelvec, start, end, point):
     #    if not self.isGlobal():
     #        self.setCurrentArea(start, end, levelvec)
     #    return self.integrator.integrate_point(f, point)
 
-    #returns if all grid components are nested
+    # returns if all grid components are nested
     def isNested(self):
         return all([self.grids[d].is_nested() for d in self.dim])
 
@@ -52,17 +53,16 @@ class Grid(object):
     def getWeight(self, indexvector):
         pass
 
-
     # this method translates a point in an equidistant mesh of level self.levelvec to its corresponding index
     def getIndexTo1DCoordinate(self, coordinate, level):
         return coordinate * 2 ** level
 
     def point_not_zero(self, p):
-        #print(p, self.grid.boundary or not (self.point_on_boundary(p)))
+        # print(p, self.grid.boundary or not (self.point_on_boundary(p)))
         return self.boundary or not (self.point_on_boundary(p))
 
     def point_on_boundary(self, p):
-        #print("2",p, (p == self.a).any() or (p == self.b).any())
+        # print("2",p, (p == self.a).any() or (p == self.b).any())
         return (p == self.a).any() or (p == self.b).any()
 
     def get_points_and_weights(self):
@@ -70,7 +70,8 @@ class Grid(object):
 
     @abc.abstractmethod
     def get_weights(self):
-        return list(self.getWeight(index) for index in zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
+        return list(self.getWeight(index) for index in
+                    zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
     def get_mid_point(self, a, b, d):
         return self.grids[d].get_mid_point(a, b)
@@ -110,8 +111,10 @@ class Grid(object):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
+
 
 class MixedGrid(Grid):
     def __init__(self, a, b, dim, grids, boundary=True, integrator=None):
@@ -126,15 +129,15 @@ class MixedGrid(Grid):
             else:
                 assert False
         self.dim = dim
-        assert(len(grids) == dim)
+        assert (len(grids) == dim)
         self.grids = grids
+
 
 class Grid1d(object):
     def __init__(self, a=None, b=None, boundary=True):
         self.boundary = boundary
         self.a = a
         self.b = b
-
 
     def set_current_area(self, start, end, level):
         self.start = start
@@ -146,7 +149,7 @@ class Grid1d(object):
         self.num_points_with_boundary = self.level_to_num_points_1d(level)
         self.boundary = boundary_save
         self.length = end - start
-        #coords, weights = self.get_1d_points_and_weights(level)
+        # coords, weights = self.get_1d_points_and_weights(level)
 
         self.lowerBorder = int(0)
         self.upperBorder = self.num_points
@@ -157,7 +160,7 @@ class Grid1d(object):
                 self.upperBorder = self.num_points_with_boundary - 1
             else:
                 self.upperBorder = self.num_points_with_boundary
-        #equidistant spacing; only valid for equidistant grids
+        # equidistant spacing; only valid for equidistant grids
         self.spacing = (end - start) / (self.num_points_with_boundary - 1)
 
     @abc.abstractmethod
@@ -172,16 +175,17 @@ class Grid1d(object):
         pass
 
     def get_mid_point(self, a, b):
-        return (a+b)/2.0
+        return (a + b) / 2.0
 
     # the default case is that a grid is nested; overwrite this if not nested!
     def is_nested(self):
         return True
 
+
 # this class generates a Leja grid which constructs 1D Leja grid structures
 # and constructs the tensorized grid according to the levelvector
 class LejaGrid(Grid):
-    def __init__(self, a, b,dim, boundary=True, integrator=None):
+    def __init__(self, a, b, dim, boundary=True, integrator=None):
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -192,8 +196,6 @@ class LejaGrid(Grid):
                 assert False
         self.linear_growth_factor = 2
         self.grids = [LejaGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
-
-
 
 
 class LejaGrid1D(Grid1d):
@@ -308,8 +310,6 @@ class LejaGrid1D(Grid1d):
         return unsorted_points
 
 
-
-
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
@@ -328,12 +328,12 @@ class TrapezoidalGrid1D(Grid1d):
 
     def level_to_num_points_1d(self, level):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
-                    int(1 if self.start == self.a else 0) + int(1 if self.end == self.b else 0))
+                int(1 if self.start == self.a else 0) + int(1 if self.end == self.b else 0))
 
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points()
         weightsD = self.get_1D_level_weights()
-        #print(coordsD, weightsD, self.lowerBorder, self.upperBorder, self.a, self.b, self.start, self.end)
+        # print(coordsD, weightsD, self.lowerBorder, self.upperBorder, self.a, self.b, self.start, self.end)
         return coordsD, weightsD
 
     def get_1D_level_points(self):
@@ -341,7 +341,7 @@ class TrapezoidalGrid1D(Grid1d):
 
     def get_1d_weight(self, index):
         return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
-                    self.num_points_with_boundary - 1 else 1)
+                                      self.num_points_with_boundary - 1 else 1)
 
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
@@ -392,6 +392,7 @@ class ClenshawCurtisGrid1D(Grid1d):
                 weight_factor = 2.0 / (self.num_points_with_boundary - 1) * (1 + 2 * weight_factor)
             weight *= weight_factor
         return weight
+
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
@@ -511,7 +512,7 @@ class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
 
     def get1DCoordinate(self, index, d):
         return self.a[d] + (
-                    1 - math.cos(math.pi * (index + self.lowerBorder[d]) / (self.numPointsWithoutCoarsening[d] - 1))) * \
+                1 - math.cos(math.pi * (index + self.lowerBorder[d]) / (self.numPointsWithoutCoarsening[d] - 1))) * \
                self.length[d] / 2
 
 
@@ -558,12 +559,14 @@ from scipy.sparse import diags
 from scipy.sparse.linalg import lobpcg, LinearOperator
 from scipy import integrate
 from scipy.stats import truncnorm
+
+
 # this class generates a grid according to the quadrature rule of a truncated normal distribution
 # We basically compute: N * \int_a^b f(x) e^(-(x-mean)^2/(2 stddev)) dx. Where N is a normalization factor.
 # The code is based on the work in "The Truncated Normal Distribution" by John Burkhardt
 class TruncatedNormalDistributionGrid(Grid):
     def __init__(self, a, b, dim, mean, std_dev, integrator=None):
-        #we assume here mean = 0 and std_dev = 1 for every dimension
+        # we assume here mean = 0 and std_dev = 1 for every dimension
         self.boundary = True  # never points on boundary
         self.dim = dim
 
@@ -574,18 +577,21 @@ class TruncatedNormalDistributionGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [TruncatedNormalDistributionGrid1D(a=a[d], b=b[d], mean=mean[d], std_dev=std_dev[d], boundary=self.boundary) for d in range(self.dim)]
-        #print(self.normalization, global_a, global_b)
+        self.grids = [
+            TruncatedNormalDistributionGrid1D(a=a[d], b=b[d], mean=mean[d], std_dev=std_dev[d], boundary=self.boundary)
+            for d in range(self.dim)]
+        # print(self.normalization, global_a, global_b)
 
 
 class TruncatedNormalDistributionGrid1D(Grid1d):
     def __init__(self, a, b, mean, std_dev, boundary=True):
-        self.shift = lambda x: x*std_dev + mean
-        self.shift_back = lambda x: (x-mean)/std_dev
+        self.shift = lambda x: x * std_dev + mean
+        self.shift_back = lambda x: (x - mean) / std_dev
         self.a = self.shift_back(a)
         self.b = self.shift_back(b)
         self.normalization = 1.0 / (norm.cdf(self.b) - norm.cdf(self.a))
         self.boundary = boundary
+
     def get_mid_point(self, a, b):
         middle_cdf = (norm.cdf(b) + norm.cdf(a)) / 2.0
         return norm.ppf(middle_cdf)
@@ -609,8 +615,8 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
 
         # the stability can be improved by adding small delta to diagonal -> shifting eigenvalues away from 0
         # currently not needed
-        #for i in range(num_points + 1):
-            #M[i, i] += 10**-15
+        # for i in range(num_points + 1):
+        # M[i, i] += 10**-15
 
         # compute ldl decomposition (a bit more stable than cholesky)
         LU, diag = self.ldl_decomp(M)
@@ -618,9 +624,9 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         # calculate cholesky factorization based on ldl decomposition -> apply sqrt(diagonal element) to both matrices
         for i in range(num_points + 1):
             for j in range(num_points + 1):
-                if (diag[j] < 0): # in case we encounter a negative diagonal value due to instability / conditioning
+                if (diag[j] < 0):  # in case we encounter a negative diagonal value due to instability / conditioning
                     # fill up with small value > 0
-                    LU[i, j] *= 10**-15
+                    LU[i, j] *= 10 ** -15
                 else:
                     LU[i, j] *= math.sqrt(diag[j])
 
@@ -629,24 +635,23 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         # other version using scipy cholesky factorization; tends to crash earlier
         # R = scipy.linalg.cholesky(M)
 
-
         alpha_vec = np.empty(num_points)
-        alpha_vec[0] = R[0,1]/ R[0,0]
+        alpha_vec[0] = R[0, 1] / R[0, 0]
         for i in range(1, num_points):
-            alpha_vec[i] = float(R[i, i+1]) / R[i,i] - float(R[i-1,i]) / R[i-1,i-1]
-        beta_vec = np.empty(num_points-1)
+            alpha_vec[i] = float(R[i, i + 1]) / R[i, i] - float(R[i - 1, i]) / R[i - 1, i - 1]
+        beta_vec = np.empty(num_points - 1)
         for i in range(num_points - 1):
-            beta_vec[i] = R[i+1, i+1] / R[i,i]
+            beta_vec[i] = R[i + 1, i + 1] / R[i, i]
 
         # fill tridiagonal matrix
 
-        J = np.zeros((num_points,num_points))
+        J = np.zeros((num_points, num_points))
         for i in range(num_points):
-            J[i,i] = alpha_vec[i]
+            J[i, i] = alpha_vec[i]
 
         for i in range(num_points - 1):
-            J[i,i+1] = beta_vec[i]
-            J[i+1,i] = beta_vec[i]
+            J[i, i + 1] = beta_vec[i]
+            J[i + 1, i] = beta_vec[i]
         evals, evecs = scipy.linalg.eig(J)
         '''
         J = scipy.sparse.diags([alpha_vec, beta_vec, beta_vec], [0,-1,1])
@@ -656,34 +661,34 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         evals, evecs = scipy.sparse.linalg.lobpcg(J, X)
         '''
         points = [self.shift(ev.real) for ev in evals]
-        #print(a, b, self.normalization[d])
+        # print(a, b, self.normalization[d])
         mu0 = self.get_moment_normalized(0, a, b)
         weights = [mu0 * value * value for value in evecs[0]]
-        #print("points and weights", num_points, a, b, points, weights)
+        # print("points and weights", num_points, a, b, points, weights)
         return points, weights
 
-    def ldl_decomp(self,M):
+    def ldl_decomp(self, M):
         diag = np.zeros(len(M))
-        L = np.zeros((len(M),len(M)))
+        L = np.zeros((len(M), len(M)))
         for i in range(len(diag)):
-            L[i,i] = 1
+            L[i, i] = 1
             for j in range(i):
                 summation = 0
                 for k in range(j):
-                    summation -= L[i,k] * L[j,k] * diag[k]
-                L[i,j] = 1.0/diag[j] * (M[i,j] + summation)
+                    summation -= L[i, k] * L[j, k] * diag[k]
+                L[i, j] = 1.0 / diag[j] * (M[i, j] + summation)
             summation = 0
 
             for k in range(i):
-                summation -= L[i,k]**2 * diag[k]
-            diag[i] = M[i,i] + summation
+                summation -= L[i, k] ** 2 * diag[k]
+            diag[i] = M[i, i] + summation
         return L, diag
 
     def calculate_moment_matrix(self, num_points, a, b):
-        M = np.empty((num_points+1, num_points+1))
-        for i in range(num_points+1):
-            for j in range(num_points+1):
-                M[i,j] = self.get_moment_normalized(i+j, a, b)
+        M = np.empty((num_points + 1, num_points + 1))
+        for i in range(num_points + 1):
+            for j in range(num_points + 1):
+                M[i, j] = self.get_moment_normalized(i + j, a, b)
         return M
 
     # Calculation of the moments of the truncated normal distribution according to "The Truncated Normal Distribution" from John Burkardt
@@ -699,9 +704,9 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         L_i = self.L_i_dict.get(index, None)
         if L_i is None:
             moment_m2 = self.get_L_i(index - 2, a, b)  # recursive search
-            L_i = -(b**(index - 1) * norm.pdf(b) - a**(index - 1) * norm.pdf(a)) + (index - 1) * moment_m2
+            L_i = -(b ** (index - 1) * norm.pdf(b) - a ** (index - 1) * norm.pdf(a)) + (index - 1) * moment_m2
             self.L_i_dict[index] = L_i
-        #print(index,L_i)
+        # print(index,L_i)
         return L_i
 
     # Different version of calculating moments according to: "A Recursive Formula for the Moments of a Truncated
@@ -715,35 +720,36 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         if moment is None:
             m_m2 = self.get_moment2(index - 2, a, b)
             moment = (index - 1) * m_m2
-            moment -= b**(index-1) * norm.pdf(b) - a**(index - 1) * norm.pdf(a)
+            moment -= b ** (index - 1) * norm.pdf(b) - a ** (index - 1) * norm.pdf(a)
             self.moment_dict[index] = moment
         return moment
 
-    #Slight modification of 2nd version by restructuring computation; tends to be less stable
+    # Slight modification of 2nd version by restructuring computation; tends to be less stable
     def get_moment5(self, index, a, b):
         moment = self.moment_dict.get(index, None)
         if moment is None:
-            moment = self.get_moment5_fac(index, b) * norm.pdf(b) - self.get_moment5_fac(index,a) * norm.pdf(a)
+            moment = self.get_moment5_fac(index, b) * norm.pdf(b) - self.get_moment5_fac(index, a) * norm.pdf(a)
             if index % 2 == 0:
                 moment += (norm.cdf(b) - norm.cdf(a))
             print(moment, index)
             self.moment_dict[index] = moment
         return moment
 
-    def get_moment5_fac(self,index, boundary):
+    def get_moment5_fac(self, index, boundary):
         if index == -1:
             return 0
         if index == 0:
             return 0
-        return - (boundary**(index - 1)) + (index - 1) * self.get_moment5_fac(index - 2, boundary)
+        return - (boundary ** (index - 1)) + (index - 1) * self.get_moment5_fac(index - 2, boundary)
 
     # Calculating moments by numerical quadrature; tends to be inaccurate
     def get_moment3(self, index, a, b):
         moment = self.moment_dict.get(index, None)
         if moment is None:
             def integrant(x):
-                return x**index * norm.pdf(x)
-            moment = integrate.quad(func=integrant, a=a, b=b, epsrel=10**-15, epsabs=10**-15)[0]
+                return x ** index * norm.pdf(x)
+
+            moment = integrate.quad(func=integrant, a=a, b=b, epsrel=10 ** -15, epsabs=10 ** -15)[0]
             '''
             if alpha < -1 and beta > 1:
                 moment = integrate.quad(func=integrant, a=alpha, b=-1, epsrel=10**-15)[0]
@@ -751,7 +757,7 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
                 moment += integrate.quad(func=integrant, a=-1, b=-0, epsrel=10**-15)[0]
                 moment += integrate.quad(func=integrant, a=0, b=1, epsrel=10**-15)[0]
             '''
-            #self.moment_dict[index] = moment
+            # self.moment_dict[index] = moment
         return moment
 
     # Calculating moments using scipy
@@ -760,11 +766,10 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         if moment is None:
             moment = truncnorm.moment(index, a=a, b=b)
             normalization_local = 1.0 / (norm.cdf(b) - norm.cdf(a))
-            moment /= normalization_local # denormalize
+            moment /= normalization_local  # denormalize
             self.moment_dict[index] = moment
         return moment
 
     def get_moment_normalized(self, index, a, b):
-        #print("Moment:", index, " variants:", self.get_moment(index,alpha,beta,mean,std_dev), self.get_moment2(index,alpha,beta,mean,std_dev), self.get_moment4(index,alpha,beta,mean,std_dev) )
-        return self.get_moment(index,a,b) * self.normalization
-
+        # print("Moment:", index, " variants:", self.get_moment(index,alpha,beta,mean,std_dev), self.get_moment2(index,alpha,beta,mean,std_dev), self.get_moment4(index,alpha,beta,mean,std_dev) )
+        return self.get_moment(index, a, b) * self.normalization

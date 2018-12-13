@@ -1,4 +1,4 @@
-import abc,logging
+import abc, logging
 # Python modules
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
@@ -40,7 +40,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             array2new = list(set(array2))
         # print(len(array2new))
         return len(array2new)
-
 
     def evaluate_final_combi(self):
         combiintegral = 0
@@ -86,7 +85,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def evaluate_integral(self):
         # initialize values
-        #number_of_evaluations = 0
+        # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
         integralarrayComplete = np.zeros(len(areas))
@@ -98,15 +97,15 @@ class SpatiallyAdaptivBase(StandardCombi):
             integral = 0
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
-                #print(ss)
+                # print(ss)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
                 if area_integral != -2 ** 30:
-                    if partial_integrals is not None: #outdated
+                    if partial_integrals is not None:  # outdated
                         pass
-                        #integralArrayIndividual.extend(partial_integrals)
+                        # integralArrayIndividual.extend(partial_integrals)
                     else:
                         integralarrayComplete[k] += ss[1] * area_integral
-                    # self.combiintegral += area_integral * ss[1]
+                        # self.combiintegral += area_integral * ss[1]
                         evaluation_array[k] += evaluations
 
         for k in range(len(integralarrayComplete)):
@@ -119,7 +118,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.errorMax = self.refinement.get_max_error()
         print("max error:", self.errorMax)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral)/abs(self.realIntegral)
+            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)
         else:
             return self.errorMax
 
@@ -136,7 +135,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 tolerance=self.errorMax * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
-                #print("Refining position", position)
+                # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
@@ -154,7 +153,9 @@ class SpatiallyAdaptivBase(StandardCombi):
             print("recalculating errors")
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10**-2, refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False, reevaluate_at_end=False, reference_solution=None):
+    def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10 ** -2,
+                                refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False,
+                                reevaluate_at_end=False, reference_solution=None):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.realIntegral = reference_solution

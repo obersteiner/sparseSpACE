@@ -1,7 +1,8 @@
 import math
 import numpy as np
-import abc,logging
+import abc, logging
 from combiScheme import CombiScheme
+
 
 # This class defines the general template of a Refinement Object that can be stored in the refinement container
 class RefinementObject(object):
@@ -25,7 +26,8 @@ class RefinementObject(object):
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
-    def __init__(self, start, end, grid, number_of_refinements_before_extend, parent_integral, coarseningValue=0, needExtendScheme=0, punish_depth = False):
+    def __init__(self, start, end, grid, number_of_refinements_before_extend, parent_integral, coarseningValue=0,
+                 needExtendScheme=0, punish_depth=False):
         # start of subarea
         self.start = start
         # end of subarea
@@ -40,8 +42,8 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.evaluations = 0
         self.integral = None
         self.parent_integral = parent_integral
-        #dictionary that maps all coarsened levelvectors to there uncoarsened ones
-        #the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
+        # dictionary that maps all coarsened levelvectors to there uncoarsened ones
+        # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
         self.punish_depth = punish_depth
         self.grid = grid
@@ -86,14 +88,14 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.levelvec_dict = {}
 
     def add_level(self, levelvec_coarsened, levelvec):
-        #print("adding", levelvec_coarsened, levelvec)
+        # print("adding", levelvec_coarsened, levelvec)
         self.levelvec_dict[levelvec_coarsened] = levelvec
 
     def is_already_calculated(self, levelvec_coarsened, levelvec):
         if levelvec_coarsened not in self.levelvec_dict:
             return False
         else:
-            #print(levelvec_coarsened, levelvec, self.levelvec_dict[levelvec_coarsened])
+            # print(levelvec_coarsened, levelvec, self.levelvec_dict[levelvec_coarsened])
             return self.levelvec_dict[levelvec_coarsened] != levelvec
 
     # splits the current area into 2**dim smaller ones and returns them
@@ -113,22 +115,25 @@ class RefinementObjectExtendSplit(RefinementObject):
                 end_sub_area[d] = midpoint[d] if rest < 2 ** d else end[d]
                 rest = rest % 2 ** d
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area, self.grid,
-                                                                self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim,
+                                                                self.numberOfRefinementsBeforeExtend,
+                                                                self.integral / 2 ** self.dim,
                                                                 self.coarseningValue, self.needExtendScheme)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
 
     # set the local error associated with RefinementObject
     def set_error(self, error):
-        if(self.punish_depth):
-            error = error * np.prod(np.array(self.end) - np.array(self.start)) * 2**self.coarseningValue
+        if (self.punish_depth):
+            error = error * np.prod(np.array(self.end) - np.array(self.start)) * 2 ** self.coarseningValue
         self.error = error
+
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectCell(RefinementObject):
     cell_dict = {}
     cells_for_level = []
     punish_depth = False
+
     def __init__(self, start, end, levelvec, a, b, lmin, father=None):
         self.a = a
         self.b = b
@@ -140,7 +145,7 @@ class RefinementObjectCell(RefinementObject):
         RefinementObjectCell.cell_dict[self.get_key()] = self
         self.dim = len(start)
         self.levelvec = np.array(levelvec, dtype=int)
-        #print("levelvec", self.levelvec)
+        # print("levelvec", self.levelvec)
         self.level = sum(levelvec) - self.dim + 1
         # self.father = father
         self.children = []
@@ -150,14 +155,14 @@ class RefinementObjectCell(RefinementObject):
         self.parents = []
         self.sub_integrals = []
         for d in range(self.dim):
-            parent = RefinementObjectCell.parent_cell_arbitrary_dim(d, self.levelvec, self.start, self.end, self.a, self.b, self.lmin)
+            parent = RefinementObjectCell.parent_cell_arbitrary_dim(d, self.levelvec, self.start, self.end, self.a,
+                                                                    self.b, self.lmin)
             if parent is not None:
                 self.parents.append(parent)
                 if parent != father:
-                    #print(parent, RefinementObjectCell.cell_dict.items(), self.get_key(), father, self.levelvec)
+                    # print(parent, RefinementObjectCell.cell_dict.items(), self.get_key(), father, self.levelvec)
                     parent_object = RefinementObjectCell.cell_dict[parent]
                     parent_object.add_child(self)
-
 
     def add_child(self, child):
         self.children.append(child)
@@ -195,19 +200,22 @@ class RefinementObjectCell(RefinementObject):
             for candidate in possible_candidates_d:
                 if candidate in RefinementObjectCell.cell_dict:
                     continue
-                #print("candidate", candidate)
-                #key = candidate.get_key()
+                # print("candidate", candidate)
+                # key = candidate.get_key()
                 can_be_refined = True
-                for parent in RefinementObjectCell.get_parents(levelvec_copy, candidate[0], candidate[1], self.a, self.b, self.dim, self.lmin):
-                    if parent not in RefinementObjectCell.cell_dict or RefinementObjectCell.cell_dict[parent].isActive():
+                for parent in RefinementObjectCell.get_parents(levelvec_copy, candidate[0], candidate[1], self.a,
+                                                               self.b, self.dim, self.lmin):
+                    if parent not in RefinementObjectCell.cell_dict or RefinementObjectCell.cell_dict[
+                        parent].isActive():
                         can_be_refined = False
                         break
                 if can_be_refined:
-                    new_objects.append(RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin,
-                                                        self.get_key()))
+                    new_objects.append(
+                        RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin,
+                                             self.get_key()))
 
         self.children.extend(new_objects)
-        #print("New refined objects", [object.get_key() for object in new_objects])
+        # print("New refined objects", [object.get_key() for object in new_objects])
         return new_objects, None, None
 
     # splits the current cell into the 2 children in the dimension d and returns the children
@@ -218,8 +226,9 @@ class RefinementObjectCell(RefinementObject):
         levelvec[d] += 1
         for child in childs:
             if child not in RefinementObjectCell.cell_dict:
-                new_refinement_object = RefinementObjectCell(child[0], child[1], list(levelvec), self.a, self.b, self.lmin, self.get_key())
-                #RefinementObjectCell.cells_for_level[self.level+1].append(new_refinement_object)
+                new_refinement_object = RefinementObjectCell(child[0], child[1], list(levelvec), self.a, self.b,
+                                                             self.lmin, self.get_key())
+                # RefinementObjectCell.cells_for_level[self.level+1].append(new_refinement_object)
                 sub_area_array.append(new_refinement_object)
         return sub_area_array
 
@@ -251,11 +260,11 @@ class RefinementObjectCell(RefinementObject):
         levelvec_parent[d] = levelvec_parent[d] - 1
         parent_start = np.array(start)
         parent_end = np.array(end)
-        index_of_start = start[d] * 2**levelvec[d]
+        index_of_start = start[d] * 2 ** levelvec[d]
         if index_of_start % 2 == 1:  # start needs to be changed
-            parent_start[d] = parent_end[d] - (b[d] - a[d])/2**levelvec_parent[d]
+            parent_start[d] = parent_end[d] - (b[d] - a[d]) / 2 ** levelvec_parent[d]
         else:  # end needs to be changed
-            parent_end[d] = parent_start[d] + (b[d] - a[d])/2**levelvec_parent[d]
+            parent_end[d] = parent_start[d] + (b[d] - a[d]) / 2 ** levelvec_parent[d]
 
         return tuple((tuple(parent_start), tuple(parent_end)))
 
@@ -271,9 +280,10 @@ class RefinementObjectCell(RefinementObject):
                 self.error *= np.prod(np.array(self.end) - np.array(self.start))
         else:
             self.error = 0
-        #print("Error of refine object:", self.get_key(), "is:", self.error)
+        # print("Error of refine object:", self.get_key(), "is:", self.error)
 
         self.sub_integrals = []
+
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectSingleDimension(RefinementObject):
@@ -323,8 +333,10 @@ class RefinementObjectSingleDimension(RefinementObject):
         # add new refined interval to refinement array (it has half of the width)
         new_width = (self.end - self.start) / 2.0
         new_objects = []
-        new_objects.append(RefinementObjectSingleDimension(self.start, self.start + new_width, self.dim, coarsening_value))
-        new_objects.append(RefinementObjectSingleDimension(self.start + new_width, self.end, self.dim, coarsening_value))
+        new_objects.append(
+            RefinementObjectSingleDimension(self.start, self.start + new_width, self.dim, coarsening_value))
+        new_objects.append(
+            RefinementObjectSingleDimension(self.start + new_width, self.end, self.dim, coarsening_value))
         # self.finestWidth = min(new_width,self.finestWidth)
         return new_objects, lmax_increase, update
 
