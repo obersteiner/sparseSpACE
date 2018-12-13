@@ -12,8 +12,8 @@ class StandardCombi(object):
     def __init__(self, a, b, grid=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
-        self.a = a
-        self.b = b
+        self.a = grid.do_shift_back(a)
+        self.b = grid.do_shift_back(b)
         self.grid = grid
         self.combischeme = CombiScheme(self.dim)
         assert (len(a) == len(b))
