@@ -115,6 +115,8 @@ from scipy.special import eval_hermitenorm, eval_sh_legendre
 
 class MixedGrid(Grid):
     def __init__(self, a, b, dim, grids, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -577,15 +579,13 @@ class TruncatedNormalDistributionGrid(Grid):
 
 
 class TruncatedNormalDistributionGrid1D(Grid1d):
-    def __init__(self, a, b, mean, std_dev, boundary):
+    def __init__(self, a, b, mean, std_dev, boundary=True):
         self.shift = lambda x: x*std_dev + mean
         self.shift_back = lambda x: (x-mean)/std_dev
         self.a = self.shift_back(a)
         self.b = self.shift_back(b)
         self.normalization = 1.0 / (norm.cdf(self.b) - norm.cdf(self.a))
-
         self.boundary = boundary
-
     def get_mid_point(self, a, b):
         middle_cdf = (norm.cdf(b) + norm.cdf(a)) / 2.0
         return norm.ppf(middle_cdf)
