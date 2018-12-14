@@ -116,11 +116,12 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         # getArea with maximal error
         self.errorMax = self.refinement.get_max_error()
-        print("max error:", self.errorMax)
+        self.total_error = self.refinement.get_total_error()
+        print("max surplus error:", self.errorMax, "total surplus error:", self.total_error)
         if self.realIntegral is not None:
             return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)
         else:
-            return self.errorMax
+            return self.total_error
 
     def refine(self):
         # split all cells that have an error close to the max error

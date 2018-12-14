@@ -64,6 +64,13 @@ class RefinementContainer(object):
                 max_error = i.error
         return max_error
 
+    # return the maximal error among all RefinementObjects
+    def get_total_error(self):
+        total_error = 0
+        for i in self.refinementObjects:
+            total_error += i.error
+        return total_error
+
     # indicate that all objects have been processed and new RefinementObjects will be added at the end
     def clear_new_objects(self):
         self.startNewObjects = len(self.refinementObjects)
