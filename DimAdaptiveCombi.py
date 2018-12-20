@@ -20,7 +20,7 @@ class DimAdaptiveCombi(StandardCombi):
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
     # f = function to integrate; dim=dimension of problem
-    def perform_combi(self, minv, maxv, f, tolerance):
+    def perform_combi(self, minv, maxv, f, tolerance, reference_solution=None):
         start = self.a
         end = self.b
         self.f = f
@@ -28,8 +28,8 @@ class DimAdaptiveCombi(StandardCombi):
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
-        real_integral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
-
+        real_integral = reference_solution
+        assert(reference_solution is not None)
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
         self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
