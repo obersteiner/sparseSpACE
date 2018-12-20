@@ -60,7 +60,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     def init_adaptive_combi(self, f, minv, maxv, refinement_container, tol):
         self.tolerance = tol
         self.f = f
-        self.f.reset_dictionary()
         if self.realIntegral is not None:
             print("Reference solution:", self.realIntegral)
         else:
@@ -72,6 +71,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.combischeme = CombiScheme(self.dim)
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             self.initialize_refinement()
+            self.f.reset_dictionary()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
             self.refinement.reinit_new_objects()
@@ -175,7 +175,11 @@ class SpatiallyAdaptivBase(StandardCombi):
                 # refine further
                 self.refine()
                 if do_plot:
+                    print("Refinement Graph:")
+                    self.draw_refinement()
+                    print("Combi Scheme:")
                     self.print_resulting_combi_scheme()
+                    print("Resulting Sparse Grid:")
                     self.print_resulting_sparsegrid()
             else:  # refinement finished
                 break
@@ -227,3 +231,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this is a default implementation that should be overritten if necessary
     def get_areas(self):
         return self.refinement.get_objects()
+
+    # this method can be overwritten if for the method a graphical refinement visualization exists
+    def draw_refinement(self, filename=None):
+        pass
