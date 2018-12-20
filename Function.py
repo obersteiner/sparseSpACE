@@ -16,23 +16,29 @@ class Function(object):
         self.log = logging.getLogger(__name__)
         self.f_dict = {}
         self.old_f_dict = {}
+        self.do_cache = True  # indicates whether function values should be cached
 
     def reset_dictionary(self):
         self.old_f_dict = {**self.old_f_dict, **self.f_dict}
         self.f_dict = {}
 
     def __call__(self, coordinates):
-        coords = tuple(coordinates)
-        f_value = self.f_dict.get(coords, None)
-        if f_value is not None:
-            return f_value
-        f_value = self.old_f_dict.get(coords, None)
-        if f_value is not None:
-            self.f_dict[coords] = f_value
-            return f_value
+        if self.do_cache:
+            coords = tuple(coordinates)
+            f_value = self.f_dict.get(coords, None)
+            if f_value is not None:
+                return f_value
+            f_value = self.old_f_dict.get(coords, None)
+            if f_value is not None:
+                self.f_dict[coords] = f_value
+                return f_value
         f_value = self.eval(coords)
-        self.f_dict[coords] = f_value
+        if self.do_cache:
+            self.f_dict[coords] = f_value
         return f_value
+
+    def deactivate_caching(self):
+        self.do_cache = False
 
     def get_f_dict_size(self):
         return len(self.f_dict)
@@ -84,13 +90,31 @@ class Function(object):
             fig.savefig(filename, bbox_inches='tight')
         plt.show()
 
+
 from scipy import integrate
 from scipy.stats import norm
+
+
+class FunctionShift(Function):
+    def __init__(self, function, shift):
+        super().__init__()
+        self.function = function
+        self.shift = shift  # a list of functions that can manipulate the coordinates for every dimension
+
+    def eval(self, coordinates):
+        shifted_coordinates = self.shift(coordinates)
+        return self.function.eval(shifted_coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        start_shifted = self.shift(start)
+        end_shifted = self.shift(end)
+        return self.function.getAnalyticSolutionIntegral(start_shifted, end_shifted)
 
 
 class FunctionUQNormal(Function):
     def __init__(self, function, mean, std_dev, a, b):
         super().__init__()
+        self.dim = len(mean)
         self.mean = mean
         self.std_dev = std_dev
         self.function = function
@@ -106,16 +130,26 @@ class FunctionUQNormal(Function):
         # add contribution of normal distribution
         summation = 0
         for d in range(dim):
-            summation -= (coordinates[d])**2 / (2 * 1)
+            summation -= (coordinates[d]) ** 2 / (2 * 1)
         return value * np.exp(summation)
 
     def getAnalyticSolutionIntegral(self, start, end):
-        f = lambda x, y, z: self.eval_with_normal([x, y, z])
-        normalization = 1
-        for d in range(len(start)):
-            S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
-            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
-        return normalization * integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval_with_normal([x, y, z])
+            normalization = 1
+            for d in range(len(start)):
+                S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
+                normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
+            return normalization * \
+                   integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                     lambda x, y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval_with_normal([x, y])
+            normalization = 1
+            for d in range(len(start)):
+                S = norm.cdf(self.b_global[d]) - norm.cdf(self.a_global[d])
+                normalization *= 1.0 / (S * math.sqrt(2 * math.pi * 1))
+            return normalization * integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
 
 
 class FunctionUQNormal2(Function):
@@ -129,31 +163,56 @@ class FunctionUQNormal2(Function):
         self.dim = len(mean)
 
     def eval(self, coordinates):
-        return self.eval_with_normal(coordinates)
+        return self.function.eval(coordinates)
 
     def eval_with_normal(self, coordinates):
-        value = self.function(coordinates)
         dim = len(coordinates)
         # add contribution of normal distribution
-        summation = 0
-        normalization = 1
-
-        for d in range(dim):
-            S = norm.cdf(self.b_global[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.a_global[d], loc=self.mean[d], scale=self.std_dev[d])
-            normalization *= 1.0 / (S * math.sqrt(2 * math.pi * self.std_dev[d] ** 2))
-            summation -= (coordinates[d] - self.mean[d])**2 / (2 * self.std_dev[d]**2)
-        return value * np.exp(summation) * normalization
+        return np.prod([norm.pdf(x=coordinates[d], loc=self.mean[d], scale=self.std_dev[d]) / (
+                    norm.cdf(self.b_global[d], loc=self.mean[d], scale=self.std_dev[d]) - norm.cdf(self.a_global[d],
+                                                                                                   loc=self.mean[d],
+                                                                                                   scale=self.std_dev[
+                                                                                                       d])) for d in
+                        range(dim)])
 
     def getAnalyticSolutionIntegral(self, start, end):
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval([x, y, z]) * self.eval_with_normal([x, y, z])
+            return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                     lambda x, y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval([x, y]) * self.eval_with_normal([x, y])
+            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
+        else:
+            assert False
 
-        f = lambda x, y, z: self.eval([x, y, z])
 
+class FunctionUQWeighted(Function):
+    def __init__(self, function, weight_function):
+        super().__init__()
+        self.function = function
+        self.weight_function = weight_function
 
-        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+    def eval(self, coordinates):
+        return self.function.eval(coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        self.dim = len(start)
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval([x, y, z]) * self.weight_function([x, y, z])
+            return \
+                integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                  lambda x, y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval([x, y]) * self.weight_function([x, y])
+            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
+        else:
+            assert False
+
 
 class FunctionUQ(Function):
     def eval(self, coordinates):
-        assert(len(coordinates) == 3)
+        assert (len(coordinates) == 3)
         parameter1 = coordinates[0]
         parameter2 = coordinates[1]
         parameter3 = coordinates[2]
@@ -165,8 +224,32 @@ class FunctionUQ(Function):
         return value_of_interest
 
     def getAnalyticSolutionIntegral(self, start, end):
-        f = lambda x, y, z: self.eval([x,y,z])
-        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0], lambda x,y: end[0])[0]
+        f = lambda x, y, z: self.eval([x, y, z])
+        return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                 lambda x, y: end[0])[0]
+
+
+from scipy.stats import truncnorm
+
+
+class FunctionUQ2(Function):
+    def eval(self, coordinates):
+        # print(coordinates)
+        assert (len(coordinates) == 2)
+        parameter1 = coordinates[0]
+        parameter2 = coordinates[1]
+
+        # Model with discontinuity
+        # Nicholas Zabarras Paper: „Sparse grid collocation schemes for stochastic natural convection problems“
+        # e^(-x^2 + 2*sign(y))
+        value_of_interest = math.exp(-parameter1 ** 2 + 2 * np.sign(parameter2))
+        return value_of_interest
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        f = lambda x, y: self.eval([x, y])
+        return integrate.dblquad(f, start[1], end[1], lambda x: start[0],
+                                 lambda x: end[0])[0]
+
 
 # This class composes different functions that fullfill the function interface to generate a composition of functions
 # Each Function can be weighted by a factor to allow for a flexible composition
@@ -202,7 +285,7 @@ class GenzCornerPeak(Function):
         return result ** (-self.dim - 1)
 
     def getAnalyticSolutionIntegral(self, start, end):
-        factor = ((-1)**self.dim) * 1.0/ (math.factorial(self.dim) * np.prod(self.coeffs))
+        factor = ((-1) ** self.dim) * 1.0 / (math.factorial(self.dim) * np.prod(self.coeffs))
         combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
         result = 0
         for c in combinations:
@@ -213,7 +296,7 @@ class GenzCornerPeak(Function):
                 else:
                     value = end[d]
                 partial_result += value * self.coeffs[d]
-            result += (-1)**sum(c) * partial_result**-1
+            result += (-1) ** sum(c) * partial_result ** -1
         return factor * result
 
 
@@ -253,7 +336,7 @@ class GenzOszillatory(Function):
         return math.cos(result)
 
     def getAnalyticSolutionIntegral(self, start, end):
-        factor = ((-1)**int(math.floor(self.dim/2))) * 1.0/ np.prod(self.coeffs)
+        factor = ((-1) ** int(math.floor(self.dim / 2))) * 1.0 / np.prod(self.coeffs)
         combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
         result = 0
         for c in combinations:
@@ -265,10 +348,11 @@ class GenzOszillatory(Function):
                     value = end[d]
                 partial_result += value * self.coeffs[d]
             if self.dim % 2 == 1:
-                result += (-1)**sum(c) * math.sin(partial_result)
+                result += (-1) ** sum(c) * math.sin(partial_result)
             else:
-                result += (-1)**sum(c) * math.cos(partial_result)
+                result += (-1) ** sum(c) * math.cos(partial_result)
         return factor * result
+
 
 class GenzDiscontinious(Function):
     def __init__(self, coeffs, border):
@@ -354,9 +438,9 @@ class Function2Jakeman(Function):
         sqPiHalve = np.sqrt(np.pi) * 0.5
         for d in range(dim):
             result = result * (
-                        sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoint[d])) -
-                        sqPiHalve * scipy.special.erf(
-                    np.sqrt(self.coefficients[d]) * (start[d] - self.midpoint[d]))) / np.sqrt(self.coefficients[d])
+                    sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoint[d])) -
+                    sqPiHalve * scipy.special.erf(
+                np.sqrt(self.coefficients[d]) * (start[d] - self.midpoint[d]))) / np.sqrt(self.coefficients[d])
         return result
 
 
@@ -375,7 +459,7 @@ class FunctionGriebel(Function):
         result = 1.0
         for d in range(dim):
             result = result * (
-                        end[d] ** (1 + 1.0 / dim) / (1 + 1.0 / dim) - start[d] ** (1 + 1.0 / dim) / (1 + 1.0 / dim))
+                    end[d] ** (1 + 1.0 / dim) / (1 + 1.0 / dim) - start[d] ** (1 + 1.0 / dim) / (1 + 1.0 / dim))
         return (1 + 1.0 / dim) ** dim * result
 
 
@@ -403,7 +487,7 @@ class FunctionGeneralizedNormal(Function):
         sqPiHalve = np.sqrt(np.pi) * 0.5
         for d in range(dim):
             result = result * (
-                        sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoints[d])) -
-                        sqPiHalve * scipy.special.erf(
-                    np.sqrt(self.coefficients[d]) * (start[d] - self.midpoints[d]))) / np.sqrt(self.coefficients[d])
+                    sqPiHalve * scipy.special.erf(np.sqrt(self.coefficients[d]) * (end[d] - self.midpoints[d])) -
+                    sqPiHalve * scipy.special.erf(
+                np.sqrt(self.coefficients[d]) * (start[d] - self.midpoints[d]))) / np.sqrt(self.coefficients[d])
         return result

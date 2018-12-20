@@ -28,7 +28,7 @@ class DimAdaptiveCombi(StandardCombi):
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
-        real_integral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        real_integral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
 
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
@@ -42,12 +42,13 @@ class DimAdaptiveCombi(StandardCombi):
             error_array = np.zeros(len(self.scheme))
             for i, ss in enumerate(self.scheme):
                 if tuple(ss[0]) not in integral_dict:
-                    integral = self.grid.integrate(f, ss[0], start, end)
+                    integral = self.grid.integrate(self.f, ss[0], start, end)
                     integral_dict[tuple(ss[0])] = integral
                 else:
                     integral = integral_dict[tuple(tuple(ss[0]))]
                 # as error estimator we compare to the analytic solution and divide by the cost=number of points in grid
-                error_array[i] = abs(integral - real_integral)/abs(real_integral) / np.prod(self.grid.levelToNumPoints(ss[0])) if self.combischeme.is_refinable(ss[0]) else 0
+                error_array[i] = abs(integral - real_integral) / abs(real_integral) / np.prod(
+                    self.grid.levelToNumPoints(ss[0])) if self.combischeme.is_refinable(ss[0]) else 0
                 combiintegral += integral * ss[1]
             do_refine = True
             if abs(combiintegral - real_integral) / abs(real_integral) < tolerance:
@@ -58,8 +59,8 @@ class DimAdaptiveCombi(StandardCombi):
             num_points.append(self.get_total_num_points(distinct_function_evals=True))
             while do_refine:
                 grid_id = np.argmax(error_array)
-                #print(error_array)
-                print("Current error:", abs(combiintegral - real_integral)/abs(real_integral))
+                # print(error_array)
+                print("Current error:", abs(combiintegral - real_integral) / abs(real_integral))
                 print("Refining", self.scheme[grid_id], self.combischeme.is_refinable(self.scheme[grid_id][0]))
                 refined_dims = self.combischeme.update_adaptive_combi(self.scheme[grid_id][0])
                 do_refine = refined_dims == []
