@@ -163,7 +163,12 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                                  self.numberOfRefinementsBeforeExtend, None, 0,
                                                                  0)
             parent.set_integral(parent_integral)
-            new_refinement_objects = parent.split_area_arbitrary_dim()
+            new_refinement_objects = [parent]
+            for i in range(d):
+                temp = []
+                for area in new_refinement_objects:
+                    temp += area.split_area_single_dim(d)
+                new_refinement_objects = temp
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
