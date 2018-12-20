@@ -27,7 +27,9 @@ class RefinementObject(object):
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
     def __init__(self, start, end, grid, number_of_refinements_before_extend, parent_integral, coarseningValue=0,
-                 needExtendScheme=0, punish_depth=False):
+                 needExtendScheme=0, punish_depth=False, extend_parent_integral=None,
+                 split_parent_integral=None, automatic_extend_split=False, parent=None, factor=1,
+                 depth=0):
         # start of subarea
         self.start = start
         # end of subarea
@@ -47,17 +49,48 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.levelvec_dict = {}
         self.punish_depth = punish_depth
         self.grid = grid
+        self.error_extend = None
+        self.error_split = None
+        self.automatic_extend_split = automatic_extend_split
+        self.extend_parent_integral =  extend_parent_integral
+        self.split_parent_integral = split_parent_integral
+        self.parent = parent
+        self.children = []
+        self.factor = factor
+        self.depth = depth
 
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
         coarsening_level = self.coarseningValue
-        if (
+        if self.automatic_extend_split:
+            print(self.start, self.end, "Parent", self.parent_integral, "Integral", self.integral, "Extend",
+                  self.extend_parent_integral, "Split", self.split_parent_integral)
+            if self.error_extend is None:
+                print(self.extend_parent_integral, self.integral)
+                self.error_extend = abs(self.extend_parent_integral - self.integral) / self.dim
+            if self.error_split is None:
+
+                sum_siblings = 0.0
+                i = 0
+                for child in self.parent.children:
+                    if child.integral is not None:
+                        sum_siblings += child.integral
+                        i += 1
+                print(i)
+                assert i == 2 ** self.dim
+                self.error_split = abs(self.split_parent_integral - sum_siblings) / (
+                            2 ** self.dim * 2 ** (self.depth ** 2))  # 2**self.dim)
+
+                # self.error_split = abs(self.split_parent_integral/2**self.dim - self.integral)/ 2**(self.depth)#math.sqrt(2**self.dim)
+            print("Extend error", self.error_extend, "Split error", self.error_split)
+        if (self.automatic_extend_split and self.error_extend > self.error_split) or (
+                not self.automatic_extend_split and
                 self.needExtendScheme >= self.numberOfRefinementsBeforeExtend):  # add new component grids to scheme and refine only target area
 
             if self.coarseningValue == 0:
-                self.coarseningValue = 0
+                coarseningValue = 0
             else:
-                self.coarseningValue = coarsening_level - 1
+                coarseningValue = coarsening_level - 1
             # in case we have refined complete scheme (i.e. coarensingLevel was 0)
             # we have to increase level everywhere else
             if coarsening_level == 0:
@@ -65,17 +98,29 @@ class RefinementObjectExtendSplit(RefinementObject):
                 lmaxIncrease = [1 for d in range(self.dim)]
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end, self.grid,
                                                                   self.numberOfRefinementsBeforeExtend, self.integral,
-                                                                  self.coarseningValue, self.needExtendScheme)
+                                                                  coarseningValue, self.needExtendScheme,
+                                                                  extend_parent_integral=self.integral,
+                                                                  automatic_extend_split=self.automatic_extend_split,
+                                                                  parent=self.parent, factor=self.dim,
+                                                                  depth=self.depth + 1)
+                self.children.append(newRefinementObject)
                 return [newRefinementObject], lmaxIncrease, 1
             else:
                 # add to integralArray
                 newRefinementObject = RefinementObjectExtendSplit(self.start, self.end, self.grid,
                                                                   self.numberOfRefinementsBeforeExtend, self.integral,
-                                                                  self.coarseningValue, self.needExtendScheme)
+                                                                  coarseningValue, self.needExtendScheme,
+                                                                  extend_parent_integral=self.integral,
+                                                                  automatic_extend_split=self.automatic_extend_split,
+                                                                  parent=self.parent, factor=self.dim,
+                                                                  depth=self.depth + 1)
+                self.children.append(newRefinementObject)
                 return [newRefinementObject], None, None
-        elif self.needExtendScheme >= 0:  # split the array
+        elif (self.automatic_extend_split and self.error_extend <= self.error_split) or (
+                not self.automatic_extend_split and self.needExtendScheme >= 0):  # split the array
             # add to integralArray
             self.needExtendScheme += 1
+            print("Splitting", self.start, self.end)
             newRefinementObjects = self.split_area_arbitrary_dim()
             return newRefinementObjects, None, None
         else:
@@ -117,7 +162,12 @@ class RefinementObjectExtendSplit(RefinementObject):
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area, self.grid,
                                                                 self.numberOfRefinementsBeforeExtend,
                                                                 self.integral / 2 ** self.dim,
-                                                                self.coarseningValue, self.needExtendScheme)
+                                                                self.coarseningValue, self.needExtendScheme,
+                                                                split_parent_integral=self.integral,
+                                                                parent=self,
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                factor=2 ** self.dim, depth=self.depth + 1 / 2)
+            self.children.append(new_refinement_object)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
 
@@ -154,6 +204,7 @@ class RefinementObjectCell(RefinementObject):
         self.active = True
         self.parents = []
         self.sub_integrals = []
+        self.integral = None
         for d in range(self.dim):
             parent = RefinementObjectCell.parent_cell_arbitrary_dim(d, self.levelvec, self.start, self.end, self.a,
                                                                     self.b, self.lmin)
