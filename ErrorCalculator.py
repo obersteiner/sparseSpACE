@@ -65,4 +65,4 @@ class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
 
 class ErrorCalculatorExtendSplit2(ErrorCalculator):  # TODO
     def calc_error(self, f, refine_object):
-        return abs(refine_object.integral - refine_object.parent_integral) * refine_object.factor
+        return abs(refine_object.integral - refine_object.parent_integral) / refine_object.factor
