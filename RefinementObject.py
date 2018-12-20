@@ -49,8 +49,7 @@ class RefinementObjectExtendSplit(RefinementObject):
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
         coarsening_level = self.coarseningValue
-        if (
-                self.needExtendScheme >= self.numberOfRefinementsBeforeExtend):  # add new component grids to scheme and refine only target area
+        if (self.needExtendScheme >= self.numberOfRefinementsBeforeExtend):  # add new component grids to scheme and refine only target area
 
             if self.coarseningValue == 0:
                 self.coarseningValue = 0
@@ -114,6 +113,20 @@ class RefinementObjectExtendSplit(RefinementObject):
                 rest = rest % 2 ** d
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area, self.grid,
                                                                 self.numberOfRefinementsBeforeExtend, self.integral/2**self.dim,
+                                                                self.coarseningValue, self.needExtendScheme)
+            sub_area_array.append(new_refinement_object)
+        return sub_area_array
+
+    def split_area_single_dim(self, d):
+        midpoint = self.grid.get_mid_point(start[d], end[d])
+        sub_area_array = []
+        for i in range(2):
+            start_sub_area = self.start
+            end_sub_area = self.end
+            start_sub_area[d] = midpoint[d] if i == 1
+            end_sub_area[d] = midpoint[d] if i == 0
+            new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area, self.grid,
+                                                                self.numberOfRefinementsBeforeExtend, self.integral/2,
                                                                 self.coarseningValue, self.needExtendScheme)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
