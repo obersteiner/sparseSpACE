@@ -63,13 +63,10 @@ class RefinementObjectExtendSplit(RefinementObject):
     def refine(self):
         coarsening_level = self.coarseningValue
         if self.automatic_extend_split:
-            print(self.start, self.end, "Parent", self.parent_integral, "Integral", self.integral, "Extend",
-                  self.extend_parent_integral, "Split", self.split_parent_integral)
             if self.error_extend is None:
                 print(self.extend_parent_integral, self.integral)
                 self.error_extend = abs(self.extend_parent_integral - self.integral) / self.dim
             if self.error_split is None:
-
                 sum_siblings = 0.0
                 i = 0
                 for child in self.parent.children:
@@ -80,9 +77,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                 assert i == 2 ** self.dim
                 self.error_split = abs(self.split_parent_integral - sum_siblings) / (
                             2 ** self.dim * 2 ** (self.depth ** 2))  # 2**self.dim)
-
                 # self.error_split = abs(self.split_parent_integral/2**self.dim - self.integral)/ 2**(self.depth)#math.sqrt(2**self.dim)
-            print("Extend error", self.error_extend, "Split error", self.error_split)
         if (self.automatic_extend_split and self.error_extend > self.error_split) or (
                 not self.automatic_extend_split and
                 self.needExtendScheme >= self.numberOfRefinementsBeforeExtend):  # add new component grids to scheme and refine only target area
@@ -120,7 +115,6 @@ class RefinementObjectExtendSplit(RefinementObject):
                 not self.automatic_extend_split and self.needExtendScheme >= 0):  # split the array
             # add to integralArray
             self.needExtendScheme += 1
-            print("Splitting", self.start, self.end)
             newRefinementObjects = self.split_area_arbitrary_dim()
             return newRefinementObjects, None, None
         else:
