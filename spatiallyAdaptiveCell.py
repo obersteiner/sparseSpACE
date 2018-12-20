@@ -29,7 +29,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
         plt.rcParams.update({'font.size': 32})
-        dim = len(self.refinement[0][0])
+        dim = self.dim
         if dim > 2:
             print("Refinement can only be printed in 2D")
             return
