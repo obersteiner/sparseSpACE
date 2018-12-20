@@ -26,7 +26,7 @@ class RefinementObject(object):
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
-    def __init__(self, start, end, grid, number_of_refinements_before_extend, parent_integral, coarseningValue=0,
+    def __init__(self, start, end, grid, number_of_refinements_before_extend, parent_integral, splitSingleDim, coarseningValue=0,
                  needExtendScheme=0, punish_depth=False):
         # start of subarea
         self.start = start
@@ -46,7 +46,11 @@ class RefinementObjectExtendSplit(RefinementObject):
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
         self.punish_depth = punish_depth
+        self.splitSingleDim = splitSingleDim
         self.grid = grid
+        self.twins = [None] * self.dim
+        self.maxTwinError = None
+        self.dimMaxTwinError = None
 
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
@@ -75,8 +79,13 @@ class RefinementObjectExtendSplit(RefinementObject):
         elif self.needExtendScheme >= 0:  # split the array
             # add to integralArray
             self.needExtendScheme += 1
-            newRefinementObjects = self.split_area_arbitrary_dim()
-            return newRefinementObjects, None, None
+            if self.splitSingleDim:
+                d = self.getSplitDim()
+                newRefinementObjects = self.split_area_single_dim(d)
+                return newRefinementObjects, None, None
+            else:
+                newRefinementObjects = self.split_area_arbitrary_dim()
+                return newRefinementObjects, None, None
         else:
             print("Error!!!! Invalid value")
             assert False
@@ -120,18 +129,26 @@ class RefinementObjectExtendSplit(RefinementObject):
             sub_area_array.append(new_refinement_object)
         return sub_area_array
 
+    # splits the current area in the d-th dimension and returns the pair of twins
     def split_area_single_dim(self, d):
         midpoint = self.grid.get_mid_point(start[d], end[d])
         sub_area_array = []
         for i in range(2):
             start_sub_area = self.start
             end_sub_area = self.end
-            start_sub_area[d] = midpoint[d] if i == 1
-            end_sub_area[d] = midpoint[d] if i == 0
+            start_sub_area[d] = midpoint[d] if i == 1 else start_sub_area[d]
+            end_sub_area[d] = midpoint[d] if i == 0 else end_sub_area[d]
             new_refinement_object = RefinementObjectExtendSplit(start_sub_area, end_sub_area, self.grid,
-                                                                self.numberOfRefinementsBeforeExtend, self.integral/2,
+                                                                self.numberOfRefinementsBeforeExtend, self.integral / 2,
                                                                 self.coarseningValue, self.needExtendScheme)
+            new_refinement_object.twins = self.twins #TODO Pass on twin infos from self? Is this intended as such?
             sub_area_array.append(new_refinement_object)
+        sub_area_array[0].set_twin(d, sub_area_array[1])
+        twinError = abs(sub_area_array[0].integral - sub_area_array[1].integral)
+        for i in range(2):
+            if sub_area_array[i].maxTwinError == None or twinError > sub_area_array[i].maxTwinError:
+                sub_area_array[i].maxTwinError = twinError
+                sub_area_array[i].dimMaxTwinError = d
         return sub_area_array
 
     # set the local error associated with RefinementObject
@@ -139,6 +156,18 @@ class RefinementObjectExtendSplit(RefinementObject):
         if (self.punish_depth):
             error = error * np.prod(np.array(self.end) - np.array(self.start)) * 2 ** self.coarseningValue
         self.error = error
+
+    # define two area objects to be twins of each other in the d-th dimension
+    def set_twin(self, d, twin):
+        self.twins[d] = twin
+        twin.twins[d] = self
+
+    # returns the dimension in which the split shall be performed
+    def getSplitDim(self):
+        if self.maxTwinError == None:
+            return 0 #TODO Is this always feasible/sensical?
+        else:
+            return self.dimMaxTwinError
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme

@@ -58,6 +58,6 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
         return error * np.prod(upper_bounds - lower_bounds)
         
 
-class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
+class ErrorCalculatorExtendSplit(ErrorCalculator):
     def calc_error(self, f, refine_object):
         return abs(refine_object.integral - refine_object.parent_integral)
