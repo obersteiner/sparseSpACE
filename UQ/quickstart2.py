@@ -61,17 +61,11 @@ dist = cp.J(parameter1Dist, parameter2Dist, parameter3Dist)
 #nodes, weights = cp.generate_quadrature(q, dist, rule="G")
 mean=[parameter1,parameter2,parameter3]
 std_dev=[parameter1_var, parameter2_var, parameter3_var]
-#a = (np.ones(3)* (-5) - np.array(mean)) / np.array(std_dev)
-#b = (np.ones(3)* (5) - np.array(mean)) / np.array(std_dev)
-#print(a,b)
-a = np.ones(3) * -3
-b = np.ones(3) * 3
-model = FunctionUQNormal(function=FunctionUQ(), mean=mean, std_dev=std_dev, a=a, b=b)
-print("Analytic solution:",model.getAnalyticSolutionIntegral(a, b))
+a = [0.2,-1,0]
+b = [0.4,3,3]
+model = FunctionUQNormal2(FunctionUQ(), mean, std_dev, a, b)
 
-
-#grid = GaussLegendreGrid()
-grid = TruncatedNormalDistributionGrid(a,b)
+grid = TruncatedNormalDistributionGrid(a=a,b=b,dim=3,mean=mean,std_dev=std_dev)
 errorOperator2=ErrorCalculatorExtendSplit()
 adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
 adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)

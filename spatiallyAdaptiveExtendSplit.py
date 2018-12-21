@@ -2,8 +2,8 @@ from spatiallyAdaptiveBase import *
 
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend, grid=None, no_initial_splitting=False,
-                 version=0, dim_adaptive=False):
+    def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
+                 version=0, dim_adaptive=False, automatic_extend_split=False):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
@@ -15,6 +15,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
         self.dim_adaptive = dim_adaptive
+        self.automatic_extend_split = automatic_extend_split
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
@@ -155,13 +156,13 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.combischeme.init_adaptive_combi_scheme(self.lmax, self.lmin)
         if self.noInitialSplitting:
             new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
-                                                                self.numberOfRefinementsBeforeExtend, 0, 0)
+                                                                self.numberOfRefinementsBeforeExtend, 0, 0, automatic_extend_split=self.automatic_extend_split)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             parent_integral = self.grid.integrate(self.f, np.zeros(self.dim, dtype=int), self.a, self.b)
             parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
                                                                  self.numberOfRefinementsBeforeExtend, None, 0,
-                                                                 0)
+                                                                 0, automatic_extend_split=self.automatic_extend_split)
             parent.set_integral(parent_integral)
             new_refinement_objects = parent.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
@@ -178,6 +179,22 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 self.grid.levelToNumPoints(level_for_evaluation))
 
     def do_refinement(self, area, position):
+        if self.automatic_extend_split:
+            if area.extend_parent_integral is None:
+                lmax_reduced = [self.lmax[d] - 1 for d in range(self.dim)]
+                area.extend_parent_integral = 0.0
+                scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax_reduced[0], self.dim, False)
+                for ss in scheme:
+                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
+                    area.extend_parent_integral += area_integral * ss[1]
+            if area.split_parent_integral is None:
+                area.parent.coarseningValue = area.coarseningValue
+                area.parent.levelvec_dict = {}
+                area.split_parent_integral = 0
+                for ss in self.scheme:
+                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area.parent, ss[0])
+                    area.split_parent_integral += area_integral * ss[1]
+
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]

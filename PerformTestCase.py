@@ -7,15 +7,15 @@ from StandardCombi import *
 from DimAdaptiveCombi import *
 
 
-def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, realIntegral):
+def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution):
     # calculate standard combination scheme results
     errorArrayStandard = []
     pointArray = []
     distinctFEvalArray = []
     standardCombi = StandardCombi(a, b, grid)
     for i in range(lmin + 1, lmin + maxLmax):
-        scheme, error, result = standardCombi.perform_combi(lmin, i, f)
-        errorArrayStandard.append(error / abs(realIntegral))
+        scheme, error, result = standardCombi.perform_combi(lmin, i, f, reference_solution=reference_solution)
+        errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
     return pointArray, distinctFEvalArray, errorArrayStandard
@@ -24,8 +24,8 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, realIntegral):
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
                                 minTol=-1, doDimAdaptive=False):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
-    realIntegral = f.getAnalyticSolutionIntegral(a, b)
-    print("Exact integral", realIntegral)
+    reference_solution = f.getAnalyticSolutionIntegral(a, b)
+    print("Exact integral", reference_solution)
     errorArray = []
     numEvaluationsArray = []
     numNaive = []
@@ -38,11 +38,12 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numNaiveAlgorithm = []
         numIdealAlgorithm = []
         numFEvalIdealAlgorithm = []
+        '''
         for i in range(minTol, maxtol+1):
             start = time.time()
             if i == minTol:
                 coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new = algorithm[0].performSpatiallyAdaptiv(
-                    algorithm[1], algorithm[2], f, algorithm[3], 10 ** -i)
+                    algorithm[1], algorithm[2], f, algorithm[3], 10 ** -i, reference_solution=reference_solution)
                 # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
                 errorArrayAlgorithm.extend(error_array_new)
                 numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
@@ -50,9 +51,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
                 # numNaiveAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(True))
                 numFEvalIdealAlgorithm.extend(num_point_array_new)
             else:
-                if abs(integral - realIntegral) / abs(realIntegral) > 10 ** -i:
+                if abs(integral - reference_solution) / abs(reference_solution) > 10 ** -i:
                     coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new = algorithm[0].performSpatiallyAdaptiv(
-                        algorithm[1], algorithm[2], f, algorithm[3], 10 ** -i, coarsening)
+                        algorithm[1], algorithm[2], f, algorithm[3], 10 ** -i, coarsening, reference_solution=reference_solution)
                     #errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
                     errorArrayAlgorithm.extend(error_array_new)
                     numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
@@ -61,6 +62,17 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
                     numFEvalIdealAlgorithm.extend(num_point_array_new)
             end = time.time()
             print("time spent in case", i, end - start)
+            '''
+        coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new = algorithm[
+            0].performSpatiallyAdaptiv(
+            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution)
+        # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
+        errorArrayAlgorithm.extend(error_array_new)
+        numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
+        # numIdealAlgorithm.extend(algorithm[0].get_total_num_points_arbitrary_dim(False))
+        # numNaiveAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(True))
+        numFEvalIdealAlgorithm.extend(num_point_array_new)
+
         errorArray.append(errorArrayAlgorithm)
         numEvaluationsArray.append(numEvaluationsArrayAlgorithm)
         numNaive.append(numNaiveAlgorithm)
@@ -69,7 +81,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
 
     if doDimAdaptive:
         dimAdaptiveCombi = DimAdaptiveCombi(a,b, grid)
-        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1,2,f,10**-maxtol)
+        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1,2,f,10**-maxtol, reference_solution=reference_solution)
 
     # calculate different standard combination scheme results
     xArrayStandard = []
@@ -79,7 +91,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         xArrayStandardTest, xFEvalArrayStandardTest, errorArrayStandardTest = performTestStandard(f, a, b, grid, i,
                                                                                                   maxLmax - (i - 1) * (
                                                                                                               dim - 1),
-                                                                                                  dim, realIntegral)
+                                                                                                  dim, reference_solution)
         xArrayStandard.append(xArrayStandardTest)
         xFEvalArrayStandard.append(xFEvalArrayStandardTest)
         errorArrayStandard.append(errorArrayStandardTest)

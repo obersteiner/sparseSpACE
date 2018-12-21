@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import abc
+from Function import FunctionShift
 import logging
 from combiScheme import *
 
@@ -27,7 +28,7 @@ class StandardCombi(object):
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
     # f = function to integrate; dim=dimension of problem
-    def perform_combi(self, minv, maxv, f):
+    def perform_combi(self, minv, maxv, f, reference_solution=None):
         start = self.a
         end = self.b
         self.f = f
@@ -35,13 +36,16 @@ class StandardCombi(object):
         self.set_combi_parameters(minv, maxv)
         combiintegral = 0
         for ss in self.scheme:
-            integral = self.grid.integrate(f, ss[0], start, end) * ss[1]
+            integral = self.grid.integrate(self.f, ss[0], start, end) * ss[1]
             combiintegral += integral
-        real_integral = f.getAnalyticSolutionIntegral(self.a, self.b)
+        real_integral = reference_solution
         print("CombiSolution", combiintegral)
-        print("Analytic Solution", real_integral)
-        print("Difference", abs(combiintegral - real_integral))
-        return self.scheme, abs(combiintegral - real_integral), combiintegral
+        if reference_solution is not None:
+            print("Analytic Solution", real_integral)
+            print("Difference", abs(combiintegral - real_integral))
+            return self.scheme, abs(combiintegral - real_integral), combiintegral
+        else:
+            return self.scheme, None, combiintegral
 
     def get_num_points_component_grid(self, levelvector, doNaive, num_sub_diagonal):
         return np.prod(self.grid.levelToNumPoints(levelvector))
