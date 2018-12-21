@@ -703,7 +703,7 @@ class TruncatedNormalDistributionGrid(Grid):
         points = [ev.real for ev in evals]
         #print(a, b, self.normalization[d])
         mu0 = self.get_moment_normalized(0, a, b, self.normalization[d])
-        weights = [mu0 * value * value for value in evecs[0]]
+        weights = [mu0 * value.real ** 2 for value in evecs[0]]
         #print("points and weights", num_points, a, b, points, weights)
         return points, weights
 
