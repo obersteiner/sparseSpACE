@@ -181,19 +181,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def do_refinement(self, area, position):
         if self.automatic_extend_split:
             if area.extend_parent_integral is None:
-                lmax_reduced = [self.lmax[d] - 1 for d in range(self.dim)]
-                area.extend_parent_integral = 0.0
-                scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax_reduced[0], self.dim, False)
-                for ss in scheme:
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
-                    area.extend_parent_integral += area_integral * ss[1]
+                area.extend_parent_integral = self.get_parent_extend_integral(area)
             if area.split_parent_integral is None:
-                area.parent.coarseningValue = area.coarseningValue
-                area.parent.levelvec_dict = {}
-                area.split_parent_integral = 0
-                for ss in self.scheme:
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area.parent, ss[0])
-                    area.split_parent_integral += area_integral * ss[1]
+                area.split_parent_integral = self.get_parent_split_integral(area)
 
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
@@ -202,3 +192,158 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
             return True
         return False
+
+    def calc_error(self, objectID, f):
+        area = self.refinement.getObject(objectID)
+        for ss in self.scheme:
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area, num_sub_diagonal)
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            if not is_null:
+                area.num_points += np.prod(self.grid.levelToNumPoints(level_for_evaluation)) * factor
+        if area.parent_integral is None:
+            area.parent_integral = self.get_parent_split_integral(area)
+        self.refinement.calc_error(objectID, f)
+        #print("Area points and error:",area.num_points, area.error)
+
+    def get_parent_split_integral2(self, area):
+        area_parent = area.parent
+        parent_integral = 0
+        area_parent.coarseningValue = area.coarseningValue
+        area_parent.levelvec_dict = {}
+        complete_integral = 0.0
+        area.num_points_split_parent = 0.0
+        for ss in self.scheme:
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+            if not is_null:
+                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                points, weights = self.grid.get_points_and_weights()
+                #print(points, area.start, area.end, area.parent.start, area.parent.end)
+                for i, p in enumerate(points):
+                    if self.point_in_area(p,area):
+                        #print("point:", p, "f_value", self.f(p),"weight", weights[i], "value", self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1], "area" ,area.start, area.end, self.get_point_factor(p, area, area_parent))
+                        parent_integral += self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1]
+                        area.num_points_split_parent += factor * self.get_point_factor(p,area,area_parent)
+                    complete_integral += self.f(p) * weights[i] * ss[1]
+
+        area.parent_integral = complete_integral / 2**self.dim
+
+        area_parent.coarseningValue = area.coarseningValue + 1
+        area_parent.levelvec_dict = {}
+        area.num_points_reference = 0.0
+        for ss in self.scheme:
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+            if not is_null:
+                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                points, weights = self.grid.get_points_and_weights()
+                #print(points)
+                for p in points:
+                    if self.point_in_area(p,area):
+                        #print(p)
+                        area.num_points_reference += factor * self.get_point_factor(p,area,area_parent)
+                        #print(area.num_points_split_parent)
+        #print("Parent integral:", parent_integral, area.integral, complete_integral, complete_integral - parent_integral)
+        return parent_integral
+
+    def get_parent_split_integral(self, area):
+        if not self.grid.boundary:
+            return self.get_parent_split_integral2(area)
+        area_parent = area.parent
+        parent_integral = 0
+        area_parent.coarseningValue = area.coarseningValue
+        area_parent.levelvec_dict = {}
+        complete_integral = 0.0
+        area.num_points_split_parent = 0.0
+        for ss in self.scheme:
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+            if not is_null:
+                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                corner_points = list(
+                    zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coordinate_array[d] for d in range(self.dim)])]))
+                values = np.array([self.f(p) for p in corner_points])
+                values = values.reshape(*[self.grid.numPoints[d] for d in reversed(range(self.dim))])
+                values = np.transpose(values)
+                corner_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
+                self.grid.setCurrentArea(area.start, area.end, level_for_evaluation)
+                points, weights = self.grid.get_points_and_weights()
+                interpolated_values = interpn(corner_points_grid, values, points, method='linear')
+                #print(points,interpolated_values, weights)
+                parent_integral = sum([interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
+                for p in corner_points:
+                    if self.point_in_area(p,area):
+                        area.num_points_split_parent += factor * self.get_point_factor(p,area,area_parent)
+
+        area_parent.coarseningValue = area.coarseningValue + 1
+        area_parent.levelvec_dict = {}
+        area.num_points_reference = 0.0
+        for ss in self.scheme:
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+            if not is_null:
+                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                points, weights = self.grid.get_points_and_weights()
+                for p in points:
+                    if self.point_in_area(p,area):
+                        area.num_points_reference += factor * self.get_point_factor(p, area, area_parent)
+        '''
+        area_parent.levelvec_dict = {}
+        area_parent.coarseningValue = area.coarseningValue + 1
+        area.refinement_reference = 0.0
+        for ss in self.scheme:
+            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area_parent, ss[0])
+            area.refinement_reference += area_integral * ss[1]
+        '''
+        #print("Parent integral:", parent_integral, area.integral, complete_integral, complete_integral - parent_integral)
+        return parent_integral
+
+
+    def point_in_area(self, point, area):
+        for d in range(self.dim):
+            if point[d] < area.start[d] or point[d] > area.end[d]:
+                return False
+        return True
+
+    def get_point_factor(self, point, area, area_parent):
+        factor = 1.0
+        for d in range(self.dim):
+            if (point[d] == area.start[d] or point[d] == area.end[d]) and not(point[d] == area_parent.start[d] or point[d] == area_parent.end[d]):
+                factor /= 2.0
+        return factor
+
+    def get_parent_extend_integral(self, area):
+        extend_parent_integral = 0.0
+        area.levelvec_dict = {}
+        area.coarseningValue += 1
+        area.num_points_extend_parent = 0.0
+        for ss in self.scheme:
+            if self.grid.isNested():
+                factor = ss[1]
+            else:
+                factor = 1
+            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
+            area.num_points_extend_parent += evaluations * factor
+            extend_parent_integral += area_integral * ss[1]
+        area.coarseningValue -= 1
+        return extend_parent_integral
