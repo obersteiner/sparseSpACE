@@ -24,7 +24,7 @@ class Grid(object):
 
     # returns if all grid components are nested
     def isNested(self):
-        return all([self.grids[d].is_nested() for d in self.dim])
+        return all([self.grids[d].is_nested() for d in range(self.dim)])
 
     # the default case is that a grid is not globally but only locally defined
     def isGlobal(self):
@@ -45,16 +45,6 @@ class Grid(object):
             position[d] = self.coordinate_array[d][indexvector[d]]
         return position
 
-    # this method returns all the coordinate tuples of all points in the grid
-    @abc.abstractmethod
-    def getPoints(self):
-        pass
-
-    # this method returns the quadrature weight for the point specified by the indexvector
-    @abc.abstractmethod
-    def getWeight(self, indexvector):
-        pass
-
     # this method translates a point in an equidistant mesh of level self.levelvec to its corresponding index
     def getIndexTo1DCoordinate(self, coordinate, level):
         return coordinate * 2 ** level
@@ -70,12 +60,16 @@ class Grid(object):
     def get_points_and_weights(self):
         return self.getPoints(), self.get_weights()
 
-    @abc.abstractmethod
     def get_weights(self):
         return list(self.getWeight(index) for index in
                     zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
 
     def get_mid_point(self, a, b, d):
+        #if self.numPoints[d] == 1:
+        #    return self.coordinate_array[d][0]
+        #else:
+        #    if self.numPoints[d] % 2 == 1:
+        #        return sorted(self.coordinate_array[d])[int(self.numPoints[d]/2)]
         return self.grids[d].get_mid_point(a, b)
 
     def setCurrentArea(self, start, end, levelvec):
@@ -104,15 +98,19 @@ class Grid(object):
             numPoints[d] = self.grids[d].level_to_num_points_1d(levelvec[d])
         return numPoints
 
+    # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self):
         return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
 
+    # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector):
         weight = 1
         for d in range(self.dim):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+    def is_high_order_grid(self):
+        return False
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -360,6 +358,8 @@ class ClenshawCurtisGrid(Grid):
                 assert False
         self.grids = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
 
+    def is_high_order_grid(self):
+        return True
 
 class ClenshawCurtisGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
@@ -525,7 +525,7 @@ import numpy.polynomial.legendre as legendre
 class GaussLegendreGrid(Grid):
     def __init__(self, a, b, dim, integrator=None):
         self.dim = dim
-        self.boundary = True  # never points on boundary
+        self.boundary = False  # never points on boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -534,6 +534,9 @@ class GaussLegendreGrid(Grid):
             else:
                 assert False
         self.grids = [GaussLegendreGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
+
+    def is_high_order_grid(self):
+        return True
 
 
 class GaussLegendreGrid1D(Grid1d):
@@ -569,7 +572,7 @@ from scipy.stats import truncnorm
 class TruncatedNormalDistributionGrid(Grid):
     def __init__(self, a, b, dim, mean, std_dev, integrator=None):
         # we assume here mean = 0 and std_dev = 1 for every dimension
-        self.boundary = True  # never points on boundary
+        self.boundary = False  # never points on boundary
         self.dim = dim
 
         if integrator is None:
@@ -584,9 +587,11 @@ class TruncatedNormalDistributionGrid(Grid):
             for d in range(self.dim)]
         # print(self.normalization, global_a, global_b)
 
+    def is_high_order_grid(self):
+        return True
 
 class TruncatedNormalDistributionGrid1D(Grid1d):
-    def __init__(self, a, b, mean, std_dev, boundary=True):
+    def __init__(self, a, b, mean, std_dev, boundary=False):
         self.shift = lambda x: x * std_dev + mean
         self.shift_back = lambda x: (x - mean) / std_dev
         self.a = self.shift_back(a)
@@ -599,7 +604,7 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
         return norm.ppf(middle_cdf)
 
     def level_to_num_points_1d(self, level):
-        return 1 + 2 ** level
+        return 2 ** level
 
     # This grid is not nested!
     def is_nested(self):
