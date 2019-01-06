@@ -61,8 +61,18 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
 class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
     def calc_error(self, f, refine_object):
         return abs(refine_object.integral - refine_object.parent_integral)
-
+'''
 
 class ErrorCalculatorExtendSplit2(ErrorCalculator):  # TODO
     def calc_error(self, f, refine_object):
-        return abs(refine_object.integral - refine_object.parent_integral) / refine_object.factor
+        return abs(refine_object.integral - refine_object.parent_integral) / (refine_object.num_points - refine_object.parent.num_points / refine_object.factor)
+
+class ErrorCalculatorExtendSplit4(ErrorCalculator):  # TODO
+    def calc_error(self, f, refine_object):
+        parent_num_points = refine_object.parent.num_points if refine_object.parent.num_points is not 0 else 1
+        return abs(refine_object.integral - refine_object.parent_integral) / (refine_object.num_points / parent_num_points)
+
+class ErrorCalculatorExtendSplit3(ErrorCalculator):  # TODO
+    def calc_error(self, f, refine_object):
+        return abs(refine_object.integral - refine_object.parent_integral) / (refine_object.num_points)
+'''
