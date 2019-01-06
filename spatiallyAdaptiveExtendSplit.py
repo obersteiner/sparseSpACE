@@ -205,7 +205,12 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             if not is_null:
                 area.num_points += np.prod(self.grid.levelToNumPoints(level_for_evaluation)) * factor
         if area.parent_integral is None:
-            area.parent_integral = self.get_parent_split_integral(area)
+            integral1 = self.get_parent_split_integral(area)
+            integral2 = self.get_parent_split_integral2(area)
+            if integral1 is not None and abs(integral1 - area.integral) < abs(integral2 - area.integral):
+                area.parent_integral = integral1
+            else:
+                area.parent_integral = integral2
         self.refinement.calc_error(objectID, f)
         #print("Area points and error:",area.num_points, area.error)
 
@@ -231,10 +236,10 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     if self.point_in_area(p,area):
                         #print("point:", p, "f_value", self.f(p),"weight", weights[i], "value", self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1], "area" ,area.start, area.end, self.get_point_factor(p, area, area_parent))
                         parent_integral += self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1]
-                        area.num_points_split_parent += factor * self.get_point_factor(p,area,area_parent)
+                        area.num_points_split_parent += factor #* self.get_point_factor(p,area,area_parent)
                     complete_integral += self.f(p) * weights[i] * ss[1]
 
-        area.parent_integral = complete_integral / 2**self.dim
+        #area.parent_integral = complete_integral / 2**self.dim
 
         area_parent.coarseningValue = area.coarseningValue + 1
         area_parent.levelvec_dict = {}
@@ -253,7 +258,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 for p in points:
                     if self.point_in_area(p,area):
                         #print(p)
-                        area.num_points_reference += factor * self.get_point_factor(p,area,area_parent)
+                        area.num_points_reference += factor #* self.get_point_factor(p,area,area_parent)
                         #print(area.num_points_split_parent)
         #print("Parent integral:", parent_integral, area.integral, complete_integral, complete_integral - parent_integral)
         return parent_integral
@@ -289,7 +294,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 parent_integral = sum([interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
                 for p in corner_points:
                     if self.point_in_area(p,area):
-                        area.num_points_split_parent += factor * self.get_point_factor(p,area,area_parent)
+                        area.num_points_split_parent += factor #* self.get_point_factor(p,area,area_parent)
 
         area_parent.coarseningValue = area.coarseningValue + 1
         area_parent.levelvec_dict = {}
@@ -306,7 +311,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 points, weights = self.grid.get_points_and_weights()
                 for p in points:
                     if self.point_in_area(p,area):
-                        area.num_points_reference += factor * self.get_point_factor(p, area, area_parent)
+                        area.num_points_reference += factor #* self.get_point_factor(p, area, area_parent)
         '''
         area_parent.levelvec_dict = {}
         area_parent.coarseningValue = area.coarseningValue + 1
@@ -316,6 +321,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             area.refinement_reference += area_integral * ss[1]
         '''
         #print("Parent integral:", parent_integral, area.integral, complete_integral, complete_integral - parent_integral)
+        #parent_integral2 = self.get_parent_split_integral2(area)
         return parent_integral
 
 

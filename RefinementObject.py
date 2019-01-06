@@ -81,7 +81,11 @@ class RefinementObjectExtendSplit(RefinementObject):
                 assert self.num_points > self.num_points_extend_parent
                 self.error_extend = abs(self.split_parent_integral - self.integral)
                 #self.error_old_extend = abs(self.refinement_reference - self.split_parent_integral)
-                self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
+                if self.grid.isNested():
+                    self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
+                else:
+                    self.benefit_extend = self.error_extend * (self.num_points_split_parent)
+
             if self.error_split is None:
                 '''
                 sum_siblings = 0.0
@@ -101,7 +105,11 @@ class RefinementObjectExtendSplit(RefinementObject):
                 assert self.num_points_split_parent > 0
                 self.error_split = abs(self.extend_parent_integral - self.integral)
                 #self.error_old_split = abs(self.refinement_reference - self.extend_parent_integral)
-                self.benefit_split = self.error_split *(self.num_points_extend_parent - self.num_points_reference)# / (self.num_points_split_parent)
+                if self.grid.isNested():
+                    self.benefit_split = self.error_split * (self.num_points_extend_parent - self.num_points_reference)# / (self.num_points_split_parent)
+                else:
+                    self.benefit_split = self.error_split * (self.num_points_extend_parent)# / (self.num_points_split_parent)
+
                 #if self.grid.is_high_order_grid():
                 #self.error_split /= min(2 ** (self.depth), 2**self.dim)
             print("Extend error", self.error_extend,self.benefit_extend, "Split error", self.error_split,self.benefit_split)
