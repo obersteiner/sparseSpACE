@@ -113,11 +113,12 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.refinement.set_integral(i, integralarrayComplete[k])
             self.refinement.set_evaluations(i, evaluation_array[k] / len(self.scheme))
             self.calc_error(i, self.f)
+            self.refinement.set_benefit(i)
 
         # getArea with maximal error
-        self.errorMax = self.refinement.get_max_error()
+        self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.errorMax, "total surplus error:", self.total_error)
+        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         if self.realIntegral is not None:
             return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)
         else:
@@ -133,7 +134,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
-                tolerance=self.errorMax * margin)
+                tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
                 # print("Refining position", position)
