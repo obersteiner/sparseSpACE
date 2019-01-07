@@ -117,10 +117,9 @@ from scipy.special import eval_hermitenorm, eval_sh_legendre
 
 
 class MixedGrid(Grid):
-    def __init__(self, a, b, dim, grids, boundary=True, integrator=None):
+    def __init__(self, a, b, dim, grids, boundary=None, integrator=None):
         self.a = a
         self.b = b
-        self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -131,7 +130,10 @@ class MixedGrid(Grid):
         self.dim = dim
         assert (len(grids) == dim)
         self.grids = grids
+        self.boundary = all([grid.boundary for grid in grids])
 
+    def is_high_order_grid(self):
+        return any([grid.is_high_order_grid() for grid in self.grids])
 
 class Grid1d(object):
     def __init__(self, a=None, b=None, boundary=True):
@@ -181,6 +183,8 @@ class Grid1d(object):
     def is_nested(self):
         return True
 
+    def is_high_order_grid(self):
+        return False
 
 # this class generates a Leja grid which constructs 1D Leja grid structures
 # and constructs the tensorized grid according to the levelvector
@@ -393,8 +397,10 @@ class ClenshawCurtisGrid1D(Grid1d):
                     weight_factor += term
                 weight_factor = 2.0 / (self.num_points_with_boundary - 1) * (1 + 2 * weight_factor)
             weight *= weight_factor
-        return weight
+        return
 
+    def is_high_order_grid(self):
+        return True
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
@@ -555,6 +561,8 @@ class GaussLegendreGrid1D(Grid1d):
         weightsD = np.array(weightsD) * self.length / 2
         return coordsD, weightsD
 
+    def is_high_order_grid(self):
+        return True
 
 from scipy.stats import norm
 from scipy.linalg import cholesky
@@ -780,3 +788,6 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
     def get_moment_normalized(self, index, a, b):
         # print("Moment:", index, " variants:", self.get_moment(index,alpha,beta,mean,std_dev), self.get_moment2(index,alpha,beta,mean,std_dev), self.get_moment4(index,alpha,beta,mean,std_dev) )
         return self.get_moment(index, a, b) * self.normalization
+
+    def is_high_order_grid(self):
+        return True
