@@ -106,7 +106,8 @@ class SpatiallyAdaptivBase(StandardCombi):
                     else:
                         integralarrayComplete[k] += ss[1] * area_integral
                         # self.combiintegral += area_integral * ss[1]
-                        evaluation_array[k] += evaluations * ss[1]
+                        factor = ss[1] if self.grid.isNested() else 1
+                        evaluation_array[k] += evaluations * factor
 
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
