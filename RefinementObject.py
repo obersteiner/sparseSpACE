@@ -60,7 +60,6 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.children = []
         self.factor = factor
         self.depth = depth
-        self.num_points = 0
         #self.error_old_extend = None
         #self.error_old_split = None
         #self.refinement_reference = None
@@ -72,19 +71,8 @@ class RefinementObjectExtendSplit(RefinementObject):
         if self.automatic_extend_split:
             print(self.start, self.end, "Parent Integral", self.parent_integral, "Parent", self.parent.integral, "Integral", self.integral, "Extend",
                   self.extend_parent_integral, "Split", self.split_parent_integral)
-            print(self.num_points, (self.num_points_split_parent - self.num_points_reference), self.num_points_extend_parent, self.num_points_reference, (self.num_points_extend_parent - self.num_points_reference))
 
-            if self.error_extend is None:
-                #print(self.num_points, self.num_points_split_parent, self.num_points_extend_parent)
-
-                #print(self.extend_parent_integral, self.integral)
-                assert self.num_points > self.num_points_extend_parent
-                self.error_extend = abs(self.split_parent_integral - self.integral)
-                #self.error_old_extend = abs(self.refinement_reference - self.split_parent_integral)
-                if self.grid.isNested():
-                    self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
-                else:
-                    self.benefit_extend = self.error_extend * (self.num_points_split_parent)
+            print(self.evaluations, (self.num_points_split_parent - self.num_points_reference), self.num_points_extend_parent, self.num_points_reference, (self.num_points_extend_parent - self.num_points_reference))
 
             if self.error_split is None:
                 '''
@@ -101,8 +89,9 @@ class RefinementObjectExtendSplit(RefinementObject):
                 '''
                 #print(self.num_points, self.num_points_split_parent, self.num_points_extend_parent)
 
-                assert self.num_points > self.num_points_split_parent
-                assert self.num_points_split_parent > 0
+                assert self.evaluations > self.num_points_split_parent
+                if self.grid.boundary:
+                    assert self.num_points_split_parent > 0
                 self.error_split = abs(self.extend_parent_integral - self.integral)
                 #self.error_old_split = abs(self.refinement_reference - self.extend_parent_integral)
                 if self.grid.isNested():
@@ -112,7 +101,23 @@ class RefinementObjectExtendSplit(RefinementObject):
 
                 #if self.grid.is_high_order_grid():
                 #self.error_split /= min(2 ** (self.depth), 2**self.dim)
+            if self.error_extend is None:
+                #print(self.num_points, self.num_points_split_parent, self.num_points_extend_parent)
+                if not self.grid.boundary and self.num_points_split_parent == 0:
+                    self.benefit_extend = self.error_split * (self.evaluations - self.num_points_extend_parent)
+                else:
+                    #print(self.extend_parent_integral, self.integral)
+                    assert self.evaluations > self.num_points_extend_parent
+                    self.error_extend = abs(self.split_parent_integral - self.integral)
+                    self.num_points_split_parent = max(1, self.num_points_split_parent)
+                    #self.error_old_extend = abs(self.refinement_reference - self.split_parent_integral)
+                    if self.grid.isNested():
+                        self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
+                    else:
+                        self.benefit_extend = self.error_extend * (self.num_points_split_parent)
             print("Extend error", self.error_extend,self.benefit_extend, "Split error", self.error_split,self.benefit_split)
+
+
         if (self.automatic_extend_split and self.benefit_extend < self.benefit_split) or (
                 not self.automatic_extend_split and
                 self.needExtendScheme >= self.numberOfRefinementsBeforeExtend):  # add new component grids to scheme and refine only target area
@@ -132,7 +137,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                   extend_parent_integral=self.integral,
                                                                   automatic_extend_split=self.automatic_extend_split,
                                                                   parent=self.parent, factor=1,
-                                                                  depth=self.depth + 1, num_points_extend_parent=self.num_points)
+                                                                  depth=self.depth + 1, num_points_extend_parent=self.evaluations)
                 self.children.append(newRefinementObject)
                 return [newRefinementObject], lmaxIncrease, 1
             else:
@@ -143,7 +148,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                   extend_parent_integral=self.integral,
                                                                   automatic_extend_split=self.automatic_extend_split,
                                                                   parent=self.parent, factor=1,
-                                                                  depth=self.depth + 1, num_points_extend_parent=self.num_points)
+                                                                  depth=self.depth + 1, num_points_extend_parent=self.evaluations)
                 self.children.append(newRefinementObject)
                 return [newRefinementObject], None, None
         elif (self.automatic_extend_split and self.benefit_extend >= self.benefit_split) or (

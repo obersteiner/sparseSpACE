@@ -195,15 +195,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def calc_error(self, objectID, f):
         area = self.refinement.getObject(objectID)
-        for ss in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area, num_sub_diagonal)
-            if self.grid.isNested():
-                factor = ss[1]
-            else:
-                factor = 1
-            if not is_null:
-                area.num_points += np.prod(self.grid.levelToNumPoints(level_for_evaluation)) * factor
         if area.parent_integral is None:
             integral1 = self.get_parent_split_integral(area)
             integral2 = self.get_parent_split_integral2(area)
@@ -292,6 +283,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 interpolated_values = interpn(corner_points_grid, values, points, method='linear')
                 #print(points,interpolated_values, weights)
                 parent_integral = sum([interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
+                #print(corner_points)
                 for p in corner_points:
                     if self.point_in_area(p,area):
                         area.num_points_split_parent += factor #* self.get_point_factor(p,area,area_parent)
