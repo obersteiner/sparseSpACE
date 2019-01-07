@@ -106,12 +106,12 @@ class SpatiallyAdaptivBase(StandardCombi):
                     else:
                         integralarrayComplete[k] += ss[1] * area_integral
                         # self.combiintegral += area_integral * ss[1]
-                        evaluation_array[k] += evaluations
+                        evaluation_array[k] += evaluations * ss[1]
 
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
-            self.refinement.set_evaluations(i, evaluation_array[k] / len(self.scheme))
+            self.refinement.set_evaluations(i, evaluation_array[k])
             self.calc_error(i, self.f)
             self.refinement.set_benefit(i)
 

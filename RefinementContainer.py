@@ -152,7 +152,7 @@ class RefinementContainer(object):
 
     def set_benefit(self, object_id):
         refine_object = self.refinementObjects[object_id]
-        refine_object.benefit = refine_object.error / refine_object.num_points
+        refine_object.benefit = refine_object.error / refine_object.evaluations
 
 # this class defines a container of refinement containers for each dimension in the single dimension test case
 # it delegates methods to subcontainers and coordinates everything
