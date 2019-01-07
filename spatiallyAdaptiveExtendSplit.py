@@ -212,45 +212,71 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         area_parent.levelvec_dict = {}
         complete_integral = 0.0
         area.num_points_split_parent = 0.0
-        for ss in self.scheme:
-            if self.grid.isNested():
-                factor = ss[1]
-            else:
-                factor = 1
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
-            if not is_null:
-                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
-                points, weights = self.grid.get_points_and_weights()
-                #print(points, area.start, area.end, area.parent.start, area.parent.end)
-                for i, p in enumerate(points):
-                    if self.point_in_area(p,area):
-                        #print("point:", p, "f_value", self.f(p),"weight", weights[i], "value", self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1], "area" ,area.start, area.end, self.get_point_factor(p, area, area_parent))
-                        parent_integral += self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1]
-                        area.num_points_split_parent += factor #* self.get_point_factor(p,area,area_parent)
-                    complete_integral += self.f(p) * weights[i] * ss[1]
+        if not self.grid.is_high_order_grid():
+            for ss in self.scheme:
+                if self.grid.isNested():
+                    factor = ss[1]
+                else:
+                    factor = 1
+                num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+                level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+                if not is_null:
+                    self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                    points, weights = self.grid.get_points_and_weights()
+                    #print(points, weights, area.start, area.end, area.parent.start, area.parent.end)
+                    for i, p in enumerate(points):
+                        if self.point_in_area(p,area):
+                            #print("point:", p, "f_value", self.f(p),"weight", weights[i], "value", self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1], "area" ,area.start, area.end, self.get_point_factor(p, area, area_parent))
+                            parent_integral += self.f(p) * weights[i] * self.get_point_factor(p, area, area_parent) * ss[1]
+                            area.num_points_split_parent += factor #* self.get_point_factor(p,area,area_parent)
+                        complete_integral += self.f(p) * weights[i] * ss[1]
 
-        #area.parent_integral = complete_integral / 2**self.dim
 
-        area_parent.coarseningValue = area.coarseningValue + 1
-        area_parent.levelvec_dict = {}
-        area.num_points_reference = 0.0
-        for ss in self.scheme:
-            if self.grid.isNested():
-                factor = ss[1]
-            else:
-                factor = 1
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
-            if not is_null:
-                self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
-                points, weights = self.grid.get_points_and_weights()
-                #print(points)
-                for p in points:
-                    if self.point_in_area(p,area):
-                        #print(p)
-                        area.num_points_reference += factor #* self.get_point_factor(p,area,area_parent)
-                        #print(area.num_points_split_parent)
+            area_parent.coarseningValue = area.coarseningValue + 1
+            area_parent.levelvec_dict = {}
+            area.num_points_reference = 0.0
+            for ss in self.scheme:
+                if self.grid.isNested():
+                    factor = ss[1]
+                else:
+                    factor = 1
+                num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
+                level_for_evaluation, is_null = self.coarsen_grid(ss[0], area_parent, num_sub_diagonal)
+                if not is_null:
+                    self.grid.setCurrentArea(area_parent.start, area_parent.end, level_for_evaluation)
+                    points, weights = self.grid.get_points_and_weights()
+                    #print(points)
+                    for p in points:
+                        if self.point_in_area(p,area):
+                            #print(p)
+                            area.num_points_reference += factor #* self.get_point_factor(p,area,area_parent)
+                            #print(area.num_points_split_parent)
+        else:
+            for ss in self.scheme:
+                if self.grid.isNested():
+                    factor = ss[1]
+                else:
+                    factor = 1
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area_parent, ss[0])
+                complete_integral += area_integral * ss[1]
+                area.num_points_split_parent += evaluations * factor
+
+            parent_integral = complete_integral / 2**self.dim
+            area.num_points_split_parent /= 2**self.dim
+
+            area_parent.coarseningValue = area.coarseningValue + 1
+            area_parent.levelvec_dict = {}
+            area.num_points_reference = 0.0
+
+            for ss in self.scheme:
+                if self.grid.isNested():
+                    factor = ss[1]
+                else:
+                    factor = 1
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area_parent, ss[0])
+                area.num_points_split_parent += evaluations * factor
+
+
         #print("Parent integral:", parent_integral, area.integral, complete_integral, complete_integral - parent_integral)
         return parent_integral
 
