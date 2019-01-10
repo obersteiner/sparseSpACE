@@ -49,7 +49,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.splitSingleDim = splitSingleDim
         self.grid = grid
         self.twins = [None] * self.dim
-        self.maxTwinError = None
+        self.twinErrors = [None] * self.dim
         self.dimMaxTwinError = None
 
     # this routine decides if we split or extend the RefinementObject
@@ -80,7 +80,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             # add to integralArray
             self.needExtendScheme += 1
             if self.splitSingleDim:
-                d = self.getSplitDim()
+                d = self.get_split_dim()
                 newRefinementObjects = self.split_area_single_dim(d)
                 return newRefinementObjects, None, None
             else:
@@ -142,13 +142,11 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 self.numberOfRefinementsBeforeExtend, self.integral / 2,
                                                                 self.coarseningValue, self.needExtendScheme)
             new_refinement_object.twins = self.twins #TODO Pass on twin infos from self? Is this intended as such?
+            new_refinement_object.twinErrors = self.twinErrors
             sub_area_array.append(new_refinement_object)
         sub_area_array[0].set_twin(d, sub_area_array[1])
         twinError = abs(sub_area_array[0].integral - sub_area_array[1].integral)
-        for i in range(2):
-            if sub_area_array[i].maxTwinError == None or twinError > sub_area_array[i].maxTwinError:
-                sub_area_array[i].maxTwinError = twinError
-                sub_area_array[i].dimMaxTwinError = d
+        sub_area_array[0].set_twin_error(twinError)        
         return sub_area_array
 
     # set the local error associated with RefinementObject
@@ -162,9 +160,16 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.twins[d] = twin
         twin.twins[d] = self
 
+    # set the twin error in dimension d of the given area object to the given value and update the dimension in which the twin error is maximum
+    def set_twin_error(self, d, twinError):
+        twin = self.twins[d]
+        twin.twinErrors[d] = self.twinErrors[d] = twinError
+        dMaxTwinError = np.argmax(self.twinErrors)
+        twin.dimMaxTwinError = self.dimMaxTwinError = dMaxTwinError
+
     # returns the dimension in which the split shall be performed
-    def getSplitDim(self):
-        if self.maxTwinError == None:
+    def get_split_dim(self):
+        if self.dimMaxTwinError == None:
             return 0 #TODO Is this always feasible/sensical?
         else:
             return self.dimMaxTwinError
