@@ -52,7 +52,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.error_extend = None
         self.error_split = None
         self.automatic_extend_split = automatic_extend_split
-        self.extend_parent_integral = extend_parent_integral
+        self.extend_parent_integral = extend_parent_integral if not grid.is_high_order_grid() else None
         self.split_parent_integral = None #split_parent_integral
         self.num_points_split_parent = 0
         self.num_points_extend_parent = num_points_extend_parent
@@ -64,69 +64,72 @@ class RefinementObjectExtendSplit(RefinementObject):
         #self.error_old_split = None
         #self.refinement_reference = None
         self.error = None
+        self.switch_to_parent_estimation = False#self.grid.is_high_order_grid()
 
     # this routine decides if we split or extend the RefinementObject
     def refine(self):
         coarsening_level = self.coarseningValue
         if self.automatic_extend_split:
-            #print(self.start, self.end, "Parent Integral", self.parent_integral, "Parent", self.parent.integral, "Integral", self.integral, "Extend",
+            if self.switch_to_parent_estimation:
+                comparison = self.sum_siblings
+                self.num_comparison = self.evaluations * 2**self.dim
+            else:
+                comparison = self.integral
+                self.num_comparison = self.evaluations
+
+            #print(self.start, self.end, "Parent Integral", self.parent_integral, "Parent", self.parent.integral, "Integral", self.integral, "Comparison", comparison, "Extend",
             #      self.extend_parent_integral, "Split", self.split_parent_integral)
 
-            #print(self.evaluations, (self.num_points_split_parent - self.num_points_reference), self.num_points_extend_parent, self.num_points_reference, (self.num_points_extend_parent - self.num_points_reference))
+            #print(self.evaluations, self.num_comparison, self.num_points_split_parent, self.num_points_extend_parent, self.num_points_reference, (self.num_points_extend_parent - self.num_points_reference))
 
+            # print(self.start, self.end, "Parent Integral", self.parent_integral, "Parent", self.parent.integral, "Integral", self.integral, "Comparison", comparison, "Extend",
+            #      self.extend_parent_integral, "Split", self.split_parent_integral)
+
+            # print(self.evaluations, (self.num_points_split_parent - self.num_points_reference), self.num_points_extend_parent, self.num_points_reference, (self.num_points_extend_parent - self.num_points_referen
             if self.error_split is None:
                 '''
-                sum_siblings = 0.0
-                i = 0
-                for child in self.parent.children:
-                    if child.integral is not None:
-                        sum_siblings += child.integral
-                        i += 1
-                #print(i)
-                assert i == 2 ** self.dim  # we always have 2**dim children
-                self.error_split = abs(self.split_parent_integral - sum_siblings) / (
-                            2 ** (self.dim) / 2 * 2 ** (self.depth))  # 2**self.dim)
-                '''
                 #print(self.num_points, self.num_points_split_parent, self.num_points_extend_parent)
-                if not self.grid.boundary and self.num_points_split_parent == 0:
+                if self.split_parent_integral == 0: #not self.grid.boundary and self.num_points_split_parent == 0:
                     if self.grid.isNested():
-                        self.benefit_split = 1/(abs(self.split_parent_integral - self.integral) * (self.evaluations - self.num_points_split_parent))
+                        self.benefit_split = 1/(abs(self.split_parent_integral - comparison) * (self.num_comparison - self.num_points_split_parent))
                     else:
-                        self.benefit_split = 1/(abs(self.split_parent_integral - self.integral) * (self.evaluations))
-
+                        self.benefit_split = 1/(abs(self.split_parent_integral - comparison) * (self.num_comparison))
+                
 
                 else:
-                    assert self.evaluations > self.num_points_split_parent
-                    if self.grid.boundary:
-                        assert self.num_points_split_parent > 0
-                    self.error_split = abs(self.extend_parent_integral - self.integral)
-                    #self.error_old_split = abs(self.refinement_reference - self.extend_parent_integral)
-                    if self.grid.isNested():
-                        self.benefit_split = self.error_split * (self.num_points_extend_parent - self.num_points_reference)# / (self.num_points_split_parent)
-                    else:
-                        self.benefit_split = self.error_split * (self.num_points_extend_parent)# / (self.num_points_split_parent)
+                '''
+                assert self.num_comparison > self.num_points_split_parent
+                if self.grid.boundary:
+                    assert self.num_points_split_parent > 0
+                self.error_split = abs(self.extend_parent_integral - comparison)
+                #self.error_old_split = abs(self.refinement_reference - self.extend_parent_integral)
+                if self.grid.isNested():
+                    self.benefit_split = self.error_split * (self.num_points_extend_parent - self.num_points_reference)# / (self.num_points_split_parent)
+                else:
+                    self.benefit_split = self.error_split * (self.num_points_extend_parent)# / (self.num_points_split_parent)
 
                 #if self.grid.is_high_order_grid():
                 #self.error_split /= min(2 ** (self.depth), 2**self.dim)
             if self.error_extend is None:
                 #print(self.num_points, self.num_points_split_parent, self.num_points_extend_parent)
-                if not self.grid.boundary and self.num_points_split_parent == 0:
-                    if self.grid.isNested():
-                        self.benefit_extend = 1 / (abs(self.extend_parent_integral - self.integral) * (self.evaluations - self.num_points_extend_parent))
-                    else:
-                        self.benefit_extend = 1 / (abs(self.extend_parent_integral - self.integral) * (self.evaluations))
+                #if self.split_parent_integral == 0:#not self.grid.boundary and self.num_points_split_parent == 0:
+                #    if self.grid.isNested():
+                #        self.benefit_extend = 1 / (abs(self.extend_parent_integral - comparison) * (self.num_comparison - self.num_points_extend_parent))
+                #    else:
+                #        self.benefit_extend = 1 / (abs(self.extend_parent_integral - comparison) * (self.num_comparison))
 
+                #else:
+                #print(self.extend_parent_integral, self.integral)
+                assert self.num_comparison > self.num_points_extend_parent
+                self.error_extend = abs(self.split_parent_integral - comparison)
+                self.num_points_split_parent = max(1, self.num_points_split_parent)
+                #self.error_old_extend = abs(self.refinement_reference - self.split_parent_integral)
+                if self.grid.isNested():
+                    self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
                 else:
-                    #print(self.extend_parent_integral, self.integral)
-                    assert self.evaluations > self.num_points_extend_parent
-                    self.error_extend = abs(self.split_parent_integral - self.integral)
-                    self.num_points_split_parent = max(1, self.num_points_split_parent)
-                    #self.error_old_extend = abs(self.refinement_reference - self.split_parent_integral)
-                    if self.grid.isNested():
-                        self.benefit_extend = self.error_extend * (self.num_points_split_parent - self.num_points_reference)
-                    else:
-                        self.benefit_extend = self.error_extend * (self.num_points_split_parent)
+                    self.benefit_extend = self.error_extend * (self.num_points_split_parent)
             #print("Extend error", self.error_extend,self.benefit_extend, "Split error", self.error_split,self.benefit_split)
+
 
 
         if (self.automatic_extend_split and self.benefit_extend < self.benefit_split) or (
