@@ -80,6 +80,7 @@ class Grid(object):
         for d in range(self.dim):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
         self.numPoints = self.levelToNumPoints(levelvec)
+        self.numPointsWithBoundary = self.levelToNumPointsWithBoundary(levelvec)
         self.coordinate_array = []
         self.weights = []
         self.length = np.array(end) - np.array(start)
@@ -98,6 +99,17 @@ class Grid(object):
             numPoints[d] = self.grids[d].level_to_num_points_1d(levelvec[d])
         return numPoints
 
+    # this method returns the number of points in the grid that correspond to the specified levelvector
+    def levelToNumPointsWithBoundary(self, levelvec):
+        numPoints = np.zeros(len(levelvec), dtype=int)
+        for d in range(len(levelvec)):
+            boundary_save = self.grids[d].boundary
+            self.grids[d].boundary = True
+            numPoints[d] = self.grids[d].level_to_num_points_1d(levelvec[d])
+            self.grids[d].boundary = boundary_save
+
+        return numPoints
+
     # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self):
         return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
@@ -111,6 +123,16 @@ class Grid(object):
 
     def is_high_order_grid(self):
         return False
+
+    def get_boundaries(self):
+        boundaries = []
+        for grid in self.grids:
+            boundaries.append(grid.boundary)
+        return boundaries
+
+    def set_boundaries(self, boundaries):
+        for d, grid in enumerate(self.grids):
+            grid.boundary = boundaries[d]
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -191,6 +213,8 @@ class Grid1d(object):
 class LejaGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
         self.boundary = boundary
+        self.a = a
+        self.b = b
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -317,6 +341,8 @@ class LejaGrid1D(Grid1d):
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -352,6 +378,8 @@ class TrapezoidalGrid1D(Grid1d):
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
         self.boundary = boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -531,6 +559,8 @@ import numpy.polynomial.legendre as legendre
 class GaussLegendreGrid(Grid):
     def __init__(self, a, b, dim, integrator=None):
         self.dim = dim
+        self.a = a
+        self.b = b
         self.boundary = False  # never points on boundary
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
@@ -547,7 +577,7 @@ class GaussLegendreGrid(Grid):
 
 class GaussLegendreGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
-        return 2 ** level
+        return 2 ** level + 1
 
     def is_nested(self):
         return False
@@ -582,7 +612,8 @@ class TruncatedNormalDistributionGrid(Grid):
         # we assume here mean = 0 and std_dev = 1 for every dimension
         self.boundary = False  # never points on boundary
         self.dim = dim
-
+        self.a = a
+        self.b = b
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
