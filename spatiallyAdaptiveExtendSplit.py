@@ -24,25 +24,31 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if dim > 2:
             print("Refinement can only be printed in 2D")
             return
-        fig = plt.figure(figsize=(20, 20))
-        ax2 = fig.add_subplot(111, aspect='equal')
+        fig, ax = plt.subplots(figsize=(20, 20))
+
+        self.add_refinment_to_figure_axe(ax)
+
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        plt.show()
+        return fig
+
+    def add_refinment_to_figure_axe(self, ax, linewidth=1):
         for i in self.refinement.get_objects():
             startx = i.start[0]
             starty = i.start[1]
             endx = i.end[0]
             endy = i.end[1]
-            ax2.add_patch(
+            ax.add_patch(
                 patches.Rectangle(
                     (startx, starty),
                     endx - startx,
                     endy - starty,
-                    fill=False  # remove background
+                    fill=False,  # remove background,
+                    alpha=1,
+                    linewidth=linewidth
                 )
             )
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
-        plt.show()
-        return fig
 
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec, numSubDiagonal):
