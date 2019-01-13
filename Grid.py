@@ -24,7 +24,7 @@ class Grid(object):
 
     # returns if all grid components are nested
     def isNested(self):
-        return all([self.grids[d].is_nested() for d in range(self.dim)])
+        return all([self.grids[d].is_nested() for d in range(len(self.grids))])
 
     # the default case is that a grid is not globally but only locally defined
     def isGlobal(self):
