@@ -68,7 +68,8 @@ class StandardCombi(object):
 
     # prints every single component grid of the combination and orders them according to levels
     def print_resulting_combi_scheme(self, filename=None, add_refinement=True):
-        plt.rcParams.update({'font.size': 18})
+        fontsize = 60
+        plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
         lmax = [self.combischeme.lmax_adaptive]*self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
@@ -77,7 +78,7 @@ class StandardCombi(object):
             print("Cannot print combischeme of dimension > 2")
             return None
         fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
-        markersize = 10
+        markersize = 20
         # get points of each component grid and plot them individually
         if lmax == lmin:
             ax.xaxis.set_ticks_position('none')
@@ -107,16 +108,16 @@ class StandardCombi(object):
                 grid.axis('on')
                 grid.xaxis.set_ticks_position('none')
                 grid.yaxis.set_ticks_position('none')
-                grid.set_xlim([self.a[0] - 0.005, self.b[0] + 0.005])
-                grid.set_ylim([self.a[1] - 0.005, self.b[1] + 0.005])
+                grid.set_xlim([self.a[0] - 0.02, self.b[0] + 0.02])
+                grid.set_ylim([self.a[1] - 0.02, self.b[1] + 0.02])
                 grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
                 grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color="black")
                 if add_refinement:
-                    self.add_refinment_to_figure_axe(grid, linewidth=2.5)
+                    self.add_refinment_to_figure_axe(grid, linewidth=2.0)
 
                 coefficient = str(int(ss[1])) if ss[1] <= 0 else "+" + str(int(ss[1]))
-                grid.text(0.5, 0.5, coefficient,
-                              fontsize=25, ha='center', color="blue")
+                grid.text(0.55, 0.55, coefficient,
+                              fontsize=fontsize*2, ha='center', color="blue")
         #ax1 = fig.add_subplot(111, alpha=0)
         #ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         #ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
@@ -128,7 +129,7 @@ class StandardCombi(object):
 
     # prints the sparse grid which results from the combination
     def print_resulting_sparsegrid(self, filename=None, show_fig=True, add_refinement=True):
-        plt.rcParams.update({'font.size': 32})
+        plt.rcParams.update({'font.size': 60})
         scheme = self.scheme
         dim = self.dim
         if dim != 2:
@@ -146,9 +147,9 @@ class StandardCombi(object):
             points = self.get_points_component_grid(ss[0], numSubDiagonal)
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
-            plt.plot(xArray, yArray, 'o', markersize=20, color="black")
+            plt.plot(xArray, yArray, 'o', markersize=25, color="black")
         if add_refinement:
-            self.add_refinment_to_figure_axe(ax, linewidth=5)
+            self.add_refinment_to_figure_axe(ax, linewidth=3)
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         if show_fig:
