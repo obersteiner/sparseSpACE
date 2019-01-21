@@ -128,7 +128,7 @@ class StandardCombi(object):
         return fig
 
     # prints the sparse grid which results from the combination
-    def print_resulting_sparsegrid(self, filename=None, show_fig=True, add_refinement=True):
+    def print_resulting_sparsegrid(self, filename=None, show_fig=True, add_refinement=True, markersize=30, linewidth=2.5):
         plt.rcParams.update({'font.size': 60})
         scheme = self.scheme
         dim = self.dim
@@ -147,9 +147,9 @@ class StandardCombi(object):
             points = self.get_points_component_grid(ss[0], numSubDiagonal)
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
-            plt.plot(xArray, yArray, 'o', markersize=25, color="black")
+            plt.plot(xArray, yArray, 'o', markersize=markersize, color="black")
         if add_refinement:
-            self.add_refinment_to_figure_axe(ax, linewidth=3)
+            self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         if show_fig:
