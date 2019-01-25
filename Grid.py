@@ -425,7 +425,7 @@ class ClenshawCurtisGrid1D(Grid1d):
                     weight_factor += term
                 weight_factor = 2.0 / (self.num_points_with_boundary - 1) * (1 + 2 * weight_factor)
             weight *= weight_factor
-        return
+        return weight
 
     def is_high_order_grid(self):
         return True
