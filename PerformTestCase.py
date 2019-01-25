@@ -27,6 +27,8 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
     errorArray = []
+    surplusErrorArray = []
+
     numEvaluationsArray = []
     numNaive = []
     numIdeal = []
@@ -34,6 +36,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     # calculate refinements for different tolerance values
     for algorithm in adaptiveAlgorithmVector:
         errorArrayAlgorithm = []
+        surplusErrorArrayAlgorithm = []
         numEvaluationsArrayAlgorithm = []
         numNaiveAlgorithm = []
         numIdealAlgorithm = []
@@ -63,17 +66,21 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
             end = time.time()
             print("time spent in case", i, end - start)
             '''
-        coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new = algorithm[
+        coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new = algorithm[
             0].performSpatiallyAdaptiv(
             algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution)
         # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
         errorArrayAlgorithm.extend(error_array_new)
+        surplusErrorArrayAlgorithm.extend(surplus_error_array_new)
+
         numEvaluationsArrayAlgorithm.append(numberOfEvaluations)
         # numIdealAlgorithm.extend(algorithm[0].get_total_num_points_arbitrary_dim(False))
         # numNaiveAlgorithm.append(algorithm[0].get_total_num_points_arbitrary_dim(True))
         numFEvalIdealAlgorithm.extend(num_point_array_new)
 
         errorArray.append(errorArrayAlgorithm)
+        surplusErrorArray.append(surplusErrorArrayAlgorithm)
+
         numEvaluationsArray.append(numEvaluationsArrayAlgorithm)
         numNaive.append(numNaiveAlgorithm)
         numIdeal.append(numIdealAlgorithm)
@@ -90,7 +97,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     for i in range(minLmin, maxLmin):
         xArrayStandardTest, xFEvalArrayStandardTest, errorArrayStandardTest = performTestStandard(f, a, b, grid, i,
                                                                                                   maxLmax - (i - 1) * (
-                                                                                                              dim - 1),
+                                                                                                              dim - 1) + i - 1,
                                                                                                   dim, reference_solution)
         xArrayStandard.append(xArrayStandardTest)
         xFEvalArrayStandard.append(xFEvalArrayStandardTest)
@@ -109,9 +116,13 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         #print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
         #print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
         print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        print(numFEvalIdeal[i], surplusErrorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+
         # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
         plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        plt.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
+
     plt.legend(bbox_to_anchor=(3, 1), loc="upper right")
     plt.xlabel('Number of points')
     plt.ylabel('Approximation error')
