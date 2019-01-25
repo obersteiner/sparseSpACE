@@ -123,9 +123,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)
+            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
         else:
-            return self.total_error
+            return self.total_error, self.total_error
 
     def refine(self):
         # split all cells that have an error close to the max error
@@ -167,10 +167,15 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         error_array = []
+        surplus_error_array = []
         num_point_array = []
         while True:
-            error = self.evaluate_integral()
+            error, surplus_error = self.evaluate_integral()
             error_array.append(error)
+            if reference_solution is not None:
+                surplus_error_array.append(surplus_error/abs(reference_solution))
+            else:
+                surplus_error_array.append(surplus_error)
             num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
@@ -197,7 +202,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array, surplus_error_array
 
     @abc.abstractmethod
     def initialize_refinement(self):
