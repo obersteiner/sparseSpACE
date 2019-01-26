@@ -428,9 +428,18 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
             area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], filter_area, interpolate)
             num_points += evaluations * factor
-            if not filter_integral and filter_points:
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], None, None)
             integral += area_integral * ss[1]
+
+        if not filter_integral and filter_points:
+            integral = 0.0
+            area.levelvec_dict = {}
+            for ss in scheme:
+                if self.grid.isNested():
+                    factor = ss[1]
+                else:
+                    factor = 1
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], None, None)
+                integral += area_integral * ss[1]
 
         area.coarseningValue = coarsening_save
         return integral, num_points
