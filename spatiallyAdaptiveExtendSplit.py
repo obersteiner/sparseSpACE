@@ -278,7 +278,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
                 parent_integral, num_points_split = self.evaluate_area_complete_flexibel(area_parent, coarsening, filter_area=area, filter_integral=True, filter_points=True, interpolate=False)
                 area.num_points_split_parent = num_points_split
-                print("Points", num_points_split, coarsening)
+
                 if only_one_extend or 3*area.num_points_split_parent > area.num_points_extend_parent:
                     break
                 else:
