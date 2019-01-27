@@ -164,11 +164,19 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                                  0)
             parent.set_integral(parent_integral)
             new_refinement_objects = [parent]
-            for i in range(d):
+            for d in range(self.dim):
                 temp = []
                 for area in new_refinement_objects:
-                    temp += area.split_area_single_dim(d)
+                    temp.extend(area.split_area_single_dim(d))
                 new_refinement_objects = temp
+                for area in new_refinement_objects:
+                    integral = 0
+                    for ss in self.scheme:
+                        integral_area, a, b = self.evaluate_area(self.f, area, ss[0])
+                        integral += integral_area * ss[1]
+                    area.integral = integral
+                    if not area.twins[d].integral is None: #TODO Not strictly needed for the computations
+                        area.set_twin_error(d, abs(area.integral - area.twins[d].integral))
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
