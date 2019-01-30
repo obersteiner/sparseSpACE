@@ -66,7 +66,8 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
             end = time.time()
             print("time spent in case", i, end - start)
             '''
-        coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new = algorithm[
+        coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new = \
+        algorithm[
             0].performSpatiallyAdaptiv(
             algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution)
         # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
@@ -87,8 +88,10 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numFEvalIdeal.append(numFEvalIdealAlgorithm)
 
     if doDimAdaptive:
-        dimAdaptiveCombi = DimAdaptiveCombi(a,b, grid)
-        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1,2,f,10**-maxtol, reference_solution=reference_solution)
+        dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
+        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
+                                                                                                                10 ** -maxtol,
+                                                                                                                reference_solution=reference_solution)
 
     # calculate different standard combination scheme results
     xArrayStandard = []
@@ -97,8 +100,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     for i in range(minLmin, maxLmin):
         xArrayStandardTest, xFEvalArrayStandardTest, errorArrayStandardTest = performTestStandard(f, a, b, grid, i,
                                                                                                   maxLmax - (i - 1) * (
-                                                                                                              dim - 1) + i - 1,
-                                                                                                  dim, reference_solution)
+                                                                                                          dim - 1) + i - 1,
+                                                                                                  dim,
+                                                                                                  reference_solution)
         xArrayStandard.append(xArrayStandardTest)
         xFEvalArrayStandard.append(xFEvalArrayStandardTest)
         errorArrayStandard.append(errorArrayStandardTest)
@@ -109,12 +113,12 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
         plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
                    label='standardCombination distinct f evals lmin=' + str(i + minLmin))
-    if doDimAdaptive:    
+    if doDimAdaptive:
         print(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
         plt.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
     for i in range(len(adaptiveAlgorithmVector)):
-        #print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
-        #print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
+        # print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
+        # print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
         print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
         print(numFEvalIdeal[i], surplusErrorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
 
