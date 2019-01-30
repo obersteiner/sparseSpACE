@@ -53,9 +53,8 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.error = None
 
         self.automatic_extend_split = automatic_extend_split
-        self.parent_info = parent_info
+        self.parent_info = parent_info if parent_info is not None else ParentInfo()
         self.switch_to_parent_estimation = self.grid.is_high_order_grid()
-        self.last_refinement_split = parent_info.split_parent_integral is not None if parent_info is not None else None
         self.children = []
 
     # this routine decides if we split or extend the RefinementObject
@@ -156,7 +155,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                 start_sub_area[d] = start[d] if rest < 2 ** d else midpoint[d]
                 end_sub_area[d] = midpoint[d] if rest < 2 ** d else end[d]
                 rest = rest % 2 ** d
-            parent_info = ParentInfo(parent=self)
+            parent_info = ParentInfo(parent=self, last_refinement_split=True)
             new_refinement_object = RefinementObjectExtendSplit(start=start_sub_area, end=end_sub_area, grid=self.grid,
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
@@ -169,7 +168,7 @@ class RefinementObjectExtendSplit(RefinementObject):
 
     # set the local error associated with RefinementObject
     def set_error(self, error):
-        if self.switch_to_parent_estimation and self.last_refinement_split:
+        if self.switch_to_parent_estimation and self.parent_info.last_refinement_split:
             error /= 2 ** self.dim
             # print("Reduced error")
         self.error = error
@@ -181,7 +180,7 @@ class ParentInfo(object):
     def __init__(self, previous_integral=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
                  level_parent=-1,
                  num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
-                 sum_siblings=None):
+                 sum_siblings=None, last_refinement_split=False):
         self.previous_integral = previous_integral
         self.parent = parent
         self.split_parent_integral = split_parent_integral
@@ -195,6 +194,7 @@ class ParentInfo(object):
         self.sum_siblings = sum_siblings
         self.comparison = None
         self.extend_error_correction = 0
+        self.last_refinement_split = last_refinement_split
 
     def get_extend_benefit(self, comparison, num_comparison, grid):
         if self.benefit_extend is not None:

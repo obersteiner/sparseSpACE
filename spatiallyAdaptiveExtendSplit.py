@@ -263,7 +263,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             if area.switch_to_parent_estimation:
                 area.sum_siblings = 0.0
                 i = 0
-                for child in area.parent.children:
+                for child in area.parent_info.parent.children:
                     if child.integral is not None:
                         area.sum_siblings += child.integral
                         i += 1
@@ -301,7 +301,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                                                          filter_integral=False,
                                                                                          filter_points=True,
                                                                                          interpolate=False)
-                area.num_points_split_parent = num_points_split
+                area.parent_info.num_points_split_parent = num_points_split
                 if only_one_extend or 2 * area.parent_info.num_points_split_parent > area.parent_info.num_points_extend_parent:
                     break
                 else:
@@ -371,11 +371,11 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def get_parent_extend_integral(self, area):
 
         if area.switch_to_parent_estimation:
-            coarsening = self.lmax[0] - area.level_parent if area.level_parent != -1 else area.coarseningValue
+            coarsening = self.lmax[0] - area.parent_info.level_parent if area.parent_info.level_parent != -1 else area.coarseningValue
             integral, num_points = self.evaluate_area_complete_flexibel(area, coarsening)
-            area.extend_error_correction = abs(area.integral - integral)
+            area.parent_info.extend_error_correction = abs(area.integral - integral)
 
-            extend_parent_integral, extend_num_points = self.evaluate_area_complete_flexibel(area, coarsening)
+            extend_parent_integral, extend_num_points = self.evaluate_area_complete_flexibel(area, coarsening + 1)
             area.parent_info.num_points_extend_parent = extend_num_points
 
         else:
@@ -467,10 +467,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             integral = 0.0
             area.levelvec_dict = {}
             for ss in scheme:
-                if self.grid.isNested():
-                    factor = ss[1]
-                else:
-                    factor = 1
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], None, None)
                 integral += area_integral * ss[1]
 
