@@ -230,9 +230,8 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
 
     def do_refinement(self, area, position):
         if area.active:
-            #print("refining object:", area.get_key())
             self.refinement.refine(position)
-            area.error = 0
+            area.benefit = 0
         return False
 
     def refinement_postprocessing(self):

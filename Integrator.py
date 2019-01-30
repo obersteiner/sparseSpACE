@@ -126,7 +126,10 @@ class IntegratorArbitraryGridScalarProduct(IntegratorBase):
     def __call__(self, f, numPoints, start, end):
         points, weights = self.grid.get_points_and_weights()
         f_values = [f(point) for point in points]
-        return np.inner(f_values, weights)
+        if len(f_values) == 0:
+            return 0.0
+        else:
+            return np.inner(f_values, weights)
 
 '''
 #This integrator computes the integral of an arbitrary grid from the Grid class

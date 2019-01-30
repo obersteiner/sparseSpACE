@@ -106,22 +106,26 @@ class SpatiallyAdaptivBase(StandardCombi):
                     else:
                         integralarrayComplete[k] += ss[1] * area_integral
                         # self.combiintegral += area_integral * ss[1]
-                        evaluation_array[k] += evaluations
+                        factor = ss[1] if self.grid.isNested() else 1
+                        evaluation_array[k] += evaluations * factor
 
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
-            self.refinement.set_evaluations(i, evaluation_array[k] / len(self.scheme))
+            self.refinement.set_evaluations(i, evaluation_array[k])
+        for k in range(len(integralarrayComplete)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.calc_error(i, self.f)
+            self.refinement.set_benefit(i)
 
         # getArea with maximal error
-        self.errorMax = self.refinement.get_max_error()
+        self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.errorMax, "total surplus error:", self.total_error)
+        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)
+            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
         else:
-            return self.total_error
+            return self.total_error, self.total_error
 
     def refine(self):
         # split all cells that have an error close to the max error
@@ -133,7 +137,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
-                tolerance=self.errorMax * margin)
+                tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
                 # print("Refining position", position)
@@ -163,10 +167,15 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         error_array = []
+        surplus_error_array = []
         num_point_array = []
         while True:
-            error = self.evaluate_integral()
+            error, surplus_error = self.evaluate_integral()
             error_array.append(error)
+            if reference_solution is not None:
+                surplus_error_array.append(surplus_error/abs(reference_solution))
+            else:
+                surplus_error_array.append(surplus_error)
             num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
@@ -193,7 +202,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array, surplus_error_array
 
     @abc.abstractmethod
     def initialize_refinement(self):
