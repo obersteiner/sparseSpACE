@@ -4,6 +4,7 @@ from Function import FunctionShift
 import logging
 from combiScheme import *
 
+
 # T his class implements the standard combination technique
 class StandardCombi(object):
     # initialization
@@ -51,8 +52,8 @@ class StandardCombi(object):
         return np.prod(self.grid.levelToNumPoints(levelvector))
 
     # calculate the total number of points used in the complete combination scheme
-    def get_total_num_points(self, doNaive = False,
-                                           distinct_function_evals=True):  # we assume here that all lmax entries are equal
+    def get_total_num_points(self, doNaive=False,
+                             distinct_function_evals=True):  # we assume here that all lmax entries are equal
         if distinct_function_evals:
             return self.f.get_f_dict_size()
         numpoints = 0
@@ -72,14 +73,14 @@ class StandardCombi(object):
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
-        lmax = [self.combischeme.lmax_adaptive]*self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
+        lmax = [self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
         fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
         markersize = 20
-        #for axis in ax:
+        # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
         # get points of each component grid and plot them individually
@@ -132,15 +133,14 @@ class StandardCombi(object):
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=2.0)
 
-
                 coefficient = str(int(ss[1])) if ss[1] <= 0 else "+" + str(int(ss[1]))
                 grid.text(0.55, 0.55, coefficient,
-                              fontsize=fontsize*2, ha='center', color="blue")
-                #for axis in ['top', 'bottom', 'left', 'right']:
+                          fontsize=fontsize * 2, ha='center', color="blue")
+                # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
-        #ax1 = fig.add_subplot(111, alpha=0)
-        #ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
-        #ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
+        # ax1 = fig.add_subplot(111, alpha=0)
+        # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
+        # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
 
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
@@ -148,30 +148,45 @@ class StandardCombi(object):
         return fig
 
     # prints the sparse grid which results from the combination
-    def print_resulting_sparsegrid(self, filename=None, show_fig=True, add_refinement=True, markersize=30, linewidth=2.5, ticks=True, color="black"):
+    def print_resulting_sparsegrid(self, filename=None, show_fig=True, add_refinement=True, markersize=30,
+                                   linewidth=2.5, ticks=True, color="black"):
         plt.rcParams.update({'font.size': 60})
         scheme = self.scheme
         dim = self.dim
-        if dim != 2:
-            print("Cannot print sparse grid of dimension > 2")
+        if dim != 2 and dim != 3:
+            print("Cannot print sparse grid of dimension > 3")
             return None
-        fig, ax = plt.subplots(figsize=(20, 20))
+        if dim == 2:
+            fig, ax = plt.subplots(figsize=(20, 20))
+        if dim == 3:
+            fig = plt.figure(figsize=(20, 20))
+            ax = fig.add_subplot(111, projection='3d')
+
         ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
         ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
-        # ax.axis('off')
+
+        if dim == 3:
+            ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
+            ax.zaxis.set_ticks_position('none')
+            markersize /= 2
+
         # get points of each component grid and plot them in one plot
         for ss in scheme:
             numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(ss[0])
             points = self.get_points_component_grid(ss[0], numSubDiagonal)
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
-            plt.plot(xArray, yArray, 'o', markersize=markersize, color=color)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
+            if dim == 2:
+                plt.plot(xArray, yArray, 'o', markersize=markersize, color=color)
+            if dim == 3:
+                zArray = [p[2] for p in points]
+                plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
         if not ticks:
             ax.axis('off')
         if add_refinement:
