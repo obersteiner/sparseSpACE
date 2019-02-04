@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from ComponentGridInfo import ComponentGridInfo
 
 
 class CombiScheme:
@@ -85,17 +86,17 @@ class CombiScheme:
             for q in range(min(dim, lmax-lmin+1)):
                 coefficient = (-1)**q * math.factorial(dim-1)/(math.factorial(q)*math.factorial(dim-1-q))
                 grids = CombiScheme.getGrids(dim, lmax - lmin + 1 - q)
-                grid_array.extend([(np.array(g, dtype=int)+np.ones(dim, dtype=int)*(lmin-1), coefficient) for g in grids])
+                grid_array.extend([ComponentGridInfo(levelvector=np.array(g, dtype=int)+np.ones(dim, dtype=int)*(lmin-1), coefficient=coefficient) for g in grids])
             for i in range(len(grid_array)):
                 if do_print:
-                    print(i, list(grid_array[i][0]), grid_array[i][1])
+                    print(i, list(grid_array[i].levelvector), grid_array[i].coefficient)
         else:  # use adaptive schem
             assert self.initialized_adaptive
             grid_array = self.get_coefficients_to_index_set(self.active_index_set | self.old_index_set)
             # print(grid_dict.items())
             for i in range(len(grid_array)):
                 if do_print:
-                    print(i, list(grid_array[i][0]), grid_array[i][1])
+                    print(i, list(grid_array[i].levelvector), grid_array[i].coefficient)
         return grid_array
 
     def get_coefficients_to_index_set(self, index_set):
@@ -119,7 +120,7 @@ class CombiScheme:
 
         for levelvec, coefficient in grid_dict.items():
             if coefficient != 0 and sum(levelvec) > self.lmax + (self.dim - 1) * self.lmin - self.dim:
-                grid_array.append((levelvec, coefficient))
+                grid_array.append(ComponentGridInfo(levelvector=levelvec, coefficient=coefficient))
         return grid_array
 
     def is_old_index(self, levelvec):

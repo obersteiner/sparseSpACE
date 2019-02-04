@@ -46,14 +46,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         dim = self.dim
         # print "Dim:",dim
         num_evaluations = 0
-        for ss in self.scheme:
+        for component_grid in self.scheme:
             integral = 0
             for area in self.get_areas():
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
                 if area_integral != -2 ** 30:
                     num_evaluations += evaluations
                     integral += area_integral
-            integral *= ss[1]
+            integral *= component_grid.coefficient
             combiintegral += integral
         return combiintegral, num_evaluations
 
@@ -91,22 +91,19 @@ class SpatiallyAdaptivBase(StandardCombi):
         integralarrayComplete = np.zeros(len(areas))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
-        for ss in self.scheme:  # iterate over component grids
-            # initialize component grid specific variables
-            numSubDiagonal = (self.lmax[0] + self.dim - 1) - np.sum(ss[0])
-            integral = 0
+        for component_grid in self.scheme:  # iterate over component grids
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
-                # print(ss)
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0])
+                # print(component_grid)
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
                 if area_integral != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)
                     else:
-                        integralarrayComplete[k] += ss[1] * area_integral
-                        # self.combiintegral += area_integral * ss[1]
-                        factor = ss[1] if self.grid.isNested() else 1
+                        integralarrayComplete[k] += component_grid.coefficient * area_integral
+                        # self.combiintegral += area_integral * component_grid[1]
+                        factor = component_grid.coefficient if self.grid.isNested() else 1
                         evaluation_array[k] += evaluations * factor
 
         for k in range(len(integralarrayComplete)):
