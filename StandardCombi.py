@@ -68,7 +68,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename=None, add_refinement=True, ticks=True):
+    def print_resulting_combi_scheme(self, filename=None, add_refinement=True, ticks=True, markersize=20):
         fontsize = 60
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
@@ -79,7 +79,6 @@ class StandardCombi(object):
             print("Cannot print combischeme of dimension > 2")
             return None
         fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
-        markersize = 20
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -189,7 +188,7 @@ class StandardCombi(object):
             ax.spines['left'].set_visible(False)
         if not ticks:
             ax.axis('off')
-        if add_refinement:
+        if add_refinement and dim == 2:
             self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
