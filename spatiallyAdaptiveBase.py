@@ -187,9 +187,9 @@ class SpatiallyAdaptivBase(StandardCombi):
                     print("Refinement Graph:")
                     self.draw_refinement()
                     print("Combi Scheme:")
-                    self.print_resulting_combi_scheme()
+                    self.print_resulting_combi_scheme(markersize=5)
                     print("Resulting Sparse Grid:")
-                    self.print_resulting_sparsegrid()
+                    self.print_resulting_sparsegrid(markersize=3)
             else:  # refinement finished
                 break
         # finished adaptive algorithm
