@@ -69,7 +69,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.lmax = [maxv for i in range(self.dim)]
             # calculate the combination scheme
             self.combischeme = CombiScheme(self.dim)
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
             self.initialize_refinement()
             self.f.reset_dictionary()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object

@@ -250,7 +250,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
             print("New scheme")
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
             return True
         return False
 
@@ -390,7 +390,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         print(area.num_points_split_parent, area.split_parent_integral)
         while area.num_points_extend_parent <= area.num_points_split_parent:
             lmax += 1
-            scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax, self.dim, do_print=False)
+            scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax, do_print=False)
             if False: #area.switch_to_parent_estimation:
                 area.num_points_extend_parent = 0.0
                 extend_parent_integral = 0.0
@@ -449,7 +449,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         else:
             lmax = self.lmax[0] + abs(coarsening)
             lmin = self.lmin[0]
-            scheme = self.combischeme.getCombiScheme(lmin, lmax, self.dim, do_print=False)
+            scheme = self.combischeme.getCombiScheme(lmin, lmax, do_print=False)
 
         for component_grid in scheme:
             if self.grid.isNested():

@@ -32,13 +32,13 @@ class DimAdaptiveCombi(StandardCombi):
         assert(reference_solution is not None)
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
-        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
         integral_dict = {}
         errors = []  # tracks the error evolution during the refinement procedure
         num_points = []  # tracks the number of points during the refinement procedure
         while True:
             combiintegral = 0
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=False)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
             error_array = np.zeros(len(self.scheme))
             for i, component_grid in enumerate(self.scheme):
                 if tuple(component_grid.levelvector) not in integral_dict:
@@ -66,7 +66,7 @@ class DimAdaptiveCombi(StandardCombi):
                 do_refine = refined_dims == []
                 error_array[grid_id] = 0.0
         print("Final scheme:")
-        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=True)
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=True)
         print("CombiSolution", combiintegral)
         print("Analytic Solution", real_integral)
         print("Difference", abs(combiintegral - real_integral))

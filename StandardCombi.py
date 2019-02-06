@@ -24,7 +24,7 @@ class StandardCombi(object):
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
         # get combi scheme
-        self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.dim)
+        self.scheme = self.combischeme.getCombiScheme(minv, maxv)
 
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
