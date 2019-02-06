@@ -250,7 +250,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
             print("New scheme")
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
             return True
         return False
 
@@ -390,7 +390,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         print(area.num_points_split_parent, area.split_parent_integral)
         while area.num_points_extend_parent <= area.num_points_split_parent:
             lmax += 1
-            scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax, self.dim, do_print=False)
+            scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax, do_print=False)
             if False: #area.switch_to_parent_estimation:
                 area.num_points_extend_parent = 0.0
                 extend_parent_integral = 0.0
@@ -449,25 +449,25 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         else:
             lmax = self.lmax[0] + abs(coarsening)
             lmin = self.lmin[0]
-            scheme = self.combischeme.getCombiScheme(lmin, lmax, self.dim, do_print=False)
+            scheme = self.combischeme.getCombiScheme(lmin, lmax, do_print=False)
 
-        for ss in scheme:
+        for component_grid in scheme:
             if self.grid.isNested():
-                factor = ss[1]
+                factor = component_grid.coefficient
             else:
                 factor = 1
 
-            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], filter_area,
+            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, filter_area,
                                                                                interpolate)
             num_points += evaluations * factor
-            integral += area_integral * ss[1]
+            integral += area_integral * component_grid.coefficient
 
         if not filter_integral and filter_points:
             integral = 0.0
             area.levelvec_dict = {}
-            for ss in scheme:
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, ss[0], None, None)
-                integral += area_integral * ss[1]
+            for component_grid in scheme:
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
+                integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save
         return integral, num_points
