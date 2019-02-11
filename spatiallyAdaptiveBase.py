@@ -124,6 +124,47 @@ class SpatiallyAdaptivBase(StandardCombi):
         else:
             return self.total_error, self.total_error
 
+    def evaluate_operation(self):
+        # initialize values
+        # number_of_evaluations = 0
+        # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
+        areas = self.get_new_areas()
+        integralarrayComplete = np.zeros(len(areas))
+        evaluation_array = np.zeros(len(areas))
+        # calculate integrals
+        for k, component_grid in enumerate(self.scheme):  # iterate over component grids
+            if self.operation.is_area_operation():
+                num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+                for area in areas:
+                    modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+                    if do_compute:
+                        evaluations = self.operation.evaluate_area(area, modified_levelvec)
+                        if self.grid.isNested() and self.operation.count_unique_points():
+                            evaluations *= component_grid.coefficient
+                        evaluation_array[k] += evaluations
+            else:
+                assert(False) # not implemented yet
+                self.operation.perform_operation()
+
+        self.operation.post_processing()
+
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.refinement.set_evaluations(i, evaluation_array[k])
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.calc_error(i, self.f)
+            self.refinement.set_benefit(i)
+
+        # getArea with maximal error
+        self.benefit_max = self.refinement.get_max_benefit()
+        self.total_error = self.refinement.get_total_error()
+        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        if self.realIntegral is not None:
+            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
+        else:
+            return self.total_error, self.total_error
+
     def refine(self):
         # split all cells that have an error close to the max error
         areas = self.get_areas()
@@ -241,3 +282,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this method can be overwritten if for the method a graphical refinement visualization exists
     def draw_refinement(self, filename=None):
         pass
+
+    # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
+    def coarsen_grid(self, levelvector, area, num_sub_diagonal):
+        return levelvector, True

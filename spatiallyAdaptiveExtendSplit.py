@@ -95,7 +95,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         return array2
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def coarsen_grid(self, levelvector, area, num_sub_diagonal, print_point=None):
+    def coarsen_grid(self, levelvector, area, num_sub_diagonal):
         start = area.start
         end = area.end
         coarsening = area.coarseningValue
@@ -152,9 +152,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 else:
                     break
         level_coarse = [temp[d] - self.lmin[d] + int(self.noInitialSplitting) for d in range(len(temp))]
-        if print_point is not None:
-            if all([start[d] <= print_point[d] and end[d] >= print_point[d] for d in range(self.dim)]):
-                print("Level: ", levelvector, "Coarsened level:", level_coarse, coarsening_save, start, end)
         return level_coarse, area_is_null
 
     def initialize_refinement(self):
