@@ -14,6 +14,10 @@ class RefinementObject(object):
     def set_integral(self, integral):
         self.integral = integral
 
+    # set the evaluations that were performed in the refinementobject
+    def set_evaluations(self, evaluations):
+        self.evaluations = evaluations
+
     # refine this object and return newly created objects
     @abc.abstractmethod
     def refine(self):
