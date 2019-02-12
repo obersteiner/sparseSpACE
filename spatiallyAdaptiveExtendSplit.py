@@ -3,14 +3,14 @@ from spatiallyAdaptiveBase import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
-                 version=0, dim_adaptive=False, automatic_extend_split=False):
+                 version=0, dim_adaptive=False, automatic_extend_split=False, operation=None):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
         # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
         assert 2 >= version >= 0
         self.version = version
-        SpatiallyAdaptivBase.__init__(self, a, b, grid)
+        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
@@ -57,7 +57,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
             self.grid.setCurrentArea(start, end, level_interval)
             points = self.grid.getPoints()
             points_array.extend(points)
@@ -70,7 +70,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
             self.grid.setCurrentArea(start, end, level_interval)
             points, weights = self.grid.get_points_and_weights()
             points_array.extend(points)
@@ -84,8 +84,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, is_null = self.coarsen_grid(levelvec, area, numSubDiagonal)
-            if not is_null:
+            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            if do_compute:
                 self.grid.setCurrentArea(start, end, level_interval)
                 points = self.grid.getPoints()
                 array2.extend(points)
@@ -152,7 +152,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 else:
                     break
         level_coarse = [temp[d] - self.lmin[d] + int(self.noInitialSplitting) for d in range(len(temp))]
-        return level_coarse, area_is_null
+        return level_coarse, not area_is_null
 
     def initialize_refinement(self):
         if self.dim_adaptive:
@@ -176,9 +176,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def evaluate_area(self, f, area, levelvec, filter_area=None, interpolate=False):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvec)
-        level_for_evaluation, is_null = self.coarsen_grid(levelvec, area, num_sub_diagonal)
+        level_for_evaluation, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal)
         # print(level_for_evaluation, area.coarseningValue)
-        if is_null:
+        if not do_compute:
             return 0, None, 0
         else:
             if filter_area is None:
