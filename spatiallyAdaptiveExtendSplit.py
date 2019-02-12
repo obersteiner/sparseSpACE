@@ -234,14 +234,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def do_refinement(self, area, position):
         if self.automatic_extend_split:
-            # get integral values for the area for a potential parent that generated this area with an Extend and for
-            # a potential parent that generated this area with a Split if necessary
-            # in addition a reference is computed which is a Split + an Extend before the current refinement of area
-            if area.parent_info.extend_parent_integral is None:
-                area.parent_info.extend_parent_integral = self.get_parent_extend_integral(area)
-            if area.parent_info.split_parent_integral is None and area.parent_info.benefit_extend is None:
-                area.parent_info.split_parent_integral = self.get_parent_split_integral(area)
-                self.get_reference_integral(area)
+            self.compute_benefits_for_operations(area)
 
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
@@ -250,6 +243,54 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
             return True
         return False
+
+    def compute_benefits_for_operations(self, area):
+        # get integral values for the area for a potential parent that generated this area with an Extend and for
+        # a potential parent that generated this area with a Split if necessary
+        # in addition a reference is computed which is a Split + an Extend before the current refinement of area
+        if area.parent_info.extend_parent_integral is None:
+            area.parent_info.extend_parent_integral = self.get_parent_extend_integral(area)
+        if area.parent_info.split_parent_integral is None and area.parent_info.benefit_extend is None:
+            area.parent_info.split_parent_integral = self.get_parent_split_integral(area)
+            self.get_reference_integral(area)
+        self.set_extend_benefit(area)
+        self.set_split_benefit(area)
+        self.set_extend_error_correction(area)
+
+    def set_extend_benefit(self, area):
+        if area.parent_info.benefit_extend is not None:
+            return
+        if area.switch_to_parent_estimation:
+            comparison = area.sum_siblings
+            num_comparison = area.evaluations * 2 ** self.dim
+        else:
+            comparison = area.integral
+            num_comparison = area.evaluations
+        assert num_comparison > area.parent_info.num_points_extend_parent
+        error_extend = abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
+        if not self.grid.is_high_order_grid():
+            area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
+        else:
+            area.parent_info.benefit_extend = error_extend * area.parent_info.num_points_split_parent
+
+    def set_split_benefit(self, area):
+        if area.parent_info.benefit_split is not None:
+            return
+        if area.switch_to_parent_estimation:
+            num_comparison = area.evaluations * 2 ** self.dim
+        else:
+            num_comparison = area.evaluations
+        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
+        if self.grid.boundary:
+            assert area.parent_info.num_points_split_parent > 0
+        error_split = abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100))
+        if not self.grid.is_high_order_grid():
+            area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
+        else:
+            area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
+
+    def set_extend_error_correction(self, area):
+        return area.parent_info.extend_error_correction * area.parent_info.num_points_split_parent
 
     def calc_error(self, objectID, f):
         area = self.refinement.getObject(objectID)
