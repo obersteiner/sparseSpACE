@@ -114,6 +114,8 @@ class SpatiallyAdaptivBase(StandardCombi):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
             self.refinement.set_evaluations(i, evaluation_array[k])
+        for area in areas:
+            print("Integral",area.integral)
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.calc_error(i, self.f)
@@ -134,23 +136,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         evaluation_array = np.zeros(len(areas))
         for area in areas:
             self.operation.area_preprocessing(area)
-        # calculate integrals
-        for component_grid in self.scheme:  # iterate over component grids
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-            if self.operation.is_area_operation():
-                for k, area in enumerate(areas):
-                    modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
-                    if do_compute:
-                        evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, self.refinement)
-                        if self.grid.isNested() and self.operation.count_unique_points():
-                            evaluations *= component_grid.coefficient
-                        evaluation_array[k] += evaluations
-            else:
-                assert(False) # not implemented yet
-                points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
-                self.operation.perform_operation(points)
-                self.compute_evaluations(evaluation_array, points)
-
+        self.compute_solutions(areas,evaluation_array)
+        for area in areas:
+            self.operation.area_postprocessing(area)
+        for area in areas:
+            print("Integral",area.integral)
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_evaluations(i, evaluation_array[k])
@@ -168,6 +158,32 @@ class SpatiallyAdaptivBase(StandardCombi):
             return global_error_estimate, self.total_error
         else:
             return self.total_error, self.total_error
+
+    def compute_solutions(self, areas, evaluation_array):
+        # calculate integrals
+        for component_grid in self.scheme:  # iterate over component grids
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+            if self.operation.is_area_operation():
+                for k, area in enumerate(areas):
+                    evaluations = self.evaluate_operation_area(component_grid, area)
+                    if self.grid.isNested() and self.operation.count_unique_points():
+                        evaluations *= component_grid.coefficient
+                    evaluation_array[k] += evaluations
+            else:
+                assert(False) # not implemented yet
+                points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
+                self.operation.perform_operation(points)
+                self.compute_evaluations(evaluation_array, points)
+
+    def evaluate_operation_area(self, component_grid, area, additional_info=None):
+        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+        if do_compute:
+            print("Compute", modified_levelvec, area.start, area.end)
+            evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, self.refinement, additional_info)
+            return evaluations
+        else:
+            return 0
 
     def refine(self):
         # split all cells that have an error close to the max error
