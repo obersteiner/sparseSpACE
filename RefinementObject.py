@@ -47,6 +47,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         # indicates after how many splits only extends are performed
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
+        self.value = None
         self.integral = None
         # dictionary that maps all coarsened levelvectors to there uncoarsened ones
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
@@ -95,8 +96,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                 lmaxIncrease = None
                 update_other_coarsenings = None
             benefit_extend = benefit_extend - correction if benefit_extend is not None and self.grid.is_high_order_grid() else None
-            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid else None
-            parent_info = ErrorInfo(previous_integral=self.integral, parent=self.parent_info.parent,
+            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid() else None
+            parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.integral, parent=self.parent_info.parent,
                                      num_points_extend_parent=self.evaluations,
                                      benefit_extend=benefit_extend, level_parent=self.parent_info.level_parent,
                                      num_points_split_parent=num_points_split_parent)
@@ -174,11 +175,11 @@ class RefinementObjectExtendSplit(RefinementObject):
 # This class is used in the Extend Split RefinementObject as a container
 # to store various variables used for the error estimates
 class ErrorInfo(object):
-    def __init__(self, previous_integral=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
+    def __init__(self, previous_value=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
                  level_parent=-1,
                  num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
                  sum_siblings=None, last_refinement_split=False):
-        self.previous_integral = previous_integral
+        self.previous_value = previous_value
         self.parent = parent
         self.split_parent_integral = split_parent_integral
         self.extend_parent_integral = extend_parent_integral
