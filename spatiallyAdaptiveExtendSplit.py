@@ -310,7 +310,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
     def set_extend_error_correction(self, area):
-        return area.parent_info.extend_error_correction * area.parent_info.num_points_split_parent
+        area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
 
     def calc_error(self, objectID, f):
         area = self.refinement.getObject(objectID)
@@ -533,7 +533,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if area.switch_to_parent_estimation:
             coarsening = self.lmax[0] - area.parent_info.level_parent if area.parent_info.level_parent != -1 else area.coarseningValue
             self.evaluate_operation_area_complete_flexibel(area, coarsening, error_name="extend_error_correction")
-            self.operation.set_extend_error_correction(area)
             #area.parent_info.extend_error_correction = abs(area.integral - integral)
 
             extend_num_points = self.evaluate_operation_area_complete_flexibel(area, coarsening + 1, error_name="extend_parent")
