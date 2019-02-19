@@ -269,11 +269,11 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.set_extend_error_correction(area)
         else:
             self.operation.initialize_error_estimates(area)
-            self.get_reference_operation(area)
             if area.parent_info.benefit_split is None:
                 self.get_parent_extend_operation(area)
             if area.parent_info.benefit_extend is None:
                 self.get_parent_split_operation(area)
+                self.get_reference_operation(area)
             self.operation.set_extend_benefit(area)
             self.operation.set_split_benefit(area)
             self.operation.set_extend_error_correction(area)
@@ -663,7 +663,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             evaluations = self.evaluate_operation_area(component_grid, area, additional_info)
             num_points += evaluations * factor
 
-        if not filter_integral and filter_points:
+        if not filter_integral and filter_points and error_name != "reference":
             area.levelvec_dict = {}
             self.operation.initialize_split_error(filter_area)
             for component_grid in scheme:
