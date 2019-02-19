@@ -22,13 +22,14 @@ from StandardCombi import *
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a, b, grid=None):
+    def __init__(self, a, b, grid=None, operation=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
         self.grid = grid
         self.refinements_for_recalculate = 100
+        self.operation = operation
         assert (len(a) == len(b))
 
     # returns the number of points in a single component grid with refinement
@@ -84,6 +85,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         # self.evaluationPerArea = [] #number of evaluations per area
 
     def evaluate_integral(self):
+        if self.operation is not None:
+            return self.evaluate_operation()
         # initialize values
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
@@ -96,6 +99,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             for k, area in enumerate(areas):
                 # print(component_grid)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
+
                 if area_integral != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
@@ -123,6 +127,57 @@ class SpatiallyAdaptivBase(StandardCombi):
             return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
         else:
             return self.total_error, self.total_error
+
+    def evaluate_operation(self):
+        # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
+        areas = self.get_new_areas()
+        evaluation_array = np.zeros(len(areas))
+        for area in areas:
+            self.operation.area_preprocessing(area)
+        self.compute_solutions(areas,evaluation_array)
+        for area in areas:
+            self.operation.area_postprocessing(area)
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.refinement.set_evaluations(i, evaluation_array[k])
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.calc_error(i, self.f)
+            self.refinement.set_benefit(i)
+
+        # getArea with maximal error
+        self.benefit_max = self.refinement.get_max_benefit()
+        self.total_error = self.refinement.get_total_error()
+        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        global_error_estimate = self.operation.get_global_error_estimate(self.refinement)
+        if global_error_estimate is not None:
+            return global_error_estimate, self.total_error
+        else:
+            return self.total_error, self.total_error
+
+    def compute_solutions(self, areas, evaluation_array):
+        # calculate integrals
+        for component_grid in self.scheme:  # iterate over component grids
+            if self.operation.is_area_operation():
+                for k, area in enumerate(areas):
+                    evaluations = self.evaluate_operation_area(component_grid, area)
+                    if self.grid.isNested() and self.operation.count_unique_points():
+                        evaluations *= component_grid.coefficient
+                    evaluation_array[k] += evaluations
+            else:
+                assert(False) # not implemented yet
+                points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
+                self.operation.perform_operation(points)
+                self.compute_evaluations(evaluation_array, points)
+
+    def evaluate_operation_area(self, component_grid, area, additional_info=None):
+        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+        if do_compute:
+            evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, self.refinement, additional_info)
+            return evaluations
+        else:
+            return 0
 
     def refine(self):
         # split all cells that have an error close to the max error
@@ -241,3 +296,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this method can be overwritten if for the method a graphical refinement visualization exists
     def draw_refinement(self, filename=None):
         pass
+
+    # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
+    def coarsen_grid(self, levelvector, area, num_sub_diagonal):
+        return levelvector, True

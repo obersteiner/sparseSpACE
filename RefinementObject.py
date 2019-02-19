@@ -14,6 +14,10 @@ class RefinementObject(object):
     def set_integral(self, integral):
         self.integral = integral
 
+    # set the evaluations that were performed in the refinementobject
+    def set_evaluations(self, evaluations):
+        self.evaluations = evaluations
+
     # refine this object and return newly created objects
     @abc.abstractmethod
     def refine(self):
@@ -43,6 +47,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         # indicates after how many splits only extends are performed
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
+        self.value = None
         self.integral = None
         # dictionary that maps all coarsened levelvectors to there uncoarsened ones
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
@@ -53,7 +58,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.error = None
 
         self.automatic_extend_split = automatic_extend_split
-        self.parent_info = parent_info if parent_info is not None else ParentInfo()
+        self.parent_info = parent_info if parent_info is not None else ErrorInfo()
         self.switch_to_parent_estimation = self.grid.is_high_order_grid()
         self.children = []
 
@@ -63,20 +68,14 @@ class RefinementObjectExtendSplit(RefinementObject):
         coarsening_level = self.coarseningValue
         benefit_extend = benefit_split = None
         if self.automatic_extend_split:
-            if self.switch_to_parent_estimation:
-                comparison = self.sum_siblings
-                num_comparison = self.evaluations * 2 ** self.dim
-            else:
-                comparison = self.integral
-                num_comparison = self.evaluations
 
-            benefit_split = self.parent_info.get_split_benefit(integral=self.integral, num_comparison=num_comparison,
-                                                               grid=self.grid)
-            benefit_extend = self.parent_info.get_extend_benefit(comparison=comparison, num_comparison=num_comparison,
-                                                                 grid=self.grid)
+
+            benefit_split = self.parent_info.get_split_benefit()
+            benefit_extend = self.parent_info.get_extend_benefit()
 
             if self.switch_to_parent_estimation:
-                benefit_extend += self.parent_info.get_extend_error_correction()
+                correction = abs(self.parent_info.get_extend_error_correction())
+                benefit_extend += correction
 
         if (self.automatic_extend_split and benefit_extend < benefit_split) or (
                 not self.automatic_extend_split and
@@ -98,8 +97,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                 lmaxIncrease = None
                 update_other_coarsenings = None
             benefit_extend = benefit_extend - correction if benefit_extend is not None and self.grid.is_high_order_grid() else None
-            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid else None
-            parent_info = ParentInfo(previous_integral=self.integral, parent=self.parent_info.parent,
+            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid() else None
+            parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.integral, parent=self.parent_info.parent,
                                      num_points_extend_parent=self.evaluations,
                                      benefit_extend=benefit_extend, level_parent=self.parent_info.level_parent,
                                      num_points_split_parent=num_points_split_parent)
@@ -109,6 +108,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                               coarseningValue=coarseningValue,
                                                               needExtendScheme=self.needExtendScheme,
                                                               automatic_extend_split=self.automatic_extend_split)
+
             self.children.append(newRefinementObject)
             return [newRefinementObject], lmaxIncrease, update_other_coarsenings
 
@@ -155,7 +155,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                 start_sub_area[d] = start[d] if rest < 2 ** d else midpoint[d]
                 end_sub_area[d] = midpoint[d] if rest < 2 ** d else end[d]
                 rest = rest % 2 ** d
-            parent_info = ParentInfo(parent=self, last_refinement_split=True)
+            parent_info = ErrorInfo(parent=self, last_refinement_split=True)
             new_refinement_object = RefinementObjectExtendSplit(start=start_sub_area, end=end_sub_area, grid=self.grid,
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
@@ -176,12 +176,12 @@ class RefinementObjectExtendSplit(RefinementObject):
 
 # This class is used in the Extend Split RefinementObject as a container
 # to store various variables used for the error estimates
-class ParentInfo(object):
-    def __init__(self, previous_integral=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
+class ErrorInfo(object):
+    def __init__(self, previous_value=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
                  level_parent=-1,
                  num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
                  sum_siblings=None, last_refinement_split=False):
-        self.previous_integral = previous_integral
+        self.previous_value = previous_value
         self.parent = parent
         self.split_parent_integral = split_parent_integral
         self.extend_parent_integral = extend_parent_integral
@@ -189,37 +189,22 @@ class ParentInfo(object):
         self.num_points_split_parent = num_points_split_parent
         self.num_points_extend_parent = num_points_extend_parent
         self.benefit_extend = benefit_extend
-        self.benefit_Split = benefit_Split
+        self.benefit_split = benefit_Split
         self.num_points_reference = None
         self.sum_siblings = sum_siblings
         self.comparison = None
         self.extend_error_correction = 0
         self.last_refinement_split = last_refinement_split
 
-    def get_extend_benefit(self, comparison, num_comparison, grid):
-        if self.benefit_extend is not None:
-            return self.benefit_extend
-        assert num_comparison > self.num_points_extend_parent
-        error_extend = abs((self.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
-        if not grid.is_high_order_grid():
-            return error_extend * (self.num_points_split_parent - self.num_points_reference)
-        else:
-            return error_extend * (self.num_points_split_parent)
 
-    def get_split_benefit(self, integral, num_comparison, grid):
-        if self.benefit_Split is not None:
-            return self.benefit_Split
-        assert num_comparison > self.num_points_split_parent or self.switch_to_parent_estimation
-        if grid.boundary:
-            assert self.num_points_split_parent > 0
-        error_split = abs((self.extend_parent_integral - integral) / (abs(integral) + 10 ** -100))
-        if not grid.is_high_order_grid():
-            return error_split * (self.num_points_extend_parent - self.num_points_reference)
-        else:
-            return error_split * (self.num_points_extend_parent)
+    def get_extend_benefit(self):
+        return self.benefit_extend
+
+    def get_split_benefit(self):
+        return self.benefit_split
 
     def get_extend_error_correction(self):
-        return self.extend_error_correction * self.num_points_split_parent
+        return self.extend_error_correction
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme
