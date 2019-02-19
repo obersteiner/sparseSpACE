@@ -142,7 +142,7 @@ class RefinementContainer(object):
     def set_evaluations(self, object_id, evaluations):
         # add evaluations also to total number of evaluations
         self.evaluationstotal += evaluations
-        self.refinementObjects[object_id].evaluations = evaluations
+        self.refinementObjects[object_id].set_evaluations(evaluations)
 
     # sets the integral for area associated with specified RefinementObject
     def set_integral(self, object_id, integral):
