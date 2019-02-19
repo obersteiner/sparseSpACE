@@ -192,7 +192,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             return 0, None, 0
         else:
             if filter_area is None:
-                print("Compute", level_for_evaluation, area.start, area.end)
                 return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
                     self.grid.levelToNumPoints(level_for_evaluation))
             else:
