@@ -105,32 +105,27 @@ class Integration(AreaOperation):
                 self.grid.setCurrentArea(area.start, area.end, levelvector)
                 self.grid.set_boundaries(boundary_save)
 
-                # build grid consisting of corner points of area
-                corner_points = list(
-                    zip(*[g.ravel() for g in
-                          np.meshgrid(*[self.grid.coordinate_array[d] for d in range(self.dim)])]))
-
-                # calculate function values at corner points and transform  correct data structure for scipy
-                values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
-                values = values.reshape(*[self.grid.numPointsWithBoundary[d] for d in reversed(range(self.dim))])
-                values = np.transpose(values)
-
                 # get corner grid in scipy data structure
-                corner_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
+                mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
 
                 # get points of filter area for which we want interpolated values
                 self.grid.setCurrentArea(additional_info.filter_area.start, additional_info.filter_area.end, levelvector)
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = interpn(corner_points_grid, values, points, method='linear')
-                # print(area.start, area.end, points,interpolated_values, weights)
+                interpolated_values = self.interpolate_points(mesh_points_grid, points)
+
                 integral += sum(
                     [interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
-                # print(corner_points)
-                for p in corner_points:
+
+                # calculate all mesh points
+                mesh_points = list(
+                    zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(self.dim)])]))
+
+                # count the number of mesh points that fall into the filter area
+                for p in mesh_points:
                     if self.point_in_area(p, additional_info.filter_area) and self.grid.point_not_zero(p):
-                        num_points += 1  # * self.get_point_factor(p,area,area_parent)
+                        num_points += 1
             if additional_info.error_name == "split_parent":
                 child_area = additional_info.filter_area
                 if child_area.parent_info.split_parent_integral is None:
@@ -258,3 +253,35 @@ class Integration(AreaOperation):
 
     def initialize_global_value(self, refinement):
         refinement.integral = 0.0
+
+    # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
+    def integrate_subcell_with_interpolation(self, cell, subcell):
+        #print("Cell and subcell", cell, subcell)
+        start_subcell = subcell[0]
+        end_subcell = subcell[1]
+        start_cell = cell[0]
+        end_cell = cell[1]
+        subcell_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
+        corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
+        interpolated_values = self.interpolate_points(corner_points_grid, subcell_points)
+        width = np.prod(np.array(end_subcell) - np.array(start_subcell))
+        factor = 0.5**self.dim * width
+        integral = 0.0
+        for p in interpolated_values:
+            integral += p * factor
+        #print("integral of subcell", subcell, "of cell", cell, "is", integral, "interpolated values", interpolated_values, "on points", subcell_points, "factor", factor)
+        return integral
+
+    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
+    def interpolate_points(self, mesh_points_grid, evaluation_points):
+        # constructing all points from mesh definition
+        mesh_points = list(zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(self.dim)])]))
+
+        # calculate function values at mesh points and transform  correct data structure for scipy
+        values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in mesh_points])
+        values = values.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(self.dim))])
+        values = np.transpose(values)
+
+        # interpolate evaluation points from mesh points with bilinear interpolation
+        interpolated_values = interpn(mesh_points_grid, values, evaluation_points, method='linear')
+        return interpolated_values
