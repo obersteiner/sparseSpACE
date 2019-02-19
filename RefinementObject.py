@@ -209,11 +209,9 @@ class ErrorInfo(object):
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectCell(RefinementObject):
-    cell_dict = {}
-    cells_for_level = []
-    punish_depth = False
+    #punish_depth = False
 
-    def __init__(self, start, end, levelvec, a, b, lmin, father=None):
+    def __init__(self, start, end, levelvec, a, b, lmin, cell_dict, father=None):
         self.a = a
         self.b = b
         self.lmin = lmin
@@ -221,7 +219,8 @@ class RefinementObjectCell(RefinementObject):
         self.start = start
         # end of subarea
         self.end = end
-        RefinementObjectCell.cell_dict[self.get_key()] = self
+        self.cell_dict = cell_dict
+        self.cell_dict[self.get_key()] = self
         self.dim = len(start)
         self.levelvec = np.array(levelvec, dtype=int)
         # print("levelvec", self.levelvec)
@@ -241,7 +240,7 @@ class RefinementObjectCell(RefinementObject):
                 self.parents.append(parent)
                 if parent != father:
                     # print(parent, RefinementObjectCell.cell_dict.items(), self.get_key(), father, self.levelvec)
-                    parent_object = RefinementObjectCell.cell_dict[parent]
+                    parent_object = self.cell_dict[parent]
                     parent_object.add_child(self)
 
     def add_child(self, child):
@@ -278,21 +277,21 @@ class RefinementObjectCell(RefinementObject):
             levelvec_copy[d] += 1
             possible_candidates_d = RefinementObjectCell.children_cell_arbitrary_dim(d, self.start, self.end, self.dim)
             for candidate in possible_candidates_d:
-                if candidate in RefinementObjectCell.cell_dict:
+                if candidate in self.cell_dict:
                     continue
                 # print("candidate", candidate)
                 # key = candidate.get_key()
                 can_be_refined = True
                 for parent in RefinementObjectCell.get_parents(levelvec_copy, candidate[0], candidate[1], self.a,
                                                                self.b, self.dim, self.lmin):
-                    if parent not in RefinementObjectCell.cell_dict or RefinementObjectCell.cell_dict[
+                    if parent not in self.cell_dict or self.cell_dict[
                             parent].isActive():
                         can_be_refined = False
                         break
                 if can_be_refined:
                     new_objects.append(
-                        RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin,
-                                             self.get_key()))
+                        RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin, cell_dict=self.cell_dict,
+                                             father=self.get_key()))
 
         self.children.extend(new_objects)
         # print("New refined objects", [object.get_key() for object in new_objects])
@@ -305,10 +304,9 @@ class RefinementObjectCell(RefinementObject):
         levelvec = list(self.levelvec)
         levelvec[d] += 1
         for child in childs:
-            if child not in RefinementObjectCell.cell_dict:
+            if child not in self.cell_dict:
                 new_refinement_object = RefinementObjectCell(child[0], child[1], list(levelvec), self.a, self.b,
-                                                             self.lmin, self.get_key())
-                # RefinementObjectCell.cells_for_level[self.level+1].append(new_refinement_object)
+                                                             self.lmin, cell_dict=self.cell_dict, father=self.get_key())
                 sub_area_array.append(new_refinement_object)
         return sub_area_array
 
@@ -356,8 +354,8 @@ class RefinementObjectCell(RefinementObject):
         # only define an error if active cell
         if self.active:
             self.error = error
-            if self.punish_depth:
-                self.error *= np.prod(np.array(self.end) - np.array(self.start))
+            #if self.punish_depth:
+            #    self.error *= np.prod(np.array(self.end) - np.array(self.start))
         else:
             self.error = 0
         # print("Error of refine object:", self.get_key(), "is:", self.error)
