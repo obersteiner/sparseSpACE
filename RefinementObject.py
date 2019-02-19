@@ -74,7 +74,8 @@ class RefinementObjectExtendSplit(RefinementObject):
             benefit_extend = self.parent_info.get_extend_benefit()
 
             if self.switch_to_parent_estimation:
-                benefit_extend += abs(self.parent_info.get_extend_error_correction())
+                correction = abs(self.parent_info.get_extend_error_correction())
+                benefit_extend += correction
 
         if (self.automatic_extend_split and benefit_extend < benefit_split) or (
                 not self.automatic_extend_split and
@@ -107,6 +108,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                               coarseningValue=coarseningValue,
                                                               needExtendScheme=self.needExtendScheme,
                                                               automatic_extend_split=self.automatic_extend_split)
+
             self.children.append(newRefinementObject)
             return [newRefinementObject], lmaxIncrease, update_other_coarsenings
 
