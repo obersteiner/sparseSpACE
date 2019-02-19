@@ -114,8 +114,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
             self.refinement.set_evaluations(i, evaluation_array[k])
-        for area in areas:
-            print("Integral",area.integral)
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.calc_error(i, self.f)
@@ -139,8 +137,6 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.compute_solutions(areas,evaluation_array)
         for area in areas:
             self.operation.area_postprocessing(area)
-        for area in areas:
-            print("Integral",area.integral)
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_evaluations(i, evaluation_array[k])
@@ -162,7 +158,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     def compute_solutions(self, areas, evaluation_array):
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
             if self.operation.is_area_operation():
                 for k, area in enumerate(areas):
                     evaluations = self.evaluate_operation_area(component_grid, area)
@@ -179,7 +174,6 @@ class SpatiallyAdaptivBase(StandardCombi):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
         modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
         if do_compute:
-            print("Compute", modified_levelvec, area.start, area.end)
             evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, self.refinement, additional_info)
             return evaluations
         else:
