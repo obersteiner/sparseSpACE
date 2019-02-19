@@ -255,12 +255,12 @@ class Integration(AreaOperation):
         refinement.integral = 0.0
 
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
-    def integrate_subcell_with_interpolation(self, cell, subcell):
+    def compute_subcell_with_interpolation(self, cell, subcell, coefficient, refinement_container):
         #print("Cell and subcell", cell, subcell)
-        start_subcell = subcell[0]
-        end_subcell = subcell[1]
-        start_cell = cell[0]
-        end_cell = cell[1]
+        start_subcell = subcell.start
+        end_subcell = subcell.end
+        start_cell = cell.start
+        end_cell = cell.end
         subcell_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
         interpolated_values = self.interpolate_points(corner_points_grid, subcell_points)
@@ -269,8 +269,10 @@ class Integration(AreaOperation):
         integral = 0.0
         for p in interpolated_values:
             integral += p * factor
-        #print("integral of subcell", subcell, "of cell", cell, "is", integral, "interpolated values", interpolated_values, "on points", subcell_points, "factor", factor)
-        return integral
+        subcell.cell_dict[subcell.get_key()].sub_integrals.append((integral, coefficient))
+        subcell.integral += integral * coefficient
+        if refinement_container is not None:
+            refinement_container.integral += integral * coefficient
 
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     def interpolate_points(self, mesh_points_grid, evaluation_points):
