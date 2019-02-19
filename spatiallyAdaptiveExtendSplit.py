@@ -270,8 +270,10 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         else:
             self.operation.initialize_error_estimates(area)
             self.get_reference_operation(area)
-            self.get_parent_extend_operation(area)
-            self.get_parent_split_operation(area)
+            if area.parent_info.benefit_split is None:
+                self.get_parent_extend_operation(area)
+            if area.parent_info.benefit_extend is None:
+                self.get_parent_split_operation(area)
             self.operation.set_extend_benefit(area)
             self.operation.set_split_benefit(area)
             self.operation.set_extend_error_correction(area)

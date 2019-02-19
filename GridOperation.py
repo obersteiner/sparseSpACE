@@ -70,11 +70,14 @@ class Integration(AreaOperation):
             return np.prod(self.grid.levelToNumPoints(levelvector))
         elif additional_info.error_name == "extend_error_correction":
             assert additional_info.filter_area is None
-            extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
-            if area.parent_info.extend_error_correction is None:
-                area.parent_info.extend_error_correction = area.integral
-            area.parent_info.extend_error_correction -= extend_parent_new * componentgrid_info.coefficient
-            return np.prod(self.grid.levelToNumPoints(levelvector))
+            if area.switch_to_parent_estimation:
+                extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
+                if area.parent_info.extend_error_correction is None:
+                    area.parent_info.extend_error_correction = area.integral
+                area.parent_info.extend_error_correction -= extend_parent_new * componentgrid_info.coefficient
+                return np.prod(self.grid.levelToNumPoints(levelvector))
+            else:
+                return 0
         elif additional_info.error_name == "split_no_filter":
                 assert additional_info.filter_area is None
                 split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
@@ -160,15 +163,18 @@ class Integration(AreaOperation):
         area.parent_info.split_parent_integral = None
         area.parent_info.split_parent_integral2 = None
         area.parent_info.extend_parent_integral = None
-        area.parent_info.num_points_extend_parent = None
-        area.parent_info.num_points_split_parent = None
+        if area.parent_info.benefit_split is None:
+            area.parent_info.num_points_extend_parent = None
+        if area.parent_info.benefit_extend is None:
+            area.parent_info.num_points_split_parent = None
         area.parent_info.num_points_reference = None
         area.parent_info.extend_error_correction = None
 
     def initialize_split_error(self, area):
         area.parent_info.split_parent_integral = None
         area.parent_info.split_parent_integral2 = None
-        area.parent_info.num_points_split_parent = None
+        if area.parent_info.benefit_extend is None:
+            area.parent_info.num_points_split_parent = None
 
     def get_previous_value_from_split_parent(self, area):
         self.get_best_fit(area)
@@ -207,7 +213,8 @@ class Integration(AreaOperation):
         else:
             comparison = area.integral
             num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_extend_parent
+        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
+
         error_extend = abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
@@ -221,7 +228,8 @@ class Integration(AreaOperation):
             num_comparison = area.evaluations * 2 ** self.dim
         else:
             num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
+        assert num_comparison > area.parent_info.num_points_extend_parent
+
         if self.grid.boundary:
             assert area.parent_info.num_points_split_parent > 0
         error_split = abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100))
@@ -231,7 +239,8 @@ class Integration(AreaOperation):
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
     def set_extend_error_correction(self, area):
-        area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
+        if area.switch_to_parent_estimation:
+            area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
 
     def point_in_area(self, point, area):
         for d in range(self.dim):
