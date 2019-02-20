@@ -65,3 +65,21 @@ class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
             return max(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value))
         else:
             return max(abs(refine_object.integral - refine_object.parent_info.previous_value))
+
+
+class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
+    def calc_error(self, f, refineObj):
+        # pagoda-volume
+        volume = refineObj.volume
+        # print("volume set", volume)
+        return abs(volume)
+
+
+class ErrorCalculatorSingleDimVolumeGuidedPunishedDepth(ErrorCalculator):
+    def calc_error(self, f, refineObj):
+        #width of refineObj:
+        width = refineObj.end - refineObj.start
+        # pagoda-volume
+        volume = refineObj.volume * (width)
+        # print("volume set", volume)
+        return abs(volume)
