@@ -185,7 +185,7 @@ class Integration(AreaOperation):
         if self.reference_solution is None:
             return None
         else:
-            return abs((self.reference_solution - refinement_container.integral)/self.reference_solution)
+            return max(abs((self.reference_solution - refinement_container.integral)/self.reference_solution))
 
     def area_postprocessing(self, area):
         area.value = area.integral
@@ -210,7 +210,7 @@ class Integration(AreaOperation):
             num_comparison = area.evaluations
         assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
 
-        error_extend = abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
+        error_extend = max(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)))
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
         else:
@@ -227,7 +227,7 @@ class Integration(AreaOperation):
 
         if self.grid.boundary:
             assert area.parent_info.num_points_split_parent > 0
-        error_split = abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100))
+        error_split = max(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)))
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
         else:
@@ -235,7 +235,7 @@ class Integration(AreaOperation):
 
     def set_extend_error_correction(self, area):
         if area.switch_to_parent_estimation:
-            area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
+            area.parent_info.extend_error_correction = max(area.parent_info.extend_error_correction) * area.parent_info.num_points_split_parent
 
     def point_in_area(self, point, area):
         for d in range(self.dim):
@@ -279,11 +279,27 @@ class Integration(AreaOperation):
         # constructing all points from mesh definition
         mesh_points = list(zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(self.dim)])]))
 
-        # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in mesh_points])
-        values = values.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(self.dim))])
-        values = np.transpose(values)
+        function_value_dim = len(self.f(np.ones(self.dim)*0.5))
 
-        # interpolate evaluation points from mesh points with bilinear interpolation
-        interpolated_values = interpn(mesh_points_grid, values, evaluation_points, method='linear')
-        return interpolated_values
+        # calculate function values at mesh points and transform  correct data structure for scipy
+        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        interpolated_values_array = []
+        for d in range(function_value_dim):
+            values_1D = np.asarray([value[d] for value in values])
+
+            values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(self.dim))])
+
+            values_1D = np.transpose(values_1D)
+
+            # interpolate evaluation points from mesh points with bilinear interpolation
+            interpolated_values = interpn(mesh_points_grid, values_1D, evaluation_points, method='linear')
+
+            interpolated_values = np.asarray([[value] for value in interpolated_values])
+            interpolated_values_array.append(interpolated_values)
+        return np.hstack(interpolated_values_array)
+
+    def print_evaluation_output(self, refinement):
+        combi_integral = refinement.integral
+        if len(combi_integral) == 1:
+            combi_integral = combi_integral[0]
+        print("combiintegral:", combi_integral)
