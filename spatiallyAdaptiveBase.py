@@ -123,6 +123,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        print("combiintegral:", self.refinement.integral)
         if self.realIntegral is not None:
             return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
         else:
@@ -149,6 +150,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        self.operation.print_evaluation_output(self.refinement)
         global_error_estimate = self.operation.get_global_error_estimate(self.refinement)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
@@ -229,7 +231,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             else:
                 surplus_error_array.append(surplus_error)
             num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
-            print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
             if error > tol:
