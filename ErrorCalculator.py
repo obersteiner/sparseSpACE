@@ -24,7 +24,7 @@ class ErrorCalculatorAnalytic(ErrorCalculator):
         lower_bounds = refine_object.start
         upper_bounds = refine_object.end
         real_integral_value = f.getAnalyticSolutionIntegral(lower_bounds, upper_bounds)
-        return abs(refine_object.integral - real_integral_value)
+        return max(abs(refine_object.integral - real_integral_value))
 
 
 # This error estimator doea a comparison to analytic solution. It outputs the relative error.
@@ -34,19 +34,20 @@ class ErrorCalculatorAnalyticRelative(ErrorCalculator):
         upper_bounds = refine_object.end
         real_integral_value = f.getAnalyticSolutionIntegral(lower_bounds, upper_bounds)
         real_integral_complete = f.getAnalyticSolutionIntegral(a, b)
-        return abs((refine_object.integral - real_integral_value) / real_integral_complete)
+        return max(abs((refine_object.integral - real_integral_value) / real_integral_complete))
 
 
 # This error estimator does a surplus estimation. It outputs the absolute error.
 class ErrorCalculatorSurplusCell(ErrorCalculator):
     def calc_error(self, f, refine_object):
-        error = self.calc_area_error(refine_object.sub_integrals)
+        error = max(self.calc_area_error(refine_object.sub_integrals))
         return error
 
     def calc_area_error(self, sub_integrals):
         error = 0.0
         for sub_integral in sub_integrals:
             error += sub_integral[0] * sub_integral[1]
+        print(sub_integrals)
         return abs(error)
 
 
@@ -55,12 +56,12 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
         lower_bounds = np.array(refine_object.start)
         upper_bounds = np.array(refine_object.end)
         error = self.calc_area_error(refine_object.sub_integrals)
-        return error * np.prod(upper_bounds - lower_bounds)
+        return max(error * np.prod(upper_bounds - lower_bounds))
         
 
 class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
     def calc_error(self, f, refine_object):
         if refine_object.switch_to_parent_estimation:
-            return abs(refine_object.sum_siblings - refine_object.parent_info.previous_value)
+            return max(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value))
         else:
-            return abs(refine_object.integral - refine_object.parent_info.previous_value)
+            return max(abs(refine_object.integral - refine_object.parent_info.previous_value))
