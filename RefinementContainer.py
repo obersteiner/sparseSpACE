@@ -67,6 +67,14 @@ class RefinementContainer(object):
                 max_error = i.error
         return max_error
 
+    # return the maximal benefit among all RefinementObjects
+    def get_max_benefit(self):
+        max_benefit = 0
+        for i in self.refinementObjects:
+            if i.benefit > max_benefit:
+                max_benefit = i.benefit
+        return max_benefit
+
     # return the maximal error among all RefinementObjects
     def get_total_error(self):
         total_error = 0
@@ -120,7 +128,7 @@ class RefinementContainer(object):
         else:
             end = self.startNewObjects
         for i in range(self.searchPosition, end):
-            if self.refinementObjects[i].error >= tolerance:
+            if self.refinementObjects[i].benefit >= tolerance:
                 self.searchPosition = i + 1
                 return True, i, self.refinementObjects[i]
         return False, None, None
@@ -137,7 +145,7 @@ class RefinementContainer(object):
     def set_evaluations(self, object_id, evaluations):
         # add evaluations also to total number of evaluations
         self.evaluationstotal += evaluations
-        self.refinementObjects[object_id].evaluations = evaluations
+        self.refinementObjects[object_id].set_evaluations(evaluations)
 
     # sets the integral for area associated with specified RefinementObject
     def set_integral(self, object_id, integral):
@@ -145,6 +153,9 @@ class RefinementContainer(object):
         self.integral += integral
         self.refinementObjects[object_id].set_integral(integral)
 
+    def set_benefit(self, object_id):
+        refine_object = self.refinementObjects[object_id]
+        refine_object.benefit = refine_object.error / refine_object.evaluations
 
 # this class defines a container of refinement containers for each dimension in the single dimension test case
 # it delegates methods to subcontainers and coordinates everything

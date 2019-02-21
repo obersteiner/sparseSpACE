@@ -60,4 +60,7 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
 
 class ErrorCalculatorExtendSplit(ErrorCalculator):
     def calc_error(self, f, refine_object):
-        return abs(refine_object.integral - refine_object.parent_integral)
+        if refine_object.switch_to_parent_estimation:
+            return abs(refine_object.sum_siblings - refine_object.parent_info.previous_value)
+        else:
+            return abs(refine_object.integral - refine_object.parent_info.previous_value)

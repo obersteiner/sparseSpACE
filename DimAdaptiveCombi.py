@@ -20,7 +20,7 @@ class DimAdaptiveCombi(StandardCombi):
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
     # f = function to integrate; dim=dimension of problem
-    def perform_combi(self, minv, maxv, f, tolerance):
+    def perform_combi(self, minv, maxv, f, tolerance, reference_solution=None):
         start = self.a
         end = self.b
         self.f = f
@@ -28,28 +28,28 @@ class DimAdaptiveCombi(StandardCombi):
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
-        real_integral = self.f.getAnalyticSolutionIntegral(self.a, self.b)
-
+        real_integral = reference_solution
+        assert(reference_solution is not None)
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
-        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim)
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
         integral_dict = {}
         errors = []  # tracks the error evolution during the refinement procedure
         num_points = []  # tracks the number of points during the refinement procedure
         while True:
             combiintegral = 0
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=False)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
             error_array = np.zeros(len(self.scheme))
-            for i, ss in enumerate(self.scheme):
-                if tuple(ss[0]) not in integral_dict:
-                    integral = self.grid.integrate(self.f, ss[0], start, end)
-                    integral_dict[tuple(ss[0])] = integral
+            for i, component_grid in enumerate(self.scheme):
+                if tuple(component_grid.levelvector) not in integral_dict:
+                    integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
+                    integral_dict[tuple(component_grid.levelvector)] = integral
                 else:
-                    integral = integral_dict[tuple(tuple(ss[0]))]
+                    integral = integral_dict[tuple(tuple(component_grid.levelvector))]
                 # as error estimator we compare to the analytic solution and divide by the cost=number of points in grid
                 error_array[i] = abs(integral - real_integral) / abs(real_integral) / np.prod(
-                    self.grid.levelToNumPoints(ss[0])) if self.combischeme.is_refinable(ss[0]) else 0
-                combiintegral += integral * ss[1]
+                    self.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
+                combiintegral += integral * component_grid.coefficient
             do_refine = True
             if abs(combiintegral - real_integral) / abs(real_integral) < tolerance:
                 break
@@ -61,12 +61,12 @@ class DimAdaptiveCombi(StandardCombi):
                 grid_id = np.argmax(error_array)
                 # print(error_array)
                 print("Current error:", abs(combiintegral - real_integral) / abs(real_integral))
-                print("Refining", self.scheme[grid_id], self.combischeme.is_refinable(self.scheme[grid_id][0]))
-                refined_dims = self.combischeme.update_adaptive_combi(self.scheme[grid_id][0])
+                print("Refining", self.scheme[grid_id].levelvector)
+                refined_dims = self.combischeme.update_adaptive_combi(self.scheme[grid_id].levelvector)
                 do_refine = refined_dims == []
                 error_array[grid_id] = 0.0
         print("Final scheme:")
-        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.dim, do_print=True)
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=True)
         print("CombiSolution", combiintegral)
         print("Analytic Solution", real_integral)
         print("Difference", abs(combiintegral - real_integral))
