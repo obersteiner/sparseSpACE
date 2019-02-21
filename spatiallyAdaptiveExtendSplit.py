@@ -184,7 +184,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                         integral_area, a, b = self.evaluate_area(self.f, area, component_grid.levelvector)
                         integral += integral_area * component_grid.coefficient
                     area.integral = integral
-                    if not area.twins[d].integral is None: #TODO Not strictly needed for the computations
+                    if not area.twins[d].integral is None:
                         area.set_twin_error(d, abs(area.integral - area.twins[d].integral))
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
         if self.errorEstimator is None:

@@ -186,7 +186,6 @@ class RefinementObjectExtendSplit(RefinementObject):
     def split_area_single_dim(self, d):
         midpoint = self.grid.get_mid_point(self.start[d], self.end[d], d)
         sub_area_array = []
-        #TODO print("initial intervals: [", self.start[d], self.end[d], "], midpoint ", midpoint)
         parent_info = ParentInfo(parent=self, last_refinement_split=True)
         for i in range(2):
             start_sub_area = list(self.start)
