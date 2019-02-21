@@ -13,7 +13,7 @@ class Grid(object):
 
     # integrates the grid on the specified area for function f
     def integrate(self, f, levelvec, start, end):
-        if not self.isGlobal():
+        if not self.is_global():
             self.setCurrentArea(start, end, levelvec)
         return self.integrator(f, self.levelToNumPoints(levelvec), start, end)
 
@@ -27,7 +27,7 @@ class Grid(object):
         return all([self.grids[d].is_nested() for d in range(len(self.grids))])
 
     # the default case is that a grid is not globally but only locally defined
-    def isGlobal(self):
+    def is_global(self):
         return False
 
     # this method can be used to generate a local grid for the given area and the specified number of points
@@ -430,8 +430,6 @@ class ClenshawCurtisGrid1D(Grid1d):
     def is_high_order_grid(self):
         return True
 
-# this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
-# the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class EquidistantGridGlobal(Grid):
     def __init__(self, a, b, boundary=True):
         self.boundary = boundary
@@ -445,10 +443,13 @@ class EquidistantGridGlobal(Grid):
         else:
             self.lowerBorder = np.zeros(self.dim, dtype=int)
 
-    def isGlobal(self):
+    def is_global(self):
         return True
 
-    def setRefinement(self, refinement, levelvec):
+    def isNested(self):
+        return True
+
+    def set_refinement(self, refinement, levelvec):
         self.refinement = refinement
         self.coords = []
         self.weights = []
@@ -458,11 +459,11 @@ class EquidistantGridGlobal(Grid):
             coordsD = self.mapPoints(
                 refinementDim.getPointsLine()[self.lowerBorder[d]: -1 * int(self.boundary == False)], self.levelvec[d],
                 d)
-            weightsD = self.compute_1D_quad_weights(coords1D)
+            weightsD = self.compute_1D_quad_weights(coordsD)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
-        self.numPointsWithoutCoarsening = levelToNumPoints(levelvec)
+        self.numPointsWithoutCoarsening = self.level_to_num_points(levelvec)
 
     def compute_1D_quad_weights(self, grid_1D):
         N = len(grid_1D)
@@ -499,6 +500,13 @@ class EquidistantGridGlobal(Grid):
 
     def mapPoints(self, equidistantAdaptivePoints, level, d):
         return equidistantAdaptivePoints
+
+
+class GlobalHierarchizationGrid(EquidistantGridGlobal):
+    def __init__(self, a, b, boundary=True):
+        EquidistantGridGlobal.__init__(self, a, b, boundary=True)
+        self.doHierarchize = True
+        self.integrator = IntegratorHierarchical()
 
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature

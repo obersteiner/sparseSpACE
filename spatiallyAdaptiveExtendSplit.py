@@ -314,7 +314,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
 
     def calc_error(self, objectID, f):
-        area = self.refinement.getObject(objectID)
+        area = self.refinement.get_object(objectID)
         if area.parent_info.previous_value is None:
             if self.operation is None:
                 integral2 = self.get_parent_split_integral(area, True)
