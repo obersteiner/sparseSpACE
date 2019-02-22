@@ -183,22 +183,24 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def refine(self):
         # split all cells that have an error close to the max error
-        areas = self.get_areas()
         self.prepare_refinement()
         self.refinement.clear_new_objects()
         margin = 0.9
         quit_refinement = False
+        num_refinements = 0
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
                 tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
+                num_refinements += 1
                 # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
                 print("Finished refinement")
+                print("Refined ", num_refinements, " times")
                 self.refinement_postprocessing()
                 break
 
