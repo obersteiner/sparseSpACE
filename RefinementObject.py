@@ -14,6 +14,10 @@ class RefinementObject(object):
     def set_integral(self, integral):
         self.integral = integral
 
+    # set the evaluations that were performed in the refinementobject
+    def set_evaluations(self, evaluations):
+        self.evaluations = evaluations
+
     # refine this object and return newly created objects
     @abc.abstractmethod
     def refine(self):
@@ -44,6 +48,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         # indicates after how many splits only extends are performed
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
+        self.value = None
         self.integral = None
         # dictionary that maps all coarsened levelvectors to there uncoarsened ones
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
@@ -67,20 +72,12 @@ class RefinementObjectExtendSplit(RefinementObject):
         coarsening_level = self.coarseningValue
         benefit_extend = benefit_split = None
         if self.automatic_extend_split:
+            benefit_split = self.parent_info.get_split_benefit()
+            benefit_extend = self.parent_info.get_extend_benefit()
             if self.switch_to_parent_estimation:
-                comparison = self.sum_siblings
-                num_comparison = self.evaluations * 2 ** self.dim
-            else:
-                comparison = self.integral
-                num_comparison = self.evaluations
+                correction = abs(self.parent_info.get_extend_error_correction())
+                benefit_extend += correction
 
-            benefit_split = self.parent_info.get_split_benefit(integral=self.integral, num_comparison=num_comparison,
-                                                               grid=self.grid)
-            benefit_extend = self.parent_info.get_extend_benefit(comparison=comparison, num_comparison=num_comparison,
-                                                                 grid=self.grid)
-
-            if self.switch_to_parent_estimation:
-                benefit_extend += self.parent_info.get_extend_error_correction()
 
         if (self.automatic_extend_split and benefit_extend < benefit_split) or (
                 not self.automatic_extend_split and
@@ -102,8 +99,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                 lmaxIncrease = None
                 update_other_coarsenings = None
             benefit_extend = benefit_extend - correction if benefit_extend is not None and self.grid.is_high_order_grid() else None
-            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid else None
-            parent_info = ParentInfo(previous_integral=self.integral, parent=self.parent_info.parent,
+            num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid() else None
+            parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.integral, parent=self.parent_info.parent,
                                      num_points_extend_parent=self.evaluations,
                                      benefit_extend=benefit_extend, level_parent=self.parent_info.level_parent,
                                      num_points_split_parent=num_points_split_parent)
@@ -126,7 +123,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             if self.splitSingleDim:
                 for d in range(self.dim):
                     if self.twinErrors[d] is None:
-                        twinError = abs(self.integral - self.twins[d].integral)
+                        twinError = abs(self.integral - self.twins[d].integral) #TODO Use operation objects to perform this (evtl in extendSplit ziehen)
                         self.set_twin_error(d, twinError)
                 d = self.get_split_dim()
                 print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
@@ -201,6 +198,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             new_refinement_object.twins = list(self.twins)
             new_refinement_object.twinErrors = list([t * 0.5 if t is not None else t for t in self.twinErrors])
             new_refinement_object.twinErrors[d] = None
+            self.children.append(new_refinement_object)
             sub_area_array.append(new_refinement_object)
         sub_area_array[0].set_twin(d, sub_area_array[1])       
         return sub_area_array
@@ -229,12 +227,12 @@ class RefinementObjectExtendSplit(RefinementObject):
 
 # This class is used in the Extend Split RefinementObject as a container
 # to store various variables used for the error estimates
-class ParentInfo(object):
-    def __init__(self, previous_integral=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
+class ErrorInfo(object):
+    def __init__(self, previous_value=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
                  level_parent=-1,
                  num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
                  sum_siblings=None, last_refinement_split=False):
-        self.previous_integral = previous_integral
+        self.previous_value = previous_value
         self.parent = parent
         self.split_parent_integral = split_parent_integral
         self.extend_parent_integral = extend_parent_integral
@@ -242,46 +240,27 @@ class ParentInfo(object):
         self.num_points_split_parent = num_points_split_parent
         self.num_points_extend_parent = num_points_extend_parent
         self.benefit_extend = benefit_extend
-        self.benefit_Split = benefit_Split
+        self.benefit_split = benefit_Split
         self.num_points_reference = None
         self.sum_siblings = sum_siblings
         self.comparison = None
         self.extend_error_correction = 0
         self.last_refinement_split = last_refinement_split
 
-    def get_extend_benefit(self, comparison, num_comparison, grid):
-        if self.benefit_extend is not None:
-            return self.benefit_extend
-        assert num_comparison > self.num_points_extend_parent
-        error_extend = abs((self.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
-        if not grid.is_high_order_grid():
-            return error_extend * (self.num_points_split_parent - self.num_points_reference)
-        else:
-            return error_extend * (self.num_points_split_parent)
+    def get_extend_benefit(self):
+        return self.benefit_extend
 
-    def get_split_benefit(self, integral, num_comparison, grid):
-        if self.benefit_Split is not None:
-            return self.benefit_Split
-        assert num_comparison > self.num_points_split_parent or self.switch_to_parent_estimation
-        if grid.boundary:
-            assert self.num_points_split_parent > 0
-        error_split = abs((self.extend_parent_integral - integral) / (abs(integral) + 10 ** -100))
-        if not grid.is_high_order_grid():
-            return error_split * (self.num_points_extend_parent - self.num_points_reference)
-        else:
-            return error_split * (self.num_points_extend_parent)
+    def get_split_benefit(self):
+        return self.benefit_split
 
     def get_extend_error_correction(self):
-        return self.extend_error_correction * self.num_points_split_parent
+        return self.extend_error_correction
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectCell(RefinementObject):
-    cell_dict = {}
-    cells_for_level = []
-    punish_depth = False
-
-    def __init__(self, start, end, levelvec, a, b, lmin, father=None):
+    #punish_depth = False
+    def __init__(self, start, end, levelvec, a, b, lmin, cell_dict, father=None):
         self.a = a
         self.b = b
         self.lmin = lmin
@@ -289,7 +268,8 @@ class RefinementObjectCell(RefinementObject):
         self.start = start
         # end of subarea
         self.end = end
-        RefinementObjectCell.cell_dict[self.get_key()] = self
+        self.cell_dict = cell_dict
+        self.cell_dict[self.get_key()] = self
         self.dim = len(start)
         self.levelvec = np.array(levelvec, dtype=int)
         # print("levelvec", self.levelvec)
@@ -309,7 +289,7 @@ class RefinementObjectCell(RefinementObject):
                 self.parents.append(parent)
                 if parent != father:
                     # print(parent, RefinementObjectCell.cell_dict.items(), self.get_key(), father, self.levelvec)
-                    parent_object = RefinementObjectCell.cell_dict[parent]
+                    parent_object = self.cell_dict[parent]
                     parent_object.add_child(self)
 
     def add_child(self, child):
@@ -346,21 +326,21 @@ class RefinementObjectCell(RefinementObject):
             levelvec_copy[d] += 1
             possible_candidates_d = RefinementObjectCell.children_cell_arbitrary_dim(d, self.start, self.end, self.dim)
             for candidate in possible_candidates_d:
-                if candidate in RefinementObjectCell.cell_dict:
+                if candidate in self.cell_dict:
                     continue
                 # print("candidate", candidate)
                 # key = candidate.get_key()
                 can_be_refined = True
                 for parent in RefinementObjectCell.get_parents(levelvec_copy, candidate[0], candidate[1], self.a,
                                                                self.b, self.dim, self.lmin):
-                    if parent not in RefinementObjectCell.cell_dict or RefinementObjectCell.cell_dict[
+                    if parent not in self.cell_dict or self.cell_dict[
                             parent].isActive():
                         can_be_refined = False
                         break
                 if can_be_refined:
                     new_objects.append(
-                        RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin,
-                                             self.get_key()))
+                        RefinementObjectCell(candidate[0], candidate[1], list(levelvec_copy), self.a, self.b, self.lmin, cell_dict=self.cell_dict,
+                                             father=self.get_key()))
 
         self.children.extend(new_objects)
         # print("New refined objects", [object.get_key() for object in new_objects])
@@ -373,10 +353,9 @@ class RefinementObjectCell(RefinementObject):
         levelvec = list(self.levelvec)
         levelvec[d] += 1
         for child in childs:
-            if child not in RefinementObjectCell.cell_dict:
+            if child not in self.cell_dict:
                 new_refinement_object = RefinementObjectCell(child[0], child[1], list(levelvec), self.a, self.b,
-                                                             self.lmin, self.get_key())
-                # RefinementObjectCell.cells_for_level[self.level+1].append(new_refinement_object)
+                                                             self.lmin, cell_dict=self.cell_dict, father=self.get_key())
                 sub_area_array.append(new_refinement_object)
         return sub_area_array
 
@@ -424,8 +403,8 @@ class RefinementObjectCell(RefinementObject):
         # only define an error if active cell
         if self.active:
             self.error = error
-            if self.punish_depth:
-                self.error *= np.prod(np.array(self.end) - np.array(self.start))
+            #if self.punish_depth:
+            #    self.error *= np.prod(np.array(self.end) - np.array(self.start))
         else:
             self.error = 0
         # print("Error of refine object:", self.get_key(), "is:", self.error)
