@@ -86,6 +86,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             end = area.end
             level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
             if do_compute:
+                self.grid.setCurrentArea(start, end, level_interval)
                 points = self.grid.getPoints()
                 array2.extend(points)
                 # print("considered", levelvec, level_interval, area.start, area.end, area.coarseningValue)
