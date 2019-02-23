@@ -62,7 +62,7 @@ class RefinementObjectExtendSplit(RefinementObject):
 
         self.splitSingleDim = splitSingleDim
         self.automatic_extend_split = automatic_extend_split
-        self.parent_info = parent_info if parent_info is not None else ParentInfo()
+        self.parent_info = parent_info if parent_info is not None else ErrorInfo()
         self.switch_to_parent_estimation = self.grid.is_high_order_grid()
         self.children = []
 
@@ -77,7 +77,6 @@ class RefinementObjectExtendSplit(RefinementObject):
             if self.switch_to_parent_estimation:
                 correction = abs(self.parent_info.get_extend_error_correction())
                 benefit_extend += correction
-
 
         if (self.automatic_extend_split and benefit_extend < benefit_split) or (
                 not self.automatic_extend_split and
