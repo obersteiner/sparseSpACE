@@ -91,7 +91,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
-        integralarrayComplete = np.zeros(len(areas))
+        integralarrayComplete = np.zeros((len(areas), len(self.f(np.ones(self.dim)*0.5))))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
@@ -123,9 +123,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        print("combiintegral:", self.refinement.integral)
+        print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
+            return max(abs(self.refinement.integral - self.realIntegral)) / abs(self.realIntegral), self.total_error
         else:
             return self.total_error, self.total_error
 
