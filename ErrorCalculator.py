@@ -59,7 +59,7 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
         return max(error * np.prod(upper_bounds - lower_bounds))
         
 
-class ErrorCalculatorExtendSplit(ErrorCalculator): #TODO
+class ErrorCalculatorExtendSplit(ErrorCalculator):
     def calc_error(self, f, refine_object):
         if refine_object.switch_to_parent_estimation:
             return max(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value))
