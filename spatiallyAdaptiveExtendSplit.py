@@ -403,9 +403,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def get_parent_split_operation(self, area, only_one_extend=False):
         area_parent = area.parent_info.parent
-        if area.switch_to_parent_estimation:
-            self.get_parent_split_integral2(area, only_one_extend)
-        else:
+        if not area.switch_to_parent_estimation:
             coarsening = area.coarseningValue
             while True:
                 num_points_split = self.evaluate_operation_area_complete_flexibel(area_parent, coarsening,
@@ -457,6 +455,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     break
                 else:
                     coarsening -= 1
+        self.operation.get_best_fit(area)
 
     def get_reference_integral(self, area):
         area_parent = area.parent_info.parent
@@ -653,6 +652,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             lmin = self.lmin[0]
             scheme = self.combischeme.getCombiScheme(lmin, lmax, do_print=False)
 
+        self.operation.initialize_error(filter_area if filter_area is not None else area, error_name)
+        self.operation.initialize_point_numbers(area, error_name)
+
         additional_info = Operation_info(filter_area=filter_area, interpolate=interpolate, error_name=error_name)
         for component_grid in scheme:
             if self.grid.isNested() and self.operation.count_unique_points():
@@ -665,7 +667,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
         if not filter_integral and filter_points and error_name != "reference":
             area.levelvec_dict = {}
-            self.operation.initialize_split_error(filter_area)
+            self.operation.initialize_error(area, error_name)
             for component_grid in scheme:
                 additional_info = Operation_info(target_area=filter_area, error_name="split_no_filter")
                 evaluations = self.evaluate_operation_area(component_grid, area, additional_info)
