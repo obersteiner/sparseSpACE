@@ -312,7 +312,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def set_extend_error_correction(self, area):
         area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
-        
+
     def calc_error(self, objectID, f):
         area = self.refinement.get_object(objectID)
         if area.parent_info.previous_value is None:
@@ -618,8 +618,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
             area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, filter_area,
                                                                                interpolate)
-            num_points += evaluations * factor
-            integral += area_integral * component_grid.coefficient
+            if area_integral is not None:
+                num_points += evaluations * factor
+                integral += area_integral * component_grid.coefficient
 
         if not filter_integral and filter_points:
             integral = 0.0
