@@ -36,8 +36,8 @@ class Function(object):
             if self.do_cache:
                 self.f_dict[coords] = f_value
         if np.isscalar(f_value):
-            f_value = np.asarray([f_value])
-        return f_value
+            f_value = [f_value]
+        return np.asarray(f_value)
 
     def deactivate_caching(self):
         self.do_cache = False
@@ -63,7 +63,7 @@ class Function(object):
         return
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start, end, filename=None):
+    def plot(self, start, end, filename=None, plotdimension=0):
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
@@ -77,7 +77,7 @@ class Function(object):
         for i in range(len(X)):
             for j in range(len(X[i])):
                 # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
-                Z[i, j] = self.eval((X[i, j], Y[i, j]))
+                Z[i, j] = self.__call__((X[i, j], Y[i, j]))[plotdimension]
         # Z=self.eval((X,Y))
         # print Z
         fig = plt.figure(figsize=(14, 6))

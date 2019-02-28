@@ -30,6 +30,9 @@ class RefinementObject(object):
     def reinit(self):
         pass
 
+    def add_evaluations(self, evaluations):
+        self.evaluations += evaluations
+
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme
@@ -388,7 +391,6 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.levels = levels
         self.error = 0.0
 
-
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
         # if coarseningLevel == 0 and allDimsMaxRefined == False: #not used currently
@@ -401,6 +403,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         # lowerBorder = splitAreaInfo[0]
         # upperBorder = splitAreaInfo[1]
         # self.popArray[dimValue].append(positionDim)
+
         lmax_increase = None
         update = None
         coarsening_value = 0
@@ -432,7 +435,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.coarsening_level += update_info
 
     def print(self):
-        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels)
+        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit )
 
     def set_levels(self, levels):
         self.levels = levels
@@ -440,14 +443,14 @@ class RefinementObjectSingleDimension(RefinementObject):
     def get_width(self):
         return self.end - self.start
 
-    def set_volume(self, volume, f):
+    def set_volume(self, volume):
         self.volume = volume
         # self.error = abs(volume)
 
-    def add_volume(self, volume, f):
+    def add_volume(self, volume):
         self.volume += volume
 
     def reinit(self):
-        self.volume = 0
-        self.error = 0
-        self.integral = 0
+        self.volume = 0.0
+        self.error = 0.0
+        self.integral = 0.0

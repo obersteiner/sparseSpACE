@@ -91,7 +91,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
-        integralarrayComplete = np.zeros(len(areas))
+        integralarrayComplete = np.zeros((len(areas), len(self.f(np.ones(self.dim)*0.5))))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
@@ -100,7 +100,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 # print(component_grid)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
 
-                if area_integral != -2 ** 30:
+                if area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)
@@ -123,9 +123,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        print("combiintegral:", self.refinement.integral)
+        print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
+            return max(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)), self.total_error
         else:
             return self.total_error, self.total_error
 
@@ -183,22 +183,24 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def refine(self):
         # split all cells that have an error close to the max error
-        areas = self.get_areas()
         self.prepare_refinement()
         self.refinement.clear_new_objects()
         margin = 0.9
         quit_refinement = False
+        num_refinements = 0
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
                 tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
+                num_refinements += 1
                 # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
                 print("Finished refinement")
+                print("Refined ", num_refinements, " times")
                 self.refinement_postprocessing()
                 break
 

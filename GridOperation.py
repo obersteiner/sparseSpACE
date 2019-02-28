@@ -149,7 +149,7 @@ class Integration(AreaOperation):
         if old_value is None:
             area.parent_info.split_parent_integral = new_value
         else:
-            if new_value is None or abs(area.integral - old_value) < abs(area.integral - new_value):
+            if new_value is None or max(abs(area.integral - old_value)) < max(abs(area.integral - new_value)):
                 pass
             else:
                 area.parent_info.split_parent_integral = area.parent_info.split_parent_integral2
@@ -171,8 +171,23 @@ class Integration(AreaOperation):
         if area.parent_info.benefit_extend is None:
             area.parent_info.num_points_split_parent = None
 
+    def initialize_error(self, area, error_name):
+        if error_name == "split_parent":
+            area.parent_info.split_parent_integral = None
+        if error_name == "split_parent2":
+            area.parent_info.split_parent_integral2 = None
+        if error_name == "extend_parent":
+            area.parent_info.extend_parent_integral = None
+
+    def initialize_point_numbers(self, area, error_name):
+        if error_name == "split_parent":
+            area.parent_info.num_points_split_parent = None
+        if error_name == "split_parent2":
+            area.parent_info.num_points_split_parent = None
+        if error_name == "extend_parent":
+            area.parent_info.num_points_extend_parent = None
+
     def get_previous_value_from_split_parent(self, area):
-        self.get_best_fit(area)
         area.parent_info.previous_value = area.parent_info.split_parent_integral
 
     def count_unique_points(self):
@@ -256,7 +271,6 @@ class Integration(AreaOperation):
 
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def compute_subcell_with_interpolation(self, cell, subcell, coefficient, refinement_container):
-        #print("Cell and subcell", cell, subcell)
         start_subcell = subcell.start
         end_subcell = subcell.end
         start_cell = cell.start
