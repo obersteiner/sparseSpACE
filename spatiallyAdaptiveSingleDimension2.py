@@ -7,9 +7,9 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b):
+    def __init__(self, a, b, norm=np.inf):
         self.grid = GlobalTrapezoidalGrid(a, b, boundary=True)
-        SpatiallyAdaptivBase.__init__(self, a, b, self.grid)
+        SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
 
     def coarsen_grid(self, area, levelvec):
         pass
@@ -157,7 +157,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             factor = np.prod([self.grid.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
             volume += factor * abs(self.f(points_children[i]) - 0.5 * (self.f(points_left_parent[i]) + self.f(points_right_parent[i]))) * (right_parent - child)
         evaluations = 3 * len(points_right_parent)
-        return max(abs(volume)), evaluations
+        return abs(volume), evaluations
 
     def initialize_refinement(self):
         initial_points = []

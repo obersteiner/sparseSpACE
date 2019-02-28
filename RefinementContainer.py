@@ -118,9 +118,9 @@ class RefinementContainer(object):
         self.refinementObjects.extend(new_refinement_objects)
 
     # calculate the error according to the error estimator for specified RefinementObjects
-    def calc_error(self, object_id, f):
+    def calc_error(self, object_id, f, norm):
         refine_object = self.refinementObjects[object_id]
-        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object))
+        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm))
 
     # returns all RefinementObjects in the container
     def get_objects(self):
@@ -272,10 +272,10 @@ class MetaRefinementContainer(object):
         return new_lmax_change
 
     # calculate the error according to the error estimator for specified RefinementObjects
-    def calc_error(self, object_id, f):
+    def calc_error(self, object_id, f, norm):
         for cont in self.refinementContainers:
             for obj in range(0, cont.size()):
-                cont.calc_error(obj, f)
+                cont.calc_error(obj, f, norm)
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def set_benefit(self, object_id):

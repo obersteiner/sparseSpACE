@@ -18,11 +18,11 @@ from Grid import *
 from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
-
+from numpy import linalg as LA
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a, b, grid=None, operation=None):
+    def __init__(self, a, b, grid=None, operation=None, norm=np.inf):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -30,6 +30,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.grid = grid
         self.refinements_for_recalculate = 100
         self.operation = operation
+        self.norm = norm
         assert (len(a) == len(b))
 
     # returns the number of points in a single component grid with refinement
@@ -125,7 +126,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return max(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)), self.total_error
+            return LA.norm(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.norm), self.total_error
         else:
             return self.total_error, self.total_error
 
@@ -151,7 +152,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         self.operation.print_evaluation_output(self.refinement)
-        global_error_estimate = self.operation.get_global_error_estimate(self.refinement)
+        global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
         else:
@@ -286,7 +287,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     # this is a default implementation that should be overritten if necessary
     def calc_error(self, objectID, f):
-        self.refinement.calc_error(objectID, f)
+        self.refinement.calc_error(objectID, f, self.norm)
 
     # this is a default implementation that should be overritten if necessary
     def get_new_areas(self):

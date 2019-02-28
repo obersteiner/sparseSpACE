@@ -6,8 +6,8 @@ from scipy.interpolate import interpn
 
 
 class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, grid=None, punish_depth=False, operation=None):
-        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation=operation)
+    def __init__(self, a, b, grid=None, punish_depth=False, operation=None, norm=np.inf):
+        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation=operation, norm=norm)
         # dummy container
         self.refinement = RefinementContainer([], self.dim, None)
         self.max_level = np.ones(self.dim)

@@ -1,5 +1,6 @@
 import abc
 import numpy as np
+from numpy import linalg as LA
 
 class GridOperation(object):
     def is_area_operation(self):
@@ -143,13 +144,13 @@ class Integration(AreaOperation):
             return num_points
 
 
-    def get_best_fit(self, area):
+    def get_best_fit(self, area, norm):
         old_value = area.parent_info.split_parent_integral
         new_value = area.parent_info.split_parent_integral2
         if old_value is None:
             area.parent_info.split_parent_integral = new_value
         else:
-            if new_value is None or max(abs(area.integral - old_value)) < max(abs(area.integral - new_value)):
+            if new_value is None or LA.norm(abs(area.integral - old_value), norm) < LA.norm(abs(area.integral - new_value), norm):
                 pass
             else:
                 area.parent_info.split_parent_integral = area.parent_info.split_parent_integral2
@@ -196,11 +197,11 @@ class Integration(AreaOperation):
     def area_preprocessing(self, area):
         area.set_integral(0.0)
 
-    def get_global_error_estimate(self, refinement_container):
+    def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
             return None
         else:
-            return max(abs((self.reference_solution - refinement_container.integral)/self.reference_solution))
+            return LA.norm(abs((self.reference_solution - refinement_container.integral)/self.reference_solution), norm)
 
     def area_postprocessing(self, area):
         area.value = area.integral
@@ -214,7 +215,7 @@ class Integration(AreaOperation):
                 i += 1
         assert i == 2 ** self.dim  # we always have 2**dim children
 
-    def set_extend_benefit(self, area):
+    def set_extend_benefit(self, area, norm):
         if area.parent_info.benefit_extend is not None:
             return
         if area.switch_to_parent_estimation:
@@ -225,7 +226,7 @@ class Integration(AreaOperation):
             num_comparison = area.evaluations
         assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
 
-        error_extend = max(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)))
+        error_extend = LA.norm(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)), norm)
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
         else:
@@ -242,15 +243,15 @@ class Integration(AreaOperation):
 
         if self.grid.boundary:
             assert area.parent_info.num_points_split_parent > 0
-        error_split = max(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)))
+        error_split = LA.norm(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)), norm)
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
         else:
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
-    def set_extend_error_correction(self, area):
+    def set_extend_error_correction(self, area, norm):
         if area.switch_to_parent_estimation:
-            area.parent_info.extend_error_correction = max(area.parent_info.extend_error_correction) * area.parent_info.num_points_split_parent
+            area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, norm) * area.parent_info.num_points_split_parent
 
     def point_in_area(self, point, area):
         for d in range(self.dim):
