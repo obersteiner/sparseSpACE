@@ -101,7 +101,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 # print(component_grid)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
 
-                if area_integral[0] != -2 ** 30:
+                if area_integral is not None and area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)

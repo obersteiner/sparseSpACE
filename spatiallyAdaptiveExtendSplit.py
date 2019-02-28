@@ -189,7 +189,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         level_for_evaluation, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal)
         # print(level_for_evaluation, area.coarseningValue)
         if not do_compute:
-            return 0, None, 0
+            return None, None, 0
         else:
             if filter_area is None:
                 return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
@@ -311,8 +311,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
     def set_extend_error_correction(self, area):
-        area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
-
+        area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
+        
     def calc_error(self, objectID, f):
         area = self.refinement.get_object(objectID)
         if area.parent_info.previous_value is None:
