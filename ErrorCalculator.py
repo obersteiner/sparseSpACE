@@ -47,7 +47,6 @@ class ErrorCalculatorSurplusCell(ErrorCalculator):
         error = 0.0
         for sub_integral in sub_integrals:
             error += sub_integral[0] * sub_integral[1]
-        print(sub_integrals)
         return abs(error)
 
 
@@ -71,7 +70,6 @@ class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
     def calc_error(self, f, refineObj):
         # pagoda-volume
         volume = refineObj.volume
-        # print("volume set", volume)
         return abs(volume)
 
 
@@ -81,5 +79,4 @@ class ErrorCalculatorSingleDimVolumeGuidedPunishedDepth(ErrorCalculator):
         width = refineObj.end - refineObj.start
         # pagoda-volume
         volume = refineObj.volume * (width)
-        # print("volume set", volume)
         return abs(volume)
