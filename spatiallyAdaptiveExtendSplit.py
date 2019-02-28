@@ -626,8 +626,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             integral = 0.0
             area.levelvec_dict = {}
             for component_grid in scheme:
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
-                integral += area_integral * component_grid.coefficient
+                if area_integral is not None:
+                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
+                    integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save
         return integral, num_points
