@@ -80,7 +80,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             right_refinement_object = next_refineObj
             right_parent = next_refineObj.end
             left_parent = child - (right_parent - child)
-        npt.assert_almost_equal(right_parent - child, numpy.testing.assert_almost_equalchild - left_parent, decimal=10)
+        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=10)
         return NodeInfo(child, left_parent, right_parent, left_child, right_child, left_refinement_object, right_refinement_object)
 
     # this method draws the 1D refinement of each dimension individually
@@ -147,7 +147,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
         volume = 0.0
         assert right_parent > child > left_parent
-        npt.assert_almost_equal(right_parent - child, numpy.testing.assert_almost_equalchild - left_parent, decimal=10)
+        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=10)
         points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
