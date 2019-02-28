@@ -149,7 +149,7 @@ class Integration(AreaOperation):
         if old_value is None:
             area.parent_info.split_parent_integral = new_value
         else:
-            if new_value is None or abs(area.integral - old_value) < abs(area.integral - new_value):
+            if new_value is None or max(abs(area.integral - old_value)) < max(abs(area.integral - new_value)):
                 pass
             else:
                 area.parent_info.split_parent_integral = area.parent_info.split_parent_integral2
@@ -271,7 +271,6 @@ class Integration(AreaOperation):
 
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def compute_subcell_with_interpolation(self, cell, subcell, coefficient, refinement_container):
-        #print("Cell and subcell", cell, subcell)
         start_subcell = subcell.start
         end_subcell = subcell.end
         start_cell = cell.start
