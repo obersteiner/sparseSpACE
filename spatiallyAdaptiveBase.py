@@ -100,7 +100,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 # print(component_grid)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
 
-                if area_integral != -2 ** 30:
+                if area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)
@@ -125,7 +125,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
         print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return max(abs(self.refinement.integral - self.realIntegral)) / abs(self.realIntegral), self.total_error
+            return max(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral)), self.total_error
         else:
             return self.total_error, self.total_error
 
