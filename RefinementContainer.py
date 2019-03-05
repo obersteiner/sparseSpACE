@@ -261,13 +261,11 @@ class MetaRefinementContainer(object):
     def refine(self, position):
         # position[0]: which container(=dimension), position[1]: which object(=area)
         # self.updateGridSpecificRefinementInfo(position)
-        lmax_change = np.zeros(len(self.refinementContainers))
         new_lmax_change = self.refinementContainers[position[0]].refine(position[1])
         if new_lmax_change is not None:
-            lmax_change[position[0]] = new_lmax_change[0]
             for d, c in enumerate(self.refinementContainers):
                 if d != position[0]:
-                    c.update_objects(1)
+                    c.update_objects(new_lmax_change[d])
         # self.print()
         return new_lmax_change
 

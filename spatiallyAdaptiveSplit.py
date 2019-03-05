@@ -80,8 +80,8 @@ class SpatiallyAdaptiveFixedScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
 
-    def evaluate_area(self, f, area, levelvec):
-        levelEval, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal=None)
+    def evaluate_area(self, f, area, component_grid):
+        levelEval, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal=None)
         if do_compute:
             return self.grid.integrate(f, levelEval, area.start, area.end), None, np.prod(
             self.grid.levelToNumPoints(levelEval))

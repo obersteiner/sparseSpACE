@@ -184,7 +184,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
 
-    def evaluate_area(self, f, area, levelvec, filter_area=None, interpolate=False):
+    def evaluate_area(self, f, area, levelvec, coefficient, filter_area=None, interpolate=False):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvec)
         level_for_evaluation, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal)
         # print(level_for_evaluation, area.coarseningValue)

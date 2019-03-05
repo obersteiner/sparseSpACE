@@ -73,7 +73,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorSurplusCell()
 
-    def evaluate_area(self, f, area, levelvec):  # area is a cell here
+    def evaluate_area(self, f, area, component_grid):  # area is a cell here
         # calculates all parents of the cell for which the level vector l >= l_cell - e
         # where e is the unity vector (1, 1 , 1 , ...)
 

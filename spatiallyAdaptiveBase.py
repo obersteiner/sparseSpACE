@@ -92,14 +92,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
-        integralarrayComplete = np.zeros((len(areas), len(self.f(np.ones(self.dim)*0.5))))
+        integralarrayComplete = np.zeros((len(areas), len(self.f((self.b+self.a)*0.5))))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
                 # print(component_grid)
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid)
 
                 if area_integral is not None and area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
@@ -110,7 +110,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                         # self.combiintegral += area_integral * component_grid[1]
                         factor = component_grid.coefficient if self.grid.isNested() else 1
                         evaluation_array[k] += evaluations * factor
-
+        self.finalize_evaluation()
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
@@ -137,6 +137,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         for area in areas:
             self.operation.area_preprocessing(area)
         self.compute_solutions(areas,evaluation_array)
+        self.finalize_evaluation()
         for area in areas:
             self.operation.area_postprocessing(area)
         for k in range(len(areas)):
@@ -269,7 +270,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         return
 
     @abc.abstractmethod
-    def evaluate_area(self, f, area, levelvec):
+    def evaluate_area(self, f, area, component_grid):
         pass
 
     @abc.abstractmethod
@@ -304,3 +305,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
     def coarsen_grid(self, levelvector, area, num_sub_diagonal):
         return levelvector, True
+
+    def finalize_evaluation(self):
+        pass
