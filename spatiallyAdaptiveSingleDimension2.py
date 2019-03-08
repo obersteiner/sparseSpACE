@@ -31,7 +31,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def get_points_component_grid(self, levelvec, numSubDiagonal):
         return self.get_points_all_dim(levelvec, numSubDiagonal)
 
-    # returns list of coordinates for each dimension (basically refinement stripes)
+    # returns list of coordinates for each dimension (basically refinement stripes) + all points that are associated
+    # with a child in the global refinement structure. There might be now such points that correspond to a global child.
     def get_point_coord_for_each_dim(self, levelvec):
         refinement = self.refinement
         # get a list of all coordinates for every this_dim (so (0, 1), (0, 0.5, 1) for example)
@@ -76,12 +77,15 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             children_indices.append(children_indices_dim)
         return indicesList, children_indices
 
+    # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
     def is_child(self, refineObj, next_refineObj):
         if refineObj.levels[0] < refineObj.levels[1] or next_refineObj.levels[1] < refineObj.levels[1]:
             return True
         else:
             return False
-
+        
+    # This method calculates the left and right parent of a child. It might happen that a child has already a child
+    # in one direction but it may not have one in both as it would not be considered to be a child anymore.
     def get_node_info(self, refineObj, next_refineObj):
         child = refineObj.end
         right_refinement_object = None
@@ -178,6 +182,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             pass
 
+    # This method returns the previous integral approximation + the points contained in this grid for the given
+    # component grid identified by the levelvector. In case the component grid is new, we search for a close component
+    # grid with levelvector2 <= levelvector and return the respective previous integral and the points of the
+    # previous grid.
     def get_previous_integral_and_points(self, levelvector):
         if tuple(levelvector) in self.dict_integral:
             return self.dict_integral[tuple(levelvector)], self.dict_points[tuple(levelvector)]
@@ -200,96 +208,132 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 k += 1
         assert False
 
+    # This method checks if there are new points in the grid new_points compared to the old grid old_points
+    # We then return a suited data structure containing the newly added points and the points that were removed.
     def get_modification_points(self, old_points, new_points):
         found_modification = found_modification2 = False
-        modification_array = [[] for d in range(self.dim)]
-        modification_array2 = [[] for d in range(self.dim)]
+        # storage for newly added points per dimension
+        modification_array_added = [[] for d in range(self.dim)]
+        # storage for removed points per dimension
+        modification_arra_removed = [[] for d in range(self.dim)]
 
         for d in range(self.dim):
+            # get newly added points for dimension d
             modifications = sorted(list(set(new_points[d]) - set(old_points[d])))
             if len(modifications) != 0:
                 found_modification = True
                 modification_1D = self.get_modification_objects(modifications, new_points[d])
-                modification_array[d].extend(list(modification_1D))
-
+                modification_array_added[d].extend(list(modification_1D))
+            #get removed points for dimension d
             modifications_coarsen = sorted(list(set(old_points[d]) - set(new_points[d])))
             if len(modifications_coarsen) != 0:
                 found_modification2 = True
                 modification_1D = self.get_modification_objects(modifications_coarsen, old_points[d])
-                modification_array2[d].extend(list(modification_1D))
-        return modification_array if found_modification else None, modification_array2 if found_modification2 else None
+                modification_arra_removed[d].extend(list(modification_1D))
+        return modification_array_added if found_modification else None, modification_arra_removed if found_modification2 else None
 
+    # Construct the data structures for the newly added points listed in modifications. The complete grid is given in
+    # grid_points.
     def get_modification_objects(self, modifications, grid_points):
         modification_1D = []
         k = 0
         for i in range(len(grid_points)):
             if grid_points[i] == modifications[k]:
                 j = 1
-                while (k + j < len(modifications) and grid_points[i + j] == modifications[k + j]):
+                # get consecutive list of points that are newly added
+                while k + j < len(modifications) and grid_points[i + j] == modifications[k + j]:
                     j += 1
+                # store left and right neighbour in addition to the newly added points list(grid_points[i:i + j])
                 modification_1D.append((grid_points[i - 1], list(grid_points[i:i + j]), grid_points[i + j]))
                 k += j
                 if k == len(modifications):
                     break
         return modification_1D
 
+    # This method calculates the change of the integral contribution of the neighbouring points of newly added points.
+    # We assume here a trapezoidal rule. The newly added points are contained in new_points but not in old_points.
     def subtract_contributions(self, modification_points, old_points, new_points):
+        # calculate weights of point in new grid
         self.grid.set_grid(new_points)
-
         weights = self.grid.weights
+        # save weights in dictionary for fast access via coordinate
         dict_weights_fine = [{} for d in range(self.dim)]
         for d in range(self.dim):
             for p, w in zip(new_points[d], weights[d]):
                 dict_weights_fine[d][p] = w
+        # reset grid to old grid
         self.grid.set_grid(old_points)
-
+        # sum up the changes in contributions
         integral = 0.0
         for d in range(self.dim):
             for point in modification_points[d]:
-                integral += self.calc_slice_through_points([point[0],point[2]], old_points, d, modification_points, use_factor=True, dict=dict_weights_fine)
+                # calculate the changes in contributions for all points that contain the neighbouring points point[0]
+                # and point[2] in dimension d
+                integral += self.calc_slice_through_points([point[0],point[2]], old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
         return integral
 
+    # This method calculates the new contributions of the points specified in modification_points to the grid new_points
+    # The new_points grid contains the newly added points.
     def get_new_contributions(self, modification_points, new_points):
         self.grid.set_grid(new_points)
+        # sum up all new contributions
         integral = 0.0
         for d in range(self.dim):
             for point in modification_points[d]:
+                # calculate the new contribution of the points with the new coordinates points[1] (a list of one or
+                # multiple new coordinates) in dimension d
                 integral += self.calc_slice_through_points(point[1], new_points, d, modification_points)
         return integral
 
-    def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, use_factor=False, dict=None):
+    # This method computes the integral of the dim-1 dimensional slice through the points_for_slice of dimension d.
+    # We also account for the fact that some points might be traversed by multiple of these slice calculations and
+    # reduce the factors accordingly. If subtract_contribution is set we calculate the difference of the
+    # new contribution from previously existing points to the new points.
+    def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
         integral = 0.0
         positions = [grid_points[d].index(point) for point in points_for_slice]
         points = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
         indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(grid_points[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
+            # index of current point in grid_points grid
             index = indices[i]
+            #point coordinates of current point
             current_point = points[i]
+            # old weight of current point in coarser grid
             weight = self.grid.getWeight(index)
-            if use_factor:
-                value = 1
+            if subtract_contribution:
+                # weight of current point in new finer grid
+                weight_fine = 1
                 for d in range(self.dim):
-                    value *= dict[d][current_point[d]]
+                    weight_fine *= dict[d][current_point[d]]
                 number_of_dimensions_that_intersect = 0
+                # calculate if other slices also contain this point
                 for d2 in range(self.dim):
                     for mod_point in modification_points[d2]:
                         if current_point[d2] == mod_point[0] or current_point[d2] == mod_point[2]:
                             number_of_dimensions_that_intersect += 1
-                factor = (weight - value)/number_of_dimensions_that_intersect
+                # calculate the weight difference from the old to the new grid
+                factor = (weight - weight_fine)/number_of_dimensions_that_intersect
             else:
                 number_of_dimensions_that_intersect = 1
+                # calculate if other slices also contain this point
                 for d2 in range(self.dim):
                     if d2 == d:
                         continue
                     for mod_point in modification_points[d2]:
                         if current_point[d2] in mod_point[1]:
                             number_of_dimensions_that_intersect += 1
+                # calculate the new weight contribution of newly added point
                 factor = weight / number_of_dimensions_that_intersect
             assert(factor > 0)
             integral += self.f(current_point) * factor
         return integral
 
+    # This method computes additional values after the compution of the integrals for the current
+    # refinement step is finished. This method is executed before the refinement process.
     def finalize_evaluation(self):
+        # setting flag to false so that we are now reusing old information
+        # and only calculate the changes to the old integrals
         self.no_previous_integrals = False
         if self.version == 1:
             for d in range(self.dim):
@@ -298,9 +342,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     level = max(area.levels)
                     area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
+    # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
+    # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
+    # on this slice.
     def calculate_surplusses(self, grid_points, children_indices):
         for d in range(0, self.dim):
-            refineContainer = self.refinement.get_refinement_container_for_dim(d)
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
@@ -313,6 +359,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     child_info.left_refinement_object.add_volume(volume/2.0)
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
 
+    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
+    #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
         volume = 0.0
         assert right_parent > child > left_parent
