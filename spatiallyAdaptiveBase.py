@@ -218,7 +218,8 @@ class SpatiallyAdaptivBase(StandardCombi):
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10 ** -2,
                                 refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False,
-                                reevaluate_at_end=False, reference_solution=None):
+                                reevaluate_at_end=False, reference_solution=None, max_time=None, max_evaluations=None):
+        start_time = time.time()
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.realIntegral = reference_solution
@@ -238,6 +239,13 @@ class SpatiallyAdaptivBase(StandardCombi):
             print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
             if error > tol:
+                if max_evaluations is not None:
+                    if self.get_total_num_points() > max_evaluations:
+                        break
+                if max_time is not None:
+                    current_time = time.time()
+                    if current_time - start_time > max_time:
+                        break
                 # refine further
                 self.refine()
                 if do_plot:
@@ -251,6 +259,9 @@ class SpatiallyAdaptivBase(StandardCombi):
                 break
         # finished adaptive algorithm
         print("Number of refinements", self.refinements)
+        print("Number of distinct points used during the refinement", self.get_total_num_points())
+        print("Time used (s):", time.time() - start_time)
+        print("Final error:", error)
         if test_scheme:
             self.check_combi_scheme()
         if reevaluate_at_end:
