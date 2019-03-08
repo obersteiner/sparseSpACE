@@ -37,7 +37,7 @@ class Function(object):
                 self.f_dict[coords] = f_value
         if np.isscalar(f_value):
             f_value = [f_value]
-        return np.asarray(f_value)
+        return np.array(f_value)
 
     def deactivate_caching(self):
         self.do_cache = False
