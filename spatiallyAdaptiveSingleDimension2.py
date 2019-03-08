@@ -152,42 +152,21 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     factor = component_grid.coefficient if self.grid.isNested() else 1
                     self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
             else:
-                #print("Calculating for", component_grid.levelvector)
                 previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
-                #print(previous_points, gridPointCoordsAsStripes)
                 integral = np.array(previous_integral)
                 previous_points_coarsened = list(previous_points)
-                #print("Previous integral", previous_integral)
-                #self.grid.set_grid(previous_points)
-                #integral2 = self.grid.integrator(f, self.grid.numPoints, start, end)
-                #npt.assert_almost_equal(integral, integral2, decimal=12)
                 modification_points, modification_points_coarsen = self.get_modification_points(previous_points, gridPointCoordsAsStripes)
                 if modification_points_coarsen is not None:
                     for d in range(self.dim):
                         previous_points_coarsened[d] = list(previous_points[d])
                         for mod_point in modification_points_coarsen[d]:
-                            #print(mod_point, previous_points_coarsened[d])
                             for removal_point in mod_point[1]:
                                 previous_points_coarsened[d].remove(removal_point)
-                    #print(integral, self.subtract_contributions(modification_points_coarsen, previous_points_coarsened, previous_points),
-                    #      self.get_new_contributions(modification_points_coarsen, previous_points))
-                    #self.grid.set_grid(previous_points_coarsened)
-                    #print(list(zip(*self.grid.get_points_and_weights())))
-                    #self.grid.set_grid(previous_points)
-                    #print(list(zip(*self.grid.get_points_and_weights())))
                     integral += self.subtract_contributions(modification_points_coarsen, previous_points_coarsened, previous_points)
                     integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
-                    #print(previous_points, previous_points_coarsened)
-                #self.grid.set_grid(previous_points_coarsened)
-                #integral2 = self.grid.integrator(f, self.grid.numPoints, start, end)
-                #npt.assert_almost_equal(integral, integral2, decimal=12)
                 if modification_points is not None:
                     integral -= self.subtract_contributions(modification_points, previous_points_coarsened, gridPointCoordsAsStripes)
                     integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
-                    #self.update_surplusses()
-                #self.grid.set_grid(gridPointCoordsAsStripes)
-                #integral2 = self.grid.integrator(f, self.grid.numPoints, start, end)
-                #npt.assert_almost_equal(integral, integral2, decimal=12)
                 if sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or tuple(
                         component_grid.levelvector) in self.combischeme.get_active_indices():
                     self.grid.set_grid(gridPointCoordsAsStripes)
@@ -195,15 +174,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
             self.dict_integral[tuple(component_grid.levelvector)] = integral
             self.dict_points[tuple(component_grid.levelvector)] = gridPointCoordsAsStripes
-            #print("Children indices", children_indices)
-            #print("integral", component_grid.levelvector, integral )#, self.dict_integral.items())
             return integral, None, np.prod(self.grid.numPoints)
         else:
             pass
 
     def get_previous_integral_and_points(self, levelvector):
         if tuple(levelvector) in self.dict_integral:
-            #print("Found for", levelvector, "old entry for", levelvector)
             return self.dict_integral[tuple(levelvector)], self.dict_points[tuple(levelvector)]
         else:
             k = 1
@@ -220,10 +196,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     levelvec_temp = list(levelvector)
                     levelvec_temp[d] -= k
                     if tuple(levelvec_temp) in self.dict_integral:
-                        #print("Found for", levelvector, "old entry for", levelvec_temp)
                         return self.dict_integral[tuple(levelvec_temp)], self.dict_points[tuple(levelvec_temp)]
                 k += 1
-        #print(self.dict_integral.keys(), levelvector)
         assert False
 
     def get_modification_points(self, old_points, new_points):
@@ -234,7 +208,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         for d in range(self.dim):
             modifications = sorted(list(set(new_points[d]) - set(old_points[d])))
             if len(modifications) != 0:
-                #print(modifications, new_points[d], old_points[d])
                 found_modification = True
                 modification_1D = self.get_modification_objects(modifications, new_points[d])
                 modification_array[d].extend(list(modification_1D))
@@ -244,8 +217,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 found_modification2 = True
                 modification_1D = self.get_modification_objects(modifications_coarsen, old_points[d])
                 modification_array2[d].extend(list(modification_1D))
-        #if found_modification or found_modification2:
-            #print("Found modification!", modification_array if found_modification else None,  modification_array2 if found_modification2 else None)
         return modification_array if found_modification else None, modification_array2 if found_modification2 else None
 
     def get_modification_objects(self, modifications, grid_points):
@@ -269,7 +240,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         dict_weights_fine = [{} for d in range(self.dim)]
         for d in range(self.dim):
             for p, w in zip(new_points[d], weights[d]):
-                #print(p,w)
                 dict_weights_fine[d][p] = w
         self.grid.set_grid(old_points)
 
@@ -289,61 +259,23 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, use_factor=False, dict=None):
         integral = 0.0
-        #print(grid_points[d], points_for_slice)
         positions = [grid_points[d].index(point) for point in points_for_slice]
         points = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
         indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(grid_points[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
             index = indices[i]
             current_point = points[i]
-            #print("Point", current_point)
             weight = self.grid.getWeight(index)
             if use_factor:
-                '''
-                value2 = (points_for_slice[1] - points_for_slice[0]) * 0.25
-                value3 = (points_for_slice[1] - points_for_slice[0]) * 0.5
-                #print(self.grid.weights[d][index[d]], value2)
-                #assert value3 == 0.5 * self.grid.weights[d][index[d]]
-                for mod_point in modification_points[d]:
-                    if points_for_slice[0] == mod_point[0] and points_for_slice[1] == mod_point[2]:
-                        value = self.get_value(current_point[d], mod_point)
-                #print(current_point[d], mod_point, points_for_slice)
-                #assert(value == value2)
-                number_of_dimensions_that_intersect = 1
-                for d2 in range(self.dim):
-                    if d2 == d:
-                        continue
-                    modification_found = False
-                    for mod_point in modification_points[d2]:
-                        if current_point[d2] in mod_point:
-                            assert current_point[d2] not in mod_point[1]
-                            #print(current_point, mod_point)
-                            value2 *= (mod_point[2] - mod_point[0]) * 0.25
-                            value *= (self.grid.weights[d2][index[d2]] + self.get_value(current_point[d2], mod_point)) - (mod_point[2] - mod_point[0]) * 0.5
-                            value3 *= (mod_point[2] - mod_point[0]) * 0.5
-                            number_of_dimensions_that_intersect += 1
-                            modification_found = True
-                            break
-                    if not modification_found:
-                        value *= self.grid.weights[d2][index[d2]]
-                        value2 *= self.grid.weights[d2][index[d2]]
-                        value3 *= self.grid.weights[d2][index[d2]]
-                '''
                 value = 1
                 for d in range(self.dim):
                     value *= dict[d][current_point[d]]
-                #print("Intersections", number_of_dimensions_that_intersect, current_point)
                 number_of_dimensions_that_intersect = 0
                 for d2 in range(self.dim):
                     for mod_point in modification_points[d2]:
                         if current_point[d2] == mod_point[0] or current_point[d2] == mod_point[2]:
                             number_of_dimensions_that_intersect += 1
                 factor = (weight - value)/number_of_dimensions_that_intersect
-                #print(current_point, value, weight, factor)
-                #if number_of_dimensions_that_intersect >= 1:
-                    #assert(value == value2)
-                    #print("Factor", current_point, factor, weight, value, weight/value, value2, weight/value2, value3, value3/value, number_of_dimensions_that_intersect)
-                #assert(value3 == 2**number_of_dimensions_that_intersect * value)
             else:
                 number_of_dimensions_that_intersect = 1
                 for d2 in range(self.dim):
@@ -353,26 +285,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         if current_point[d2] in mod_point[1]:
                             number_of_dimensions_that_intersect += 1
                 factor = weight / number_of_dimensions_that_intersect
-                #if number_of_dimensions_that_intersect > 1:
-                    #print("Factor", current_point, factor, weight, number_of_dimensions_that_intersect)
-
             assert(factor > 0)
             integral += self.f(current_point) * factor
-        #print(integral)
         return integral
-
-    def get_value(self, point_coord_d, mod_point):
-        #print(mod_point)
-        value = None
-        if point_coord_d == mod_point[0]:
-            value = (mod_point[1][0] - mod_point[0]) * 0.5
-        if point_coord_d == mod_point[2]:
-            value = (mod_point[2] - mod_point[1][-1]) * 0.5
-        #print(value)
-        #assert value == (mod_point[2] - mod_point[0]) * 0.25
-        #print(point_coord_d, mod_point)
-        assert value is not None
-        return value
 
     def finalize_evaluation(self):
         self.no_previous_integrals = False
@@ -381,13 +296,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 container_d = self.refinement.get_refinement_container_for_dim(d)
                 for area in container_d.get_objects():
                     level = max(area.levels)
-                    #print("Evaluations for dim", d, "is", np.sum(self.evaluationCounts[d][level-1:]), "for area", area.start, area.end)
                     area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
     def calculate_surplusses(self, grid_points, children_indices):
         for d in range(0, self.dim):
             refineContainer = self.refinement.get_refinement_container_for_dim(d)
-            refinement_objects = refineContainer.get_objects()
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
