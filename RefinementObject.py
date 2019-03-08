@@ -27,6 +27,13 @@ class RefinementObject(object):
     def set_error(self, error):
         self.error = error
 
+    def reinit(self):
+        pass
+
+    def add_evaluations(self, evaluations):
+        self.evaluations += evaluations
+
+
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
@@ -363,17 +370,27 @@ class RefinementObjectCell(RefinementObject):
         self.sub_integrals = []
 
 
-# This is the special class for the RefinementObject defined in the split extend scheme
+# This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, dim, coarsening_level=0):
+    def __init__(self, start, end, this_dim, dim, levels, coarsening_level=0, dim_adaptive=False):
         # start of subarea
         self.start = start
         # end of subarea
         self.end = end
+        self.this_dim = this_dim
         self.dim = dim
         # indicates how often area needs to be coarsened according to extend scheme
         self.coarsening_level = coarsening_level
+        # number of evaluations
         self.evaluations = 0
+        # integral in this area
+        self.integral = 0.0
+        # volume of this area
+        self.volume = None
+        # level at start and end as point levels (as tuple)
+        self.levels = levels
+        self.error = 0.0
+        self.dim_adaptive = dim_adaptive
 
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
@@ -382,11 +399,12 @@ class RefinementObjectSingleDimension(RefinementObject):
         # positionDim = area[dimValue]
         # if positionDim in self.popArray[dimValue]: #do not refine one interval twice
         #    continue
-        # print("refine:", positionDim , "in dim:", dimValue, "coarsening Level:", coarseningLevel)
+        # print("refine:", positionDim , "in this_dim:", dimValue, "coarsening Level:", coarseningLevel)
         # splitAreaInfo = self.refinement[dimValue][positionDim]
         # lowerBorder = splitAreaInfo[0]
         # upperBorder = splitAreaInfo[1]
         # self.popArray[dimValue].append(positionDim)
+
         lmax_increase = None
         update = None
         coarsening_value = 0
@@ -397,27 +415,46 @@ class RefinementObjectSingleDimension(RefinementObject):
             coarsening_value = self.coarsening_level - 1
         # in case we have refined complete scheme (i.e. coarensingLevel was 0) we have to increase level everywhere else
         if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
-            # increase coarsening level in all other dimensions
-            for d in range(self.dim):
-                for i in range(len(self.refinement[d])):
-                    icoarsen = self.refinement[d][i][2] + 1
-                    self.refinement[d][i] = (self.refinement[d][i][0], self.refinement[d][i][1], icoarsen)
             # increase lmax by 1
-            lmax_increase = [1 for d in range(self.dim)]
+            lmax_increase = [1 if d == self.this_dim or self.dim_adaptive == False else 0 for d in range(self.dim)]
             update = 1
             # print("New scheme")
-            # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.dim)
+            # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
             # self.newScheme = True
         # add new refined interval to refinement array (it has half of the width)
-        new_width = (self.end - self.start) / 2.0
-        new_objects = []
-        new_objects.append(
-            RefinementObjectSingleDimension(self.start, self.start + new_width, self.dim, coarsening_value))
-        new_objects.append(
-            RefinementObjectSingleDimension(self.start + new_width, self.end, self.dim, coarsening_value))
-        # self.finestWidth = min(new_width,self.finestWidth)
-        return new_objects, lmax_increase, update
+        newWidth = (self.end - self.start) / 2.0
+        newObjects = []
+        newLevel = max(self.levels) + 1
+        # print("newLevel", newLevel)
+        newObjects.append(RefinementObjectSingleDimension(self.start, self.start + newWidth, self.this_dim, self.dim, (self.levels[0], newLevel), coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(self.start + newWidth, self.end, self.this_dim, self.dim, (newLevel, self.levels[1]), coarsening_value, dim_adaptive=self.dim_adaptive))
+        # self.finestWidth = min(newWidth,self.finestWidth)
+        return newObjects, lmax_increase, update
 
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
     def update(self, update_info):
         self.coarsening_level += update_info
+
+    def print(self):
+        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit )
+
+    def set_levels(self, levels):
+        self.levels = levels
+
+    def get_width(self):
+        return self.end - self.start
+
+    def set_volume(self, volume):
+        self.volume = volume
+        # self.error = abs(volume)
+
+    def add_volume(self, volume):
+        if self.volume is None:
+            self.volume = volume
+        else:
+            self.volume += volume
+
+    def reinit(self):
+        self.volume = None
+        self.error = 0.0
+        self.integral = 0.0

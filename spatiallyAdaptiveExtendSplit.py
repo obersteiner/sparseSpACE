@@ -3,14 +3,14 @@ from spatiallyAdaptiveBase import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
-                 version=0, dim_adaptive=False, automatic_extend_split=False, operation=None):
+                 version=0, dim_adaptive=False, automatic_extend_split=False, operation=None, norm=np.inf):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
         # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
         assert 2 >= version >= 0
         self.version = version
-        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation)
+        SpatiallyAdaptivBase.__init__(self, a=a, b=b, grid=grid, operation=operation, norm=norm)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
@@ -184,12 +184,12 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
 
-    def evaluate_area(self, f, area, levelvec, filter_area=None, interpolate=False):
+    def evaluate_area(self, f, area, levelvec, coefficient, filter_area=None, interpolate=False):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvec)
         level_for_evaluation, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal)
         # print(level_for_evaluation, area.coarseningValue)
         if not do_compute:
-            return 0, None, 0
+            return None, None, 0
         else:
             if filter_area is None:
                 return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
@@ -274,9 +274,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             if area.parent_info.benefit_extend is None:
                 self.get_parent_split_operation(area)
                 self.get_reference_operation(area)
-            self.operation.set_extend_benefit(area)
-            self.operation.set_split_benefit(area)
-            self.operation.set_extend_error_correction(area)
+            self.operation.set_extend_benefit(area, self.norm)
+            self.operation.set_split_benefit(area, self.norm)
+            self.operation.set_extend_error_correction(area, self.norm)
 
     def set_extend_benefit(self, area):
         if area.parent_info.benefit_extend is not None:
@@ -288,7 +288,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             comparison = area.integral
             num_comparison = area.evaluations
         assert num_comparison > area.parent_info.num_points_extend_parent
-        error_extend = abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100))
+        error_extend = LA.norm(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)), self.norm)
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
         else:
@@ -304,17 +304,17 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
         if self.grid.boundary:
             assert area.parent_info.num_points_split_parent > 0
-        error_split = abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100))
+        error_split = LA.norm(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)), self.norm)
         if not self.grid.is_high_order_grid():
             area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
         else:
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
     def set_extend_error_correction(self, area):
-        area.parent_info.extend_error_correction *= area.parent_info.num_points_split_parent
+        area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
 
     def calc_error(self, objectID, f):
-        area = self.refinement.getObject(objectID)
+        area = self.refinement.get_object(objectID)
         if area.parent_info.previous_value is None:
             if self.operation is None:
                 integral2 = self.get_parent_split_integral(area, True)
@@ -338,7 +338,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     self.operation.get_sum_sibling_value(area)
         else:
             area.sum_siblings = area.value if self.operation is not None else area.integral
-        self.refinement.calc_error(objectID, f)
+        self.refinement.calc_error(objectID, f, self.norm)
 
     def get_parent_split_integral2(self, area, only_one_extend=False):
         area_parent = area.parent_info.parent
@@ -403,9 +403,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
     def get_parent_split_operation(self, area, only_one_extend=False):
         area_parent = area.parent_info.parent
-        if area.switch_to_parent_estimation:
-            self.get_parent_split_integral2(area, only_one_extend)
-        else:
+        if not area.switch_to_parent_estimation:
             coarsening = area.coarseningValue
             while True:
                 num_points_split = self.evaluate_operation_area_complete_flexibel(area_parent, coarsening,
@@ -457,6 +455,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     break
                 else:
                     coarsening -= 1
+        self.operation.get_best_fit(area, self.norm)
 
     def get_reference_integral(self, area):
         area_parent = area.parent_info.parent
@@ -619,15 +618,17 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
             area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, filter_area,
                                                                                interpolate)
-            num_points += evaluations * factor
-            integral += area_integral * component_grid.coefficient
+            if area_integral is not None:
+                num_points += evaluations * factor
+                integral += area_integral * component_grid.coefficient
 
         if not filter_integral and filter_points:
             integral = 0.0
             area.levelvec_dict = {}
             for component_grid in scheme:
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
-                integral += area_integral * component_grid.coefficient
+                if area_integral is not None:
+                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
+                    integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save
         return integral, num_points
@@ -653,6 +654,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             lmin = self.lmin[0]
             scheme = self.combischeme.getCombiScheme(lmin, lmax, do_print=False)
 
+        self.operation.initialize_error(filter_area if filter_area is not None else area, error_name)
+        self.operation.initialize_point_numbers(area, error_name)
+
         additional_info = Operation_info(filter_area=filter_area, interpolate=interpolate, error_name=error_name)
         for component_grid in scheme:
             if self.grid.isNested() and self.operation.count_unique_points():
@@ -665,7 +669,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
         if not filter_integral and filter_points and error_name != "reference":
             area.levelvec_dict = {}
-            self.operation.initialize_split_error(filter_area)
+            self.operation.initialize_error(area, error_name)
             for component_grid in scheme:
                 additional_info = Operation_info(target_area=filter_area, error_name="split_no_filter")
                 evaluations = self.evaluate_operation_area(component_grid, area, additional_info)

@@ -18,11 +18,11 @@ from Grid import *
 from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
-
+from numpy import linalg as LA
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a, b, grid=None, operation=None):
+    def __init__(self, a, b, grid=None, operation=None, norm=np.inf):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -30,6 +30,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.grid = grid
         self.refinements_for_recalculate = 100
         self.operation = operation
+        self.norm = norm
         assert (len(a) == len(b))
 
     # returns the number of points in a single component grid with refinement
@@ -91,16 +92,16 @@ class SpatiallyAdaptivBase(StandardCombi):
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
-        integralarrayComplete = np.zeros(len(areas))
+        integralarrayComplete = np.zeros((len(areas), len(self.f((self.b+self.a)*0.5))))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
                 # print(component_grid)
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid)
 
-                if area_integral != -2 ** 30:
+                if area_integral is not None and area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)
@@ -109,7 +110,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                         # self.combiintegral += area_integral * component_grid[1]
                         factor = component_grid.coefficient if self.grid.isNested() else 1
                         evaluation_array[k] += evaluations * factor
-
+        self.finalize_evaluation()
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
@@ -123,8 +124,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
+            return LA.norm(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.norm), self.total_error
         else:
             return self.total_error, self.total_error
 
@@ -135,6 +137,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         for area in areas:
             self.operation.area_preprocessing(area)
         self.compute_solutions(areas,evaluation_array)
+        self.finalize_evaluation()
         for area in areas:
             self.operation.area_postprocessing(area)
         for k in range(len(areas)):
@@ -149,7 +152,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
         print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        global_error_estimate = self.operation.get_global_error_estimate(self.refinement)
+        self.operation.print_evaluation_output(self.refinement)
+        global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
         else:
@@ -181,22 +185,24 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def refine(self):
         # split all cells that have an error close to the max error
-        areas = self.get_areas()
         self.prepare_refinement()
         self.refinement.clear_new_objects()
         margin = 0.9
         quit_refinement = False
+        num_refinements = 0
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
                 tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
+                num_refinements += 1
                 # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
                 print("Finished refinement")
+                print("Refined ", num_refinements, " times")
                 self.refinement_postprocessing()
                 break
 
@@ -229,7 +235,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             else:
                 surplus_error_array.append(surplus_error)
             num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
-            print("combiintegral:", self.refinement.integral)
             print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
             if error > tol:
@@ -265,7 +270,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         return
 
     @abc.abstractmethod
-    def evaluate_area(self, f, area, levelvec):
+    def evaluate_area(self, f, area, component_grid):
         pass
 
     @abc.abstractmethod
@@ -283,7 +288,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     # this is a default implementation that should be overritten if necessary
     def calc_error(self, objectID, f):
-        self.refinement.calc_error(objectID, f)
+        self.refinement.calc_error(objectID, f, self.norm)
 
     # this is a default implementation that should be overritten if necessary
     def get_new_areas(self):
@@ -300,3 +305,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
     def coarsen_grid(self, levelvector, area, num_sub_diagonal):
         return levelvector, True
+
+    def finalize_evaluation(self):
+        pass
