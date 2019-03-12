@@ -108,7 +108,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                               parent_info=parent_info,
                                                               coarseningValue=coarseningValue,
                                                               needExtendScheme=self.needExtendScheme,
-                                                              automatic_extend_split=self.automatic_extend_split)
+                                                              automatic_extend_split=self.automatic_extend_split,
+                                                              splitSingleDim=self.splitSingleDim)
             newRefinementObject.twins = self.twins
             newRefinementObject.twinErrors = self.twinErrors
             self.children.append(newRefinementObject)
@@ -169,7 +170,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 parent_info=parent_info,
                                                                 coarseningValue=self.coarseningValue,
                                                                 needExtendScheme=self.needExtendScheme,
-                                                                automatic_extend_split=self.automatic_extend_split)
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.splitSingleDim)
             self.children.append(new_refinement_object)
             sub_area_array.append(new_refinement_object)
         return sub_area_array
@@ -189,7 +191,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 parent_info=parent_info,
                                                                 coarseningValue=self.coarseningValue,
                                                                 needExtendScheme=self.needExtendScheme,
-                                                                automatic_extend_split=self.automatic_extend_split)
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.splitSingleDim)
             new_refinement_object.twins = list(self.twins)
             new_refinement_object.twinErrors = list([t * 0.5 if t is not None else t for t in self.twinErrors])
             new_refinement_object.twinErrors[d] = None
