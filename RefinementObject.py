@@ -120,10 +120,6 @@ class RefinementObjectExtendSplit(RefinementObject):
             self.needExtendScheme += 1
             # print("Splitting", self.start, self.end)
             if self.splitSingleDim:
-                for d in range(self.dim):
-                    if self.twinErrors[d] is None:
-                        twinError = abs(self.integral - self.twins[d].integral) #TODO Use operation objects to perform this (evtl in extendSplit ziehen)
-                        self.set_twin_error(d, twinError)
                 d = self.get_split_dim()
                 print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
                 newRefinementObjects = self.split_area_single_dim(d)

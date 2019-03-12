@@ -287,3 +287,7 @@ class Integration(AreaOperation):
         # interpolate evaluation points from mesh points with bilinear interpolation
         interpolated_values = interpn(mesh_points_grid, values, evaluation_points, method='linear')
         return interpolated_values
+
+    # returns the absolute error in the integrals of the given area object and its twin in the d'th dimension
+    def get_twin_error(self, d, area):
+        return abs(area.integral - area.twins[d].integral)
