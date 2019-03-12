@@ -162,12 +162,14 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             assert False
             new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
                                                                 self.numberOfRefinementsBeforeExtend, 0, 0,
-                                                                automatic_extend_split=self.automatic_extend_split)
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.split_single_dim)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
                                                  self.numberOfRefinementsBeforeExtend, None, 0,
-                                                 0, automatic_extend_split=self.automatic_extend_split)
+                                                 0, automatic_extend_split=self.automatic_extend_split,
+                                                 splitSingleDim=self.split_single_dim)
             new_refinement_objects = [parent]
             for d in range(self.dim):
                 temp = []
@@ -180,8 +182,20 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                         integral_area, a, b = self.evaluate_area(self.f, area, component_grid.levelvector)
                         integral += integral_area * component_grid.coefficient
                     area.integral = integral
-                    #if not area.twins[d].integral is None:
-                    #    area.set_twin_error(d, abs(area.integral - area.twins[d].integral))
+            print("Initial integrals:")#TODO
+            for area in new_refinement_objects:#TODO
+                print(area.integral)#TODO
+            for i in range(2**self.dim):
+                area = new_refinement_objects[i]
+                #print("Area ", i)#TODO
+                for d in range(self.dim-1):
+                    twin = new_refinement_objects[(i+2**(self.dim-1)) % 2**(self.dim-d)]
+                    #print("Twin index in dim", d, ": ", (i+2**(self.dim-1)) % 2**(self.dim-d))#TODO
+                    area.set_twin(d, twin)
+                    if area.twinErrors[d] is None:
+                        area.set_twin_error(d, abs(area.integral - twin.integral))
+                if area.twinErrors[self.dim-1] is None:
+                    area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
             if self.operation is not None:
                 #self.operation.area_preprocessing(parent)
