@@ -22,7 +22,7 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution):
 
 
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
-                                minTol=-1, doDimAdaptive=False):
+                                minTol=-1, doDimAdaptive=False, max_evaluations=10**7):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -69,7 +69,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new = \
         algorithm[
             0].performSpatiallyAdaptiv(
-            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution)
+            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution, max_evaluations=max_evaluations)
         # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
         errorArrayAlgorithm.extend(error_array_new)
         surplusErrorArrayAlgorithm.extend(surplus_error_array_new)
