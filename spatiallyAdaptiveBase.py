@@ -250,7 +250,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             error, surplus_error = self.evaluate_integral()
             self.error_array.append(error)
             if self.reference_solution is not None:
-                self.surplus_error_array.append(surplus_error/abs(reference_solution))
+                self.surplus_error_array.append(surplus_error/abs(self.reference_solution))
             else:
                 self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
