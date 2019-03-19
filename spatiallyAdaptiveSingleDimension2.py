@@ -429,7 +429,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if lmaxChange is not None:
             self.lmax = [self.lmax[d] + lmaxChange[d] for d in range(self.dim)]
             if self.dim_adaptive:
-                print("New lmax:", self.lmax)
+                if self.print_output:
+                    print("New lmax:", self.lmax)
                 while(True):
                     refinements = 0
                     active_indices = set(self.combischeme.get_active_indices())

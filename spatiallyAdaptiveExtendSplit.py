@@ -249,8 +249,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
-            print("New scheme")
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
+            if self.print_output:
+                print("New scheme")
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0],do_print=self.print_output)
             return True
         return False
 

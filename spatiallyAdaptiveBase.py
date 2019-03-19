@@ -123,8 +123,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
+        if self.print_output:
+            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+            print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
             return LA.norm(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.norm), self.total_error
         else:
@@ -151,8 +152,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        self.operation.print_evaluation_output(self.refinement)
+        if self.print_output:
+            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+            self.operation.print_evaluation_output(self.refinement)
         global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
@@ -201,8 +203,9 @@ class SpatiallyAdaptivBase(StandardCombi):
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
-                print("Finished refinement")
-                print("Refined ", num_refinements, " times")
+                if self.print_output:
+                    print("Finished refinement")
+                    print("Refined ", num_refinements, " times")
                 self.refinement_postprocessing()
                 break
 
@@ -213,30 +216,40 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.evaluationPerArea = []
             self.evaluationsTotal = 0
             self.counter += 1
-            print("recalculating errors")
+            if self.print_output:
+                print("recalculating errors")
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10 ** -2,
                                 refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False,
-                                reevaluate_at_end=False, reference_solution=None, max_time=None, max_evaluations=None):
-        start_time = time.time()
+                                reevaluate_at_end=False, reference_solution=None, max_time=None, max_evaluations=None, print_output=True):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.realIntegral = reference_solution
-
+        self.print_output = print_output
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
-        error_array = []
-        surplus_error_array = []
-        num_point_array = []
+        self.error_array = []
+        self.surplus_error_array = []
+        self.num_point_array = []
+        self.test_scheme = test_scheme
+        self.reevaluate_at_end = reevaluate_at_end
+        self.do_plot = do_plot
+        self.reference_solution = reference_solution
+        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations)
+
+
+    def continue_adaptive_refinement(self, tol=10 ** -3, max_time=None, max_evaluations=None):
+        start_time = time.time()
         while True:
             error, surplus_error = self.evaluate_integral()
-            error_array.append(error)
-            if reference_solution is not None:
-                surplus_error_array.append(surplus_error/abs(reference_solution))
+            self.error_array.append(error)
+            if self.reference_solution is not None:
+                self.surplus_error_array.append(surplus_error/abs(reference_solution))
             else:
-                surplus_error_array.append(surplus_error)
-            num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
-            print("Current error:", error)
+                self.surplus_error_array.append(surplus_error)
+            self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
+            if self.print_output:
+                print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
             if error > tol:
                 if max_evaluations is not None:
@@ -248,7 +261,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                         break
                 # refine further
                 self.refine()
-                if do_plot:
+                if self.do_plot:
                     print("Refinement Graph:")
                     self.draw_refinement()
                     print("Combi Scheme:")
@@ -258,19 +271,21 @@ class SpatiallyAdaptivBase(StandardCombi):
             else:  # refinement finished
                 break
         # finished adaptive algorithm
-        print("Number of refinements", self.refinements)
-        print("Number of distinct points used during the refinement", self.get_total_num_points())
-        print("Time used (s):", time.time() - start_time)
-        print("Final error:", error)
-        if test_scheme:
+        if self.print_output:
+            print("Number of refinements", self.refinements)
+            print("Number of distinct points used during the refinement", self.get_total_num_points())
+            print("Time used (s):", time.time() - start_time)
+            print("Final error:", error)
+        if self.test_scheme:
             self.check_combi_scheme()
-        if reevaluate_at_end:
+        if self.reevaluate_at_end:
             # evaluate final integral
             combiintegral, number_of_evaluations = self.evaluate_final_combi()
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array, surplus_error_array
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
+
 
     @abc.abstractmethod
     def initialize_refinement(self):
