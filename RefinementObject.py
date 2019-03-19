@@ -180,6 +180,20 @@ class RefinementObjectExtendSplit(RefinementObject):
             # print("Reduced error")
         self.error = error
 
+    def contains(self, point):
+        contained = True
+        for d in range(self.dim):
+            if point[d] < self.start[d] or point[d] > self.end[d]:
+                contained = False
+                break
+        return contained
+
+    def subset_of_contained_points(self, points):
+        contained_points = []
+        for p in points:
+            if self.contains(p):
+                contained_points.append(p)
+        return contained_points
 
 # This class is used in the Extend Split RefinementObject as a container
 # to store various variables used for the error estimates
@@ -200,7 +214,7 @@ class ErrorInfo(object):
         self.num_points_reference = None
         self.sum_siblings = sum_siblings
         self.comparison = None
-        self.extend_error_correction = 0
+        self.extend_error_correction = None
         self.last_refinement_split = last_refinement_split
 
 
@@ -266,6 +280,13 @@ class RefinementObjectCell(RefinementObject):
                 contained = False
                 break
         return contained
+
+    def subset_of_contained_points(self, points):
+        contained_points = []
+        for p in points:
+            if self.contains(p):
+                contained_points.append(p)
+        return contained_points
 
     def is_corner(self, point):
         is_corner = True
