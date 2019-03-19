@@ -1,6 +1,7 @@
 import numpy as np
 import abc, logging
 from Integrator import *
+import numpy.polynomial.legendre as legendre
 
 
 # the grid class provides basic functionalities for an abstract grid
@@ -493,6 +494,258 @@ class GlobalTrapezoidalGrid(Grid):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+from scipy.optimize import nnls
+import matplotlib.pyplot as plt
+
+class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
+    def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGrid(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.do_nnls = do_nnls
+        self.max_degree = max_degree
+        self.split_up = split_up
+
+    def compute_1D_quad_weights(self, grid_1D, a, b):
+        '''
+        weights = np.zeros(len(grid_1D))
+        for i in range(len(grid_1D)):
+            if i > 0:
+                weights[i] += 0.5*(grid_1D[i] - grid_1D[i-1])
+            elif grid_1D[0] > a:
+                weights[i] += 0.5 * (grid_1D[i] - a)
+            if i < len(grid_1D) - 1:
+                weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
+            elif grid_1D[len(grid_1D) - 1] < b:
+                weights[i] += 0.5 * (b - grid_1D[i])
+        return weights
+        '''
+        #if self.max_degree == 2:
+        weights, degree = self.get_1D_weights_and_order(grid_1D, a, b)
+        #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
+        if self.split_up:
+            weights, degree = self.recursive_splitting3(grid_1D, a, b, degree)
+        #print("Degree", degree, len(grid_1D))
+        #print(weights_1D, sum(abs(weights_1D)), sum(weights_1D), sum(weightsD), d_old)
+        #print("Order", d)
+        #for i in range(d):
+        #    print(abs(sum([grid_1D[j]**i * weights_1D_old[j] for j in range(len(grid_1D))]) - 1 / (i+1)))
+        #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
+        if degree == 1:
+            print(grid_1D)
+        return weights
+
+    def recursive_splitting2(self, grid_1D, a, b, d):
+        weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)])
+        weights_2, d_2 = self.get_1D_weights_and_order(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b)
+        #print("found order", d, "new orders", d_1, d_2)
+        #if d_1 > d/2 and d_2 > d/2:
+        if d_1 >= d and d_2 >= d:
+            #print("Successfull splitting")
+            weights_1, d_1 = self.recursive_splitting2(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)],  d)
+            weights_2, d_2 = self.recursive_splitting2(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b, d)
+            weights_1[-1] += weights_2[0]
+            combined_weights = np.append(weights_1, weights_2[1:])
+            assert len(combined_weights) == len(grid_1D)
+            return combined_weights, min(d_1,d_2)
+
+        else:
+            return self.get_1D_weights_and_order(grid_1D, a, b)
+
+    def recursive_splitting3(self, grid_1D, a, b, d, factor=1):
+        weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)])
+        weights_2, d_2 = self.get_1D_weights_and_order(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b)
+        d_self = min(d_1, d_2)
+        max_degree = max(d_self,d)
+        #print(d_self, max_degree)
+        if len(grid_1D) > max(d_1,d) + max(d_2, d)+1:
+            weights_1_rec, d_1 = self.recursive_splitting3(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)],  max(d_1, d)*factor)
+            weights_2_rec, d_2 = self.recursive_splitting3(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b, max(d_2, d)*factor)
+            if d_1 >= max(d_1, d) * factor and d_2 >= max(d_2, d) * factor:
+                weights_1_rec[-1] += weights_2_rec[0]
+                combined_weights = np.append(weights_1_rec, weights_2_rec[1:])
+                bad_approximation = self.check_quality_of_quadrature_rule(a, b, d, grid_1D, combined_weights)
+                if not bad_approximation:
+                    assert len(combined_weights) == len(grid_1D)
+                    return combined_weights, min(d_1, d_2)
+        if d_self >= d * factor:
+            weights_1[-1] += weights_2[0]
+            combined_weights = np.append(weights_1, weights_2[1:])
+            bad_approximation = self.check_quality_of_quadrature_rule(a, b, d, grid_1D, combined_weights)
+            if not bad_approximation:
+                assert len(combined_weights) == len(grid_1D)
+                return combined_weights, min(d_1, d_2)
+        return self.get_1D_weights_and_order(grid_1D, a, b)
+
+    def recursive_splitting(self, grid_1D, a, b, d):
+        middle = (b+a)/2
+        if middle in grid_1D:
+            middle_index = grid_1D.index(middle)
+        else:
+            return self.get_1D_weights_and_order(grid_1D, a, b)
+        weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : middle_index + 1], a, middle)
+        weights_2, d_2 = self.get_1D_weights_and_order(grid_1D[middle_index: ], middle, b)
+        #print("found order", d, "new orders", d_1, d_2)
+        #if d_1 > d/2 and d_2 > d/2:
+        if d_1 > d/2 and d_2 > d/2:
+            #print("Successfull splitting")
+            weights_1, d_1 = self.recursive_splitting(grid_1D[ : middle_index + 1], a, middle,  d)
+            weights_2, d_2 = self.recursive_splitting(grid_1D[middle_index: ], middle, b, d)
+            weights_1[-1] += weights_2[0]
+            combined_weights = np.append(weights_1, weights_2[1:])
+            assert len(combined_weights) == len(grid_1D)
+            return combined_weights, min(d_1,d_2)
+
+        else:
+            return self.get_1D_weights_and_order(grid_1D, a, b)
+
+    def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
+        if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
+            return np.array([1/6, 4/6, 1/6]) * (b-a), 2
+        if len(grid_1D) == 2:
+            return np.array([0.5, 0.5]) * (b-a), 1
+        if len(grid_1D) == 1:
+            return np.array([1]) * (b-a), -100
+        if len(grid_1D) == 0:
+            return np.array([0]) * (b - a), -100
+        d = d_old = 1
+        weights_1D_old = np.zeros(len(grid_1D))
+        grid_1D_normalized = 2 * (np.array(grid_1D) - a) / (b - a) - 1
+        trapezoidal_weights = super().compute_1D_quad_weights(grid_1D_normalized, a, b)
+        weights_1D_old = np.array(trapezoidal_weights)
+
+        while(d < len(grid_1D) - int(reduce_max_order_for_length) and d <= self.max_degree):
+
+            #print("Trapezoidal weights", trapezoidal_weights)
+            #print("Grid points", grid_1D_normalized)
+            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evalaluations(grid_1D_normalized,d, trapezoidal_weights)
+            coordsD, weightsD = legendre.leggauss(int((d+2)/2))
+            #coordsD = np.array(coordsD)
+            #coordsD += 1
+            #coordsD *= (b-a) / 2.0
+            #coordsD += a
+            #print("Gauss Points", coordsD, alphas, betas, lambdas)
+            #weightsD = np.array(weightsD) * (b-a) / 2
+            evaluations_moments = self.evaluate_polynomials(coordsD, alphas, betas, lambdas)
+            moments = np.array([sum(evaluations_moments[i] * weightsD) for i in range(d+1)])
+            #print("Moments for interval", a, b, "are", moments)
+            #print("Evaluation", evaluations)
+            #print("Evaluation gauss", evaluations_moments)
+
+            #print(evaluations, d, moments, trapezoidal_weights)
+            if not self.do_nnls:
+                weights_1D = trapezoidal_weights * np.inner(evaluations.T, moments)
+            else:
+                weights_1D, error = nnls(evaluations, moments)
+                if error > 0:
+                    break
+            weights_1D = (b-a) * weights_1D / 2
+            #AR = np.array(evaluations)
+            #for i in range(len(AR)):
+            #    print(np.sqrt(trapezoidal_weights))
+            #    plt.plot(grid_1D_normalized, AR[i])
+            #    plt.show()
+            #    AR[i] *= trapezoidal_weights
+            #print("AR", AR, moments)
+
+            #print(nnls(evaluations, moments))
+            #print(grid_1D, weights_1D)
+            bad_approximation = self.check_quality_of_quadrature_rule(a, b, d, grid_1D, weights_1D)
+            d += 1
+            if bad_approximation:
+                break
+            d_old = d - 1
+            weights_1D_old = weights_1D
+            if improve_weight and all([w > 0 for w in weights_1D]):
+                trapezoidal_weights = weights_1D
+        return weights_1D_old, d_old
+
+
+    def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
+        tol = 10 ** -14
+        bad_approximation = (sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
+        # if bad_approximation:
+        # print("Too much negative entries, error:",
+        #     (sum(abs(weights_1D)) - (b - a)) / (b - a))
+        '''
+        if not bad_approximation:
+            for i in range(d + 1):
+                real_moment = b ** (i + 1) / (i + 1) - a ** (i + 1) / (i + 1)
+                if abs(sum([grid_1D[j] ** i * weights_1D[j] for j in range(len(grid_1D))]) - real_moment) / abs(
+                        real_moment) > tol:
+                    # print("Bad approximation for degree",i, "with error", abs(sum([grid_1D[j]**i * weights_1D[j] for j in range(len(grid_1D))]) - real_moment) / abs(real_moment) )
+                    bad_approximation = True
+        '''
+        tolerance_lower = 0
+        #print(weights_1D, all([w > tolerance_lower for w in weights_1D]), d)
+        return not(all([w >= tolerance_lower for w in weights_1D]))
+        #return sum(weights_1D) < (b-a) * 2
+        return bad_approximation
+
+    def get_polynomials_and_evalaluations(self, x_array, d, trapezoidal_weights):
+        evaluations = np.ones((d+1,len(x_array)))
+        x_array = np.array(x_array)
+        alphas = np.zeros(d+1)
+        betas = np.zeros(d+1)
+        lambdas = np.ones(d+1)
+        lambdas[0] = 1.0 / math.sqrt(sum(trapezoidal_weights))
+        evaluations[0] *= lambdas[0]
+        for i in range(1, d+1):
+            if i == 1:
+                evaluation_2 = np.zeros(len(x_array))
+                evaluation_1 = evaluations[0]
+            else:
+                evaluation_2 = evaluations[i-2]
+                evaluation_1 = evaluations[i-1]
+            alpha = np.inner(x_array * evaluation_1 * trapezoidal_weights, evaluation_1) / np.inner(evaluation_1 * trapezoidal_weights, evaluation_1)
+            #print(np.inner(evaluation_1 * trapezoidal_weights, evaluation_1))
+            alphas[i] = alpha
+            #print(x_array, evaluation_2)
+            if i == 1:
+                beta = 2
+            else:
+                beta = np.inner(x_array * evaluation_1 * trapezoidal_weights, evaluation_2) / np.inner(evaluation_2 * trapezoidal_weights, evaluation_2)
+                #beta = np.inner(evaluation_1 * trapezoidal_weights, evaluation_1) / np.inner(evaluation_2 * trapezoidal_weights, evaluation_2)
+
+            betas[i] = beta
+            evaluations[i] = (x_array - alpha) * evaluation_1 - beta * evaluation_2
+            #print(np.inner(evaluations[i] * trapezoidal_weights, evaluations[i]))
+            lambdas[i] = 1.0 / math.sqrt(np.inner(evaluations[i]*trapezoidal_weights, evaluations[i]))
+            evaluations[i] *= lambdas[i]
+        return evaluations, alphas, betas, lambdas
+
+    def evaluate_polynomials(self, points, alphas, betas, lambdas):
+        evaluations = np.zeros((len(alphas), len(points)))
+        evaluations[0] = np.ones(len(points)) * lambdas[0]
+        for i in range(1, len(alphas)):
+            if i == 1:
+                evaluation_2 = np.zeros(len(points))
+                evaluation_1 = evaluations[0]
+            else:
+                evaluation_2 = evaluations[i-2]
+                evaluation_1 = evaluations[i-1]
+            evaluations[i] = lambdas[i] * ((points - alphas[i]) * evaluation_1 - betas[i] * evaluation_2)
+        return evaluations
+
+    def getPoints(self):
+        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+
+    def getCoordinate(self, indexvector):
+        position = np.zeros(self.dim)
+        for d in range(self.dim):
+            position[d] = self.coords[d][indexvector[d]]
+        return position
+
+    def getWeight(self, indexvector):
+        weight = 1
+        for d in range(self.dim):
+            weight *= self.weights[d][indexvector[d]]
+        return weight
+
+
 class EquidistantGridGlobal(Grid):
     def __init__(self, a, b, boundary=True):
         self.boundary = boundary
@@ -622,7 +875,6 @@ class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
                self.length[d] / 2
 
 
-import numpy.polynomial.legendre as legendre
 
 
 # this class generates a grid according to the Gauss-Legendre quadrature
