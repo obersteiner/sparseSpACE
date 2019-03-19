@@ -113,8 +113,11 @@ class IntegratorArbitraryGrid(IntegratorBase):
         return result
 
     def integrate_point(self, f, indexvector):
+        weight = self.grid.getWeight(indexvector)
+        if weight == 0:
+            return 0.0
         position = self.grid.getCoordinate(indexvector)
-        return f(position) * self.grid.getWeight(indexvector)
+        return f(position) * weight
 
 
 # This integrator computes the integral of an arbitrary grid from the Grid class
