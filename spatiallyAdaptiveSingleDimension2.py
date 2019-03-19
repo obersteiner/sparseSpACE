@@ -27,6 +27,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_points = {}
         self.no_previous_integrals = True
 
+    def interpolate_points(self, interpolation_points, component_grid):
+        gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+        return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
+
     def coarsen_grid(self, area, levelvec):
         pass
 

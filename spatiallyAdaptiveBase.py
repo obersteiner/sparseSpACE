@@ -33,6 +33,12 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.norm = norm
         assert (len(a) == len(b))
 
+    def __call__(self, interpolation_points):
+        interpolation = np.zeros((len(interpolation_points),len(self.f(np.ones(self.dim)*0.5))))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+        return interpolation
+
     # returns the number of points in a single component grid with refinement
     def get_num_points_component_grid(self, levelvec, do_naive, num_sub_diagonal):
         array2 = self.get_points_component_grid(levelvec, num_sub_diagonal)

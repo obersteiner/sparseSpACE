@@ -1,5 +1,5 @@
 from spatiallyAdaptiveBase import *
-
+from GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
@@ -16,6 +16,47 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         self.refinements_for_recalculate = 100
         self.dim_adaptive = dim_adaptive
         self.automatic_extend_split = automatic_extend_split
+
+    def interpolate_points(self, interpolation_points, component_grid):
+        point_assignements = self.get_points_assignement_to_areas(interpolation_points)
+        dict_point_interpolation_values = {}
+        f_value_array_length = len(self.f([0.5]*self.dim))
+        for area, contained_points in point_assignements:
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+            coarsened_levelvector, do_compute  = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+            if do_compute:
+                #print(coarsened_levelvector, contained_points, area.start, area.end)
+                self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
+                interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid, self.grid.coordinate_array, contained_points)
+                for p, value in zip(contained_points, interpolated_values):
+                    dict_point_interpolation_values[tuple(p)] = value
+            else:
+                for p in contained_points:
+                    dict_point_interpolation_values[tuple(p)] = np.zeros(f_value_array_length)
+
+        final_integrals = np.zeros((len(interpolation_points),f_value_array_length))
+        for i, p in enumerate(interpolation_points):
+            final_integrals[i] = dict_point_interpolation_values[tuple(p)]
+        return final_integrals
+
+    def get_points_assignement_to_areas(self, points):
+        #print(points)
+        return self.get_points_in_areas_recursive(self.root_cell, points)
+
+    def get_points_in_areas_recursive(self, area, points):
+        if area.children != []:
+            point_assignements = []
+            for sub_area in area.children:
+                contained_points = sub_area.subset_of_contained_points(points)
+                point_assignements.extend(self.get_points_in_areas_recursive(sub_area, contained_points))
+                points = set(points) - set(contained_points)
+                if len(points) == 0:
+                    break
+            return point_assignements
+        else:
+            return [(area, points)]
+
+
 
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
@@ -164,10 +205,10 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                                 automatic_extend_split=self.automatic_extend_split)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
-            parent = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
+            self.root_cell = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
                                                  self.numberOfRefinementsBeforeExtend, None, 0,
                                                  0, automatic_extend_split=self.automatic_extend_split)
-            new_refinement_objects = parent.split_area_arbitrary_dim()
+            new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
             if self.operation is not None:
                 #self.operation.area_preprocessing(parent)
@@ -179,14 +220,14 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 #self.operation.area_postprocessing(parent)
             else:
                 parent_integral = self.grid.integrate(self.f, np.zeros(self.dim, dtype=int), self.a, self.b)
-                parent.set_integral(parent_integral)
+                self.root_cell.set_integral(parent_integral)
                 self.refinement.integral = 0.0
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
 
-    def evaluate_area(self, f, area, levelvec, coefficient, filter_area=None, interpolate=False):
-        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvec)
-        level_for_evaluation, do_compute = self.coarsen_grid(levelvec, area, num_sub_diagonal)
+    def evaluate_area(self, f, area, component_grid, filter_area=None, interpolate=False):
+        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+        level_for_evaluation, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
         # print(level_for_evaluation, area.coarseningValue)
         if not do_compute:
             return None, None, 0
@@ -312,7 +353,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
 
     def set_extend_error_correction(self, area):
-        area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
+        if area.switch_to_parent_estimation:
+            area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
 
     def calc_error(self, objectID, f):
         area = self.refinement.get_object(objectID)
@@ -617,7 +659,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             else:
                 factor = 1
 
-            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, filter_area,
+            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, filter_area,
                                                                                interpolate)
             if area_integral is not None:
                 num_points += evaluations * factor
@@ -628,7 +670,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             area.levelvec_dict = {}
             for component_grid in scheme:
                 if area_integral is not None:
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector, None, None)
+                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
                     integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save

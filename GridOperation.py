@@ -291,18 +291,31 @@ class Integration(AreaOperation):
 
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     def interpolate_points(self, mesh_points_grid, evaluation_points):
-        # constructing all points from mesh definition
-        mesh_points = list(zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(self.dim)])]))
+        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
-        function_value_dim = len(self.f(np.ones(self.dim)*0.5))
+    def print_evaluation_output(self, refinement):
+        combi_integral = refinement.integral
+        if len(combi_integral) == 1:
+            combi_integral = combi_integral[0]
+        print("combiintegral:", combi_integral)
+
+
+class Interpolation(Integration):
+    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
+    @staticmethod
+    def interpolate_points(f, dim, grid, mesh_points_grid, evaluation_points):
+        # constructing all points from mesh definition
+        mesh_points = list(zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(dim)])]))
+
+        function_value_dim = len(f(np.ones(dim)*0.5))
 
         # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        values = np.array([f(p) if grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         interpolated_values_array = []
         for d in range(function_value_dim):
             values_1D = np.asarray([value[d] for value in values])
 
-            values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(self.dim))])
+            values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(dim))])
 
             values_1D = np.transpose(values_1D)
 
@@ -312,9 +325,3 @@ class Integration(AreaOperation):
             interpolated_values = np.asarray([[value] for value in interpolated_values])
             interpolated_values_array.append(interpolated_values)
         return np.hstack(interpolated_values_array)
-
-    def print_evaluation_output(self, refinement):
-        combi_integral = refinement.integral
-        if len(combi_integral) == 1:
-            combi_integral = combi_integral[0]
-        print("combiintegral:", combi_integral)
