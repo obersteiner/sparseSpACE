@@ -220,7 +220,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 for area in new_refinement_objects:
                     integral = 0
                     for component_grid in self.scheme:
-                        integral_area, a, b = self.evaluate_area(self.f, area, component_grid.levelvector)
+                        integral_area, a, b = self.evaluate_area(self.f, area, component_grid)
                         integral += integral_area * component_grid.coefficient
                     area.integral = integral
             print("Initial integrals:")#TODO
