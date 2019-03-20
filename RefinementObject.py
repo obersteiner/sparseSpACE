@@ -187,12 +187,12 @@ class RefinementObjectExtendSplit(RefinementObject):
     def split_area_single_dim(self, d):
         midpoint = self.grid.get_mid_point(self.start[d], self.end[d], d)
         sub_area_array = []
-        parent_info = ErrorInfo(parent=self, last_refinement_split=True)
         for i in range(2):
             start_sub_area = list(self.start)
             end_sub_area = list(self.end)
             start_sub_area[d] = start_sub_area[d] if i == 0 else midpoint
             end_sub_area[d] = midpoint if i == 0 else end_sub_area[d]
+            parent_info = ErrorInfo(parent=self, last_refinement_split=True)
             new_refinement_object = RefinementObjectExtendSplit(start=start_sub_area, end=end_sub_area, grid=self.grid,
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
