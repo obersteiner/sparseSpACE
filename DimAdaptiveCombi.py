@@ -51,11 +51,11 @@ class DimAdaptiveCombi(StandardCombi):
                     self.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
                 combiintegral += integral * component_grid.coefficient
             do_refine = True
-            if abs(combiintegral - real_integral) / abs(real_integral) < tolerance:
+            if max(abs(combiintegral - real_integral) / abs(real_integral)) < tolerance:
                 break
             print("Current combi integral:", combiintegral)
-            print("Currentrelative error:", abs(combiintegral - real_integral) / abs(real_integral))
-            errors.append(abs(combiintegral - real_integral) / abs(real_integral))
+            print("Currentrelative error:", max(abs(combiintegral - real_integral) / abs(real_integral)))
+            errors.append(max(abs(combiintegral - real_integral) / abs(real_integral)))
             num_points.append(self.get_total_num_points(distinct_function_evals=True))
             while do_refine:
                 grid_id = np.argmax(error_array)

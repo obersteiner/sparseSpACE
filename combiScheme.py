@@ -94,6 +94,9 @@ class CombiScheme:
     def get_index_set(self):
         return self.old_index_set | self.active_index_set
 
+    def get_active_indices(self):
+        return self.active_index_set
+
     # This method returns a list containing the whole combination scheme for the specified minimum and maximum level.
     # In case we have initialized the dimension adaptive scheme (with init_adaptive_combi_scheme) it returns the
     # current adaptive combination scheme. Here only the grids with a non-zero coeficient are returned.

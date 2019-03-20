@@ -6,8 +6,8 @@ from scipy.interpolate import interpn
 
 
 class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, grid=None, punish_depth=False, operation=None):
-        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation=operation)
+    def __init__(self, a, b, grid=None, punish_depth=False, operation=None, norm=np.inf):
+        SpatiallyAdaptivBase.__init__(self, a, b, grid, operation=operation, norm=norm)
         # dummy container
         self.refinement = RefinementContainer([], self.dim, None)
         self.max_level = np.ones(self.dim)
@@ -73,7 +73,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorSurplusCell()
 
-    def evaluate_area(self, f, area, levelvec):  # area is a cell here
+    def evaluate_area(self, f, area, component_grid):  # area is a cell here
         # calculates all parents of the cell for which the level vector l >= l_cell - e
         # where e is the unity vector (1, 1 , 1 , ...)
 

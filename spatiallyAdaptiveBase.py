@@ -18,11 +18,11 @@ from Grid import *
 from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
-
+from numpy import linalg as LA
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a, b, grid=None, operation=None):
+    def __init__(self, a, b, grid=None, operation=None, norm=np.inf):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -30,7 +30,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.grid = grid
         self.refinements_for_recalculate = 100
         self.operation = operation
+        self.norm = norm
         assert (len(a) == len(b))
+
+    def __call__(self, interpolation_points):
+        interpolation = np.zeros((len(interpolation_points),len(self.f(np.ones(self.dim)*0.5))))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+        return interpolation
 
     # returns the number of points in a single component grid with refinement
     def get_num_points_component_grid(self, levelvec, do_naive, num_sub_diagonal):
@@ -91,16 +98,16 @@ class SpatiallyAdaptivBase(StandardCombi):
         # number_of_evaluations = 0
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
-        integralarrayComplete = np.zeros(len(areas))
+        integralarrayComplete = np.zeros((len(areas), len(self.f((self.b+self.a)*0.5))))
         evaluation_array = np.zeros(len(areas))
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
             # iterate over all areas and calculate the integral
             for k, area in enumerate(areas):
                 # print(component_grid)
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid.levelvector)
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid)
 
-                if area_integral != -2 ** 30:
+                if area_integral is not None and area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
                         # integralArrayIndividual.extend(partial_integrals)
@@ -109,7 +116,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                         # self.combiintegral += area_integral * component_grid[1]
                         factor = component_grid.coefficient if self.grid.isNested() else 1
                         evaluation_array[k] += evaluations * factor
-
+        self.finalize_evaluation()
         for k in range(len(integralarrayComplete)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_integral(i, integralarrayComplete[k])
@@ -122,9 +129,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+        if self.print_output:
+            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+            print("combiintegral:", self.refinement.integral[0] if len(self.refinement.integral) == 1 else self.refinement.integral)
         if self.realIntegral is not None:
-            return abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.total_error
+            return LA.norm(abs(self.refinement.integral - self.realIntegral) / abs(self.realIntegral), self.norm), self.total_error
         else:
             return self.total_error, self.total_error
 
@@ -135,6 +144,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         for area in areas:
             self.operation.area_preprocessing(area)
         self.compute_solutions(areas,evaluation_array)
+        self.finalize_evaluation()
         for area in areas:
             self.operation.area_postprocessing(area)
         for k in range(len(areas)):
@@ -148,8 +158,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-        global_error_estimate = self.operation.get_global_error_estimate(self.refinement)
+        if self.print_output:
+            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
+            self.operation.print_evaluation_output(self.refinement)
+        global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
         else:
@@ -181,22 +193,25 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def refine(self):
         # split all cells that have an error close to the max error
-        areas = self.get_areas()
         self.prepare_refinement()
         self.refinement.clear_new_objects()
         margin = 0.9
         quit_refinement = False
+        num_refinements = 0
         while True:  # refine all areas for which area is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
                 tolerance=self.benefit_max * margin)
             if found_object and not quit_refinement:  # new area found for refinement
                 self.refinements += 1
+                num_refinements += 1
                 # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
-                print("Finished refinement")
+                if self.print_output:
+                    print("Finished refinement")
+                    print("Refined ", num_refinements, " times")
                 self.refinement_postprocessing()
                 break
 
@@ -207,35 +222,52 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.evaluationPerArea = []
             self.evaluationsTotal = 0
             self.counter += 1
-            print("recalculating errors")
+            if self.print_output:
+                print("recalculating errors")
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10 ** -2,
                                 refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False,
-                                reevaluate_at_end=False, reference_solution=None):
+                                reevaluate_at_end=False, reference_solution=None, max_time=None, max_evaluations=None, print_output=True):
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.realIntegral = reference_solution
-
+        self.print_output = print_output
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
-        error_array = []
-        surplus_error_array = []
-        num_point_array = []
+        self.error_array = []
+        self.surplus_error_array = []
+        self.num_point_array = []
+        self.test_scheme = test_scheme
+        self.reevaluate_at_end = reevaluate_at_end
+        self.do_plot = do_plot
+        self.reference_solution = reference_solution
+        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations)
+
+
+    def continue_adaptive_refinement(self, tol=10 ** -3, max_time=None, max_evaluations=None):
+        start_time = time.time()
         while True:
             error, surplus_error = self.evaluate_integral()
-            error_array.append(error)
-            if reference_solution is not None:
-                surplus_error_array.append(surplus_error/abs(reference_solution))
+            self.error_array.append(error)
+            if self.reference_solution is not None:
+                self.surplus_error_array.append(surplus_error/abs(self.reference_solution))
             else:
-                surplus_error_array.append(surplus_error)
-            num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
-            print("combiintegral:", self.refinement.integral)
-            print("Current error:", error)
+                self.surplus_error_array.append(surplus_error)
+            self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
+            if self.print_output:
+                print("Current error:", error)
             # check if tolerance is already fullfilled with current refinement
             if error > tol:
+                if max_evaluations is not None:
+                    if self.get_total_num_points() > max_evaluations:
+                        break
+                if max_time is not None:
+                    current_time = time.time()
+                    if current_time - start_time > max_time:
+                        break
                 # refine further
                 self.refine()
-                if do_plot:
+                if self.do_plot:
                     print("Refinement Graph:")
                     self.draw_refinement()
                     print("Combi Scheme:")
@@ -245,16 +277,21 @@ class SpatiallyAdaptivBase(StandardCombi):
             else:  # refinement finished
                 break
         # finished adaptive algorithm
-        print("Number of refinements", self.refinements)
-        if test_scheme:
+        if self.print_output:
+            print("Number of refinements", self.refinements)
+            print("Number of distinct points used during the refinement", self.get_total_num_points())
+            print("Time used (s):", time.time() - start_time)
+            print("Final error:", error)
+        if self.test_scheme:
             self.check_combi_scheme()
-        if reevaluate_at_end:
+        if self.reevaluate_at_end:
             # evaluate final integral
             combiintegral, number_of_evaluations = self.evaluate_final_combi()
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, error_array, num_point_array, surplus_error_array
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
+
 
     @abc.abstractmethod
     def initialize_refinement(self):
@@ -265,7 +302,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         return
 
     @abc.abstractmethod
-    def evaluate_area(self, f, area, levelvec):
+    def evaluate_area(self, f, area, component_grid):
         pass
 
     @abc.abstractmethod
@@ -283,7 +320,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     # this is a default implementation that should be overritten if necessary
     def calc_error(self, objectID, f):
-        self.refinement.calc_error(objectID, f)
+        self.refinement.calc_error(objectID, f, self.norm)
 
     # this is a default implementation that should be overritten if necessary
     def get_new_areas(self):
@@ -300,3 +337,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
     def coarsen_grid(self, levelvector, area, num_sub_diagonal):
         return levelvector, True
+
+    def finalize_evaluation(self):
+        pass

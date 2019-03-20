@@ -44,7 +44,7 @@ class StandardCombi(object):
         if reference_solution is not None:
             print("Analytic Solution", real_integral)
             print("Difference", abs(combiintegral - real_integral))
-            return self.scheme, abs(combiintegral - real_integral), combiintegral
+            return self.scheme, max(abs(combiintegral - real_integral)), combiintegral
         else:
             return self.scheme, None, combiintegral
 
