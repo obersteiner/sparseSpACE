@@ -232,7 +232,7 @@ class Integration(AreaOperation):
         else:
             area.parent_info.benefit_extend = error_extend * area.parent_info.num_points_split_parent
 
-    def set_split_benefit(self, area):
+    def set_split_benefit(self, area, norm):
         if area.parent_info.benefit_split is not None:
             return
         if area.switch_to_parent_estimation:
