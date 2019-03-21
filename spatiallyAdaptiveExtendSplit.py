@@ -17,6 +17,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         self.dim_adaptive = dim_adaptive
         self.automatic_extend_split = automatic_extend_split
         self.split_single_dim = split_single_dim
+        self.margin = 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
         point_assignements = self.get_points_assignement_to_areas(interpolation_points)
@@ -305,8 +306,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     points, weights = self.grid.get_points_and_weights()
 
                     # bilinear interpolation
-                    interpolated_values = interpn(corner_points_grid, values, points, method='linear')
-                    # print(area.start, area.end, points,interpolated_values, weights)
+                    interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid, corner_points_grid, points)
+
                     integral += sum(
                         [interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
                     # print(corner_points)
@@ -705,8 +706,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             integral = 0.0
             area.levelvec_dict = {}
             for component_grid in scheme:
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
                 if area_integral is not None:
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
                     integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save
@@ -748,7 +749,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
         if not filter_integral and filter_points and error_name != "reference":
             area.levelvec_dict = {}
-            self.operation.initialize_error(area, error_name)
+            self.operation.initialize_error(filter_area, error_name)
             for component_grid in scheme:
                 additional_info = Operation_info(target_area=filter_area, error_name="split_no_filter")
                 evaluations = self.evaluate_operation_area(component_grid, area, additional_info)

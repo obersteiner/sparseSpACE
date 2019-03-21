@@ -26,6 +26,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_integral = {}
         self.dict_points = {}
         self.no_previous_integrals = True
+        self.use_local_children = True
+        self.margin = 1-10**-14 if self.use_local_children else 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -55,8 +57,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         for d in range(0, self.dim):
             refineContainer = refinement.get_refinement_container_for_dim(d)
             indicesDim = []
+            indices_levelDim = []
+
             children_indices_dim = []
             indicesDim.append(refineContainer.get_objects()[0].start)
+            indices_levelDim.append(refineContainer.get_objects()[0].levels[0])
             for i in range(len(refineContainer.get_objects())):
                 refineObj = refineContainer.get_objects()[i]
                 if i + 1 < len(refineContainer.get_objects()):
@@ -85,42 +90,50 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     subtraction_value = 0
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
                     indicesDim.append(refineObj.end)
-                    if next_refineObj is not None and self.is_child(refineObj, next_refineObj):
-                        children_indices_dim.append(self.get_node_info(refineObj, next_refineObj))
+                    if (next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0])) and not self.use_local_children:
+                        children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1]))
+                    if self.use_local_children:
+                        indices_levelDim.append(refineObj.levels[1])
+            if self.use_local_children:
+                for i in range(1,len(indices_levelDim)-1):
+                    if self.is_child(indices_levelDim[i-1], indices_levelDim[i], indices_levelDim[i+1]):
+                        children_indices_dim.append((self.get_node_info(indicesDim[i], indices_levelDim[i], indicesDim[i-1], indices_levelDim[i-1], indicesDim[i+1], indices_levelDim[i+1])))
+                #print(children_indices_dim, indices_levelDim)
             indicesList.append(indicesDim)
             children_indices.append(children_indices_dim)
         return indicesList, children_indices
 
     # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
-    def is_child(self, refineObj, next_refineObj):
-        if refineObj.levels[0] < refineObj.levels[1] or next_refineObj.levels[1] < refineObj.levels[1]:
+    def is_child(self, level_left_point, level_point, level_right_point):
+        if level_left_point < level_point or level_right_point < level_point:
             return True
         else:
             return False
-        
+
     # This method calculates the left and right parent of a child. It might happen that a child has already a child
     # in one direction but it may not have one in both as it would not be considered to be a child anymore.
-    def get_node_info(self, refineObj, next_refineObj):
-        child = refineObj.end
+    def get_node_info(self, child, level_child, left_neighbour, level_left_neighbour, right_neighbour, level_right_neighbour): #refineObj, next_refineObj):
+        #child = refineObj.end
         right_refinement_object = None
         left_refinement_object = None
-        if refineObj.levels[0] < refineObj.levels[1]:
-            left_parent = refineObj.start
+        #if refineObj.levels[0] < refineObj.levels[1]:
+        if level_left_neighbour < level_child:
+            left_parent = left_neighbour #refineObj.start
             left_child = False
-            left_refinement_object = refineObj
-            if next_refineObj.levels[1] < refineObj.levels[1]:
-                right_parent = next_refineObj.end
+            #left_refinement_object = refineObj
+            if level_right_neighbour < level_child:
+                right_parent = right_neighbour
                 right_child = False
-                right_refinement_object = next_refineObj
+                #right_refinement_object = next_refineObj
             else:
                 right_parent = child + (child - left_parent)
                 right_child = True
         else:
             left_child = True
-            assert next_refineObj.levels[1] < refineObj.levels[1]
+            assert level_right_neighbour < level_child
             right_child = False
-            right_refinement_object = next_refineObj
-            right_parent = next_refineObj.end
+            #right_refinement_object = next_refineObj
+            right_parent = right_neighbour
             left_parent = child - (right_parent - child)
         npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=10)
         return NodeInfo(child, left_parent, right_parent, left_child, right_child, left_refinement_object, right_refinement_object)
@@ -365,17 +378,39 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices):
         for d in range(0, self.dim):
+            k=0
+            refinement_dim = self.refinement.get_refinement_container_for_dim(d)
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
                 volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
+                k_old = k
+                while k < refinement_dim.size():
+                    refine_obj = refinement_dim.get_object(k)
+                    if refine_obj.start >= right_parent:
+                        break
+                    k += 1
+                for i in range(k_old, k):
+                    refine_obj = refinement_dim.get_object(i)
+                    if refine_obj.start >= left_parent and refine_obj.end <= child and not child_info.has_left_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(volume / (k-k_old))  # * width_refinement/ width_basis)
+                    elif refine_obj.start >= child and refine_obj.end <= right_parent and not child_info.has_right_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(volume / (k-k_old)**2)  # * width_refinement/ width_basis)
+                    else:
+                        break
+                '''
                 if not child_info.has_right_child:
                     child_info.right_refinement_object.add_volume(volume / 2.0)
                     child_info.right_refinement_object.add_evaluations(evaluations / 2.0)
                 if not child_info.has_left_child:
                     child_info.left_refinement_object.add_volume(volume/2.0)
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
+                '''
 
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.

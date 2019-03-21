@@ -31,13 +31,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.refinements_for_recalculate = 100
         self.operation = operation
         self.norm = norm
+        self.margin = 0.9
         assert (len(a) == len(b))
-
-    def __call__(self, interpolation_points):
-        interpolation = np.zeros((len(interpolation_points),len(self.f(np.ones(self.dim)*0.5))))
-        for component_grid in self.scheme:
-            interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-        return interpolation
 
     # returns the number of points in a single component grid with refinement
     def get_num_points_component_grid(self, levelvec, do_naive, num_sub_diagonal):
@@ -106,7 +101,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             for k, area in enumerate(areas):
                 # print(component_grid)
                 area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid)
-
                 if area_integral is not None and area_integral[0] != -2 ** 30:
                     if partial_integrals is not None:  # outdated
                         pass
@@ -195,7 +189,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         # split all cells that have an error close to the max error
         self.prepare_refinement()
         self.refinement.clear_new_objects()
-        margin = 0.9
+        margin = self.margin
         quit_refinement = False
         num_refinements = 0
         while True:  # refine all areas for which area is within margin
