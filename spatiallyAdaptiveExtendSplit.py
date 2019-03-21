@@ -16,6 +16,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         self.refinements_for_recalculate = 100
         self.dim_adaptive = dim_adaptive
         self.automatic_extend_split = automatic_extend_split
+        self.margin = 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
         point_assignements = self.get_points_assignement_to_areas(interpolation_points)
@@ -273,8 +274,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     points, weights = self.grid.get_points_and_weights()
 
                     # bilinear interpolation
-                    interpolated_values = interpn(corner_points_grid, values, points, method='linear')
-                    # print(area.start, area.end, points,interpolated_values, weights)
+                    interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid, corner_points_grid, points)
+
                     integral += sum(
                         [interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
                     # print(corner_points)

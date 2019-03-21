@@ -14,6 +14,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         self.full_interaction_size = 1
         self.refinements_for_recalculate = 1000000
         self.cell_dict = {}
+        self.margin = 0.9
         for d in range(1, self.dim+1):
             self.full_interaction_size += math.factorial(self.dim)/(math.factorial(d)*math.factorial(self.dim - d)) * 2**d
         #print("full interaction size:", self.full_interaction_size)

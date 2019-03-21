@@ -3,7 +3,8 @@ import abc
 from Function import FunctionShift
 import logging
 from combiScheme import *
-
+from GridOperation import *
+import importlib
 
 # T his class implements the standard combination technique
 class StandardCombi(object):
@@ -19,12 +20,23 @@ class StandardCombi(object):
         self.combischeme = CombiScheme(self.dim)
         assert (len(a) == len(b))
 
-    def set_combi_parameters(self, minv, maxv):
+    def __call__(self, interpolation_points):
+        interpolation = np.zeros((len(interpolation_points),len(self.f(np.ones(self.dim)*0.5))))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+        return interpolation
+
+    def interpolate_points(self, interpolation_points, component_grid):
+        self.grid.setCurrentArea(start=self.a, end=self.b, levelvec=component_grid.levelvector)
+        return Interpolation.interpolate_points(f=self.f, dim=self.dim, grid=self.grid, mesh_points_grid=self.grid.coordinate_array, evaluation_points=interpolation_points)
+
+    def set_combi_parameters(self, minv, maxv, f):
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
         # get combi scheme
         self.scheme = self.combischeme.getCombiScheme(minv, maxv)
+        self.f = f
 
     # standard combination scheme for quadrature
     # lmin = minimum level; lmax = target level
@@ -32,9 +44,8 @@ class StandardCombi(object):
     def perform_combi(self, minv, maxv, f, reference_solution=None):
         start = self.a
         end = self.b
-        self.f = f
+        self.set_combi_parameters(minv, maxv, f)
         self.f.reset_dictionary()
-        self.set_combi_parameters(minv, maxv)
         combiintegral = 0
         for component_grid in self.scheme:
             integral = self.grid.integrate(self.f, component_grid.levelvector, start, end) * component_grid.coefficient
