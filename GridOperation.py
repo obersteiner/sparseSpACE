@@ -66,15 +66,16 @@ class Integration(AreaOperation):
             assert additional_info.filter_area is None
             extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
             if area.parent_info.extend_parent_integral is None:
-                area.parent_info.extend_parent_integral = 0.0
-            area.parent_info.extend_parent_integral += extend_parent_new * componentgrid_info.coefficient
+                area.parent_info.extend_parent_integral = extend_parent_new * componentgrid_info.coefficient
+            else:
+                area.parent_info.extend_parent_integral += extend_parent_new * componentgrid_info.coefficient
             return np.prod(self.grid.levelToNumPoints(levelvector))
         elif additional_info.error_name == "extend_error_correction":
             assert additional_info.filter_area is None
             if area.switch_to_parent_estimation:
                 extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
                 if area.parent_info.extend_error_correction is None:
-                    area.parent_info.extend_error_correction = area.integral
+                    area.parent_info.extend_error_correction = np.array(area.integral)
                 area.parent_info.extend_error_correction -= extend_parent_new * componentgrid_info.coefficient
                 return np.prod(self.grid.levelToNumPoints(levelvector))
             else:
@@ -83,8 +84,9 @@ class Integration(AreaOperation):
                 assert additional_info.filter_area is None
                 split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
                 if additional_info.target_area.parent_info.split_parent_integral is None:
-                    additional_info.target_area.parent_info.split_parent_integral = 0.0
-                additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
+                    additional_info.target_area.parent_info.split_parent_integral = split_parent_new * componentgrid_info.coefficient
+                else:
+                    additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
                 return np.prod( self.grid.levelToNumPoints(levelvector))
         else:
             assert additional_info.filter_area is not None
@@ -148,12 +150,12 @@ class Integration(AreaOperation):
         old_value = area.parent_info.split_parent_integral
         new_value = area.parent_info.split_parent_integral2
         if old_value is None:
-            area.parent_info.split_parent_integral = new_value
+            area.parent_info.split_parent_integral = np.array(new_value)
         else:
             if new_value is None or LA.norm(abs(area.integral - old_value), norm) < LA.norm(abs(area.integral - new_value), norm):
                 pass
             else:
-                area.parent_info.split_parent_integral = area.parent_info.split_parent_integral2
+                area.parent_info.split_parent_integral = np.array(area.parent_info.split_parent_integral2)
 
     def initialize_error_estimates(self,area):
         area.parent_info.split_parent_integral = None
@@ -204,7 +206,7 @@ class Integration(AreaOperation):
             return LA.norm(abs((self.reference_solution - refinement_container.integral)/self.reference_solution), norm)
 
     def area_postprocessing(self, area):
-        area.value = area.integral
+        area.value = np.array(area.integral)
 
     def get_sum_sibling_value(self, area):
         area.sum_siblings = 0.0
