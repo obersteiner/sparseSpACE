@@ -243,7 +243,7 @@ class LejaGrid1D(Grid1d):
 
     def level_to_num_points_1d(self, level):
         if level == 0:
-            numPoints = 1
+            numPoints = 2
         else:
             numPoints = self.linear_growth_factor * (level + 1) - 1
         return numPoints
@@ -296,7 +296,8 @@ class LejaGrid1D(Grid1d):
         sorted_points = []
         unsorted_points = []
         no_points = self.level_to_num_points_1d(curr_level)
-
+        if no_points == 2:
+            return np.array([left_bound, right_bound], dtype=np.float64)
         starting_point = self.__get_starting_point(left_bound, right_bound, weightFunction)
         sorted_points.append(starting_point)
         unsorted_points.append(starting_point)
@@ -334,9 +335,11 @@ class LejaGrid1D(Grid1d):
             sorted_points.append(wlleja_point)
             unsorted_points.append(wlleja_point)
 
-        unsorted_points = np.array(unsorted_points, dtype=np.float64)
+        sorted_points = np.array(sorted(unsorted_points), dtype=np.float64)
+        sorted_points[0] = left_bound
+        sorted_points[-1] = right_bound
 
-        return unsorted_points
+        return sorted_points
 
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
