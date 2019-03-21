@@ -669,8 +669,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             integral = 0.0
             area.levelvec_dict = {}
             for component_grid in scheme:
+                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
                 if area_integral is not None:
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
                     integral += area_integral * component_grid.coefficient
 
         area.coarseningValue = coarsening_save
@@ -712,7 +712,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
 
         if not filter_integral and filter_points and error_name != "reference":
             area.levelvec_dict = {}
-            self.operation.initialize_error(area, error_name)
+            self.operation.initialize_error(filter_area, error_name)
             for component_grid in scheme:
                 additional_info = Operation_info(target_area=filter_area, error_name="split_no_filter")
                 evaluations = self.evaluate_operation_area(component_grid, area, additional_info)
