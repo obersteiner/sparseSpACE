@@ -238,6 +238,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                             area.set_twin_error(d, abs(area.integral - twin.integral))
                     if area.twinErrors[self.dim-1] is None:
                         area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
+                    area.parent_info.parent = self.root_cell
             else:
                 new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
@@ -405,7 +406,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                         if child.integral is not None:
                             area.sum_siblings += child.integral
                             i += 1
-                    assert i == 2 ** self.dim  # we always have 2**dim children
+                    assert i == 2 ** self.dim or (i == 2 and self.split_single_dim)  # we always have 2**dim children
             else:
                 self.operation.initialize_error_estimates(area)
                 self.get_parent_split_operation(area, True)

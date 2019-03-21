@@ -213,7 +213,7 @@ class Integration(AreaOperation):
             if child.integral is not None:
                 area.sum_siblings += child.integral
                 i += 1
-        assert i == 2 ** self.dim  # we always have 2**dim children
+        assert i == 2 ** self.dim or i == 2  # we always have 2**dim children
 
     def set_extend_benefit(self, area, norm):
         if area.parent_info.benefit_extend is not None:
