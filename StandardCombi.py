@@ -268,3 +268,24 @@ class StandardCombi(object):
 
     def add_refinment_to_figure_axe(self, ax, linewidth=1):
         pass
+
+    @staticmethod
+    def restore_from_file(fileName):
+        spam_spec = importlib.util.find_spec("dill")
+        found = spam_spec is not None
+        if found:
+            import dill
+            with open(fileName, 'rb') as f:
+                return dill.load(f)
+        else:
+            print("Dill library not found! Please install dill using pip3 install dill.")
+
+    def save_to_file(self, fileName):
+        spam_spec = importlib.util.find_spec("dill")
+        found = spam_spec is not None
+        if found:
+            import dill
+            with open(fileName, 'wb') as f:
+                dill.dump(self, f)
+        else:
+            print("Dill library not found! Please install dill using pip3 install dill.")
