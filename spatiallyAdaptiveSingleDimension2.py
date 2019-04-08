@@ -385,24 +385,38 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 right_parent = child_info.right_parent
                 child = child_info.child
                 volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
-                k_old = k
+                k_old = 0
+                for i in reversed(range(0,k+1)):
+                    if refinement_dim.get_object(i).end <= left_parent:
+                        k_old = i+1
+                        break
+                k = k_old
+                refine_obj = refinement_dim.get_object(k)
+                if not (refine_obj.start >= left_parent and refine_obj.end <= right_parent):
+                    for child_info in children_indices[d]:
+                        print(child_info.left_parent, child_info.child, child_info.right_parent)
+                assert refine_obj.start >= left_parent and refine_obj.end <= right_parent
                 while k < refinement_dim.size():
                     refine_obj = refinement_dim.get_object(k)
                     if refine_obj.start >= right_parent:
                         break
+                    assert refine_obj.end <= right_parent
                     k += 1
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
-                    if refine_obj.start >= left_parent and refine_obj.end <= child and not child_info.has_left_child:
+                    modified_volume = volume / (k-k_old)
+                    refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+                    '''
+                    if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
                         width_refinement = refine_obj.end - refine_obj.start
                         width_basis = right_parent - left_parent
-                        refine_obj.add_volume(volume / (k-k_old))  # * width_refinement/ width_basis)
-                    elif refine_obj.start >= child and refine_obj.end <= right_parent and not child_info.has_right_child:
+                    elif refine_obj.start >= child and refine_obj.end <= right_parent: #and not child_info.has_right_child:
                         width_refinement = refine_obj.end - refine_obj.start
                         width_basis = right_parent - left_parent
-                        refine_obj.add_volume(volume / (k-k_old)**2)  # * width_refinement/ width_basis)
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
                     else:
                         break
+                    '''
                 '''
                 if not child_info.has_right_child:
                     child_info.right_refinement_object.add_volume(volume / 2.0)
