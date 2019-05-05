@@ -32,9 +32,6 @@ class RefinementContainer(object):
             self.startNewObjects = len(self.refinementObjects)
         # refine RefinementObject;
         # returns the new RefinementObjects a possible update to lmax and update information for other RefinementObjects
-        print("Twin errors:") #TODO
-        for obj in self.refinementObjects: #TODO
-            print(obj.twinErrors) #TODO
         new_objects, lmax_update, update_information = self.refinementObjects[object_id].refine()
         # update other RefinementObjects if necessary
         if update_information is not None:

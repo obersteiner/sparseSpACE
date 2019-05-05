@@ -202,13 +202,13 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.combischeme.init_adaptive_combi_scheme(self.lmax, self.lmin)
         if self.noInitialSplitting:
             assert False
-            new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
+            new_refinement_object = RefinementObjectExtendSplit(a=np.array(self.a), b=np.array(self.b), grid=self.grid,
                                                                 self.numberOfRefinementsBeforeExtend, 0, 0,
                                                                 automatic_extend_split=self.automatic_extend_split,
                                                                 splitSingleDim=self.split_single_dim)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
-            self.root_cell = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
+            self.root_cell = RefinementObjectExtendSplit(a=np.array(self.a), b=np.array(self.b), grid=self.grid,
                                                  self.numberOfRefinementsBeforeExtend, None, 0,
                                                  0, automatic_extend_split=self.automatic_extend_split,
                                                  splitSingleDim=self.split_single_dim)
@@ -225,9 +225,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                             integral_area, a, b = self.evaluate_area(self.f, area, component_grid)
                             integral += integral_area * component_grid.coefficient
                         area.integral = integral
-                print("Initial integrals:")#TODO
-                for area in new_refinement_objects:#TODO
-                    print(area.integral)#TODO
+                #print("Initial integrals:")#TODO
+                #for area in new_refinement_objects:#TODO
+                #    print(area.integral)#TODO
                 for i in range(2**self.dim):
                     area = new_refinement_objects[i]
                     #print("Area ", i)#TODO
