@@ -240,6 +240,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     if area.twinErrors[self.dim-1] is None:
                         area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
                     area.parent_info.parent = self.root_cell
+                self.root_cell.children = new_refinement_objects
             else:
                 new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)

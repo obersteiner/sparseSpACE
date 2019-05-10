@@ -81,6 +81,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         if self.automatic_extend_split:
             benefit_split = self.parent_info.get_split_benefit()
             benefit_extend = self.parent_info.get_extend_benefit()
+            print("Benefit split", benefit_split, "Benefit extend", benefit_extend)
             if self.switch_to_parent_estimation:
                 correction = abs(self.parent_info.get_extend_error_correction())
                 benefit_extend += correction
