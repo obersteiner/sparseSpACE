@@ -63,7 +63,7 @@ class Function(object):
         return
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start, end, filename=None, plotdimension=0):
+    def plot(self, start, end, filename=None, plotdimension=0, dpi=100, width=14, height=6):
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
@@ -80,7 +80,7 @@ class Function(object):
                 Z[i, j] = self.__call__((X[i, j], Y[i, j]))[plotdimension]
         # Z=self.eval((X,Y))
         # print Z
-        fig = plt.figure(figsize=(14, 6))
+        fig = plt.figure(dpi=dpi, figsize=(width, height))
 
         # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
         ax = fig.add_subplot(1, 2, 1, projection='3d')

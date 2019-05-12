@@ -225,15 +225,10 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                             integral_area, a, b = self.evaluate_area(self.f, area, component_grid)
                             integral += integral_area * component_grid.coefficient
                         area.integral = integral
-                #print("Initial integrals:")#TODO
-                #for area in new_refinement_objects:#TODO
-                #    print(area.integral)#TODO
                 for i in range(2**self.dim):
                     area = new_refinement_objects[i]
-                    #print("Area ", i)#TODO
                     for d in range(self.dim-1):
                         twin = new_refinement_objects[(i+2**(self.dim-1)) % 2**(self.dim-d)]
-                        #print("Twin index in dim", d, ": ", (i+2**(self.dim-1)) % 2**(self.dim-d))#TODO
                         area.set_twin(d, twin)
                         if area.twinErrors[d] is None:
                             area.set_twin_error(d, abs(area.integral - twin.integral))
