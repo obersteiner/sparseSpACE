@@ -8,7 +8,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
         # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
-        assert 2 >= version >= 0
+        assert 3 >= version >= 0
         self.version = version
         SpatiallyAdaptivBase.__init__(self, a=a, b=b, grid=grid, operation=operation, norm=norm)
         self.noInitialSplitting = no_initial_splitting
@@ -168,6 +168,18 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     area_is_null = True
                 else:
                     area.add_level(tuple(temp), tuple(levelvector))
+        elif self.version == 3:
+            currentDirection = 0
+            num_sub_diagonal_save = num_sub_diagonal
+            while coarsening > 0:
+                if temp[currentDirection] > self.lmin[currentDirection]:
+                    temp[currentDirection] -= 1
+                    coarsening -= 1
+                else:
+                    if num_sub_diagonal_save > 0:
+                        coarsening -= 1
+                        num_sub_diagonal_save -= 1
+                currentDirection = (currentDirection + 1) % self.dim
         else:
             while coarsening > 0:
                 maxLevel = max(temp)
