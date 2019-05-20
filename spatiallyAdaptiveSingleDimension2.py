@@ -9,11 +9,11 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=False, version=0, do_high_order=False, max_degree=5, split_up=True, do_nnls=False):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False):
         self.do_high_order = do_high_order
         if self.do_high_order:
             self.grid = GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
-            self.grid_surplusses = GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
         else:
             self.grid = GlobalTrapezoidalGrid(a, b, boundary=True)
@@ -26,7 +26,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_integral = {}
         self.dict_points = {}
         self.no_previous_integrals = True
-        self.use_local_children = True
+        self.use_local_children = self.version == 2
         self.margin = 1-10**-14 if self.use_local_children else 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
