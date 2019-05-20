@@ -71,7 +71,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 if self.version == 2:
                     refineObj_temp = refineObj
                     max_level = refineObj_temp.levels[1]
-                    k = 1
+                    k = 0
                     while(i - k > 0):
                         refineObj_temp = refineContainer.get_objects()[i - k]
                         max_level = max(max_level, refineObj_temp.levels[0])
@@ -80,8 +80,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         k += 1
                     k = 1
                     while(i + k < len(refineContainer.get_objects())):
-                        max_level = max(max_level, refineObj_temp.levels[1])
                         refineObj_temp = refineContainer.get_objects()[i + k]
+                        max_level = max(max_level, refineObj_temp.levels[1])
                         if refineObj_temp.levels[1] <= refineObj.levels[1]:
                             break
                         k += 1
@@ -117,11 +117,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         right_refinement_object = None
         left_refinement_object = None
         #if refineObj.levels[0] < refineObj.levels[1]:
-        if level_left_neighbour < level_child:
+        if level_left_neighbour < level_child and level_left_neighbour <= level_right_neighbour:
             left_parent = left_neighbour #refineObj.start
             left_child = False
             #left_refinement_object = refineObj
-            if level_right_neighbour < level_child:
+            if level_right_neighbour < level_child and level_left_neighbour == level_right_neighbour:
                 right_parent = right_neighbour
                 right_child = False
                 #right_refinement_object = next_refineObj
@@ -417,6 +417,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     else:
                         break
                     '''
+                k = min(k, refinement_dim.size() - 1)
+
                 '''
                 if not child_info.has_right_child:
                     child_info.right_refinement_object.add_volume(volume / 2.0)
