@@ -135,11 +135,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #right_refinement_object = next_refineObj
             right_parent = right_neighbour
             left_parent = child - (right_parent - child)
-        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=10)
+        #print(right_parent, child, left_parent, right_parent-child, child-left_parent)
+        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
         return NodeInfo(child, left_parent, right_parent, left_child, right_child, left_refinement_object, right_refinement_object)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename=None):  # update with meta container
+    def draw_refinement(self, filename=None, markersize=10):  # update with meta container
         plt.rcParams.update({'font.size': 32})
         refinement = self.refinement
         dim = self.dim
@@ -158,7 +159,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 )
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
-            ax[d].plot(xValues, yValues, 'bo', markersize=10, color="black")
+            ax[d].plot(xValues, yValues, 'bo', markersize=markersize, color="black")
             ax[d].set_xlim([self.a[d], self.b[d]])
             ax[d].set_ylim([-0.1, 0.1])
             ax[d].set_yticks([])
@@ -433,7 +434,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
         volume = 0.0
         assert right_parent > child > left_parent
-        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=10)
+        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
         points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
