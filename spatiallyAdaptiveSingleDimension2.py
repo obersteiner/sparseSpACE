@@ -405,12 +405,19 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     k += 1
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
-                    modified_volume = volume / (k-k_old)
+                    num_area_in_support = (k-k_old)
+                    modified_volume = volume / num_area_in_support
+                    #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
                     refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+                    refine_obj.add_evaluations(evaluations / num_area_in_support)
+                    #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume)
+
                     '''
                     if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
                         width_refinement = refine_obj.end - refine_obj.start
                         width_basis = right_parent - left_parent
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+
                     elif refine_obj.start >= child and refine_obj.end <= right_parent: #and not child_info.has_right_child:
                         width_refinement = refine_obj.end - refine_obj.start
                         width_basis = right_parent - left_parent
