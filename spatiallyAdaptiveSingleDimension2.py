@@ -199,7 +199,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     if modification_points is not None:
                         integral -= self.subtract_contributions(modification_points, previous_points_coarsened, gridPointCoordsAsStripes)
                         integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
-            if sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or tuple(component_grid.levelvector) in self.combischeme.get_active_indices():
+            if sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
                 self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
                 self.grid.set_grid(gridPointCoordsAsStripes)
                 self.calculate_surplusses(gridPointCoordsAsStripes, children_indices)
