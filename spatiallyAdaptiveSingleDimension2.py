@@ -27,7 +27,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_points = {}
         self.no_previous_integrals = True
         self.use_local_children = self.version == 2
-        self.margin = 1-10**-14 if self.use_local_children else 0.9
+        self.margin = 1-10**-12 if self.use_local_children else 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
