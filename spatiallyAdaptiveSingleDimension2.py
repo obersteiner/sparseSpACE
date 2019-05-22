@@ -9,7 +9,7 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, operation=None):
         self.do_high_order = do_high_order
         if self.do_high_order:
             self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
@@ -28,6 +28,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.no_previous_integrals = True
         self.use_local_children = self.version == 2
         self.margin = 1-10**-12 if self.use_local_children else 0.9
+        self.operation = operation
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -176,41 +177,69 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
             start = self.a
             end = self.b
-            if self.refinements != 0:
-                previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
-                integral = np.array(previous_integral)
-                previous_points_coarsened = list(previous_points)
-                modification_points, modification_points_coarsen = self.get_modification_points(previous_points,
-                                                                                            gridPointCoordsAsStripes)
-            if self.refinements == 0 or modification_points is not None or modification_points_coarsen is not None:
-                if self.no_previous_integrals:
-                    self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-                    self.grid.set_grid(gridPointCoordsAsStripes)
-                    integral = self.grid.integrator(f, self.grid.numPoints, start, end)
-                else:
-                    if modification_points_coarsen is not None:
-                        for d in range(self.dim):
-                            previous_points_coarsened[d] = list(previous_points[d])
-                            for mod_point in modification_points_coarsen[d]:
-                                for removal_point in mod_point[1]:
-                                    previous_points_coarsened[d].remove(removal_point)
-                        integral += self.subtract_contributions(modification_points_coarsen, previous_points_coarsened, previous_points)
-                        integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
-                    if modification_points is not None:
-                        integral -= self.subtract_contributions(modification_points, previous_points_coarsened, gridPointCoordsAsStripes)
-                        integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
-            if True: #sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
-                self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-                self.grid.set_grid(gridPointCoordsAsStripes)
-                self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
+            integral = self.calculate_integral(gridPointCoordsAsStripes, component_grid,
+                                                                         start, end,
+                                                                         self.refinements != 0 and not self.do_high_order)
+            self.compute_error_estimates(gridPointCoordsAsStripes, children_indices,
+                                                                  component_grid)
             for d in range(self.dim):
                 factor = component_grid.coefficient if self.grid.isNested() else 1
-                self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
-            self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
-            self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
+                self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod(
+                    [self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
             return integral, None, np.prod(self.grid.numPoints)
         else:
             pass
+
+    def init_evaluation_operation(self, areas):
+        self.operation.initialize_refinement_container_dimension_wise(areas[0])
+
+    def evaluate_operation_area(self, component_grid, area, additional_info=None):
+        if self.grid.is_global():
+            gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            start = self.a
+            end = self.b
+            integral = self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, component_grid, start, end, self.refinements != 0 and not self.do_high_order)
+            self.operation.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, children_indices, component_grid)
+            for d in range(self.dim):
+                factor = component_grid.coefficient if self.grid.isNested() else 1
+                self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+            return np.prod(self.grid.numPoints)
+        else:
+            pass
+
+    def calculate_integral(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
+        if reuse_old_values:
+            previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
+            integral = np.array(previous_integral)
+            previous_points_coarsened = list(previous_points)
+            modification_points, modification_points_coarsen = self.get_modification_points(previous_points,
+                                                                                            gridPointCoordsAsStripes)
+            if modification_points_coarsen is not None:
+                for d in range(self.dim):
+                    previous_points_coarsened[d] = list(previous_points[d])
+                    for mod_point in modification_points_coarsen[d]:
+                        for removal_point in mod_point[1]:
+                            previous_points_coarsened[d].remove(removal_point)
+                integral += self.subtract_contributions(modification_points_coarsen, previous_points_coarsened,
+                                                        previous_points)
+                integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
+            if modification_points is not None:
+                integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                                                        gridPointCoordsAsStripes)
+                integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
+        else:
+            self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+            self.grid.set_grid(gridPointCoordsAsStripes)
+            integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+        self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
+        self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
+        return integral
+
+    def compute_error_estimates(self, gridPointCoordsAsStripes, children_indices, component_grid):
+        if True:  # sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
+            self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+            self.grid.set_grid(gridPointCoordsAsStripes)
+            self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
     # This method returns the previous integral approximation + the points contained in this grid for the given
     # component grid identified by the levelvector. In case the component grid is new, we search for a close component
@@ -493,6 +522,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
+        if self.operation is not None:
+            self.operation.init_dimension_wise(self.grid, self.grid_surplusses, self.f, self.refinement, self.lmin, self.lmax, self.version)
 
 
     def get_areas(self):
@@ -511,7 +542,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         lmaxChange = self.refinement.refine(position)
         # the following is currently solved by initializing all data structures anew before each evalute_integral()
         if lmaxChange is not None:
-            self.lmax = [self.lmax[d] + lmaxChange[d] for d in range(self.dim)]
+            for d in range(self.dim):
+                self.lmax[d] += lmaxChange[d]
             if self.dim_adaptive:
                 if self.print_output:
                     print("New lmax:", self.lmax)

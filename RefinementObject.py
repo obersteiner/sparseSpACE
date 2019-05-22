@@ -479,3 +479,4 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.volume = None
         self.error = 0.0
         self.integral = 0.0
+        self.evaluations = 0
