@@ -199,10 +199,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     if modification_points is not None:
                         integral -= self.subtract_contributions(modification_points, previous_points_coarsened, gridPointCoordsAsStripes)
                         integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
-            if sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
+            if True: #sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
                 self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
                 self.grid.set_grid(gridPointCoordsAsStripes)
-                self.calculate_surplusses(gridPointCoordsAsStripes, children_indices)
+                self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
             for d in range(self.dim):
                 factor = component_grid.coefficient if self.grid.isNested() else 1
                 self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
@@ -288,7 +288,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # save weights in dictionary for fast access via coordinate
         dict_weights_fine = [{} for d in range(self.dim)]
         for d in range(self.dim):
-            for p, w in zip(new_points[d], weights[d]):
+            for p, w in zip(self.grid_surplusses.coords[d], weights[d]):
                 dict_weights_fine[d][p] = w
         # reset grid to old grid
         self.grid_surplusses.set_grid(old_points)
@@ -298,7 +298,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             for point in modification_points[d]:
                 # calculate the changes in contributions for all points that contain the neighbouring points point[0]
                 # and point[2] in dimension d
-                integral += self.calc_slice_through_points([point[0],point[2]], old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
+                points_for_slice = list([point[0],point[2]])
+                # remove boundary points if contained if grid has no boundary points
+                if not self.grid.boundary and self.a[d] in points_for_slice:
+                    points_for_slice.remove(self.a[d])
+                if not self.grid.boundary and self.b[d] in points_for_slice:
+                    points_for_slice.remove(self.b[d])
+                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
         return integral
 
     # This method calculates the new contributions of the points specified in modification_points to the grid new_points
@@ -320,9 +326,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     # new contribution from previously existing points to the new points.
     def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
         integral = 0.0
-        positions = [list(grid_points[d]).index(point) for point in points_for_slice]
-        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
+        positions = [list(self.grid_surplusses.coords[d]).index(point) for point in points_for_slice]
+        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
             # index of current point in grid_points grid
             index = indices[i]
@@ -377,7 +383,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
-    def calculate_surplusses(self, grid_points, children_indices):
+    def calculate_surplusses(self, grid_points, children_indices, component_grid):
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement.get_refinement_container_for_dim(d)
@@ -406,10 +412,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
                     num_area_in_support = (k-k_old)
-                    modified_volume = volume / num_area_in_support
+                    modified_volume = volume / num_area_in_support**2
+                    fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    assert fraction_of_support <= 1
                     #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
-                    refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
-                    refine_obj.add_evaluations(evaluations / num_area_in_support)
+                    #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
+                    refine_obj.add_volume(modified_volume * component_grid.coefficient)  # * width_refinement/ width_basis)
+                    refine_obj.add_evaluations(evaluations * component_grid.coefficient)
                     #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume)
 
                     '''
@@ -442,19 +451,31 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         volume = 0.0
         assert right_parent > child > left_parent
         npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-        points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
-        points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
-        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+
+        left_parent_in_grid = self.grid.boundary or left_parent != self.a[d]
+        right_parent_in_grid = self.grid.boundary or right_parent != self.b[d]
+        # avoid evaluating on boundary points if grids has none
+        if left_parent_in_grid:
+            points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+        if right_parent_in_grid:
+            points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         for i in range(len(points_children)):
             index = indices[i]
             factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
             factor2 = np.prod([self.grid.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
             exponent = 1# if not self.do_high_order else 2
             if factor2 != 0:
-                volume += factor * abs(self.f(points_children[i]) - 0.5 * (self.f(points_left_parent[i]) + self.f(points_right_parent[i]))) * (right_parent - child)**exponent
+                value = self.f(points_children[i])
+                # avoid evaluating on boundary points if grids has none
+                if left_parent_in_grid:
+                    value -= 0.5 * self.f(points_left_parent[i])
+                if right_parent_in_grid:
+                    value -= 0.5 * self.f(points_right_parent[i])
+                volume += factor * abs(value) * (right_parent - child)**exponent
         if self.version == 0 or self.version == 2:
-            evaluations = len(points_right_parent)
+            evaluations = len(points_children) * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
             evaluations = 0
         return abs(volume), evaluations
