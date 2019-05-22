@@ -470,7 +470,7 @@ class GlobalTrapezoidalGrid(Grid):
                 coordsD = grid_points[d][1:-1]
                 weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
 
-            print(coordsD, grid_points, weightsD)
+            #print(coordsD, grid_points, weightsD)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
