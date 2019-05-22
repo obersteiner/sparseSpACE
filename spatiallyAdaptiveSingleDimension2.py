@@ -9,15 +9,15 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True):
         self.do_high_order = do_high_order
         if self.do_high_order:
-            self.grid = GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
+            self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
         else:
-            self.grid = GlobalTrapezoidalGrid(a, b, boundary=True)
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True)
+            self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary)
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary)
 
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
@@ -321,8 +321,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
         integral = 0.0
         positions = [list(grid_points[d]).index(point) for point in points_for_slice]
-        points = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(grid_points[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
+        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
             # index of current point in grid_points grid
             index = indices[i]
@@ -442,10 +442,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         volume = 0.0
         assert right_parent > child > left_parent
         npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-        points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [left_parent] for d2 in range(self.dim)])]))
-        points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
-        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[grid_points[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(grid_points[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+        points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         for i in range(len(points_children)):
             index = indices[i]
             factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
