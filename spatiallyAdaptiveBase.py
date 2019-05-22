@@ -135,19 +135,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
         evaluation_array = np.zeros(len(areas))
-        for area in areas:
-            self.operation.area_preprocessing(area)
+        self.init_evaluation_operation(areas)
         self.compute_solutions(areas,evaluation_array)
-        self.finalize_evaluation()
-        for area in areas:
-            self.operation.area_postprocessing(area)
-        for k in range(len(areas)):
-            i = k + self.refinement.size() - self.refinement.new_objects_size()
-            self.refinement.set_evaluations(i, evaluation_array[k])
-        for k in range(len(areas)):
-            i = k + self.refinement.size() - self.refinement.new_objects_size()
-            self.calc_error(i, self.f)
-            self.refinement.set_benefit(i)
+        self.finalize_evaluation_operation(areas, evaluation_array)
 
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
@@ -160,6 +150,11 @@ class SpatiallyAdaptivBase(StandardCombi):
             return global_error_estimate, self.total_error
         else:
             return self.total_error, self.total_error
+
+
+    def init_evaluation_operation(self, areas):
+        for area in areas:
+            self.operation.area_preprocessing(area)
 
     def compute_solutions(self, areas, evaluation_array):
         # calculate integrals
@@ -332,5 +327,21 @@ class SpatiallyAdaptivBase(StandardCombi):
     def coarsen_grid(self, levelvector, area, num_sub_diagonal):
         return levelvector, True
 
+    @abc.abstractmethod
     def finalize_evaluation(self):
         pass
+
+    def finalize_evaluation_operation(self, areas, evaluation_array):
+        for area in areas:
+            self.operation.area_postprocessing(area)
+
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.refinement.set_evaluations(i, evaluation_array[k])
+        for k in range(len(areas)):
+            i = k + self.refinement.size() - self.refinement.new_objects_size()
+            self.calc_error(i, self.f)
+            self.refinement.set_benefit(i)
+
+        if self.print_output:
+            print("Curent number of function evaluations", self.get_total_num_points())
