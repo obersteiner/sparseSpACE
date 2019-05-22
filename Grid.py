@@ -453,12 +453,24 @@ class GlobalTrapezoidalGrid(Grid):
     def set_grid(self, grid_points):
         self.coords = []
         self.weights = []
-        self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
+        if self.boundary:
+            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+        else:
+            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+
         for d in range(self.dim):
             # check if grid_points are sorted
             assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
-            coordsD = grid_points[d]
-            weightsD = self.compute_1D_quad_weights(coordsD, self.a[d], self.b[d])
+            if self.boundary:
+                coordsD = grid_points[d]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])
+            else:
+                coordsD = grid_points[d][1:-1]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
+
+            print(coordsD, grid_points, weightsD)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
