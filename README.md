@@ -1,6 +1,8 @@
 # spatially-adaptive-combi
 
-This python projects implements different variants of the spatially adaptive combination technique.
+This python projects implements different variants of the spatially adaptive combination technique. 
+It was first targeted to solve high dimensional numericla integration with the spatially adaptive Combination Technique but it now supports the impelmentation of arbitrary grid operations.
+It will for example soon support solving PDEs and UQ problems.
 
 A short introduction in how to use the framework can be found in the tutorials:
 - Tutorial.ipynb
