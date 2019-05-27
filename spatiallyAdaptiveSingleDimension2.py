@@ -180,6 +180,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             integral = self.calculate_integral(gridPointCoordsAsStripes, component_grid,
                                                                          start, end,
                                                                          self.refinements != 0 and not self.do_high_order)
+
+
             self.compute_error_estimates(gridPointCoordsAsStripes, children_indices,
                                                                   component_grid)
             for d in range(self.dim):
@@ -236,10 +238,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return integral
 
     def compute_error_estimates(self, gridPointCoordsAsStripes, children_indices, component_grid):
-        if True:  # sum(component_grid.levelvector) == max(self.lmax) + self.dim - 1 or (self.dim_adaptive and not self.combischeme.has_forward_neighbour(component_grid.levelvector)):
-            self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-            self.grid.set_grid(gridPointCoordsAsStripes)
-            self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+        self.grid.set_grid(gridPointCoordsAsStripes)
+        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
     # This method returns the previous integral approximation + the points contained in this grid for the given
     # component grid identified by the levelvector. In case the component grid is new, we search for a close component
