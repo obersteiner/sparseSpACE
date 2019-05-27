@@ -60,9 +60,9 @@ dist = cp.J(parameter1Dist, parameter2Dist, parameter3)
 #q = 3  # number of collocation points for each dimension
 #nodes, weights = cp.generate_quadrature(q, dist, rule="G")
 model = FunctionUQ()
-a = [parameter1_min, parameter2_min, parameter3_min]
-b = [parameter1_max, parameter2_max, parameter3_max]
-grid = GaussLegendreGrid()
+a = np.array([parameter1_min, parameter2_min, parameter3_min])
+b = np.array([parameter1_max, parameter2_max, parameter3_max])
+grid = GaussLegendreGrid(a,b,3)
 errorOperator2=ErrorCalculatorExtendSplit()
 adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,0,grid,version=0)
 adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,model,errorOperator2,10**-10, do_plot=False)
@@ -86,7 +86,8 @@ gPCE = cp.fit_quadrature(OP, nodes_transpose, weights, value_of_interests)
 # calculate statistics
 E = cp.E(gPCE, dist)
 StdDev = cp.Std(gPCE, dist)
-
+first_order_sobol_indices = cp.Sens_m(gPCE, dist)
+print(first_order_sobol_indices)
 #print the stastics
 print("mean: %f" % E)
 print("stddev: %f" % StdDev)

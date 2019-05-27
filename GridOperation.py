@@ -1,6 +1,7 @@
 import abc
 import numpy as np
 from numpy import linalg as LA
+import numpy.testing as npt
 
 class GridOperation(object):
     def is_area_operation(self):
@@ -52,6 +53,8 @@ class Integration(AreaOperation):
         self.grid = grid
         self.reference_solution = reference_solution
         self.dim = dim
+        self.dict_integral = {}
+        self.dict_points = {}
 
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
@@ -301,6 +304,302 @@ class Integration(AreaOperation):
             combi_integral = combi_integral[0]
         print("combiintegral:", combi_integral)
 
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
+        if reuse_old_values:
+            previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
+            integral = np.array(previous_integral)
+            previous_points_coarsened = list(previous_points)
+            modification_points, modification_points_coarsen = self.get_modification_points(previous_points,
+                                                                                            gridPointCoordsAsStripes)
+            if modification_points_coarsen is not None:
+                for d in range(self.dim):
+                    previous_points_coarsened[d] = list(previous_points[d])
+                    for mod_point in modification_points_coarsen[d]:
+                        for removal_point in mod_point[1]:
+                            previous_points_coarsened[d].remove(removal_point)
+                integral += self.subtract_contributions(modification_points_coarsen, previous_points_coarsened,
+                                                        previous_points)
+                integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
+            if modification_points is not None:
+                integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                                                        gridPointCoordsAsStripes)
+                integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
+        else:
+            self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+            self.grid.set_grid(gridPointCoordsAsStripes)
+            integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+        self.refinement_container.integral += integral * component_grid.coefficient
+        self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
+        self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
+        return integral
+
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, children_indices, component_grid):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+        self.grid.set_grid(gridPointCoordsAsStripes)
+        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
+
+    def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, version = 2):
+        self.grid = grid
+        self.grid_surplusses = grid_surplusses
+        self.f = f
+        self.refinement_container = refinement_container
+        self.version = version
+        self.lmin = lmin
+        self.lmax = lmax
+
+    def initialize_refinement_container_dimension_wise(self, refinement_container):
+        refinement_container.integral = 0.0
+
+    # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
+    # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
+    # on this slice.
+    def calculate_surplusses(self, grid_points, children_indices, component_grid):
+        for d in range(0, self.dim):
+            k=0
+            refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
+            for child_info in children_indices[d]:
+                left_parent = child_info.left_parent
+                right_parent = child_info.right_parent
+                child = child_info.child
+                volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
+                k_old = 0
+                for i in reversed(range(0,k+1)):
+                    if refinement_dim.get_object(i).end <= left_parent:
+                        k_old = i+1
+                        break
+                k = k_old
+                refine_obj = refinement_dim.get_object(k)
+                if not (refine_obj.start >= left_parent and refine_obj.end <= right_parent):
+                    for child_info in children_indices[d]:
+                        print(child_info.left_parent, child_info.child, child_info.right_parent)
+                assert refine_obj.start >= left_parent and refine_obj.end <= right_parent
+                while k < refinement_dim.size():
+                    refine_obj = refinement_dim.get_object(k)
+                    if refine_obj.start >= right_parent:
+                        break
+                    assert refine_obj.end <= right_parent
+                    k += 1
+                for i in range(k_old, k):
+                    refine_obj = refinement_dim.get_object(i)
+                    num_area_in_support = (k-k_old)
+                    modified_volume = volume / num_area_in_support**2
+                    fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    assert fraction_of_support <= 1
+                    #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
+                    #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
+                    refine_obj.add_volume(modified_volume * component_grid.coefficient)  # * width_refinement/ width_basis)
+                    refine_obj.add_evaluations(evaluations * component_grid.coefficient)
+                    #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume)
+
+                    '''
+                    if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+
+                    elif refine_obj.start >= child and refine_obj.end <= right_parent: #and not child_info.has_right_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+                    else:
+                        break
+                    '''
+                k = min(k, refinement_dim.size() - 1)
+
+                '''
+                if not child_info.has_right_child:
+                    child_info.right_refinement_object.add_volume(volume / 2.0)
+                    child_info.right_refinement_object.add_evaluations(evaluations / 2.0)
+                if not child_info.has_left_child:
+                    child_info.left_refinement_object.add_volume(volume/2.0)
+                    child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
+                '''
+
+    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
+    #  The surplusses are calculated based on the left and right parents.
+    def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
+        volume = 0.0
+        assert right_parent > child > left_parent
+        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
+        left_parent_in_grid = self.grid.boundary or left_parent != self.a[d]
+        right_parent_in_grid = self.grid.boundary or right_parent != self.b[d]
+        # avoid evaluating on boundary points if grids has none
+        if left_parent_in_grid:
+            points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+        if right_parent_in_grid:
+            points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        for i in range(len(points_children)):
+            index = indices[i]
+            factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
+            factor2 = np.prod([self.grid.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
+            exponent = 1# if not self.do_high_order else 2
+            if factor2 != 0:
+                value = self.f(points_children[i])
+                # avoid evaluating on boundary points if grids has none
+                if left_parent_in_grid:
+                    value -= 0.5 * self.f(points_left_parent[i])
+                if right_parent_in_grid:
+                    value -= 0.5 * self.f(points_right_parent[i])
+                volume += factor * abs(value) * (right_parent - child)**exponent
+        if self.version == 0 or self.version == 2:
+            evaluations = len(points_children) * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+        else:
+            evaluations = 0
+        return abs(volume), evaluations
+
+    # This method returns the previous integral approximation + the points contained in this grid for the given
+    # component grid identified by the levelvector. In case the component grid is new, we search for a close component
+    # grid with levelvector2 <= levelvector and return the respective previous integral and the points of the
+    # previous grid.
+    def get_previous_integral_and_points(self, levelvector):
+        if tuple(levelvector) in self.dict_integral:
+            return np.array(self.dict_integral[tuple(levelvector)]), np.array(self.dict_points[tuple(levelvector)])
+        else:
+            k = 1
+            dimensions = []
+            for d in range(self.dim):
+                if self.lmax[d] - k > 0:
+                    dimensions.append(d)
+            while k < max(self.lmax):
+                reduction_values = list(zip(*[g.ravel() for g in np.meshgrid(
+                    *[range(0, min(k, self.lmax[d] - self.lmin[d])) for d in range(self.dim)])]))
+
+                for value in reduction_values:
+                    levelvec_temp = np.array(levelvector) - np.array(list(value))
+                    if tuple(levelvec_temp) in self.dict_integral:
+                        return np.array(self.dict_integral[tuple(levelvec_temp)]), np.array(self.dict_points[tuple(levelvec_temp)])
+                k += 1
+        assert False
+
+    # This method checks if there are new points in the grid new_points compared to the old grid old_points
+    # We then return a suited data structure containing the newly added points and the points that were removed.
+    def get_modification_points(self, old_points, new_points):
+        found_modification = found_modification2 = False
+        # storage for newly added points per dimension
+        modification_array_added = [[] for d in range(self.dim)]
+        # storage for removed points per dimension
+        modification_arra_removed = [[] for d in range(self.dim)]
+
+        for d in range(self.dim):
+            # get newly added points for dimension d
+            modifications = sorted(list(set(new_points[d]) - set(old_points[d])))
+            if len(modifications) != 0:
+                found_modification = True
+                modification_1D = self.get_modification_objects(modifications, new_points[d])
+                modification_array_added[d].extend(list(modification_1D))
+            #get removed points for dimension d
+            modifications_coarsen = sorted(list(set(old_points[d]) - set(new_points[d])))
+            if len(modifications_coarsen) != 0:
+                found_modification2 = True
+                modification_1D = self.get_modification_objects(modifications_coarsen, old_points[d])
+                modification_arra_removed[d].extend(list(modification_1D))
+        return modification_array_added if found_modification else None, modification_arra_removed if found_modification2 else None
+
+    # Construct the data structures for the newly added points listed in modifications. The complete grid is given in
+    # grid_points.
+    def get_modification_objects(self, modifications, grid_points):
+        modification_1D = []
+        k = 0
+        for i in range(len(grid_points)):
+            if grid_points[i] == modifications[k]:
+                j = 1
+                # get consecutive list of points that are newly added
+                while k + j < len(modifications) and grid_points[i + j] == modifications[k + j]:
+                    j += 1
+                # store left and right neighbour in addition to the newly added points list(grid_points[i:i + j])
+                modification_1D.append((grid_points[i - 1], list(grid_points[i:i + j]), grid_points[i + j]))
+                k += j
+                if k == len(modifications):
+                    break
+        return modification_1D
+
+    # This method calculates the change of the integral contribution of the neighbouring points of newly added points.
+    # We assume here a trapezoidal rule. The newly added points are contained in new_points but not in old_points.
+    def subtract_contributions(self, modification_points, old_points, new_points):
+        # calculate weights of point in new grid
+        self.grid_surplusses.set_grid(new_points)
+        weights = self.grid_surplusses.weights
+        # save weights in dictionary for fast access via coordinate
+        dict_weights_fine = [{} for d in range(self.dim)]
+        for d in range(self.dim):
+            for p, w in zip(self.grid_surplusses.coords[d], weights[d]):
+                dict_weights_fine[d][p] = w
+        # reset grid to old grid
+        self.grid_surplusses.set_grid(old_points)
+        # sum up the changes in contributions
+        integral = 0.0
+        for d in range(self.dim):
+            for point in modification_points[d]:
+                # calculate the changes in contributions for all points that contain the neighbouring points point[0]
+                # and point[2] in dimension d
+                points_for_slice = list([point[0],point[2]])
+                # remove boundary points if contained if grid has no boundary points
+                if not self.grid.boundary and self.a[d] in points_for_slice:
+                    points_for_slice.remove(self.a[d])
+                if not self.grid.boundary and self.b[d] in points_for_slice:
+                    points_for_slice.remove(self.b[d])
+                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
+        return integral
+
+    # This method calculates the new contributions of the points specified in modification_points to the grid new_points
+    # The new_points grid contains the newly added points.
+    def get_new_contributions(self, modification_points, new_points):
+        self.grid_surplusses.set_grid(new_points)
+        # sum up all new contributions
+        integral = 0.0
+        for d in range(self.dim):
+            for point in modification_points[d]:
+                # calculate the new contribution of the points with the new coordinates points[1] (a list of one or
+                # multiple new coordinates) in dimension d
+                integral += self.calc_slice_through_points(point[1], new_points, d, modification_points)
+        return integral
+
+    # This method computes the integral of the dim-1 dimensional slice through the points_for_slice of dimension d.
+    # We also account for the fact that some points might be traversed by multiple of these slice calculations and
+    # reduce the factors accordingly. If subtract_contribution is set we calculate the difference of the
+    # new contribution from previously existing points to the new points.
+    def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
+        integral = 0.0
+        positions = [list(self.grid_surplusses.coords[d]).index(point) for point in points_for_slice]
+        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
+        for i in range(len(points)):
+            # index of current point in grid_points grid
+            index = indices[i]
+            #point coordinates of current point
+            current_point = points[i]
+            # old weight of current point in coarser grid
+            weight = self.grid_surplusses.getWeight(index)
+            if subtract_contribution:
+                # weight of current point in new finer grid
+                weight_fine = 1
+                for d in range(self.dim):
+                    weight_fine *= dict[d][current_point[d]]
+                number_of_dimensions_that_intersect = 0
+                # calculate if other slices also contain this point
+                for d2 in range(self.dim):
+                    for mod_point in modification_points[d2]:
+                        if current_point[d2] == mod_point[0] or current_point[d2] == mod_point[2]:
+                            number_of_dimensions_that_intersect += 1
+                # calculate the weight difference from the old to the new grid
+                factor = (weight - weight_fine)/number_of_dimensions_that_intersect
+            else:
+                number_of_dimensions_that_intersect = 1
+                # calculate if other slices also contain this point
+                for d2 in range(self.dim):
+                    if d2 == d:
+                        continue
+                    for mod_point in modification_points[d2]:
+                        if current_point[d2] in mod_point[1]:
+                            number_of_dimensions_that_intersect += 1
+                # calculate the new weight contribution of newly added point
+                factor = weight / number_of_dimensions_that_intersect
+            assert(factor > 0)
+            integral += self.f(current_point) * factor
+        return integral
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation

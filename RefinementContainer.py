@@ -185,7 +185,7 @@ class MetaRefinementContainer(object):
     def __init__(self, refinement_containers):
         self.refinementContainers = refinement_containers
         self.evaluationstotal = 0
-        self.integral = None
+        self.integral = 0
         # for get next obj for refinement:
         self.curContainer = 0
 

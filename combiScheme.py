@@ -53,6 +53,15 @@ class CombiScheme:
                 refined_dims.append(d)
         return refined_dims
 
+    def has_forward_neighbour(self, levelvec):
+        assert self.initialized_adaptive
+        for d in range(self.dim):
+            temp = list(levelvec)
+            temp[d] += 1
+            if tuple(temp) in self.active_index_set or tuple(temp) in self.old_index_set:
+                return True
+        return False
+
     # This method tries to add the forward neighbour in dimension d for the grid with the specified levelvector.
     # If the grid was added successfully the return value will be True, otherwise False.
     def __refine_scheme(self, d, levelvec):

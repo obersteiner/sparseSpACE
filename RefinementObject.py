@@ -79,7 +79,7 @@ class RefinementObjectExtendSplit(RefinementObject):
 
             benefit_split = self.parent_info.get_split_benefit()
             benefit_extend = self.parent_info.get_extend_benefit()
-
+            #print("Benefit split", benefit_split, "Benefit extend", benefit_extend)
             if self.switch_to_parent_estimation:
                 correction = abs(self.parent_info.get_extend_error_correction())
                 benefit_extend += correction
@@ -103,6 +103,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             else:
                 lmaxIncrease = None
                 update_other_coarsenings = None
+            #print("Performing extend for", self.start, self.end, benefit_extend, benefit_split, self.parent_info.num_points_split_parent, self.parent_info.num_points_extend_parent, self.parent_info.split_parent_integral, self.parent_info.extend_parent_integral, self.integral, self.sum_siblings)
             benefit_extend = benefit_extend - correction if benefit_extend is not None and self.grid.is_high_order_grid() else None
             num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid() else None
             parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.integral, parent=self.parent_info.parent,
@@ -124,6 +125,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             # add to integralArray
             self.needExtendScheme += 1
             # print("Splitting", self.start, self.end)
+            #print("Performing split for", self.start, self.end, benefit_extend, benefit_split, self.parent_info.num_points_split_parent, self.parent_info.num_points_extend_parent, self.parent_info.split_parent_integral, self.parent_info.extend_parent_integral, self.integral, self.sum_siblings)
             newRefinementObjects = self.split_area_arbitrary_dim()
             return newRefinementObjects, None, None
         else:
@@ -479,3 +481,4 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.volume = None
         self.error = 0.0
         self.integral = 0.0
+        self.evaluations = 0
