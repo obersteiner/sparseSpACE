@@ -503,12 +503,6 @@ class GlobalTrapezoidalGrid(Grid):
             position[d] = self.coords[d][indexvector[d]]
         return position
 
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
-
 from scipy.optimize import nnls
 import matplotlib.pyplot as plt
 
@@ -754,12 +748,6 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
             position[d] = self.coords[d][indexvector[d]]
         return position
 
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
-
 
 class EquidistantGridGlobal(Grid):
     def __init__(self, a, b, boundary=True):
@@ -821,12 +809,6 @@ class EquidistantGridGlobal(Grid):
         for d in range(self.dim):
             position[d] = self.coords[d][indexvector[d]]
         return position
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
 
     def mapPoints(self, equidistantAdaptivePoints, level, d):
         return equidistantAdaptivePoints
