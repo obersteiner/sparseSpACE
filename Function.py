@@ -196,7 +196,7 @@ class FunctionUQWeighted(Function):
         self.weight_function = weight_function
 
     def eval(self, coordinates):
-        return self.function.eval(coordinates)
+        return self.function.eval(coordinates) * self.weight_function.eval(coordinates)
 
     def getAnalyticSolutionIntegral(self, start, end):
         self.dim = len(start)
