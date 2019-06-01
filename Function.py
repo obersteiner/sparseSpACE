@@ -97,6 +97,37 @@ from scipy import integrate
 from scipy.stats import norm
 
 
+# This simple function can be used for test purposes
+class ConstantValue(Function):
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def eval(self, coordinates):
+        return self.value
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        dim = len(start)
+        integral = 1.0
+        for d in range(dim):
+            integral *= end[d] - start[d]
+        integral *= self.value
+
+
+class FunctionProbWeighted(Function):
+    def __init__(self, function, joint_distribution):
+        super().__init__()
+        self.function = function
+        self.joint_distribution = joint_distribution
+
+    def eval(self, coordinates):
+        probability = self.joint_distribution.pdf(coordinates)
+        function_value = self.function.eval(coordinates)
+        return function_value * probability
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        assert False, "analytic solution not implemented"
+
 class FunctionShift(Function):
     def __init__(self, function, shift):
         super().__init__()
