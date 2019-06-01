@@ -220,6 +220,24 @@ class FunctionUQNormal2(Function):
             assert False
 
 
+# This is a helper function for UncertaintyQuantification
+class FunctionUQProbabilityWeighter(Function):
+    def __init__(self, uq_operation):
+        super().__init__()
+        # Caching must be disabled as this function depends on the grid point
+        # discretization
+        self.do_cache = False
+        self.uq_operation = uq_operation
+
+    def set_gridPointCoordsAsStripes(self, gridPointCoordsAsStripes):
+        self.gridPointCoordsAsStripes = gridPointCoordsAsStripes
+
+    def eval(self, coordinates):
+        assert self.gridPointCoordsAsStripes is not None
+        # Delegate the actual weight calculation to the UQ operation
+        return self.uq_operation.get_weight(coordinates, self.gridPointCoordsAsStripes)
+
+
 class FunctionUQWeighted(Function):
     def __init__(self, function, weight_function):
         super().__init__()

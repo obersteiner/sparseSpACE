@@ -626,3 +626,96 @@ class Interpolation(Integration):
             interpolated_values = np.asarray([[value] for value in interpolated_values])
             interpolated_values_array.append(interpolated_values)
         return np.hstack(interpolated_values_array)
+
+
+import chaospy as cp
+from Function import *
+
+class UncertaintyQuantification(Integration):
+    # The constructor resembles Integration's constructor;
+    # it has an additional parameter:
+    # distributions can be a string or a list of strings which defines the
+    # probability distribution for each dimension
+    def __init__(self, f, distributions, grid, dim,
+            reference_solution=None):
+        super().__init__(f, grid, dim, reference_solution)
+        if type(distributions) == str:
+            distributions = [distributions for _ in range(dim)]
+        self._prepare_distributions(distributions)
+        self.weighter = FunctionUQProbabilityWeighter(self)
+        self.weighted_function = FunctionUQWeighted(self.weighter, f)
+
+    # From the user provided information about distributions, this function
+    # creates the distributions list which contains Chaospy distributions
+    def _prepare_distributions(self, distris):
+        self.distributions = []
+        a = self.grid.a
+        b = self.grid.b
+        for d in range(self.dim):
+            if distris[d] == "Uniform":
+                self.distributions.append(cp.Uniform(a[d], b[d]))
+            else:
+                assert False, "Distribution not implemented: " + distribution
+        # ~ self.joint_distribution = cp.J(*self.distributions)
+
+    # The weight returned by this functions represents the probability that
+    # the values in coord occur, while considering that they are discretized
+    # and a trapezoidal quadrature weight is multiplied later.
+    # This method is called from a weighter function.
+    def get_weight(self, coord, gridPointCoordsAsStripes):
+        probs = []
+        lengths = []
+        for d in range(self.dim):
+            # Search nearest points
+            stripe = gridPointCoordsAsStripes[d]
+            stripelen = len(stripe)
+            assert stripelen > 1, "Stripe is too small"
+            # ~ if stripelen < 2:
+                # ~ probs[d] = 1.0
+                # ~ continue
+            index = -1
+            p = coord[d]
+            for i in range(stripelen):
+                dist = p - stripe[i]
+                if abs(dist) < 0.000001:
+                    index = i
+                    break
+            if index < 0:
+                print("coordinate not found in stripe")
+                print("gridPointCoordsAsStripes:", gridPointCoordsAsStripes)
+                print("coord:", coord)
+                print("d:", d)
+                assert False
+            # Found the point in the stripe, get the nearest neighbours
+            # If there is no neighbour, the current point is used
+            p_left = p
+            if index > 0:
+                p_left = stripe[index-1]
+            p_right = p
+            if index < stripelen-1:
+                p_right = stripe[index+1]
+            # Get the middle between the coordinate and its neighbours
+            p_left = 0.5 * (p_left + p)
+            p_right = 0.5 * (p_right + p)
+            # Calculate a weight with the CDF
+            cdf = self.distributions[d].cdf
+            probs.append(cdf(p_right) - cdf(p_left))
+            lengths.append(p_right - p_left)
+        # Divide the probabilities by the length to undo
+        # trapezoidal quadrature weights
+        weights = [probs[d] / lengths[d] for d in range(self.dim)]
+        return np.prod(weights)
+
+    # This function needs to be changed to calculate the expectation, variance,
+    # or other UQ-related values instead of simply integrating f.
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+        self.grid.set_grid(gridPointCoordsAsStripes)
+        # Update the weighter function
+        self.weighter.set_gridPointCoordsAsStripes(gridPointCoordsAsStripes)
+        # Currently, this calculates the expectation
+        weighted_integral = self.grid.integrator(self.weighted_function, self.grid.numPoints, start, end)
+        self.refinement_container.integral += weighted_integral * component_grid.coefficient
+        # ~ self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
+        # ~ self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
+        return weighted_integral
