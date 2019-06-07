@@ -2,7 +2,7 @@ import numpy as np
 import abc, logging
 from Integrator import *
 import numpy.polynomial.legendre as legendre
-
+from math import isclose
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -56,7 +56,7 @@ class Grid(object):
 
     def point_on_boundary(self, p):
         # print("2",p, (p == self.a).any() or (p == self.b).any())
-        return (p == self.a).any() or (p == self.b).any()
+        return ([isclose(c, self.a) for c in p]).any() or ([isclose(c, self.b) for c in p]).any()
 
     def get_points_and_weights(self):
         return self.getPoints(), self.get_weights()
@@ -179,9 +179,9 @@ class Grid1d(object):
         self.lowerBorder = int(0)
         self.upperBorder = self.num_points
         if not self.boundary and self.num_points < self.num_points_with_boundary:
-            if start == self.a:
+            if isclose(start, self.a):
                 self.lowerBorder = 1
-            if end == self.b:
+            if isclose(end, self.b):
                 self.upperBorder = self.num_points_with_boundary - 1
             else:
                 self.upperBorder = self.num_points_with_boundary
@@ -362,7 +362,7 @@ class TrapezoidalGrid1D(Grid1d):
 
     def level_to_num_points_1d(self, level):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
-                int(1 if self.start == self.a else 0) + int(1 if self.end == self.b else 0))
+                int(1 if isclose(self.start, self.a) else 0) + int(1 if self.end == self.b else 0))
 
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points()
@@ -436,13 +436,15 @@ class ClenshawCurtisGrid1D(Grid1d):
 
 
 class GlobalTrapezoidalGrid(Grid):
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
         self.a = a
         self.b = b
         self.dim = len(a)
         self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert not(modified_basis) or not(boundary)
 
     def is_global(self):
         return True
@@ -469,23 +471,63 @@ class GlobalTrapezoidalGrid(Grid):
             else:
                 coordsD = grid_points[d][1:-1]
                 weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
+            if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
+                print(grid_points[d], weightsD)
+            if self.modified_basis:
+                assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
 
-            #print(coordsD, grid_points, weightsD)
+            #print(coordsD, grid_points[d], weightsD)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
 
     def compute_1D_quad_weights(self, grid_1D, a, b):
         weights = np.zeros(len(grid_1D))
-        for i in range(len(grid_1D)):
-            if i > 0:
-                weights[i] += 0.5*(grid_1D[i] - grid_1D[i-1])
-            elif grid_1D[0] > a:
-                weights[i] += 0.5 * (grid_1D[i] - a)
-            if i < len(grid_1D) - 1:
-                weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
-            elif grid_1D[len(grid_1D) - 1] < b:
-                weights[i] += 0.5 * (b - grid_1D[i])
+        if self.modified_basis and len(grid_1D) == 4:
+            weights[2] = (b**2/2 - b *grid_1D[1] - a**2/2 + a * grid_1D[1]) / (grid_1D[2] - grid_1D[1])
+            weights[1] = -1 *weights[2] + b - a
+        else:
+            for i in range(len(grid_1D)):
+                if i > 0:
+                    if self.modified_basis and i == 1:
+                        #weights[i] += (grid_1D[i+1] - grid_1D[i - 1])
+                        h_b = (grid_1D[i + 1] - grid_1D[i - 1])
+                        h_a = (grid_1D[i + 1] - grid_1D[i])
+                        #print(h_b, h_a, h_b ** 2 / (2 * h_a))
+                        weights[i] += h_b ** 2 / (2 * h_a)
+                    elif self.modified_basis and i == 2:
+                        #pass
+                        h_b = (grid_1D[i] - grid_1D[i - 2])
+                        h_a = (grid_1D[i] - grid_1D[i - 1])
+                        weights[i] += h_b - h_b ** 2 / (2 * h_a)
+                    else:
+                        if not (self.modified_basis and i == len(grid_1D) - 2):
+                            weights[i] += 0.5 * (grid_1D[i] - grid_1D[i - 1])
+                #elif grid_1D[0] > a:
+                #    weights[i] += 0.5 * (grid_1D[i] - a)
+                #print(weights)
+
+                if i < len(grid_1D) - 1:
+                    if self.modified_basis and i == len(grid_1D) - 2:
+                        if i > 1:
+                            h_b = (grid_1D[i + 1] - grid_1D[i-1])
+                            h_a = (grid_1D[i] - grid_1D[i - 1])
+                            #weights[i] += (grid_1D[i + 1] - grid_1D[i-1])
+                            weights[i] += h_b**2 / (2*h_a)
+
+                    elif self.modified_basis and i == len(grid_1D) - 3:
+                        #pass
+                        if i > 1:
+                            h_b = (grid_1D[i + 2] - grid_1D[i])
+                            h_a = (grid_1D[i + 1] - grid_1D[i])
+                            weights[i] += h_b - h_b**2/(2*h_a)
+                    else:
+                        if not(self.modified_basis and i == 1):
+                            weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
+                #elif grid_1D[len(grid_1D) - 1] < b:
+                #    weights[i] += 0.5 * (b - grid_1D[i])
+                #print(weights)
+        #print(grid_1D, weights)
         return weights
 
     def levelToNumPoints(self, levelvec):

@@ -414,6 +414,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.levels = levels
         self.error = 0.0
         self.dim_adaptive = dim_adaptive
+        self.benefit = None
 
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
