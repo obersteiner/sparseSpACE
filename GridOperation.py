@@ -633,7 +633,6 @@ class Integration(AreaOperation):
                             number_of_dimensions_that_intersect += 1
                 # calculate the new weight contribution of newly added point
                 factor = weight / number_of_dimensions_that_intersect
-            print(factor)
             assert(factor >= 0)
             integral += self.f(current_point) * factor
         return integral
