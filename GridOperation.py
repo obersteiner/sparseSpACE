@@ -2,6 +2,8 @@ import abc
 import numpy as np
 from numpy import linalg as LA
 import numpy.testing as npt
+from math import log2, isclose
+
 
 class GridOperation(object):
     def is_area_operation(self):
@@ -338,7 +340,7 @@ class Integration(AreaOperation):
         self.grid.set_grid(gridPointCoordsAsStripes)
         self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
-    def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, version = 2):
+    def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
         self.f = f
@@ -346,14 +348,16 @@ class Integration(AreaOperation):
         self.version = version
         self.lmin = lmin
         self.lmax = lmax
+        self.a = a
+        self.b = b
 
     def initialize_refinement_container_dimension_wise(self, refinement_container):
         refinement_container.integral = 0.0
-
     # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
+        tol = 10**-14
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
@@ -364,32 +368,37 @@ class Integration(AreaOperation):
                 volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
                 k_old = 0
                 for i in reversed(range(0,k+1)):
-                    if refinement_dim.get_object(i).end <= left_parent:
+                    if refinement_dim.get_object(i).end <= left_parent * (1 + tol):
                         k_old = i+1
                         break
                 k = k_old
                 refine_obj = refinement_dim.get_object(k)
-                if not (refine_obj.start >= left_parent and refine_obj.end <= right_parent):
+                if not (refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)):
                     for child_info in children_indices[d]:
                         print(child_info.left_parent, child_info.child, child_info.right_parent)
-                assert refine_obj.start >= left_parent and refine_obj.end <= right_parent
+                assert refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)
+                max_level = 1
                 while k < refinement_dim.size():
                     refine_obj = refinement_dim.get_object(k)
-                    if refine_obj.start >= right_parent:
+                    if refine_obj.start >= right_parent * (1 - tol):
                         break
-                    assert refine_obj.end <= right_parent
+                    #refine_obj.print()
+                    #print("Right parent", right_parent)
+                    assert refine_obj.end <= right_parent * (1 + tol)
                     k += 1
+                    max_level = max(max_level, max(refine_obj.levels))
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
                     num_area_in_support = (k-k_old)
-                    modified_volume = volume / num_area_in_support**2
                     fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    modified_volume = volume/num_area_in_support #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
                     assert fraction_of_support <= 1
                     #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
                     #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
-                    refine_obj.add_volume(modified_volume * component_grid.coefficient)  # * width_refinement/ width_basis)
-                    refine_obj.add_evaluations(evaluations * component_grid.coefficient)
-                    #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume)
+                    refine_obj.add_volume(modified_volume * component_grid.coefficient)
+                    #refine_obj.add_evaluations(evaluations * component_grid.coefficient)
+                     #* component_grid.coefficient)
+                    #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume, modified_volume)
 
                     '''
                     if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
@@ -422,8 +431,8 @@ class Integration(AreaOperation):
         assert right_parent > child > left_parent
         npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
 
-        left_parent_in_grid = self.grid.boundary or left_parent != self.a[d]
-        right_parent_in_grid = self.grid.boundary or right_parent != self.b[d]
+        left_parent_in_grid = self.grid.boundary or not(isclose(left_parent, self.a[d]))
+        right_parent_in_grid = self.grid.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
@@ -434,18 +443,47 @@ class Integration(AreaOperation):
         for i in range(len(points_children)):
             index = indices[i]
             factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
-            factor2 = np.prod([self.grid.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
+            #factor2 = np.prod([self.grid.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
             exponent = 1# if not self.do_high_order else 2
-            if factor2 != 0:
-                value = self.f(points_children[i])
-                # avoid evaluating on boundary points if grids has none
-                if left_parent_in_grid:
+            #if factor2 != 0:
+            value = self.f(points_children[i])
+            #print(points_children[i], self.f.f_dict.keys())
+            # avoid evaluating on boundary points if grids has none
+            assert (tuple(points_children[i]) in self.f.f_dict)
+
+            if left_parent_in_grid:
+                if self.grid.modified_basis and not right_parent_in_grid:
+                    left_of_left_parent = list(points_left_parent[i])
+                    left_of_left_parent[d] -= 2 * (right_parent - child)
+                    #print("Left of left:", left_of_left_parent, points_left_parent[i])
+                    value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
+                    assert (tuple(points_left_parent[i]) in self.f.f_dict)
+
+                    if isclose(left_of_left_parent[d], self.a[d]):
+                        value -= self.f(points_left_parent[i])
+                    else:
+                        value -= (2 * self.f(points_left_parent[i]) - self.f(tuple(left_of_left_parent)))/2
+                        assert(tuple(left_of_left_parent) in self.f.f_dict)
+
+                else:
                     value -= 0.5 * self.f(points_left_parent[i])
-                if right_parent_in_grid:
+            if right_parent_in_grid:
+                if self.grid.modified_basis and not left_parent_in_grid:
+                    right_of_right_parent = list(points_right_parent[i])
+                    right_of_right_parent[d] += 2 * (right_parent - child)
+                    #print("Right of right:", right_of_right_parent, points_right_parent[i])
+                    value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
+                    assert (tuple(points_right_parent[i]) in self.f.f_dict)
+                    if isclose(right_of_right_parent[d], self.b[d]):
+                        value -= self.f(points_right_parent[i])
+                    else:
+                        value -= (2 * self.f(points_right_parent[i]) - self.f(tuple(right_of_right_parent))) / 2
+                        assert(tuple(right_of_right_parent) in self.f.f_dict)
+                else:
                     value -= 0.5 * self.f(points_right_parent[i])
-                volume += factor * abs(value) * (right_parent - child)**exponent
+            volume += factor * abs(value) * (right_parent - child)**exponent
         if self.version == 0 or self.version == 2:
-            evaluations = len(points_children) * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+            evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
             evaluations = 0
         return abs(volume), evaluations
@@ -537,10 +575,8 @@ class Integration(AreaOperation):
                 # and point[2] in dimension d
                 points_for_slice = list([point[0],point[2]])
                 # remove boundary points if contained if grid has no boundary points
-                if not self.grid.boundary and self.a[d] in points_for_slice:
-                    points_for_slice.remove(self.a[d])
-                if not self.grid.boundary and self.b[d] in points_for_slice:
-                    points_for_slice.remove(self.b[d])
+                if not self.grid.boundary:
+                    points_for_slice = [p for p in points_for_slice if not(isclose(p, self.a[d]) or isclose(p, self.b[d]))]
                 integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
         return integral
 
@@ -597,7 +633,8 @@ class Integration(AreaOperation):
                             number_of_dimensions_that_intersect += 1
                 # calculate the new weight contribution of newly added point
                 factor = weight / number_of_dimensions_that_intersect
-            assert(factor > 0)
+            print(factor)
+            assert(factor >= 0)
             integral += self.f(current_point) * factor
         return integral
 
