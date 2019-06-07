@@ -465,17 +465,17 @@ class GlobalTrapezoidalGrid(Grid):
             assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
             if self.boundary:
                 coordsD = grid_points[d]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d)
             else:
                 coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d)[1:-1]
 
             #print(coordsD, grid_points, weightsD)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
 
-    def compute_1D_quad_weights(self, grid_1D, a, b):
+    def compute_1D_quad_weights(self, grid_1D, a, b, _d):
         weights = np.zeros(len(grid_1D))
         for i in range(len(grid_1D)):
             if i > 0:
@@ -502,6 +502,33 @@ class GlobalTrapezoidalGrid(Grid):
         for d in range(self.dim):
             position[d] = self.coords[d][indexvector[d]]
         return position
+
+
+class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
+    def __init__(self, a, b, uq_operation, boundary=True):
+        super().__init__(a, b, boundary)
+        self.distributions = uq_operation.getDistributions()
+
+    def compute_1D_quad_weights(self, grid_1D, a, b, d):
+        distr = self.distributions[d]
+        weights = np.zeros(len(grid_1D))
+        for i in range(len(grid_1D)-1):
+            # Calculate weights with the method of undetermined coefficients
+            x1 = grid_1D[i]
+            x2 = grid_1D[i+1]
+            moment_0 = distr.cdf(x2) - distr.cdf(x1)
+            # w1 + w2 = moment_0
+            moment_1 = integrate.quad(lambda x: x * distr.pdf(x), x1, x2,
+                epsrel=10 ** -2, epsabs=10 ** -3)[0]
+            # w1 * x1 + w2 * x2 = moment_1
+            w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
+            w1 = moment_0 - w2
+            # ~ print("dd", w1, w2, x1, x2, moment_0, moment_1)
+            # Add them to the composite quadrature weights
+            weights[i] += w1
+            weights[i+1] += w2
+        return weights
+
 
 from scipy.optimize import nnls
 import matplotlib.pyplot as plt

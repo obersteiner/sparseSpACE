@@ -642,8 +642,8 @@ class UncertaintyQuantification(Integration):
         if type(distributions) == str:
             distributions = [distributions for _ in range(dim)]
         self._prepare_distributions(distributions)
-        self.weighter = FunctionUQProbabilityWeighter(self)
-        self.weighted_function = FunctionUQWeighted(self.weighter, f)
+        # ~ self.weighter = FunctionUQProbabilityWeighter(self)
+        # ~ self.weighted_function = FunctionUQWeighted(self.weighter, f)
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
@@ -658,6 +658,8 @@ class UncertaintyQuantification(Integration):
                 assert False, "Distribution not implemented: " + distribution
         # ~ self.joint_distribution = cp.J(*self.distributions)
 
+    def getDistributions(self): return self.distributions
+'''
     # The weight returned by this functions represents the probability that
     # the values in coord occur, while considering that they are discretized
     # and a trapezoidal quadrature weight is multiplied later.
@@ -719,3 +721,4 @@ class UncertaintyQuantification(Integration):
         # ~ self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         # ~ self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
         return weighted_integral
+'''

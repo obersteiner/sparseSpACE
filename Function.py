@@ -113,7 +113,7 @@ class ConstantValue(Function):
             integral *= end[d] - start[d]
         integral *= self.value
 
-
+'''
 class FunctionProbWeighted(Function):
     def __init__(self, function, joint_distribution):
         super().__init__()
@@ -127,6 +127,7 @@ class FunctionProbWeighted(Function):
 
     def getAnalyticSolutionIntegral(self, start, end):
         assert False, "analytic solution not implemented"
+'''
 
 class FunctionShift(Function):
     def __init__(self, function, shift):

@@ -16,8 +16,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
         else:
-            self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary)
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary)
+            # do_high_order is not yet supported for UQ
+            if isinstance(operation, UncertaintyQuantification):
+                self.grid = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
+                self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
+            else:
+                self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary)
+                self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary)
 
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
