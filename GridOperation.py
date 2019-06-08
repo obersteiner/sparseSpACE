@@ -757,4 +757,4 @@ class UncertaintyQuantification(Integration):
         # ~ self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         # ~ self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
         return weighted_integral
-'''
+#'''

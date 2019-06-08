@@ -113,21 +113,6 @@ class ConstantValue(Function):
             integral *= end[d] - start[d]
         integral *= self.value
 
-'''
-class FunctionProbWeighted(Function):
-    def __init__(self, function, joint_distribution):
-        super().__init__()
-        self.function = function
-        self.joint_distribution = joint_distribution
-
-    def eval(self, coordinates):
-        probability = self.joint_distribution.pdf(coordinates)
-        function_value = self.function.eval(coordinates)
-        return function_value * probability
-
-    def getAnalyticSolutionIntegral(self, start, end):
-        assert False, "analytic solution not implemented"
-'''
 
 class FunctionShift(Function):
     def __init__(self, function, shift):
@@ -221,6 +206,7 @@ class FunctionUQNormal2(Function):
             assert False
 
 
+'''
 # This is a helper function for UncertaintyQuantification
 class FunctionUQProbabilityWeighter(Function):
     def __init__(self, uq_operation):
@@ -237,6 +223,7 @@ class FunctionUQProbabilityWeighter(Function):
         assert self.gridPointCoordsAsStripes is not None
         # Delegate the actual weight calculation to the UQ operation
         return self.uq_operation.get_weight(coordinates, self.gridPointCoordsAsStripes)
+#'''
 
 
 class FunctionUQWeighted(Function):
