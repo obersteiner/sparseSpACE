@@ -634,13 +634,22 @@ from Function import *
 class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
-    # distributions can be a string or a list of strings which defines the
-    # probability distribution for each dimension
+    # distributions can be a list, tuple or string
     def __init__(self, f, distributions, grid, dim,
             reference_solution=None):
         super().__init__(f, grid, dim, reference_solution)
-        if type(distributions) == str:
+
+        # If distributions is not a list, it specifies the same distribution
+        # for every dimension
+        if not isinstance(distributions, list):
             distributions = [distributions for _ in range(dim)]
+
+        # Setting the distribution to a string is a short form when
+        # no parameters are given
+        for d in range(dim):
+            if isinstance(distributions[d], str):
+                distributions[d] = (distributions[d],)
+
         self._prepare_distributions(distributions)
         # ~ self.weighter = FunctionUQProbabilityWeighter(self)
         # ~ self.weighted_function = FunctionUQWeighted(self.weighter, f)
@@ -652,13 +661,40 @@ class UncertaintyQuantification(Integration):
         a = self.grid.a
         b = self.grid.b
         for d in range(self.dim):
-            if distris[d] == "Uniform":
+            distr_type = distris[d][0]
+            if distr_type == "Uniform":
                 self.distributions.append(cp.Uniform(a[d], b[d]))
+            elif distr_type == "Triangle":
+                midpoint = distris[d][1]
+                assert isinstance(midpoint, float), "invalid midpoint"
+                self.distributions.append(cp.Triangle(a[d], midpoint, b[d]))
             else:
-                assert False, "Distribution not implemented: " + distribution
+                assert False, "Distribution not implemented: " + distr_type
         # ~ self.joint_distribution = cp.J(*self.distributions)
 
     def getDistributions(self): return self.distributions
+
+    def calculateMoment(self, k, combiinstance, minv, maxv, f, error_op, tol):
+        if k == 1:
+            f_powered = f
+        else:
+            f_powered = FunctionPower(f, k)
+        v = combiinstance.performSpatiallyAdaptiv(minv, maxv, f_powered, error_op, tol)
+        moment = v[3][0]
+        return moment
+
+    def calculateExpectation(self, *args):
+        return self.calculateMoment(1, *args)
+
+    def calculateExpectationAndVariance(self, *args):
+        expectation = self.calculateExpectation(*args)
+        expectation_of_squared = self.calculateMoment(2, *args)
+        variance = expectation_of_squared - expectation * expectation
+        if variance < 0.0:
+            # This can happen when the variance is too small
+            variance = -variance
+        return expectation, variance
+
 '''
     # The weight returned by this functions represents the probability that
     # the values in coord occur, while considering that they are discretized

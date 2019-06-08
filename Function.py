@@ -323,6 +323,20 @@ class FunctionCompose(Function):
         return result
 
 
+# This can be used when calculating the variance
+class FunctionPower(Function):
+    def __init__(self, function, exponent):
+        super().__init__()
+        self.function = function
+        self.exponent = exponent
+
+    def eval(self, coordinates):
+        return self.function.eval(coordinates) ** self.exponent
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        assert "Not implemented"
+
+
 # This Function represents the corner Peak f the genz test functions
 class GenzCornerPeak(Function):
     def __init__(self, coeffs):
