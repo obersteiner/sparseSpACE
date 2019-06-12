@@ -128,10 +128,34 @@ class RefinementObjectExtendSplit(RefinementObject):
             self.needExtendScheme += 1
             # print("Splitting", self.start, self.end)
             if self.splitSingleDim:
+                '''
                 d = self.get_split_dim()
                 print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
                 newRefinementObjects = self.split_area_single_dim(d)
                 return newRefinementObjects, None, None
+                '''
+                dims = self.get_split_dims()
+                newRefinementObjects = [self]
+                for d in dims:
+                    newObjects = []
+                    print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
+                    for area in newRefinementObjects:
+                        newObjects.extend(area.split_area_single_dim(d))
+                    newRefinementObjects = newObjects
+                for area in newRefinementObjects:
+                    for d in dims[:-1]:
+                        area.twins[dims[d]] = None
+                for i in range(len(newRefinementObjects)):
+                    area = newRefinementObjects[i]
+                    for d in range(len(dims)-1):
+                        if area.twins[dims[d]] is None:
+                            twin_distance = 2**(self.dim - d - 1)
+                            twin = newRefinementObjects[i + twin_distance]
+                            area.set_twin(d, twin)
+                            print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                        
+                return newRefinementObjects, None, None
+
             else:
                 newRefinementObjects = self.split_area_arbitrary_dim()
                 return newRefinementObjects, None, None
@@ -222,13 +246,24 @@ class RefinementObjectExtendSplit(RefinementObject):
 
     # set the twin error in dimension d of the given area object to the given value and update the dimension in which the twin error is maximum
     def set_twin_error(self, d, twinError):
+        twinError += 10**-14
         twin = self.twins[d]
         twin.twinErrors[d] = self.twinErrors[d] = twinError
 
     # returns the dimension in which the split shall be performed
     def get_split_dim(self):
         return np.argmax(self.twinErrors)
-    
+
+    def get_split_dims(self, threshold=0.99):
+        print("Twin errors for", self.start, self.end, "are", self.twinErrors, "twins are", self.twins[0].start, self.twins[0].end, self.twins[1].start, self.twins[1].end,)
+        assert 0 <= threshold <= 1
+        max_error = max(self.twinErrors)        
+        dims_for_refinement = []        
+        for d in range(self.dim):
+            if self.twinErrors[d] >= max_error * threshold:
+                dims_for_refinement.append(d)
+        return dims_for_refinement
+
     def contains(self, point):
         contained = True
         for d in range(self.dim):

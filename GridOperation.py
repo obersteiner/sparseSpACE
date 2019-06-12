@@ -302,8 +302,8 @@ class Integration(AreaOperation):
         print("combiintegral:", combi_integral)
 
     # returns the absolute error in the integrals of the given area object and its twin in the d'th dimension
-    def get_twin_error(self, d, area):
-        return abs(area.integral - area.twins[d].integral)
+    def get_twin_error(self, d, area, norm):
+        return LA.norm(abs(area.integral - area.twins[d].integral), norm)
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation

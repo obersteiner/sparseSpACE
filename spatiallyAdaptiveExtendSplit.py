@@ -219,21 +219,36 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     for area in new_refinement_objects:
                         temp.extend(area.split_area_single_dim(d))
                     new_refinement_objects = temp
+                    '''
                     for area in new_refinement_objects:
                         integral = 0
                         for component_grid in self.scheme:
                             integral_area, a, b = self.evaluate_area(self.f, area, component_grid)
                             integral += integral_area * component_grid.coefficient
                         area.integral = integral
+                    '''                
+                for area in new_refinement_objects:
+                    for d in range(self.dim - 1):
+                        area.twins[d] = None
                 for i in range(2**self.dim):
                     area = new_refinement_objects[i]
                     for d in range(self.dim-1):
+                        '''
                         twin = new_refinement_objects[(i+2**(self.dim-1)) % 2**(self.dim-d)]
                         area.set_twin(d, twin)
                         if area.twinErrors[d] is None:
                             area.set_twin_error(d, abs(area.integral - twin.integral))
-                    if area.twinErrors[self.dim-1] is None:
-                        area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
+                        print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                        '''
+                        if area.twins[d] is None:
+                            twin_distance = 2**(self.dim - d - 1)
+                            twin = new_refinement_objects[i + twin_distance]
+                            area.set_twin(d, twin)
+                            #if area.twinErrors[d] is None:
+                            #    area.set_twin_error(d, abs(area.integral - twin.integral))
+                            print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                    #if area.twinErrors[self.dim-1] is None:
+                    #    area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
                     area.parent_info.parent = self.root_cell
                 self.root_cell.children = new_refinement_objects
             else:
@@ -316,9 +331,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if self.automatic_extend_split:
             self.compute_benefits_for_operations(area)
         if self.split_single_dim:
-            for d in range(area.dim):
+            for d in range(self.dim):
                 if area.twinErrors[d] is None:
-                    twinError = self.operation.get_twin_error(d, area)
+                    twinError = self.operation.get_twin_error(d, area,self.norm)
                     area.set_twin_error(d, twinError)
         lmax_change = self.refinement.refine(position)
         if lmax_change != None:
