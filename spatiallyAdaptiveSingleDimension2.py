@@ -9,7 +9,7 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None):
         self.do_high_order = do_high_order
         if self.do_high_order:
             self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
@@ -27,7 +27,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_points = {}
         self.no_previous_integrals = True
         self.use_local_children = self.version == 2
-        self.margin = 1-10**-12 if self.use_local_children else 0.9
+        if margin is None:
+            self.margin = 0.9#1-10**-12 if self.use_local_children else 0.9
+        else:
+            self.margin = margin
         self.operation = operation
 
     def interpolate_points(self, interpolation_points, component_grid):
