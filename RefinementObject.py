@@ -472,6 +472,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         # self.error = abs(volume)
 
     def add_volume(self, volume):
+        assert isinstance(volume, np.ndarray)
         if self.volume is None:
             self.volume = volume
         else:
