@@ -206,6 +206,16 @@ class FunctionUQNormal2(Function):
             assert False
 
 
+# This is a helper function for UncertaintyQuantification
+class FunctionChaospyPolynomial(Function):
+    def __init__(self, poly):
+        super().__init__()
+        self.poly = poly
+
+    def eval(self, coordinates):
+        return float(self.poly(*coordinates))
+
+
 '''
 # This is a helper function for UncertaintyQuantification
 class FunctionUQProbabilityWeighter(Function):

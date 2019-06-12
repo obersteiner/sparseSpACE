@@ -670,7 +670,6 @@ class UncertaintyQuantification(Integration):
                 self.distributions.append(cp.Triangle(a[d], midpoint, b[d]))
             else:
                 assert False, "Distribution not implemented: " + distr_type
-        # ~ self.joint_distribution = cp.J(*self.distributions)
 
     def getDistributions(self): return self.distributions
 
@@ -694,6 +693,68 @@ class UncertaintyQuantification(Integration):
             # This can happen when the variance is too small
             variance = -variance
         return expectation, variance
+
+    def doPCE(self, polynomial_degrees, combiinstance, minv, maxv, error_op, tol):
+        # normed is true for now
+        distributions_joint = cp.J(*self.distributions)
+        self.pce_polys = cp.orth_ttr(polynomial_degrees, distributions_joint, normed=True)
+        # Calculate coefficients with the pseudosprectral method
+        self.pce_coeffs = []
+        for i in range(len(self.pce_polys)):
+            poly_func = FunctionChaospyPolynomial(self.pce_polys[i])
+            fp = FunctionUQWeighted(self.f, poly_func)
+            # ~ fp = poly_func  # for testing
+            # Something does not work yet here.
+            v = combiinstance.performSpatiallyAdaptiv(minv, maxv, fp, error_op, tol)
+            coefficient = v[3][0]
+            self.pce_coeffs.append(coefficient)
+
+    def evaluateFunctionPCE(self, x):
+        polys = self.pce_polys
+        if polys is None:
+            print("PCE is not initialized")
+            assert False  # Should be an error and not an assertion
+        summands = [self.pce_coeffs[i] * polys[i](x) for i in range(polys)]
+        return np.sum(summands)
+
+    def getExpectationPCE(self):
+        if self.pce_coeffs is None:
+            print("PCE is not initialized")
+            assert False  # Should be an error and not an assertion
+        print(self.pce_polys[0].exponents)
+        return self.pce_coeffs[0]
+
+    def getVariancePCE(self):
+        if self.pce_coeffs is None:
+            print("PCE is not initialized")
+            assert False  # Should be an error and not an assertion
+        nzcoeffs = self.pce_coeffs[1:]
+        return np.sum([nzcoeffs[i] ** 2 for i in range(len(nzcoeffs))])
+
+    def getSensitivityIndices(self):
+        if self.pce_coeffs is None:
+            print("PCE is not initialized")
+            assert False  # Should be an error and not an assertion
+        # total sensitivities
+        ts = []
+        polys = self.pce_polys
+        coeffs = self.pce_coeffs
+        var = self.getVariancePCE()
+        for d in range(self.dim):
+            v = 0.0
+            for i in range(len(polys)):
+                poly = polys[i]
+                exponents = poly.exponents
+                relevant = False
+                for k in range(len(exponents)):
+                    if exponents[k][d] > 0:
+                        relevant = True
+                        break
+                if not relevant:
+                    continue
+                v += coeffs[i] ** 2
+            ts.append(v / var)
+        return ts
 
 '''
     # The weight returned by this functions represents the probability that
