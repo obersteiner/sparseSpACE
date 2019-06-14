@@ -685,7 +685,45 @@ class UncertaintyQuantification(Integration):
     def calculateExpectation(self, *args):
         return self.calculateMoment(1, *args)
 
-    def calculateExpectationAndVariance(self, *args):
+    def calculateExpectationAndVariance(self, combiinstance, *args):
+        expectation = self.calculateExpectation(combiinstance, *args)
+        # Reuse the grid for the second moment to avoid additional function
+        # evaluations
+        nodes, weights = combiinstance.grid.get_points_and_weights()
+        squared_evals = [self.f(nodes[i]) ** 2 * weights[i] for i in range(len(nodes))]
+        expectation_of_squared = np.sum(squared_evals)
+        variance = expectation_of_squared - expectation * expectation
+        if variance < 0.0:
+            # This can happen when the variance is too small
+            variance = -variance
+        return expectation, variance
+
+    def calculatePCE(self, polynomial_degrees, combiinstance, minv, maxv, error_op, tol):
+        # Calculate the grid spatially adapted for integrating f * PDF
+        combiinstance.performSpatiallyAdaptiv(minv, maxv, self.f, error_op, tol)
+
+        self.distributions_joint = cp.J(*self.distributions)
+        pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
+        nodes, weights = combiinstance.grid.get_points_and_weights()
+        f_values = np.asarray([self.f(x) for x in nodes])
+        self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*nodes)), weights, f_values)
+
+    def getExpectationPCE(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.E(self.gPCE, self.distributions_joint)[0]
+
+    def getStdPCE(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Std(self.gPCE, self.distributions_joint)[0]
+
+    def getFirstOrderSobolIndices(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Sens_m(self.gPCE, self.distributions_joint)
+
+    def calculateExpectationAndVariance2(self, *args):
         expectation = self.calculateExpectation(*args)
         expectation_of_squared = self.calculateMoment(2, *args)
         variance = expectation_of_squared - expectation * expectation
@@ -694,21 +732,7 @@ class UncertaintyQuantification(Integration):
             variance = -variance
         return expectation, variance
 
-    def doPCE(self, polynomial_degrees, combiinstance, minv, maxv, error_op, tol):
-        # normed is true for now
-        distributions_joint = cp.J(*self.distributions)
-        self.pce_polys = cp.orth_ttr(polynomial_degrees, distributions_joint, normed=True)
-        # Calculate coefficients with the pseudosprectral method
-        self.pce_coeffs = []
-        for i in range(len(self.pce_polys)):
-            poly_func = FunctionChaospyPolynomial(self.pce_polys[i])
-            fp = FunctionUQWeighted(self.f, poly_func)
-            # ~ fp = poly_func  # for testing
-            # Something does not work yet here.
-            v = combiinstance.performSpatiallyAdaptiv(minv, maxv, fp, error_op, tol)
-            coefficient = v[3][0]
-            self.pce_coeffs.append(coefficient)
-
+'''
     def evaluateFunctionPCE(self, x):
         polys = self.pce_polys
         if polys is None:
@@ -756,7 +780,6 @@ class UncertaintyQuantification(Integration):
             ts.append(v / var)
         return ts
 
-'''
     # The weight returned by this functions represents the probability that
     # the values in coord occur, while considering that they are discretized
     # and a trapezoidal quadrature weight is multiplied later.
