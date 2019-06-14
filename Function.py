@@ -319,6 +319,24 @@ class FunctionCompose(Function):
             result += f.getAnalyticSolutionIntegral(start, end) * factor
         return result
 
+class FunctionLinear(Function):
+    def __init__(self, coeffs):
+        super().__init__()
+        self.coeffs = np.array(coeffs)
+        self.dim = len(coeffs)
+
+    def eval(self, coordinates):
+        result = 1
+        for d in range(self.dim):
+            result *= self.coeffs[d] * coordinates[d]
+        return result
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        result = 1.0
+        for d in range(self.dim):
+            result *= self.coeffs[d] * (end[d]**2/2 - start[d]**2/2)
+        return result
+
 
 # This can be used when calculating the variance
 class FunctionPower(Function):

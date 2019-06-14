@@ -320,7 +320,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         return self.refinement.get_objects()
 
     # this method can be overwritten if for the method a graphical refinement visualization exists
-    def draw_refinement(self, filename=None):
+    def draw_refinement(self, filename=None, markersize=10):
         pass
 
     # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
