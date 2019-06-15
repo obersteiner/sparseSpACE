@@ -709,12 +709,12 @@ class UncertaintyQuantification(Integration):
 
     def getDistributions(self): return self.distributions
 
-    def calculateMoment(self, k, combiinstance, minv, maxv, f, error_op, tol):
+    def calculateMoment(self, k, combiinstance, error_op, max_evaluations=200):
         if k == 1:
-            f_powered = f
+            f_powered = self.f
         else:
-            f_powered = FunctionPower(f, k)
-        v = combiinstance.performSpatiallyAdaptiv(minv, maxv, f_powered, error_op, tol)
+            f_powered = FunctionPower(self.f, k)
+        v = combiinstance.performSpatiallyAdaptiv(1, 2, f_powered, error_op, max_evaluations=max_evaluations)
         moment = v[3][0]
         return moment
 
@@ -725,7 +725,7 @@ class UncertaintyQuantification(Integration):
         expectation = self.calculateExpectation(combiinstance, *args)
         # Reuse the grid for the second moment to avoid additional function
         # evaluations
-        nodes, weights = combiinstance.grid.get_points_and_weights()
+        nodes, weights = combiinstance.get_points_and_weights()
         squared_evals = [self.f(nodes[i]) ** 2 * weights[i] for i in range(len(nodes))]
         expectation_of_squared = np.sum(squared_evals)
         variance = expectation_of_squared - expectation * expectation
@@ -734,13 +734,13 @@ class UncertaintyQuantification(Integration):
             variance = -variance
         return expectation, variance
 
-    def calculatePCE(self, polynomial_degrees, combiinstance, minv, maxv, error_op, tol):
+    def calculatePCE(self, polynomial_degrees, combiinstance, error_op, max_evaluations=200):
         # Calculate the grid spatially adapted for integrating f * PDF
-        combiinstance.performSpatiallyAdaptiv(minv, maxv, self.f, error_op, tol)
+        combiinstance.performSpatiallyAdaptiv(1, 2, self.f, error_op, max_evaluations=max_evaluations)
 
         self.distributions_joint = cp.J(*self.distributions)
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
-        nodes, weights = combiinstance.grid.get_points_and_weights()
+        nodes, weights = combiinstance.get_points_and_weights()
         f_values = np.asarray([self.f(x) for x in nodes])
         self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*nodes)), weights, f_values)
 
