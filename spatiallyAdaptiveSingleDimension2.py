@@ -28,7 +28,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.no_previous_integrals = True
         self.use_local_children = self.version == 2
         if margin is None:
-            self.margin = 0.9#1-10**-12 if self.use_local_children else 0.9
+            self.margin = 0.99#1-10**-12 if self.use_local_children else 0.9
         else:
             self.margin = margin
         self.operation = operation
@@ -117,7 +117,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
     def is_child(self, level_left_point, level_point, level_right_point):
-        return True
+        return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
+        #return True
         if level_left_point < level_point or level_right_point < level_point:
             return True
         else:
@@ -212,11 +213,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     def evaluate_operation_area(self, component_grid, area, additional_info=None):
         if self.grid.is_global():
+            # get 1d coordinates of the grid points that define the grid; they are calculated based on the levelvector
             gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
-            start = self.a
-            end = self.b
-            integral = self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, component_grid, start, end, self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
+
+            # calculate the operation on the grid
+            integral = self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, component_grid, self.a, self.b, self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
+
+            # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             self.operation.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, children_indices, component_grid)
+
+            # save the number of evaluations used per d-1 dimensional slice
             for d in range(self.dim):
                 factor = component_grid.coefficient if self.grid.isNested() else 1
                 self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
@@ -528,12 +534,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def initialize_refinement(self):
         initial_points = []
         for d in range(self.dim):
-            initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 1 + 1))
+            initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 2 + 1))
+        levels = [0, 2, 1, 2, 0]
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
-                                                                                     initial_points[d][i + 1], d, self.dim, (i % 2, (i+1) % 2),
+                                                                                     initial_points[d][i + 1], d, self.dim, (levels[i], levels[i+1]),
                                                                                      self.lmax[d] - 1, dim_adaptive=self.dim_adaptive) for i in
-                                                     range(2 ** 1)], d, self.errorEstimator) for d in
+                                                     range(2 ** 2)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
