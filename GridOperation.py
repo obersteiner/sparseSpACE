@@ -765,19 +765,29 @@ class UncertaintyQuantification(Integration):
             self.weights, np.asarray(self.f_evals))
 
     def getExpectationPCE(self):
+        # gPCE does not work right yet.
+        print("gPCE is ", cp.around(self.gPCE, 3))
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.E(self.gPCE, self.distributions_joint)[0]
 
-    def getStdPCE(self):
+    def getVariancePCE(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
-        return cp.Std(self.gPCE, self.distributions_joint)[0]
+        return cp.Var(self.gPCE, self.distributions_joint)[0]
+
+    def getExpectationAndVariancePCE(self):
+        return self.getExpectationPCE(), self.getVariancePCE()
 
     def getFirstOrderSobolIndices(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_m(self.gPCE, self.distributions_joint)
+
+    def getTotalOrderSobolIndices(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Sens_t(self.gPCE, self.distributions_joint)
 
     # This function uses the quadrature provided by Chaospy.
     # It can be used for testing.
