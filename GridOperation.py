@@ -704,7 +704,8 @@ class UncertaintyQuantification(Integration):
                 distributions[d] = (distributions[d],)
 
         self._prepare_distributions(distributions)
-        self.f_evals_available = False
+        self.f_evals = None
+        self.gPCE = None
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
@@ -735,10 +736,9 @@ class UncertaintyQuantification(Integration):
     def _setNodesWeightsEvals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         self.f_evals = [self.f(coord) for coord in self.nodes]
-        self.f_evals_available = True
 
     def calculateMoment(self, k, combiinstance):
-        if not self.f_evals_available:
+        if self.f_evals is None:
             self._setNodesWeightsEvals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
         return sum(vals)[0]
@@ -756,7 +756,7 @@ class UncertaintyQuantification(Integration):
         return expectation, variance
 
     def calculatePCE(self, polynomial_degrees, combiinstance):
-        if not self.f_evals_available:
+        if self.f_evals is None:
             self._setNodesWeightsEvals(combiinstance)
 
         self.distributions_joint = cp.J(*self.distributions)
@@ -778,3 +778,13 @@ class UncertaintyQuantification(Integration):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_m(self.gPCE, self.distributions_joint)
+
+    # This function uses the quadrature provided by Chaospy.
+    # It can be used for testing.
+    def calculatePCE_Chaospy(self, polynomial_degrees, num_quad_points):
+        self.distributions_joint = cp.J(*self.distributions)
+        nodes, weights = cp.generate_quadrature(num_quad_points,
+            self.distributions_joint, rule="G")
+        f_evals = [self.f(c) for c in zip(*nodes)]
+        pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
+        self.gPCE = cp.fit_quadrature(pce_polys, nodes, weights, np.asarray(f_evals))
