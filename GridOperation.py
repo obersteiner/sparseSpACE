@@ -61,9 +61,9 @@ class Integration(AreaOperation):
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
         area.integral += partial_integral
+        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
             refinement_container.integral += partial_integral
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         return evaluations
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
@@ -367,15 +367,16 @@ class Integration(AreaOperation):
                 child = child_info.child
                 volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
                 k_old = 0
-                for i in reversed(range(0,k+1)):
-                    if refinement_dim.get_object(i).end <= left_parent * (1 + tol):
-                        k_old = i+1
+                for i in range(refinement_dim.size() ):
+                    if refinement_dim.get_object(i).start >= left_parent * (1 - tol):
+                        k_old = i
                         break
                 k = k_old
                 refine_obj = refinement_dim.get_object(k)
                 if not (refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)):
                     for child_info in children_indices[d]:
                         print(child_info.left_parent, child_info.child, child_info.right_parent)
+                #print(refine_obj.start, refine_obj.end, left_parent, right_parent)
                 assert refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)
                 max_level = 1
                 while k < refinement_dim.size():
@@ -391,12 +392,13 @@ class Integration(AreaOperation):
                     refine_obj = refinement_dim.get_object(i)
                     num_area_in_support = (k-k_old)
                     fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
-                    modified_volume = volume/num_area_in_support #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
+                    modified_volume = volume/num_area_in_support ** 2 #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
                     assert fraction_of_support <= 1
                     #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
                     #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
                     refine_obj.add_volume(modified_volume * component_grid.coefficient)
-                    #refine_obj.add_evaluations(evaluations * component_grid.coefficient)
+                    #refine_obj.add_evaluations(evaluations / num_area_in_support * component_grid.coefficient)
+                    #assert component_grid.coefficient == 1
                      #* component_grid.coefficient)
                     #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume, modified_volume)
 
