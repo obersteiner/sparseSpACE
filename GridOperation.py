@@ -704,8 +704,7 @@ class UncertaintyQuantification(Integration):
                 distributions[d] = (distributions[d],)
 
         self._prepare_distributions(distributions)
-        # ~ self.weighter = FunctionUQProbabilityWeighter(self)
-        # ~ self.weighted_function = FunctionUQWeighted(self.weighter, f)
+        self.f_evals_available = False
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
@@ -726,40 +725,44 @@ class UncertaintyQuantification(Integration):
 
     def getDistributions(self): return self.distributions
 
-    def calculateMoment(self, k, combiinstance, error_op, max_evaluations=200):
+    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the k-th moment
+    def getMomentFunction(self, k):
         if k == 1:
-            f_powered = self.f
-        else:
-            f_powered = FunctionPower(self.f, k)
-        v = combiinstance.performSpatiallyAdaptiv(1, 2, f_powered, error_op, max_evaluations=max_evaluations)
-        moment = v[3][0]
-        return moment
+            return self.f
+        return FunctionPower(self.f, k)
 
-    def calculateExpectation(self, *args):
-        return self.calculateMoment(1, *args)
+    def _setNodesWeightsEvals(self, combiinstance):
+        self.nodes, self.weights = combiinstance.get_points_and_weights()
+        self.f_evals = [self.f(coord) for coord in self.nodes]
+        self.f_evals_available = True
 
-    def calculateExpectationAndVariance(self, combiinstance, *args):
-        expectation = self.calculateExpectation(combiinstance, *args)
-        # Reuse the grid for the second moment to avoid additional function
-        # evaluations
-        nodes, weights = combiinstance.get_points_and_weights()
-        squared_evals = [self.f(nodes[i]) ** 2 * weights[i] for i in range(len(nodes))]
-        expectation_of_squared = np.sum(squared_evals)
+    def calculateMoment(self, k, combiinstance):
+        if not self.f_evals_available:
+            self._setNodesWeightsEvals(combiinstance)
+        vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
+        return sum(vals)[0]
+
+    def calculateExpectation(self, combiinstance):
+        return self.calculateMoment(1, combiinstance)
+
+    def calculateExpectationAndVariance(self, combiinstance):
+        expectation = self.calculateExpectation(combiinstance)
+        expectation_of_squared = self.calculateMoment(2, combiinstance)
         variance = expectation_of_squared - expectation * expectation
         if variance < 0.0:
             # This can happen when the variance is too small
             variance = -variance
         return expectation, variance
 
-    def calculatePCE(self, polynomial_degrees, combiinstance, error_op, max_evaluations=200):
-        # Calculate the grid spatially adapted for integrating f * PDF
-        combiinstance.performSpatiallyAdaptiv(1, 2, self.f, error_op, max_evaluations=max_evaluations)
+    def calculatePCE(self, polynomial_degrees, combiinstance):
+        if not self.f_evals_available:
+            self._setNodesWeightsEvals(combiinstance)
 
         self.distributions_joint = cp.J(*self.distributions)
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
-        nodes, weights = combiinstance.get_points_and_weights()
-        f_values = np.asarray([self.f(x) for x in nodes])
-        self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*nodes)), weights, f_values)
+        self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*self.nodes)),
+            self.weights, np.asarray(self.f_evals))
 
     def getExpectationPCE(self):
         if self.gPCE is None:
@@ -775,12 +778,3 @@ class UncertaintyQuantification(Integration):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_m(self.gPCE, self.distributions_joint)
-
-    def calculateExpectationAndVariance2(self, *args):
-        expectation = self.calculateExpectation(*args)
-        expectation_of_squared = self.calculateMoment(2, *args)
-        variance = expectation_of_squared - expectation * expectation
-        if variance < 0.0:
-            # This can happen when the variance is too small
-            variance = -variance
-        return expectation, variance
