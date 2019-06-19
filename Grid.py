@@ -510,7 +510,7 @@ class GlobalTrapezoidalGrid(Grid):
                 weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d)
             else:
                 coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d)[1:-1]
             if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
                 print(grid_points[d], weightsD)
             if self.modified_basis:
@@ -587,11 +587,29 @@ class GlobalTrapezoidalGrid(Grid):
             position[d] = self.coords[d][indexvector[d]]
         return position
 
+    def get_mid_point(self, a, b, _d):
+        return (a + b) / 2.0
+
 
 class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def __init__(self, a, b, uq_operation, boundary=True):
         super().__init__(a, b, boundary)
         self.distributions = uq_operation.get_distributions()
+
+    def get_mid_point(self, a, b, d):
+        # This is used to split a refinement object so that the new
+        # ones have the same probability
+        distr = self.distributions[d]
+        cdf_mid = 0.5 * (distr.cdf(a) + distr.cdf(b))
+        # The inverse Rosenblatt transformation is the inverse cdf here
+        mid = float(distr.inv(cdf_mid))
+        # ~ mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
+            # ~ self.start, self.end, rtol=0.01)
+        # ~ mid = max(min(mid, self.end), self.start)
+        if not a < mid < b:
+            print("Could not calculate the middle properly")
+            mid = 0.5 * (a + b)
+        return mid
 
     def compute_1D_quad_weights(self, grid_1D, a, b, d):
         distr = self.distributions[d]

@@ -397,7 +397,7 @@ from scipy import optimize
 
 # This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, this_dim, dim, levels, coarsening_level=0, dim_adaptive=False, uq_operation=None):
+    def __init__(self, start, end, this_dim, dim, levels, grid, coarsening_level=0, dim_adaptive=False):
         # start of subarea
         self.start = start
         # end of subarea
@@ -419,7 +419,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.benefit = None
         # The middle between two nodes can be calculated with the probability if
         # available so that infinite boundaries are possible
-        self.uq_operation = uq_operation
+        self.grid = grid
 
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
@@ -451,34 +451,16 @@ class RefinementObjectSingleDimension(RefinementObject):
             # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
             # self.newScheme = True
         # add new refined interval to refinement array
-        mid = 0.0
-        if self.uq_operation is None:
-            # Split the refinement object in the middle
-            mid = 0.5 * (self.start + self.end)
-        else:
-            # Split the refinement object so that the new ones have the same
-            # probability
-            distr = self.uq_operation.get_distributions()[self.this_dim]
-            cdf_mid = 0.5 * (distr.cdf(self.start) + distr.cdf(self.end))
-            # The inverse Rosenblatt transformation is the inverse cdf here
-            mid = float(distr.inv(cdf_mid))
-            # ~ mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
-                # ~ self.start, self.end, rtol=0.01)
-            # ~ mid = max(min(mid, self.end), self.start)
-            if not self.start < mid < self.end:
-                print("Could not calculate the middle properly")
-                mid = 0.5 * (self.start + self.end)
-
+        mid = self.grid.get_mid_point(self.start, self.end, self.this_dim)
         assert self.start < mid < self.end, "{} < {} < {} does not hold.".format(self.start, mid, self.end)
-
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
         newObjects.append(RefinementObjectSingleDimension(self.start, mid,
-            self.this_dim, self.dim, (self.levels[0], newLevel),
+            self.this_dim, self.dim, (self.levels[0], newLevel), self.grid,
             coarsening_value, dim_adaptive=self.dim_adaptive))
         newObjects.append(RefinementObjectSingleDimension(mid, self.end,
-            self.this_dim, self.dim, (newLevel, self.levels[1]),
+            self.this_dim, self.dim, (newLevel, self.levels[1]), self.grid,
             coarsening_value, dim_adaptive=self.dim_adaptive))
         return newObjects, lmax_increase, update
 

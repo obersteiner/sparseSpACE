@@ -38,7 +38,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             self.margin = margin
         self.operation = operation
-        self.equidistant = True
+        self.equidistant = not isinstance(operation, UncertaintyQuantification)
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, _ = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -148,7 +148,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         level_child = level_dim[position]
         if self.equidistant:
             width = (self.b[d] - self.a[d]) / 2**level_child
-            return NodeInfo(child, child - width, child + width, True, True, None,None)
+            return NodeInfo(child, child - width, child + width, True, True, None,None, level_child)
         else:
             left_parent = None
             for i in reversed(range(position)):
@@ -162,7 +162,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     right_parent = coords_dim[i]
                     break
             assert right_parent is not None
-            return NodeInfo(child, left_parent, right_parent, True, True, None,None)
+            return NodeInfo(child, left_parent, right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
     def draw_refinement(self, filename=None, markersize=10):  # update with meta container
@@ -229,21 +229,23 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     def initialize_refinement(self):
         initial_points = []
+
         for d in range(self.dim):
-            initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 2 + 1))
+            points = [self.a[d], None, None, None, self.b[d]]
+            points[2] = self.grid.get_mid_point(points[0], points[4], d)
+            points[1] = self.grid.get_mid_point(points[0], points[2], d)
+            points[3] = self.grid.get_mid_point(points[2], points[4], d)
+            initial_points.append(np.array(points))
         levels = [0, 2, 1, 2, 0]
 
-        uq_operation = None
-        if isinstance(self.operation, UncertaintyQuantification):
-            uq_operation = self.operation
         containers = []
         for d in range(self.dim):
             objects = []
             for i in range(2 ** 2):
                 objects.append(RefinementObjectSingleDimension(
                     initial_points[d][i], initial_points[d][i + 1], d, self.dim,
-                    (levels[i], levels[i+1]), self.lmax[d] - 2,
-                    dim_adaptive=self.dim_adaptive, uq_operation=uq_operation))
+                    (levels[i], levels[i+1]), self.grid, self.lmax[d] - 2,
+                    dim_adaptive=self.dim_adaptive))
             containers.append(RefinementContainer(objects, d,
                 self.errorEstimator))
         self.refinement = MetaRefinementContainer(containers)
@@ -298,7 +300,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
 
 class NodeInfo(object):
-    def __init__(self, child, left_parent, right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object):
+    def __init__(self, child, left_parent, right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object, level_child):
         self.child = child
         self.left_parent = left_parent
         self.right_parent = right_parent
@@ -306,4 +308,5 @@ class NodeInfo(object):
         self.has_right_child = has_right_child
         self.left_refinement_object = left_refinement_object
         self.right_refinement_object = right_refinement_object
+        self.level_child = level_child
 

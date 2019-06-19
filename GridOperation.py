@@ -365,7 +365,8 @@ class Integration(AreaOperation):
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
-                volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, grid_points=grid_points, d=d)
+                level_child = child_info.level_child
+                volume, evaluations = self.sum_up_volumes_for_point(left_parent=left_parent, right_parent=right_parent, child=child, level_child=level_child, grid_points=grid_points, d=d)
                 k_old = 0
                 for i in range(refinement_dim.size() ):
                     if refinement_dim.get_object(i).start >= left_parent * (1 - tol):
@@ -428,8 +429,7 @@ class Integration(AreaOperation):
 
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
-    def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
-        #print(grid_points)
+    def sum_up_volumes_for_point(self, left_parent, right_parent, child, level_child, grid_points, d):
         volume = 0.0
         assert right_parent > child > left_parent
 
@@ -440,8 +440,9 @@ class Integration(AreaOperation):
                 left_parent = p
             if isclose(p, right_parent):
                 right_parent = p
-        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
         index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
+        index_child = grid_points[d].index(child) - 1 * int(not self.grid.boundary)
+        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
 
         left_parent_in_grid = self.grid.boundary or not(isclose(left_parent, self.a[d]))
         right_parent_in_grid = self.grid.boundary or not(isclose(right_parent, self.b[d]))
@@ -452,6 +453,7 @@ class Integration(AreaOperation):
             points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
         indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        weight_child = self.grid_surplusses.weights[d][index_child]
         for i in range(len(points_children)):
             index = indices[i]
             factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
@@ -501,8 +503,7 @@ class Integration(AreaOperation):
                     else:
                         assert points_right_parent[i] in self.f.f_dict
                         value -= 0.5 * self.f(points_right_parent[i])
-                # ~ volume += factor * abs(value) * (right_parent - child)**exponent
-                volume += factor * abs(value) * (right_parent - left_parent) * 0.5
+                volume += factor * abs(value) * (weight_child * 2 ** -level_child)**exponent
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
