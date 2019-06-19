@@ -431,7 +431,7 @@ class Integration(AreaOperation):
     def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
         volume = 0.0
         assert right_parent > child > left_parent
-        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+        # ~ npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
         for p in grid_points[d]:
             if isclose(p, left_parent):
                 left_parent = p

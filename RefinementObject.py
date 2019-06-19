@@ -393,9 +393,11 @@ class RefinementObjectCell(RefinementObject):
         self.sub_integrals = []
 
 
+from scipy import optimize
+
 # This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, this_dim, dim, levels, coarsening_level=0, dim_adaptive=False):
+    def __init__(self, start, end, this_dim, dim, levels, coarsening_level=0, dim_adaptive=False, uq_operation=None):
         # start of subarea
         self.start = start
         # end of subarea
@@ -415,6 +417,9 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.error = 0.0
         self.dim_adaptive = dim_adaptive
         self.benefit = None
+        # The middle between two nodes can be calculated with the probability if
+        # available so that infinite boundaries are possible
+        self.uq_operation = uq_operation
 
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
@@ -445,14 +450,31 @@ class RefinementObjectSingleDimension(RefinementObject):
             # print("New scheme")
             # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
             # self.newScheme = True
-        # add new refined interval to refinement array (it has half of the width)
-        newWidth = (self.end - self.start) / 2.0
+        # add new refined interval to refinement array
+        mid = 0.0
+        if self.uq_operation is None:
+            # Split the refinement object in the middle
+            mid = 0.5 * (self.start + self.end)
+        else:
+            # Split the refinement object so that the new ones have the same
+            # probability
+            distr = self.uq_operation.getDistributions()[self.this_dim]
+            cdf_mid = 0.5 * (distr.cdf(self.start) + distr.cdf(self.end))
+            # ~ mid = distr.ppf(cdf_mid)
+            # Chaospy does not offer the ppf function, so calculate the middle
+            # numerically
+            mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
+                self.start, self.end, rtol=0.01)
+
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        newObjects.append(RefinementObjectSingleDimension(self.start, self.start + newWidth, self.this_dim, self.dim, (self.levels[0], newLevel), coarsening_value, dim_adaptive=self.dim_adaptive))
-        newObjects.append(RefinementObjectSingleDimension(self.start + newWidth, self.end, self.this_dim, self.dim, (newLevel, self.levels[1]), coarsening_value, dim_adaptive=self.dim_adaptive))
-        # self.finestWidth = min(newWidth,self.finestWidth)
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid,
+            self.this_dim, self.dim, (self.levels[0], newLevel),
+            coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(mid, self.end,
+            self.this_dim, self.dim, (newLevel, self.levels[1]),
+            coarsening_value, dim_adaptive=self.dim_adaptive))
         return newObjects, lmax_increase, update
 
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased

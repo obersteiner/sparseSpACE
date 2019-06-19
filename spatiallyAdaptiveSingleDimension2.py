@@ -119,6 +119,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 #print(children_indices_dim, indices_levelDim)
             indicesList.append(indicesDim)
             children_indices.append(children_indices_dim)
+
+            # Test if children_indices is valid
+            for c in children_indices_dim:
+                indicesDim.index(c.left_parent)
+                indicesDim.index(c.right_parent)
+
         return indicesList, children_indices
 
     # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
@@ -221,12 +227,22 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         for d in range(self.dim):
             initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 2 + 1))
         levels = [0, 2, 1, 2, 0]
-        self.refinement = MetaRefinementContainer([RefinementContainer
-                                                   ([RefinementObjectSingleDimension(initial_points[d][i],
-                                                                                     initial_points[d][i + 1], d, self.dim, (levels[i], levels[i+1]),
-                                                                                     self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
-                                                     range(2 ** 2)], d, self.errorEstimator) for d in
-                                                   range(self.dim)])
+
+        uq_operation = None
+        if isinstance(self.operation, UncertaintyQuantification):
+            uq_operation = self.operation
+        containers = []
+        for d in range(self.dim):
+            objects = []
+            for i in range(2 ** 2):
+                objects.append(RefinementObjectSingleDimension(
+                    initial_points[d][i], initial_points[d][i + 1], d, self.dim,
+                    (levels[i], levels[i+1]), self.lmax[d] - 2,
+                    dim_adaptive=self.dim_adaptive, uq_operation=uq_operation))
+            containers.append(RefinementContainer(objects, d,
+                self.errorEstimator))
+        self.refinement = MetaRefinementContainer(containers)
+
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
