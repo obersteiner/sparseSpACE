@@ -460,11 +460,16 @@ class RefinementObjectSingleDimension(RefinementObject):
             # probability
             distr = self.uq_operation.getDistributions()[self.this_dim]
             cdf_mid = 0.5 * (distr.cdf(self.start) + distr.cdf(self.end))
-            # ~ mid = distr.ppf(cdf_mid)
-            # Chaospy does not offer the ppf function, so calculate the middle
-            # numerically
-            mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
-                self.start, self.end, rtol=0.01)
+            # The inverse Rosenblatt transformation is the inverse cdf here
+            mid = float(distr.inv(cdf_mid))
+            # ~ mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
+                # ~ self.start, self.end, rtol=0.01)
+            # ~ mid = max(min(mid, self.end), self.start)
+            if not self.start < mid < self.end:
+                print("Could not calculate the middle properly")
+                mid = 0.5 * (self.start + self.end)
+
+        assert self.start < mid < self.end, "{} < {} < {} does not hold.".format(self.start, mid, self.end)
 
         newObjects = []
         newLevel = max(self.levels) + 1

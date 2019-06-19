@@ -8,18 +8,35 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
+plot_things = False
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, reference_expectation, distris, boundary=True):
-	error_operator = ErrorCalculatorSingleDimVolumeGuided()
+def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_bounds=False):
+	if calc_bounds:
+		grid = TrapezoidalGrid(a=a, b=b, dim=d)
+		op = UncertaintyQuantification(f, distris, grid=grid, dim=d)
+		a, b = op.get_boundaries(0.01)
+		print("Boundaries set to", a, b)
 	grid = TrapezoidalGrid(a=a, b=b, dim=d)
 	op = UncertaintyQuantification(f, distris, grid=grid, dim=d)
 
+	if plot_things:
+		print("Showing function", f)
+		f.plot(a, b)
+		print("Showing pdf")
+		pdf = op.get_pdf_function()
+		pdf.plot(a, b, points_per_dim=10)
+		print("Showing weighted function")
+		weighted_f = FunctionUQWeighted(f, pdf)
+		weighted_f.plot(a, b, points_per_dim=10)
+
+	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 		boundary=boundary)
 	print("performSpatiallyAdaptiv…")
 	combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=10**-3,
-		max_evaluations=40, reference_solution=reference_expectation)
+		max_evaluations=40, reference_solution=reference_expectation,
+		min_evaluations=25, do_plot=plot_things)
 
 	print("calculateExpectationAndVariance…")
 	E, Var = op.calculateExpectationAndVariance(combiinstance)
@@ -108,12 +125,17 @@ def test_linear():
 
 def test_normal():
 	d = 2
-	a = [-math.inf, -math.inf]
-	b = [math.inf, math.inf]
+	# ~ a = [-math.inf, -math.inf]
+	# ~ b = [math.inf, math.inf]
+	bigvalue = 10.0
+	# a and b are actually unused
+	a = np.array([-bigvalue, -bigvalue])
+	b = np.array([bigvalue, bigvalue])
+
 	f = FunctionLinearSum([2.0, 0.0])
 	reference_expectation = 1.0
 
-	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False)
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, True)
 
 
 def test_something():

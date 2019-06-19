@@ -357,7 +357,7 @@ class Integration(AreaOperation):
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
-        tol = 10**-14
+        tol = 10**-84
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
@@ -498,7 +498,8 @@ class Integration(AreaOperation):
                     else:
                         assert points_right_parent[i] in self.f.f_dict
                         value -= 0.5 * self.f(points_right_parent[i])
-                volume += factor * abs(value) * (right_parent - child)**exponent
+                # ~ volume += factor * abs(value) * (right_parent - child)**exponent
+                volume += factor * abs(value) * (right_parent - left_parent) * 0.5
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
@@ -726,8 +727,21 @@ class UncertaintyQuantification(Integration):
                     sigma=distris[d][2]))
             else:
                 assert False, "Distribution not implemented: " + distr_type
+        self.distributions_joint = None
 
     def getDistributions(self): return self.distributions
+
+    # This function returns boundaries for distributions which have an infinite
+    # domain, such as normal distribution
+    def get_boundaries(self, tol):
+        assert 1.0 - tol < 1.0, "Tolerance is too small"
+        a = []
+        b = []
+        for d in range(self.dim):
+            dist = self.distributions[d]
+            a.append(float(dist.inv(tol)))
+            b.append(float(dist.inv(1.0 - tol)))
+        return a, b
 
     # Returns a function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
@@ -762,7 +776,7 @@ class UncertaintyQuantification(Integration):
         if self.f_evals is None:
             self._setNodesWeightsEvals(combiinstance)
 
-        self.distributions_joint = cp.J(*self.distributions)
+        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
         self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals))
@@ -795,9 +809,13 @@ class UncertaintyQuantification(Integration):
     # This function uses the quadrature provided by Chaospy.
     # It can be used for testing.
     def calculatePCE_Chaospy(self, polynomial_degrees, num_quad_points):
-        self.distributions_joint = cp.J(*self.distributions)
+        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         nodes, weights = cp.generate_quadrature(num_quad_points,
             self.distributions_joint, rule="G")
         f_evals = [self.f(c) for c in zip(*nodes)]
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
         self.gPCE = cp.fit_quadrature(pce_polys, nodes, weights, np.asarray(f_evals))
+
+    def get_pdf_function(self):
+        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
+        return FunctionCustom(lambda coords: float(self.distributions_joint.pdf(coords)))
