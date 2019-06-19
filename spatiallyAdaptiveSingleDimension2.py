@@ -125,6 +125,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             for c in children_indices_dim:
                 indicesDim.index(c.left_parent)
                 indicesDim.index(c.right_parent)
+            # Test if indices are valid
+            assert all(indicesDim[i] <= indicesDim[i + 1] for i in range(len(indicesDim) - 1))
 
         return indicesList, children_indices
 

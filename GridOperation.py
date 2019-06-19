@@ -721,6 +721,9 @@ class UncertaintyQuantification(Integration):
                 midpoint = distris[d][1]
                 assert isinstance(midpoint, float), "invalid midpoint"
                 self.distributions.append(cp.Triangle(a[d], midpoint, b[d]))
+            elif distr_type == "Normal":
+                self.distributions.append(cp.Normal(mu=distris[d][1],
+                    sigma=distris[d][2]))
             else:
                 assert False, "Distribution not implemented: " + distr_type
 

@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 from sys import path
 path.append('../')
@@ -9,12 +10,13 @@ from GridOperation import *
 
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, reference_expectation, distris):
+def do_test(d, a, b, f, reference_expectation, distris, boundary=True):
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	grid = TrapezoidalGrid(a=a, b=b, dim=d)
 	op = UncertaintyQuantification(f, distris, grid=grid, dim=d)
 
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
+	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+		boundary=boundary)
 	print("performSpatiallyAdaptiv…")
 	combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=10**-3,
 		max_evaluations=40, reference_solution=reference_expectation)
@@ -104,6 +106,16 @@ def test_linear():
 	do_test(d, a, b, f, reference_expectation, "Uniform")
 
 
+def test_normal():
+	d = 2
+	a = [-math.inf, -math.inf]
+	b = [math.inf, math.inf]
+	f = FunctionLinearSum([2.0, 0.0])
+	reference_expectation = 1.0
+
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False)
+
+
 def test_something():
 	d = 2
 	a = np.zeros(d)
@@ -113,7 +125,10 @@ def test_something():
 	f = GenzDiscontinious(border=midpoint, coeffs=coeffs)
 	reference_expectation = None
 
+	# Tests have shown: Expectation: 0.0403, Variance: 0.01559
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
-test_linear()
+# ~ test_linear()
+test_normal()
+# ~ test_something()
