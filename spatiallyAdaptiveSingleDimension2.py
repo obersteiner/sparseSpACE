@@ -41,7 +41,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.equidistant = True
 
     def interpolate_points(self, interpolation_points, component_grid):
-        gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+        gridPointCoordsAsStripes, _ = self.get_point_coord_for_each_dim(component_grid.levelvector)
         return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
 
     def coarsen_grid(self, area, levelvec):
@@ -49,7 +49,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     # returns the points coordinates of a single component grid with refinement
     def get_points_all_dim(self, levelvec, numSubDiagonal):
-        indicesList, children_indices = self.get_point_coord_for_each_dim(levelvec)
+        indicesList, _ = self.get_point_coord_for_each_dim(levelvec)
         if not self.grid.boundary:
             indicesList = [indices[1:-1] for indices in indicesList]
         # this command creates tuples of size this_dim of all combinations of indices (e.g. this_dim = 2 indices = ([0,1],[0,1,2,3]) -> areas = [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3)] )
@@ -61,7 +61,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return self.get_points_all_dim(levelvec, numSubDiagonal)
 
     def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
-        point_coords, _ =self.get_point_coord_for_each_dim(levelvec)
+        point_coords, _ = self.get_point_coord_for_each_dim(levelvec)
         self.grid.set_grid(point_coords)
         points, weights = self.grid.get_points_and_weights()
         return points, weights
@@ -75,16 +75,17 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         children_indices = []
         for d in range(0, self.dim):
             refineContainer = refinement.get_refinement_container_for_dim(d)
+            refine_container_objects = refineContainer.get_objects()
             indicesDim = []
             indices_levelDim = []
 
             children_indices_dim = []
-            indicesDim.append(refineContainer.get_objects()[0].start)
-            indices_levelDim.append(refineContainer.get_objects()[0].levels[0])
-            for i in range(len(refineContainer.get_objects())):
-                refineObj = refineContainer.get_objects()[i]
-                if i + 1 < len(refineContainer.get_objects()):
-                    next_refineObj = refineContainer.get_objects()[i + 1]
+            indicesDim.append(refine_container_objects[0].start)
+            indices_levelDim.append(refine_container_objects[0].levels[0])
+            for i in range(len(refine_container_objects)):
+                refineObj = refine_container_objects[i]
+                if i + 1 < len(refine_container_objects):
+                    next_refineObj = refine_container_objects[i + 1]
                 else:
                     next_refineObj = None
                 if self.version == 2:
@@ -92,14 +93,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     max_level = refineObj_temp.levels[1]
                     k = 0
                     while(i - k > 0):
-                        refineObj_temp = refineContainer.get_objects()[i - k]
+                        refineObj_temp = refine_container_objects[i - k]
                         max_level = max(max_level, refineObj_temp.levels[0])
                         if refineObj_temp.levels[0] <= refineObj.levels[1]:
                             break
                         k += 1
                     k = 1
-                    while(i + k < len(refineContainer.get_objects())):
-                        refineObj_temp = refineContainer.get_objects()[i + k]
+                    while(i + k < len(refine_container_objects)):
+                        refineObj_temp = refine_container_objects[i + k]
                         max_level = max(max_level, refineObj_temp.levels[1])
                         if refineObj_temp.levels[1] <= refineObj.levels[1]:
                             break
@@ -109,9 +110,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     subtraction_value = 0
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
                     indicesDim.append(refineObj.end)
-                    if (next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0])) and not self.use_local_children:
-                        children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
-                    if self.use_local_children:
+                    if not self.use_local_children:
+                        if next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0]):
+                            children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
+                    else:
                         indices_levelDim.append(refineObj.levels[1])
             if self.use_local_children:
                 for i in range(1,len(indices_levelDim)-1):
