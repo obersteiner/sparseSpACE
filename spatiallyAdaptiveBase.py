@@ -175,7 +175,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, minv=1, maxv=2, f=FunctionGriebel(), errorOperator=None, tol=10 ** -2,
                                 refinement_container=[], do_plot=False, recalculate_frequently=False, test_scheme=False,
                                 reevaluate_at_end=False, reference_solution=None, max_time=None, max_evaluations=None,
-                                print_output=True):
+                                print_output=True, min_evaluations=1):
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
@@ -189,9 +189,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
         self.reference_solution = reference_solution
-        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations)
+        return self.continue_adaptive_refinement(tol=tol, max_time=max_time,
+            max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
-    def continue_adaptive_refinement(self, tol=10 ** -3, max_time=None, max_evaluations=None):
+    def continue_adaptive_refinement(self, tol=10 ** -3, max_time=None, max_evaluations=None, min_evaluations=1):
         start_time = time.time()
         # ~ self.operation.set_function(self.f)
         while True:
@@ -204,26 +205,23 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.print_output:
                 print("Current error:", error)
-            # check if tolerance is already fullfilled with current refinement
-            if error > tol:
-                if max_evaluations is not None:
-                    if self.get_total_num_points() > max_evaluations:
-                        break
-                if max_time is not None:
-                    current_time = time.time()
-                    if current_time - start_time > max_time:
-                        break
-                # refine further
-                self.refine()
-                if self.do_plot:
-                    print("Refinement Graph:")
-                    self.draw_refinement()
-                    print("Combi Scheme:")
-                    self.print_resulting_combi_scheme(markersize=5)
-                    print("Resulting Sparse Grid:")
-                    self.print_resulting_sparsegrid(markersize=3)
-            else:  # refinement finished
+            # Check if conditions are met to abort refining
+            num_evaluations = self.get_total_num_points()
+            if error <= tol and num_evaluations >= min_evaluations:
                 break
+            if max_evaluations is not None and num_evaluations > max_evaluations:
+                break
+            if max_time is not None and time.time() - start_time > max_time:
+                break
+            # refine further
+            self.refine()
+            if self.do_plot:
+                print("Refinement Graph:")
+                self.draw_refinement()
+                print("Combi Scheme:")
+                self.print_resulting_combi_scheme(markersize=5)
+                print("Resulting Sparse Grid:")
+                self.print_resulting_sparsegrid(markersize=3)
         # finished adaptive algorithm
         if self.print_output:
             print("Number of refinements", self.refinements)
