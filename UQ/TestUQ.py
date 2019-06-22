@@ -24,7 +24,7 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		print("Showing function", f)
 		f.plot(a, b)
 		print("Showing pdf")
-		pdf = op.get_pdf_function()
+		pdf = op.get_pdf_Function()
 		pdf.plot(a, b, points_per_dim=10)
 		print("Showing weighted function")
 		weighted_f = FunctionUQWeighted(f, pdf)
@@ -38,22 +38,22 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		max_evaluations=40, reference_solution=reference_expectation,
 		min_evaluations=25, do_plot=plot_things)
 
-	print("calculateExpectationAndVariance…")
-	E, Var = op.calculateExpectationAndVariance(combiinstance)
+	print("calculate_expectation_and_variance…")
+	E, Var = op.calculate_expectation_and_variance(combiinstance)
 
 	poly_deg_max = 4
 
-	print("calculatePCE…")
-	op.calculatePCE(poly_deg_max, combiinstance)
-	E_PCE, Var_PCE = op.getExpectationAndVariancePCE()
-	first_sens = op.getFirstOrderSobolIndices()
-	total_sens = op.getTotalOrderSobolIndices()
+	print("calculate_PCE…")
+	op.calculate_PCE(poly_deg_max, combiinstance)
+	E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
+	first_sens = op.get_first_order_sobol_indices()
+	total_sens = op.get_total_order_sobol_indices()
 
-	print("calculatePCE_Chaospy…")
-	op.calculatePCE_Chaospy(poly_deg_max, 12)
-	E_PCE2, Var_PCE2 = op.getExpectationAndVariancePCE()
-	first_sens2 = op.getFirstOrderSobolIndices()
-	total_sens2 = op.getTotalOrderSobolIndices()
+	print("calculate_PCE_chaospy…")
+	op.calculate_PCE_chaospy(poly_deg_max, 12)
+	E_PCE2, Var_PCE2 = op.get_expectation_and_variance_PCE()
+	first_sens2 = op.get_first_order_sobol_indices()
+	total_sens2 = op.get_total_order_sobol_indices()
 
 	print("\n"
 		"Expectation: {:.4g}, Variance: {:.4g}\n"
@@ -71,34 +71,6 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		E_PCE2, Var_PCE2,
 		first_sens2,
 		total_sens2))
-
-
-'''
-def test_triangle():
-	# ~ a = np.array([])
-	dim = 3
-	a = [-2.0, 0.5, 0.0]
-	b = [2.0, 3.0, 2.0]
-	f = FunctionLinear([0.5, 3.0, -5.0])
-
-# ~ reference_solution = f.getAnalyticSolutionIntegral(a, b)
-	error_operator = ErrorCalculatorSingleDimVolumeGuided()
-	grid = TrapezoidalGrid(a=a, b=b, dim=dim)
-	op = UncertaintyQuantification(f, ("Triangle", 1.0), grid=grid, dim=dim)
-
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
-
-	E, Var = op.calculateExpectationAndVariance(combiinstance, error_operator, 40)
-# ~ E2, Var2 = op.calculateExpectationAndVariance2(combiinstance, 2, 2, f, error_operator, 10**-2)
-	op.calculatePCE(4, combiinstance, error_operator, 40)
-	E_PCE = op.getExpectationPCE()
-	Std_PCE = op.getStdPCE()
-	# ~ first_sens = op.getFirstOrderSobolIndices()
-	print("expectation and variance\t", E, Var)
-	# ~ print("expectation and variance 2\t", E2, Var2)
-	print("PCE expectation and variance\t", E_PCE, Std_PCE ** 2)
-	# ~ print("first order sensitivity indices\t", first_sens)
-'''
 
 
 # Very simple, can be used to test what happens when the variance is zero
@@ -151,6 +123,6 @@ def test_something():
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
-# ~ test_linear()
-test_normal()
+test_linear()
+# ~ test_normal()
 # ~ test_something()

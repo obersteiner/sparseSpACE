@@ -729,7 +729,7 @@ class UncertaintyQuantification(Integration):
                 assert False, "Distribution not implemented: " + distr_type
         self.distributions_joint = None
 
-    def getDistributions(self): return self.distributions
+    def get_distributions(self): return self.distributions
 
     # This function returns boundaries for distributions which have an infinite
     # domain, such as normal distribution
@@ -745,70 +745,70 @@ class UncertaintyQuantification(Integration):
 
     # Returns a function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
-    def getMomentFunction(self, k):
+    def get_moment_Function(self, k):
         if k == 1:
             return self.f
         return FunctionPower(self.f, k)
 
-    def _setNodesWeightsEvals(self, combiinstance):
+    def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         self.f_evals = [self.f(coord) for coord in self.nodes]
 
-    def calculateMoment(self, k, combiinstance):
+    def calculate_moment(self, k, combiinstance):
         if self.f_evals is None:
-            self._setNodesWeightsEvals(combiinstance)
+            self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
         return sum(vals)[0]
 
-    def calculateExpectation(self, combiinstance):
-        return self.calculateMoment(1, combiinstance)
+    def calculate_expectation(self, combiinstance):
+        return self.calculate_moment(1, combiinstance)
 
-    def calculateExpectationAndVariance(self, combiinstance):
-        expectation = self.calculateExpectation(combiinstance)
-        expectation_of_squared = self.calculateMoment(2, combiinstance)
+    def calculate_expectation_and_variance(self, combiinstance):
+        expectation = self.calculate_expectation(combiinstance)
+        expectation_of_squared = self.calculate_moment(2, combiinstance)
         variance = expectation_of_squared - expectation * expectation
         if variance < 0.0:
             # This can happen when the variance is too small
             variance = -variance
         return expectation, variance
 
-    def calculatePCE(self, polynomial_degrees, combiinstance):
+    def calculate_PCE(self, polynomial_degrees, combiinstance):
         if self.f_evals is None:
-            self._setNodesWeightsEvals(combiinstance)
+            self._set_nodes_weights_evals(combiinstance)
 
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
         self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals))
 
-    def getExpectationPCE(self):
+    def get_expectation_PCE(self):
         # gPCE does not work right yet.
         print("gPCE is ", cp.around(self.gPCE, 3))
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.E(self.gPCE, self.distributions_joint)[0]
 
-    def getVariancePCE(self):
+    def get_variance_PCE(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Var(self.gPCE, self.distributions_joint)[0]
 
-    def getExpectationAndVariancePCE(self):
-        return self.getExpectationPCE(), self.getVariancePCE()
+    def get_expectation_and_variance_PCE(self):
+        return self.get_expectation_PCE(), self.get_variance_PCE()
 
-    def getFirstOrderSobolIndices(self):
+    def get_first_order_sobol_indices(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_m(self.gPCE, self.distributions_joint)
 
-    def getTotalOrderSobolIndices(self):
+    def get_total_order_sobol_indices(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_t(self.gPCE, self.distributions_joint)
 
     # This function uses the quadrature provided by Chaospy.
     # It can be used for testing.
-    def calculatePCE_Chaospy(self, polynomial_degrees, num_quad_points):
+    def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         nodes, weights = cp.generate_quadrature(num_quad_points,
             self.distributions_joint, rule="G")
@@ -816,6 +816,6 @@ class UncertaintyQuantification(Integration):
         pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
         self.gPCE = cp.fit_quadrature(pce_polys, nodes, weights, np.asarray(f_evals))
 
-    def get_pdf_function(self):
+    def get_pdf_Function(self):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         return FunctionCustom(lambda coords: float(self.distributions_joint.pdf(coords)))

@@ -549,7 +549,7 @@ class GlobalTrapezoidalGrid(Grid):
 class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def __init__(self, a, b, uq_operation, boundary=True):
         super().__init__(a, b, boundary)
-        self.distributions = uq_operation.getDistributions()
+        self.distributions = uq_operation.get_distributions()
 
     def compute_1D_quad_weights(self, grid_1D, a, b, d):
         distr = self.distributions[d]

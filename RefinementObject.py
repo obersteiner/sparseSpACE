@@ -458,7 +458,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         else:
             # Split the refinement object so that the new ones have the same
             # probability
-            distr = self.uq_operation.getDistributions()[self.this_dim]
+            distr = self.uq_operation.get_distributions()[self.this_dim]
             cdf_mid = 0.5 * (distr.cdf(self.start) + distr.cdf(self.end))
             # The inverse Rosenblatt transformation is the inverse cdf here
             mid = float(distr.inv(cdf_mid))
