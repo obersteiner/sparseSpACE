@@ -63,13 +63,13 @@ class Function(object):
         return
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start, end, filename=None, plotdimension=0):
+    def plot(self, start, end, filename=None, plotdimension=0, points_per_dim=10 ** 2):
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
             return
-        xArray = np.linspace(start[0], end[0], 10 ** 2)
-        yArray = np.linspace(start[1], end[1], 10 ** 2)
+        xArray = np.linspace(start[0], end[0], points_per_dim)
+        yArray = np.linspace(start[1], end[1], points_per_dim)
         X = [x for x in xArray]
         Y = [y for y in yArray]
         X, Y = np.meshgrid(X, Y)
@@ -339,6 +339,19 @@ class FunctionPower(Function):
 
     def getAnalyticSolutionIntegral(self, start, end):
         assert "Not implemented"
+
+
+class FunctionCustom(Function):
+    def __init__(self, func):
+        super().__init__()
+        self.func = func
+
+    def eval(self, coordinates):
+        result = self.func(coordinates)
+        assert isinstance(result, float)
+        return result
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
 
 
 # This Function represents the corner Peak f the genz test functions
