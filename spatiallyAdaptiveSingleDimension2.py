@@ -26,12 +26,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.dict_integral = {}
         self.dict_points = {}
         self.no_previous_integrals = True
-        self.use_local_children = self.version == 2
+        self.use_local_children = True #self.version == 2 or self.version == 3
         if margin is None:
-            self.margin = 0.99#1-10**-12 if self.use_local_children else 0.9
+            self.margin = 0.9#1-10**-12 if self.use_local_children else 0.9
         else:
             self.margin = margin
         self.operation = operation
+        self.equidistant = True
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -109,7 +110,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             if self.use_local_children:
                 for i in range(1,len(indices_levelDim)-1):
                     if self.is_child(indices_levelDim[i-1], indices_levelDim[i], indices_levelDim[i+1]):
-                        children_indices_dim.append((self.get_node_info(indicesDim[i], indices_levelDim[i], indicesDim[i-1], indices_levelDim[i-1], indicesDim[i+1], indices_levelDim[i+1], d)))
+                        children_indices_dim.append((self.get_node_info(i, indicesDim, indices_levelDim, d)))
                 #print(children_indices_dim, indices_levelDim)
             indicesList.append(indicesDim)
             children_indices.append(children_indices_dim)
@@ -126,35 +127,26 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     # This method calculates the left and right parent of a child. It might happen that a child has already a child
     # in one direction but it may not have one in both as it would not be considered to be a child anymore.
-    def get_node_info(self, child, level_child, left_neighbour, level_left_neighbour, right_neighbour, level_right_neighbour, d):
-        width = (self.b[d] - self.a[d]) / 2**level_child
-        return NodeInfo(child, child - width, child + width, True, True, None,None)
-
-        #child = refineObj.end
-        right_refinement_object = None
-        left_refinement_object = None
-        #if refineObj.levels[0] < refineObj.levels[1]:
-        if level_left_neighbour < level_child and level_left_neighbour <= level_right_neighbour:
-            left_parent = left_neighbour #refineObj.start
-            left_child = False
-            #left_refinement_object = refineObj
-            if level_right_neighbour < level_child and level_left_neighbour == level_right_neighbour:
-                right_parent = right_neighbour
-                right_child = False
-                #right_refinement_object = next_refineObj
-            else:
-                right_parent = child + (child - left_parent)
-                right_child = True
+    def get_node_info(self, position, coords_dim, level_dim, d):
+        child = coords_dim[position]
+        level_child = level_dim[position]
+        if self.equidistant:
+            width = (self.b[d] - self.a[d]) / 2**level_child
+            return NodeInfo(child, child - width, child + width, True, True, None,None)
         else:
-            left_child = True
-            assert level_right_neighbour < level_child
-            right_child = False
-            #right_refinement_object = next_refineObj
-            right_parent = right_neighbour
-            left_parent = child - (right_parent - child)
-        #print(right_parent, child, left_parent, right_parent-child, child-left_parent)
-        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-        return NodeInfo(child, left_parent, right_parent, left_child, right_child, left_refinement_object, right_refinement_object)
+            left_parent = None
+            for i in reversed(range(position)):
+                if level_dim[i] < level_child:
+                    left_parent = coords_dim[i]
+                    break
+            assert left_parent is not None
+            right_parent = None
+            for i in (range(position+1, len(coords_dim))):
+                if level_dim[i] < level_child:
+                    right_parent = coords_dim[i]
+                    break
+            assert right_parent is not None
+            return NodeInfo(child, left_parent, right_parent, True, True, None,None)
 
     # this method draws the 1D refinement of each dimension individually
     def draw_refinement(self, filename=None, markersize=10):  # update with meta container
@@ -206,11 +198,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return np.prod(self.grid.numPoints)
         else:
             pass
-
-    def compute_error_estimates(self, gridPointCoordsAsStripes, children_indices, component_grid):
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-        self.grid.set_grid(gridPointCoordsAsStripes)
-        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
     # This method computes additional values after the compution of the integrals for the current
     # refinement step is finished. This method is executed before the refinement process.
