@@ -74,8 +74,38 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		total_sens2))
 
 
+def test_normal_integration():
+	print("Calculating the expectation with an Integration Operation")
+	d = 2
+	bigvalue = 7.0
+	# a and b are actually unused
+	a = np.array([-bigvalue, -bigvalue])
+	b = np.array([bigvalue, bigvalue])
+
+	distr = []
+	for _ in range(d):
+		distr.append(cp.Normal(0,2))
+	distr_joint = cp.J(*distr)
+	f = FunctionLinearSum([2.0, 0.0])
+	fw = FunctionCustom(lambda coords: f(coords)[0]
+		* float(distr_joint.pdf(coords)))
+
+	grid = TrapezoidalGrid(a=a, b=b, dim=d)
+	op = Integration(fw, grid=grid, dim=d)
+
+	error_operator = ErrorCalculatorSingleDimVolumeGuided()
+	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
+	print("performSpatiallyAdaptiv…")
+	v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
+		max_evaluations=40,
+		min_evaluations=25, do_plot=plot_things)
+	integral = v[3][0]
+	print("expectation", integral)
+
+
 # Very simple, can be used to test what happens when the variance is zero
 def test_constant():
+	print("Testing a simple constant function with uniform distribution")
 	d = 2
 	a = np.zeros(d)
 	b = np.ones(d)
@@ -87,6 +117,7 @@ def test_constant():
 
 
 def test_linear():
+	print("Testing a simple linear function with uniform distribution")
 	d = 2
 	a = np.zeros(d)
 	b = np.ones(d)
@@ -97,6 +128,7 @@ def test_linear():
 
 
 def test_normal():
+	print("Testing normal distribution on linear function with calculated boundaries")
 	d = 2
 	bigvalue = 1.0
 	# a and b are actually unused
@@ -104,35 +136,38 @@ def test_normal():
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 1.0
+	reference_expectation = 0.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, True)
 
 
 def test_normal_large_border():
+	print("Testing normal distribution on linear function with large boundaries")
 	d = 2
 	bigvalue = 10.0 ** 10
 	a = np.array([-bigvalue, -bigvalue])
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 1.0
+	reference_expectation = 0.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
 
 
 def test_normal_inf_border():
+	print("Testing normal distribution on linear function with infinite boundaries")
 	d = 2
 	a = np.array([-math.inf, -math.inf])
 	b = np.array([math.inf, math.inf])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 1.0
+	reference_expectation = 0.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
 
 
 def test_something():
+	print("Testing triangle distribution on GenzDiscontinious")
 	d = 2
 	a = np.zeros(d)
 	b = np.ones(d)
@@ -145,8 +180,10 @@ def test_something():
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
+test_normal_integration()
+
 # ~ test_normal_inf_border()
 # ~ test_normal_large_border()
-# ~ test_normal()
-test_linear()
+test_normal()
+# ~ test_linear()
 # ~ test_something()
