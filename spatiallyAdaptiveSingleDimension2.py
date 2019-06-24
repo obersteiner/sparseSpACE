@@ -20,6 +20,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             if isinstance(operation, UncertaintyQuantification):
                 self.grid = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
                 self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
+                assert not modified_basis
             else:
                 self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
                 self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)

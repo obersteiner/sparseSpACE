@@ -569,6 +569,15 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             # Add them to the composite quadrature weights
             weights[i] += w1
             weights[i+1] += w2
+
+        # Sometimes very small weights are negative instead of 0 due to
+        # numerical errors
+        for i in range(len(grid_1D)):
+            if weights[i] >= 0.0:
+                continue
+            assert -weights[i] < 10 ** -5, "calculated negative weight"
+            weights[i] = 0.0
+
         return weights
 
 
