@@ -9,6 +9,7 @@ from ErrorCalculator import *
 from GridOperation import *
 
 plot_things = False
+# ~ plot_things = True
 
 # A helper function to reduce duplicate code
 def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_bounds=False):
@@ -97,9 +98,7 @@ def test_linear():
 
 def test_normal():
 	d = 2
-	# ~ a = [-math.inf, -math.inf]
-	# ~ b = [math.inf, math.inf]
-	bigvalue = 10.0
+	bigvalue = 1.0
 	# a and b are actually unused
 	a = np.array([-bigvalue, -bigvalue])
 	b = np.array([bigvalue, bigvalue])
@@ -108,6 +107,29 @@ def test_normal():
 	reference_expectation = 1.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, True)
+
+
+def test_normal_large_border():
+	d = 2
+	bigvalue = 10.0 ** 10
+	a = np.array([-bigvalue, -bigvalue])
+	b = np.array([bigvalue, bigvalue])
+
+	f = FunctionLinearSum([2.0, 0.0])
+	reference_expectation = 1.0
+
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
+
+
+def test_normal_inf_border():
+	d = 2
+	a = np.array([-math.inf, -math.inf])
+	b = np.array([math.inf, math.inf])
+
+	f = FunctionLinearSum([2.0, 0.0])
+	reference_expectation = 1.0
+
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
 
 
 def test_something():
@@ -123,6 +145,8 @@ def test_something():
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
-test_linear()
+# ~ test_normal_inf_border()
+# ~ test_normal_large_border()
 # ~ test_normal()
+test_linear()
 # ~ test_something()
