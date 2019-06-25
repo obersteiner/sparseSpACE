@@ -429,9 +429,12 @@ class Integration(AreaOperation):
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, left_parent, right_parent, child, grid_points, d):
+        #print(grid_points)
         volume = 0.0
         assert right_parent > child > left_parent
-        npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
+        #npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
         for p in grid_points[d]:
             if isclose(p, left_parent):
                 left_parent = p
