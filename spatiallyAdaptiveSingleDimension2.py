@@ -32,7 +32,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             self.margin = margin
         self.operation = operation
-        self.equidistant = True
+        self.equidistant = False #True
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -81,7 +81,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     next_refineObj = refineContainer.get_objects()[i + 1]
                 else:
                     next_refineObj = None
-                if self.version == 2:
+                if self.version == 2 or self.version == 3:
                     refineObj_temp = refineObj
                     max_level = refineObj_temp.levels[1]
                     k = 0
@@ -98,7 +98,21 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         if refineObj_temp.levels[1] <= refineObj.levels[1]:
                             break
                         k += 1
-                    subtraction_value = self.lmax[d] - max_level
+                    subtraction_value = (self.lmax[d] - max_level)
+                    if False:#self.version == 2 and d != 0:
+                        #if levelvec[d] > self.lmax[d] - subtraction_value:
+                        #    subtraction_value = self.lmax[d]
+                        subtraction_value = 0
+                    if self.version == 4:
+                        subtraction_value = 0
+                    if self.version == 3:
+                        subtraction_value /= self.dim
+                        if subtraction_value - int(subtraction_value) > d/self.dim:
+                            subtraction_value = int(math.ceil(subtraction_value))
+                        else:
+                            subtraction_value = int(subtraction_value)
+                    #subtraction_value = max(refineObj.coarsening_level, next_refineObj.coarsening_level) if next_refineObj is not None else refineObj.coarsening_level
+
                 else:
                     subtraction_value = 0
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
@@ -218,7 +232,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         levels = [0, 2, 1, 2, 0]
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
-                                                                                     initial_points[d][i + 1], d, self.dim, (levels[i], levels[i+1]),
+                                                                                     initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])),
                                                                                      self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
                                                      range(2 ** 2)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
@@ -244,31 +258,131 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # print("-------------------\nREFINING", position)
         lmaxChange = self.refinement.refine(position)
         # the following is currently solved by initializing all data structures anew before each evalute_integral()
+        refinement_dim = position[0]
+        #max_level = self.rebalance(refinement_dim)
+        #if lmaxChange is not None and max_level <= self.lmax[refinement_dim]:
+        #    lmaxChange = None
         if lmaxChange is not None:
             for d in range(self.dim):
-                self.lmax[d] += lmaxChange[d]
-            if self.dim_adaptive:
-                if self.print_output:
-                    print("New lmax:", self.lmax)
-                while(True):
-                    refinements = 0
-                    active_indices = set(self.combischeme.get_active_indices())
-                    for index in active_indices:
-                        if max(self.lmax) + self.dim - 1  > sum(index) and all([self.lmax[d] > index[d] for d in range(self.dim)]):
-                            self.combischeme.update_adaptive_combi(index)
-                            refinements +=1
-                    if refinements == 0:
-                        break
+                if lmaxChange[d] != 0:
+                    self.raise_lmax(d, lmaxChange[d])
             #print("New scheme:")
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
             return False
         return False
+
+    def raise_lmax(self, d, value):
+        self.lmax[d] += value
+        if self.dim_adaptive:
+            if self.print_output:
+                print("New lmax:", self.lmax)
+            while (True):
+                refinements = 0
+                active_indices = set(self.combischeme.get_active_indices())
+                for index in active_indices:
+                    if max(self.lmax) + self.dim - 1 > sum(index) and all(
+                            [self.lmax[d] > index[d] for d in range(self.dim)]):
+                        self.combischeme.update_adaptive_combi(index)
+                        refinements += 1
+                if refinements == 0:
+                    break
+
+    def rebalance(self, d):
+        refinement_container = self.refinement.get_refinement_container_for_dim(d)
+        self.rebalance_interval(0, refinement_container.size(), 1, refinement_container)
+
+        update_dimension = self.update_coarsening_values(refinement_container, d)
+        if update_dimension:
+            self.raise_lmax(d, 1)
+        #refinement_container.printContainer()
+        return update_dimension
+
+    def rebalance_interval(self, start, end, level, refinement_container):
+        if end - start <= 2:
+            return
+        refineContainer = refinement_container
+        for i, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
+            if refinement_object.levels[1] == level:
+                break
+        new_leaf_reached = False
+        #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
+        if (i + 2) / (end-start + 1) < 1/ 4:
+            position_new_leaf = None
+
+            print("Rebalancing!", i)
+            for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
+                if j < end - start - 1:
+                    next_refinement_object = refineContainer.get_object(j+1+start)
+                    if j <= i:
+                        refinement_object.levels[1] += 1
+                        next_refinement_object.levels[0] += 1
+                    elif j == i:
+                        refinement_object.levels[1] += 1
+                        next_refinement_object.levels[0] += 1
+
+                    else:
+                        if refinement_object.levels[1] == level + 1:
+                            new_leaf_reached = True
+                            position_new_leaf = start + j
+                        if j > i and new_leaf_reached:
+                            refinement_object.levels[1] -= 1
+                            next_refinement_object.levels[0] -= 1
+            assert position_new_leaf is not None
+            self.rebalance_interval(start,position_new_leaf + 1, level + 1, refinement_container)
+            self.rebalance_interval(position_new_leaf + 1, end, level + 1, refinement_container)
+            return
+            #refineContainer.printContainer()
+
+        new_leaf_reached = True
+        if (i + 2) / (end - start + 1) >  3/ 4:
+            position_new_leaf = None
+
+            print("Rebalancing!", i)
+            for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
+                if j < end - start - 1:
+                    next_refinement_object = refineContainer.get_object(j+1+start)
+
+                    if j >= i:
+                        refinement_object.levels[1] += 1
+                        next_refinement_object.levels[0] += 1
+
+                    elif j == i:
+                        refinement_object.levels[1] += 1
+                        next_refinement_object.levels[0] += 1
+
+                    else:
+                        if j < i and new_leaf_reached:
+                            refinement_object.levels[1] -= 1
+                            next_refinement_object.levels[0] -= 1
+                        if refinement_object.levels[1] == level:
+                            new_leaf_reached = False
+                            position_new_leaf = start + j
+            assert position_new_leaf is not None
+            self.rebalance_interval(start, position_new_leaf + 1, level + 1, refinement_container)
+            self.rebalance_interval(position_new_leaf + 1, end, level + 1, refinement_container)
+            return
+
+        self.rebalance_interval(start, start + i + 1, level + 1, refinement_container)
+        self.rebalance_interval(start + i + 1, end, level + 1, refinement_container)
+
+            #refineContainer.printContainer()
+
+    def update_coarsening_values(self, refinement_container_d, d):
+        update_dimension = False
+        for refinement_object in refinement_container_d.get_objects():
+            refinement_object.coarsening_level = self.lmax[d] - max(refinement_object.levels)
+            if refinement_object.coarsening_level == -1:
+                update_dimension = True
+            assert refinement_object.coarsening_level >= -1
+        return update_dimension
 
     def refinement_postprocessing(self):
         self.refinement.apply_remove(sort=True)
         self.refinement.refinement_postprocessing()
         self.refinement.reinit_new_objects()
         self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
+        for d in range(self.dim):
+            self.rebalance(d)
 
 
 class NodeInfo(object):
