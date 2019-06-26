@@ -146,21 +146,34 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         level_child = level_dim[position]
         if self.equidistant:
             width = (self.b[d] - self.a[d]) / 2**level_child
-            return NodeInfo(child, child - width, child + width, True, True, None,None)
+            right_parent_of_right_parent = child + 2* width if level_child > 1 else None
+            left_parent_of_left_parent = child - 2 * width if level_child > 1 else None
+            return NodeInfo(child, child - width, child + width, left_parent_of_left_parent , right_parent_of_right_parent ,True, True, None,None)
         else:
             left_parent = None
+            level_parent = None
+            left_of_left_parent = None
             for i in reversed(range(position)):
-                if level_dim[i] < level_child:
+                if level_dim[i] < level_child and left_parent is None:
                     left_parent = coords_dim[i]
+                    level_parent = level_dim[i]
+                if left_parent is not None and level_dim[i] < level_parent:
+                    left_of_left_parent = coords_dim[i]
                     break
+
             assert left_parent is not None
             right_parent = None
+            level_parent = None
+            right_of_right_parent = None
             for i in (range(position+1, len(coords_dim))):
-                if level_dim[i] < level_child:
+                if level_dim[i] < level_child and right_parent is None:
                     right_parent = coords_dim[i]
+                    level_parent = level_dim[i]
+                if right_parent is not None and level_dim[i] < level_parent:
+                    right_of_right_parent = coords_dim[i]
                     break
             assert right_parent is not None
-            return NodeInfo(child, left_parent, right_parent, True, True, None,None)
+            return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None)
 
     # this method draws the 1D refinement of each dimension individually
     def draw_refinement(self, filename=None, markersize=10):  # update with meta container
@@ -301,22 +314,38 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if end - start <= 2:
             return
         refineContainer = refinement_container
+        position_level = None
+        position_level_1_left = None
+        position_level_1_right = None
         for i, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
             if refinement_object.levels[1] == level:
-                break
+                position_level = i
+            if refinement_object.levels[1] == level + 1:
+                if position_level_1_left is None:
+                    position_level_1_left = i
+                else:
+                    assert position_level_1_right is None
+                    position_level_1_right = i
+                    break
+        #refineContainer.printContainer()
+        #print(position_level, position_level_1_left, position_level_1_right, start, end, level )
+        safetyfactor = 0#0.1
+        assert position_level is not None
+        assert position_level_1_right is not None
+        assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
-        if (i + 2) / (end-start + 1) < 1/ 4:
+        if position_level_1_right is not None and abs((position_level + 2) / (end-start + 1) - 0.5) > abs((position_level_1_right + 2) / (end-start + 1) - 0.5) + safetyfactor:
             position_new_leaf = None
 
-            print("Rebalancing!", i)
+            print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
-                    if j <= i:
+                    if j <= position_level:
                         refinement_object.levels[1] += 1
                         next_refinement_object.levels[0] += 1
-                    elif j == i:
+                    elif j == position_level:
                         refinement_object.levels[1] += 1
                         next_refinement_object.levels[0] += 1
 
@@ -324,7 +353,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         if refinement_object.levels[1] == level + 1:
                             new_leaf_reached = True
                             position_new_leaf = start + j
-                        if j > i and new_leaf_reached:
+                        if j > position_level and new_leaf_reached:
                             refinement_object.levels[1] -= 1
                             next_refinement_object.levels[0] -= 1
             assert position_new_leaf is not None
@@ -334,24 +363,24 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
         new_leaf_reached = True
-        if (i + 2) / (end - start + 1) >  3/ 4:
+        if position_level_1_left is not None and abs((position_level + 2) / (end-start + 1) - 0.5) > abs((position_level_1_left + 2) / (end-start + 1) - 0.5) + safetyfactor:
             position_new_leaf = None
 
-            print("Rebalancing!", i)
+            print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
 
-                    if j >= i:
+                    if j >= position_level:
                         refinement_object.levels[1] += 1
                         next_refinement_object.levels[0] += 1
 
-                    elif j == i:
+                    elif j == position_level:
                         refinement_object.levels[1] += 1
                         next_refinement_object.levels[0] += 1
 
                     else:
-                        if j < i and new_leaf_reached:
+                        if j < position_level and new_leaf_reached:
                             refinement_object.levels[1] -= 1
                             next_refinement_object.levels[0] -= 1
                         if refinement_object.levels[1] == level:
@@ -362,8 +391,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             self.rebalance_interval(position_new_leaf + 1, end, level + 1, refinement_container)
             return
 
-        self.rebalance_interval(start, start + i + 1, level + 1, refinement_container)
-        self.rebalance_interval(start + i + 1, end, level + 1, refinement_container)
+        self.rebalance_interval(start, start + position_level + 1, level + 1, refinement_container)
+        self.rebalance_interval(start + position_level + 1, end, level + 1, refinement_container)
 
             #refineContainer.printContainer()
 
@@ -386,10 +415,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
 
 class NodeInfo(object):
-    def __init__(self, child, left_parent, right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object):
+    def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object):
         self.child = child
         self.left_parent = left_parent
         self.right_parent = right_parent
+        self.left_parent_of_left_parent = left_parent_of_left_parent
+        self.right_parent_of_right_parent = right_parent_of_right_parent
         self.has_left_child = has_left_child
         self.has_right_child = has_right_child
         self.left_refinement_object = left_refinement_object
