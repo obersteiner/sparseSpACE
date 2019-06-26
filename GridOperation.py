@@ -52,6 +52,7 @@ from scipy.interpolate import interpn
 class Integration(AreaOperation):
     def __init__(self, f, grid, dim,  reference_solution=None):
         self.f = f
+        self.f_actual = None
         self.grid = grid
         self.reference_solution = reference_solution
         self.dim = dim
@@ -307,7 +308,9 @@ class Integration(AreaOperation):
         print("combiintegral:", combi_integral)
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
-        if reuse_old_values:
+        # reuse_old_values does not work for multidimensional function output
+        # ~ if reuse_old_values:
+        if False:
             previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
             integral = np.array(previous_integral)
             previous_points_coarsened = list(previous_points)
@@ -323,8 +326,12 @@ class Integration(AreaOperation):
                                                         previous_points)
                 integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
             if modification_points is not None:
-                integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                # ~ integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                                                        # ~ gridPointCoordsAsStripes)
+                v = self.subtract_contributions(modification_points, previous_points_coarsened,
                                                         gridPointCoordsAsStripes)
+                assert len(v) == len(integral)
+                integral -= v
                 integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
@@ -340,10 +347,21 @@ class Integration(AreaOperation):
         self.grid.set_grid(gridPointCoordsAsStripes)
         self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
+    # This function exchanges the operation's function so that the adaptive
+    # refinement can use a different function than the operation's function
+    def set_function(self, f=None):
+        if f is None:
+            self.f = self.f_actual
+            self.f_actual = None
+        else:
+            assert self.f_actual is None
+            self.f_actual = self.f
+            self.f = f
+
     def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
-        self.f = f
+        self.set_function(f)
         self.refinement_container = refinement_container
         self.version = version
         self.lmin = lmin
@@ -693,9 +711,9 @@ class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
-    def __init__(self, f, distributions, grid, dim,
+    def __init__(self, f, distributions, a, b, dim,
             reference_solution=None):
-        super().__init__(f, grid, dim, reference_solution)
+        super().__init__(f, None, dim, reference_solution)
 
         # If distributions is not a list, it specifies the same distribution
         # for every dimension
@@ -708,16 +726,15 @@ class UncertaintyQuantification(Integration):
             if isinstance(distributions[d], str):
                 distributions[d] = (distributions[d],)
 
-        self._prepare_distributions(distributions)
+        self._prepare_distributions(distributions, a, b)
         self.f_evals = None
         self.gPCE = None
+        self.pce_polys = None
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
-    def _prepare_distributions(self, distris):
+    def _prepare_distributions(self, distris, a, b):
         self.distributions = []
-        a = self.grid.a
-        b = self.grid.b
         for d in range(self.dim):
             distr_type = distris[d][0]
             if distr_type == "Uniform":
@@ -754,8 +771,28 @@ class UncertaintyQuantification(Integration):
             return self.f
         return FunctionPower(self.f, k)
 
+    def _set_pce_polys(self, polynomial_degrees):
+        if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
+            return
+        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
+        self.pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
+        self.polynomial_degrees = polynomial_degrees
+
+    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the PCE
+    def get_PCE_Function(self, polynomial_degrees):
+        self._set_pce_polys(polynomial_degrees)
+        print(self.f)
+        # self.f can change, so putting it to a local variable is important
+        # ~ f = self.f
+        # ~ polys = self.pce_polys
+        # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
+        # ~ return FunctionCustom(funcs)
+        return FunctionPolysPCE(self.f, self.pce_polys)
+
     def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
+        assert len(self.nodes) == len(self.weights)
         self.f_evals = [self.f(coord) for coord in self.nodes]
 
     def calculate_moment(self, k, combiinstance):
@@ -780,9 +817,8 @@ class UncertaintyQuantification(Integration):
         if self.f_evals is None:
             self._set_nodes_weights_evals(combiinstance)
 
-        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
-        pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
-        self.gPCE = cp.fit_quadrature(pce_polys, list(zip(*self.nodes)),
+        self._set_pce_polys(polynomial_degrees)
+        self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals))
 
     def get_expectation_PCE(self):
@@ -813,12 +849,11 @@ class UncertaintyQuantification(Integration):
     # This function uses the quadrature provided by Chaospy.
     # It can be used for testing.
     def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
-        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
+        self._set_pce_polys(polynomial_degrees)
         nodes, weights = cp.generate_quadrature(num_quad_points,
             self.distributions_joint, rule="G")
         f_evals = [self.f(c) for c in zip(*nodes)]
-        pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
-        self.gPCE = cp.fit_quadrature(pce_polys, nodes, weights, np.asarray(f_evals))
+        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals))
 
     def get_pdf_Function(self):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)

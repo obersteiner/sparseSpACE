@@ -337,8 +337,35 @@ class FunctionPower(Function):
     def eval(self, coordinates):
         return self.function.eval(coordinates) ** self.exponent
 
-    def getAnalyticSolutionIntegral(self, start, end):
-        assert "Not implemented"
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
+
+
+# This can be used when calculating the PCE
+class FunctionPolysPCE(Function):
+    def __init__(self, function, polys):
+        super().__init__()
+        self.function = function
+        self.polys = polys
+
+    def eval(self, coordinates):
+        '''
+        # ~ print("polys", self.polys)
+        # ~ print("coeffs", self.polys.coefficients)
+        print("coords", coordinates)
+        values = [0.0 for i in range(len(self.polys))]
+        function_val = self.function(coordinates)
+        # ~ polyvals = self.polys(coordinates)
+        for i in range(len(self.polys)):
+            poly = self.polys[i]
+            print("poly", poly)
+            print("poly eval", poly(*coordinates))
+            # ~ values[i] = function_val * float(polyvals[i])
+            # ~ values[i] = function_val * float(polyvals[i])
+        '''
+        values = [float(self.function(coordinates) * self.polys[i](*coordinates)) for i in range(len(self.polys))]
+        return values
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
 
 
 class FunctionCustom(Function):
@@ -347,8 +374,14 @@ class FunctionCustom(Function):
         self.func = func
 
     def eval(self, coordinates):
-        result = self.func(coordinates)
-        assert isinstance(result, float)
+        if isinstance(self.func, list):
+            # Multidimensional function
+            # ~ print("eval at", coordinates)
+            # ~ print("func", self.func)
+            result = [float(f(coordinates)) for f in self.func]
+        else:
+            result = self.func(coordinates)
+            assert isinstance(result, float)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"

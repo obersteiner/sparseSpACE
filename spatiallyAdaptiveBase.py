@@ -193,6 +193,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def continue_adaptive_refinement(self, tol=10 ** -3, max_time=None, max_evaluations=None):
         start_time = time.time()
+        # ~ self.operation.set_function(self.f)
         while True:
             error, surplus_error = self.evaluate_operation()
             self.error_array.append(error)
@@ -237,6 +238,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
+        self.operation.set_function(None)
         return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
 
     @abc.abstractmethod
