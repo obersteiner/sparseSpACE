@@ -410,9 +410,9 @@ class Integration(AreaOperation):
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
                     num_area_in_support = (k-k_old)
-                    fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    # ~ fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
                     modified_volume = volume/num_area_in_support ** 2 #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
-                    assert fraction_of_support <= 1
+                    # ~ assert fraction_of_support <= 1
                     #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
                     #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
                     refine_obj.add_volume(modified_volume * component_grid.coefficient)
