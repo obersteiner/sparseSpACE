@@ -328,14 +328,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     position_level_1_right = i
                     break
         #refineContainer.printContainer()
-        #print(position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 0#0.1
+        #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
+        safetyfactor = 10**-10#0.1
         assert position_level is not None
         assert position_level_1_right is not None
         assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
-        if position_level_1_right is not None and abs((position_level + 2) / (end-start + 1) - 0.5) > abs((position_level_1_right + 2) / (end-start + 1) - 0.5) + safetyfactor:
+        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start -2) - 0.5) + safetyfactor:
             position_new_leaf = None
 
             print("Rebalancing!")
@@ -363,7 +363,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
         new_leaf_reached = True
-        if position_level_1_left is not None and abs((position_level + 2) / (end-start + 1) - 0.5) > abs((position_level_1_left + 2) / (end-start + 1) - 0.5) + safetyfactor:
+        if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
 
             print("Rebalancing!")
