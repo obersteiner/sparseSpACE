@@ -613,8 +613,14 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
     def compute_1D_quad_weights(self, grid_1D, a, b, d):
         distr = self.distributions[d]
-        weights = np.zeros(len(grid_1D))
-        for i in range(len(grid_1D)-1):
+        num_points = len(grid_1D)
+        if num_points == 1:
+            return [1.0]
+        elif not self.boundary and num_points == 3:
+            return [0.0, 1.0, 0.0]
+        assert self.boundary or num_points > 3
+        weights = np.zeros(num_points)
+        for i in range(num_points-1):
             # Calculate weights with the method of undetermined coefficients
             x1 = grid_1D[i]
             x2 = grid_1D[i+1]
@@ -623,7 +629,13 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             moment_1 = integrate.quad(lambda x: x * distr.pdf(x), x1, x2,
                 epsrel=10 ** -2, epsabs=10 ** -3)[0]
             # w1 * x1 + w2 * x2 = moment_1
-            w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
+            if math.isinf(x1):
+                # For infinite borders, L'Hospital leads to a simple w2
+                w2 = moment_0
+            elif math.isinf(x2):
+                w2 = 0
+            else:
+                w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
             w1 = moment_0 - w2
             # ~ print("dd", w1, w2, x1, x2, moment_0, moment_1)
             # Add them to the composite quadrature weights
@@ -632,11 +644,18 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
         # Sometimes very small weights are negative instead of 0 due to
         # numerical errors
-        for i in range(len(grid_1D)):
+        for i in range(num_points):
             if weights[i] >= 0.0:
                 continue
             assert -weights[i] < 10 ** -5, "calculated negative weight"
             weights[i] = 0.0
+
+        if not self.boundary:
+            # Remove weights from boundary points and normalize
+            weights[0] = 0.0
+            weights[-1] = 0.0
+            f = 1.0 / sum(weights[1:-1])
+            weights[1:-1] = [f * v for v in weights[1:-1]]
 
         return weights
 
