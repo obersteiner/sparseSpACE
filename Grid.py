@@ -521,7 +521,7 @@ class GlobalTrapezoidalGrid(Grid):
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
 
-    def compute_1D_quad_weights(self, grid_1D, a, b, _d):
+    def compute_1D_quad_weights(self, grid_1D, a, b, _d=-1):
         weights = np.zeros(len(grid_1D))
         if self.modified_basis and len(grid_1D) == 3:
             weights[1] = b - a
@@ -664,7 +664,7 @@ from scipy.optimize import nnls
 import matplotlib.pyplot as plt
 
 class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
-    def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True):
+    def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
         self.a = a
@@ -674,8 +674,9 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         self.do_nnls = do_nnls
         self.max_degree = max_degree
         self.split_up = split_up
+        self.modified_basis = modified_basis
 
-    def compute_1D_quad_weights(self, grid_1D, a, b):
+    def compute_1D_quad_weights(self, grid_1D, a, b, _d=-1):
         '''
         weights = np.zeros(len(grid_1D))
         for i in range(len(grid_1D)):
