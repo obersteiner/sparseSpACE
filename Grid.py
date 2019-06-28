@@ -344,10 +344,11 @@ class LejaGrid1D(Grid1d):
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, integrator=None):
+    def __init__(self, a, b, dim, boundary=True, integrator=None, modified_basis=False):
         self.a = a
         self.b = b
         self.boundary = boundary
+        self.modified_basis = modified_basis
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -355,10 +356,15 @@ class TrapezoidalGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [TrapezoidalGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
+        self.grids = [TrapezoidalGrid1D(a=a[d], b=b[d], boundary=self.boundary, modified_basis=modified_basis) for d in range(dim)]
 
 
 class TrapezoidalGrid1D(Grid1d):
+
+    def __init__(self, a=None, b=None, boundary=True, modified_basis=False):
+        super().__init__(a, b, boundary)
+        self.modified_basis = modified_basis
+        assert (not self.boundary) or (not modified_basis)
 
     def level_to_num_points_1d(self, level):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
@@ -374,6 +380,40 @@ class TrapezoidalGrid1D(Grid1d):
         return np.linspace(self.start, self.end, self.num_points_with_boundary)[self.lowerBorder:self.upperBorder]
 
     def get_1d_weight(self, index):
+        if self.modified_basis:
+            if self.num_points == 1:
+                return self.end - self.start
+            elif self.num_points == 2:
+                if self.lowerBorder == 1:
+                    if index == 0:
+                        return self.end - self.start
+                    else:
+                        return 0
+                elif self.upperBorder == self.num_points_with_boundary - 1:
+                    if index == 1:
+                        return self.end - self.start
+                    else:
+                        return 0
+                else:
+                    return self.weight_composite_trapezoidal()
+            else:
+                if index == 0 and self.lowerBorder == 1:
+                    return 2 * self.spacing
+                elif index == 1 and self.lowerBorder == 1:
+                    if self.num_points == 3 and self.upperBorder == self.num_points_with_boundary - 1:
+                        return 0
+                    else:
+                        return self.weight_composite_trapezoidal(index) * 0.5
+                elif index == self.num_points - 1 and self.upperBorder == self.num_points_with_boundary - 1:
+                    return 2 * self.spacing
+                elif index == self.num_points - 2 and self.upperBorder == self.num_points_with_boundary - 1:
+                    return self.weight_composite_trapezoidal(index) * 0.5
+                else:
+                    return self.weight_composite_trapezoidal(index)
+        else:
+            return self.weight_composite_trapezoidal(index)
+
+    def weight_composite_trapezoidal(self, index):
         return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
                                       self.num_points_with_boundary - 1 else 1)
 
@@ -483,7 +523,9 @@ class GlobalTrapezoidalGrid(Grid):
 
     def compute_1D_quad_weights(self, grid_1D, a, b, _d):
         weights = np.zeros(len(grid_1D))
-        if self.modified_basis and len(grid_1D) == 4:
+        if self.modified_basis and len(grid_1D) == 3:
+            weights[1] = b - a
+        elif self.modified_basis and len(grid_1D) == 4:
             weights[2] = (b**2/2 - b *grid_1D[1] - a**2/2 + a * grid_1D[1]) / (grid_1D[2] - grid_1D[1])
             weights[1] = -1 *weights[2] + b - a
         else:
