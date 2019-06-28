@@ -1,50 +1,64 @@
 import numpy as np
 import math
 
-from sys import path
-path.append('../')
+import sys
+sys.path.append('../')
 from Function import *
 from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
-plot_things = False
-# ~ plot_things = True
+# Only plot when using the ipython notebook
+plot_things = 'ipykernel' in sys.modules
 
 # A helper function to reduce duplicate code
 def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_bounds=False):
 	if calc_bounds:
-		grid = TrapezoidalGrid(a=a, b=b, dim=d)
-		op = UncertaintyQuantification(f, distris, grid=grid, dim=d)
+		op = UncertaintyQuantification(f, distris, a, b, dim=d)
 		a, b = op.get_boundaries(0.01)
 		print("Boundaries set to", a, b)
-	grid = TrapezoidalGrid(a=a, b=b, dim=d)
-	op = UncertaintyQuantification(f, distris, grid=grid, dim=d)
+	op = UncertaintyQuantification(f, distris, a, b, dim=d)
 
+	inf_borders = any([math.isinf(v) for v in list(a) + list(b)])
 	if plot_things:
+		pa, pb = a, b
+		if inf_borders:
+			# Set plot boundaries to include the place with high probability
+			pa, pb = op.get_boundaries(0.01)
 		print("Showing function", f)
-		f.plot(a, b)
+		f.plot(pa, pb)
 		print("Showing pdf")
 		pdf = op.get_pdf_Function()
-		pdf.plot(a, b, points_per_dim=10)
+		pdf.plot(pa, pb, points_per_dim=11)
 		print("Showing weighted function")
 		weighted_f = FunctionUQWeighted(f, pdf)
-		weighted_f.plot(a, b, points_per_dim=10)
+		weighted_f.plot(pa, pb, points_per_dim=11)
+	can_plot = plot_things and not inf_borders
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 		boundary=boundary)
 	print("performSpatiallyAdaptiv…")
-	combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=10**-3,
-		max_evaluations=40, reference_solution=reference_expectation,
-		min_evaluations=25, do_plot=plot_things)
+	min_evals = 0
+	max_evals = 30
+	tol = 10**-3
+	combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
+		max_evaluations=max_evals, reference_solution=reference_expectation,
+		min_evaluations=min_evals, do_plot=can_plot)
 
 	print("calculate_expectation_and_variance…")
 	E, Var = op.calculate_expectation_and_variance(combiinstance)
+	print("E, Var", E, Var)
 
 	poly_deg_max = 4
 
 	print("calculate_PCE…")
+	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+		boundary=boundary)
+	f_pce = op.get_PCE_Function(poly_deg_max)
+	combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+		max_evaluations=max_evals, reference_solution=reference_expectation,
+		min_evaluations=min_evals, do_plot=can_plot)
 	op.calculate_PCE(poly_deg_max, combiinstance)
 	E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
 	first_sens = op.get_first_order_sobol_indices()
@@ -136,7 +150,7 @@ def test_normal():
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.0
+	reference_expectation = 0.000000000000000001
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, True)
 
@@ -144,7 +158,7 @@ def test_normal():
 def test_normal_large_border():
 	print("Testing normal distribution on linear function with large boundaries")
 	d = 2
-	bigvalue = 10.0 ** 10
+	bigvalue = 100.0
 	a = np.array([-bigvalue, -bigvalue])
 	b = np.array([bigvalue, bigvalue])
 
@@ -180,10 +194,10 @@ def test_something():
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
-test_normal_integration()
+# ~ test_normal_integration()
 
-# ~ test_normal_inf_border()
+test_normal_inf_border()
 # ~ test_normal_large_border()
-test_normal()
+# ~ test_normal()
 # ~ test_linear()
 # ~ test_something()
