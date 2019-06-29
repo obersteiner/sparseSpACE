@@ -942,16 +942,45 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
         distr = self.distributions[self.get_current_dimension()]
         return GlobalTrapezoidalGridWeighted.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf, self.boundary)
 
-    def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
+    def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False, trapezoidal_weights=None):
         # Corner cases, they are wrong if split_up is used.
         if len(grid_1D) == 1:
             return np.array([1]), -100
         if len(grid_1D) == 0:
             return np.array([0]), -100
 
-        trapezoidal_weights = self.get_composite_quad_weights(grid_1D, a, b)
+        search_for_zeros = trapezoidal_weights is None
+        if trapezoidal_weights is None:
+            trapezoidal_weights = self.get_composite_quad_weights(grid_1D, a, b)
+
+        if search_for_zeros:
+            # Ignore zero weights at boundaries
+            tol = 10 ** -14
+            zeros_left = 0
+            zeros_right = 0
+            for i in range(len(grid_1D)):
+                if trapezoidal_weights[i] > tol:
+                    break
+                zeros_left += 1
+            for i in reversed(range(len(grid_1D))):
+                if trapezoidal_weights[i] > tol:
+                    break
+                zeros_right += 1
+            if zeros_left > 0 or zeros_right > 0:
+                a_nonzero = trapezoidal_weights[zeros_left]
+                b_nonzero = trapezoidal_weights[-zeros_right-1]
+                grid_1D_nonzero = grid_1D[zeros_left:-zeros_right]
+                trapezoidal_weights_nonzero = trapezoidal_weights[zeros_left:-zeros_right]
+                weights_nonzero, order = self.get_1D_weights_and_order(
+                    grid_1D_nonzero, a_nonzero,
+                    b_nonzero, improve_weight=improve_weight,
+                    reduce_max_order_for_length=reduce_max_order_for_length,
+                    trapezoidal_weights=trapezoidal_weights_nonzero)
+                weights = np.concatenate([np.zeros(zeros_left), weights_nonzero, np.zeros(zeros_right)])
+                return weights, order
+
         if any([w == 0 for w in trapezoidal_weights]):
-            print("trapezoidal weight is zero: ", trapezoidal_weights)
+            print("inner trapezoidal weight is zero: ", trapezoidal_weights)
             return trapezoidal_weights, 1
         # ~ if len(grid_1D) <= 3:
             # ~ print("grid is small, trapezoidal weights: ", trapezoidal_weights)
@@ -996,9 +1025,9 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
             weights_1D_old = weights_1D
             if improve_weight and all([w > 0 for w in weights_1D]):
                 weights_lower_order = weights_1D
-        print("trapezoidal weights:", weights_1D_old)
-        print("weights:", weights_1D_old)
-        print("weights_lower_order:", weights_lower_order)
+        # ~ print("trapezoidal weights:", weights_1D_old)
+        # ~ print("weights:", weights_1D_old)
+        # ~ print("weights_lower_order:", weights_lower_order)
         assert all([w >= 0 for w in weights_1D_old])
         return weights_1D_old, d_old
 
