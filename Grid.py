@@ -596,13 +596,12 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         super().__init__(a, b, boundary)
         self.distributions = uq_operation.get_distributions()
 
-    def get_mid_point(self, a, b, d):
+    @staticmethod
+    def get_middle_weighted(a, b, cdf, ppf):
         # This is used to split a refinement object so that the new
         # ones have the same probability
-        distr = self.distributions[d]
-        cdf_mid = 0.5 * (distr.cdf(a) + distr.cdf(b))
-        # The inverse Rosenblatt transformation is the inverse cdf here
-        mid = float(distr.inv(cdf_mid))
+        cdf_mid = 0.5 * (cdf(a) + cdf(b))
+        mid = float(ppf(cdf_mid))
         # ~ mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
             # ~ self.start, self.end, rtol=0.01)
         # ~ mid = max(min(mid, self.end), self.start)
@@ -611,22 +610,27 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             mid = 0.5 * (a + b)
         return mid
 
-    def compute_1D_quad_weights(self, grid_1D, a, b, d):
+    def get_mid_point(self, a, b, d):
         distr = self.distributions[d]
+        # The inverse Rosenblatt transformation is the inverse cdf here
+        return self.get_middle_weighted(a, b, distr.cdf, distr.inv)
+
+    @staticmethod
+    def compute_weights(grid_1D, a, b, pdf, cdf, boundary):
         num_points = len(grid_1D)
         if num_points == 1:
             return [1.0]
-        elif not self.boundary and num_points == 3:
+        elif not boundary and num_points == 3:
             return [0.0, 1.0, 0.0]
-        assert self.boundary or num_points > 3
+        assert boundary or num_points > 3
         weights = np.zeros(num_points)
         for i in range(num_points-1):
             # Calculate weights with the method of undetermined coefficients
             x1 = grid_1D[i]
             x2 = grid_1D[i+1]
-            moment_0 = distr.cdf(x2) - distr.cdf(x1)
+            moment_0 = cdf(x2) - cdf(x1)
             # w1 + w2 = moment_0
-            moment_1 = integrate.quad(lambda x: x * distr.pdf(x), x1, x2,
+            moment_1 = integrate.quad(lambda x: x * pdf(x), x1, x2,
                 epsrel=10 ** -2, epsabs=10 ** -3)[0]
             # w1 * x1 + w2 * x2 = moment_1
             if math.isinf(x1):
@@ -650,7 +654,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             assert -weights[i] < 10 ** -5, "calculated negative weight"
             weights[i] = 0.0
 
-        if not self.boundary:
+        if not boundary:
             # Remove weights from boundary points and normalize
             weights[0] = 0.0
             weights[-1] = 0.0
@@ -658,6 +662,10 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             weights[1:-1] = [f * v for v in weights[1:-1]]
 
         return weights
+
+    def compute_1D_quad_weights(self, grid_1D, a, b, d):
+        distr = self.distributions[d]
+        return self.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf, self.boundary)
 
 
 from scipy.optimize import nnls
@@ -675,8 +683,9 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         self.max_degree = max_degree
         self.split_up = split_up
         self.modified_basis = modified_basis
+        self.current_dimension = -1
 
-    def compute_1D_quad_weights(self, grid_1D, a, b, _d=-1):
+    def compute_1D_quad_weights(self, grid_1D, a, b, this_dim):
         '''
         weights = np.zeros(len(grid_1D))
         for i in range(len(grid_1D)):
@@ -690,6 +699,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
                 weights[i] += 0.5 * (b - grid_1D[i])
         return weights
         '''
+        self.set_current_dimension(this_dim)
         #if self.max_degree == 2:
         weights, degree = self.get_1D_weights_and_order(grid_1D, a, b)
         #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
@@ -701,8 +711,9 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         #for i in range(d):
         #    print(abs(sum([grid_1D[j]**i * weights_1D_old[j] for j in range(len(grid_1D))]) - 1 / (i+1)))
         #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
-        if degree == 1:
-            print(grid_1D)
+        # ~ if degree == 1:
+            # ~ print("1 degree grid:", grid_1D)
+        self.set_current_dimension(-1)
         return weights
 
     def recursive_splitting2(self, grid_1D, a, b, d):
@@ -769,6 +780,9 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         else:
             return self.get_1D_weights_and_order(grid_1D, a, b)
 
+    def get_composite_quad_weights(self, grid_1D, a, b):
+        return super().compute_1D_quad_weights(grid_1D, a, b)
+
     def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
         if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
             return np.array([1/6, 4/6, 1/6]) * (b-a), 2
@@ -781,7 +795,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         d = d_old = 1
         weights_1D_old = np.zeros(len(grid_1D))
         grid_1D_normalized = 2 * (np.array(grid_1D) - a) / (b - a) - 1
-        trapezoidal_weights = super().compute_1D_quad_weights(grid_1D_normalized, a, b)
+        trapezoidal_weights = self.get_composite_quad_weights(grid_1D_normalized, a, b)
         weights_1D_old = np.array(trapezoidal_weights)
 
         while(d < len(grid_1D) - int(reduce_max_order_for_length) and d <= self.max_degree):
@@ -830,8 +844,8 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
                 trapezoidal_weights = weights_1D
         return weights_1D_old, d_old
 
-
-    def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
+    @staticmethod
+    def check_quality_of_quadrature_rule(a, b, d, grid_1D, weights_1D):
         tol = 10 ** -14
         bad_approximation = (sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
         # if bad_approximation:
@@ -852,7 +866,8 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         #return sum(weights_1D) < (b-a) * 2
         return bad_approximation
 
-    def get_polynomials_and_evalaluations(self, x_array, d, trapezoidal_weights):
+    @staticmethod
+    def get_polynomials_and_evalaluations(x_array, d, trapezoidal_weights):
         evaluations = np.ones((d+1,len(x_array)))
         x_array = np.array(x_array)
         alphas = np.zeros(d+1)
@@ -879,12 +894,13 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
 
             betas[i] = beta
             evaluations[i] = (x_array - alpha) * evaluation_1 - beta * evaluation_2
-            #print(np.inner(evaluations[i] * trapezoidal_weights, evaluations[i]))
+            # ~ print(np.inner(evaluations[i] * trapezoidal_weights, evaluations[i]))
             lambdas[i] = 1.0 / math.sqrt(np.inner(evaluations[i]*trapezoidal_weights, evaluations[i]))
             evaluations[i] *= lambdas[i]
         return evaluations, alphas, betas, lambdas
 
-    def evaluate_polynomials(self, points, alphas, betas, lambdas):
+    @staticmethod
+    def evaluate_polynomials(points, alphas, betas, lambdas):
         evaluations = np.zeros((len(alphas), len(points)))
         evaluations[0] = np.ones(len(points)) * lambdas[0]
         for i in range(1, len(alphas)):
@@ -897,14 +913,122 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
             evaluations[i] = lambdas[i] * ((points - alphas[i]) * evaluation_1 - betas[i] * evaluation_2)
         return evaluations
 
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+    def set_current_dimension(self, d): self.current_dimension = d
 
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
+    def get_current_dimension(self):
+        assert self.current_dimension >= 0, "Dimension not saved"
+        return self.current_dimension
+
+    @staticmethod
+    def normalize_coords(coordinates, a, b):
+        return 2.0 * (np.array(coordinates) - a) / (b - a) - 1.0
+
+    @staticmethod
+    def denormalize_coords(coordinates, a, b):
+        return a + (np.array(coordinates) + 1.0) * 0.5 * (b - a)
+
+
+import chaospy as cp
+
+class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
+    def __init__(self, a, b, uq_operation, boundary=True, do_nnls=False, max_degree=5, split_up=True, modified_basis=False):
+        split_up = False
+        print("split_up not yet supported")
+        super().__init__(a, b, boundary=boundary, do_nnls=do_nnls, max_degree=max_degree, split_up=split_up, modified_basis=modified_basis)
+        self.distributions = uq_operation.get_distributions()
+
+
+    def get_composite_quad_weights(self, grid_1D, a, b):
+        distr = self.distributions[self.get_current_dimension()]
+        return GlobalTrapezoidalGridWeighted.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf, self.boundary)
+
+    def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
+        # Corner cases, they are wrong if split_up is used.
+        if len(grid_1D) == 1:
+            return np.array([1]), -100
+        if len(grid_1D) == 0:
+            return np.array([0]), -100
+
+        trapezoidal_weights = self.get_composite_quad_weights(grid_1D, a, b)
+        if any([w == 0 for w in trapezoidal_weights]):
+            print("trapezoidal weight is zero: ", trapezoidal_weights)
+            return trapezoidal_weights, 1
+        # ~ if len(grid_1D) <= 3:
+            # ~ print("grid is small, trapezoidal weights: ", trapezoidal_weights)
+            # ~ return trapezoidal_weights, 1
+
+        assert all([w > 0 for w in trapezoidal_weights])
+
+        # Current and previous degree
+        d = d_old = 1
+        grid_1D_normalized = self.normalize_coords(grid_1D, a, b)
+        # Previous weights
+        weights_1D_old = np.array(trapezoidal_weights)
+        # The weights which are used to increase the order
+        weights_lower_order = trapezoidal_weights
+
+        while(d < len(grid_1D) - int(reduce_max_order_for_length) and d <= self.max_degree):
+
+            #print("Trapezoidal weights", trapezoidal_weights)
+            #print("Grid points", grid_1D_normalized)
+            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evalaluations(grid_1D_normalized,d, weights_lower_order)
+            coordsD_normalized, weightsD = self.do_gauss_quad_normalized(int((d+2)/2), a, b)
+            # ~ print("Gauss Points, alphas, betas and lambdas:", coordsD_normalized, alphas, betas, lambdas)
+            evaluations_moments = self.evaluate_polynomials(coordsD_normalized, alphas, betas, lambdas)
+            moments = np.array([sum(evaluations_moments[i] * weightsD) for i in range(d+1)])
+            #print("Moments for interval", a, b, "are", moments)
+            #print("Evaluation", evaluations)
+            #print("Evaluation gauss", evaluations_moments)
+
+            #print(evaluations, d, moments, trapezoidal_weights)
+            if not self.do_nnls:
+                weights_1D = weights_lower_order * np.inner(evaluations.T, moments)
+            else:
+                weights_1D, error = nnls(evaluations, moments)
+                if error > 0:
+                    break
+            #print(grid_1D, weights_1D)
+            bad_approximation = self.check_quality_of_quadrature_rule(weights_1D)
+            d += 1
+            if bad_approximation:
+                break
+            d_old = d - 1
+            weights_1D_old = weights_1D
+            if improve_weight and all([w > 0 for w in weights_1D]):
+                weights_lower_order = weights_1D
+        print("trapezoidal weights:", weights_1D_old)
+        print("weights:", weights_1D_old)
+        print("weights_lower_order:", weights_lower_order)
+        assert all([w >= 0 for w in weights_1D_old])
+        return weights_1D_old, d_old
+
+    @staticmethod
+    def check_quality_of_quadrature_rule(weights_1D):
+        return not(all([w >= 0.0 for w in weights_1D]))
+
+
+    def do_gauss_quad_normalized(self, num_quad_points, a, b):
+        distr = self.distributions[self.get_current_dimension()]
+        coords, weights = cp.generate_quadrature(num_quad_points, distr, rule="G")
+        coords = coords[0]
+        coords = self.normalize_coords(coords, a, b)
+        return coords, weights
+
+'''
+    # unused
+    def get_weight_function_normalized(self, a, b):
+        d = self.get_current_dimension()
+        distr = self.distributions[d]
+        return lambda x: distr.pdf(a + (x + 1.0) * 0.5 * (b - a))
+
+    # unused
+    @staticmethod
+    def calculate_moment(k, x1, x2, weight_func, weight_func_integrated=None):
+        if k == 0:
+            return weight_func_integrated(x2) - weight_func_integrated(x1)
+        return integrate.quad(lambda x: x ** k * weight_func(x), x1, x2,
+            epsrel=10 ** -2, epsabs=10 ** -3)[0]
+#'''
 
 
 class EquidistantGridGlobal(Grid):

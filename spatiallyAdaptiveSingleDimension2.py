@@ -11,16 +11,20 @@ def sortToRefinePosition(elem):
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None):
         self.do_high_order = do_high_order
-        if self.do_high_order:
-            self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
+        if isinstance(operation, UncertaintyQuantification):
+            assert not modified_basis, "modified_basis not yet available for UQ"
+            if self.do_high_order:
+                self.grid = GlobalHighOrderGridWeighted(a, b, operation, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
+                self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
-        else:
-            # do_high_order is not yet supported for UQ
-            if isinstance(operation, UncertaintyQuantification):
+            else:
                 self.grid = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
                 self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
-                assert not modified_basis
+        else:
+            if self.do_high_order:
+                self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
+                self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
+
             else:
                 self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
                 self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
