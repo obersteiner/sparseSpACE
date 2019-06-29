@@ -8,6 +8,11 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
+do_PCE = True
+# ~ do_PCE = False
+do_HighOrder = True
+# ~ do_HighOrder = False
+
 # Only plot when using the ipython notebook
 plot_things = 'ipykernel' in sys.modules
 
@@ -37,7 +42,7 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-		boundary=boundary)
+		boundary=boundary, do_high_order=do_HighOrder)
 	print("performSpatiallyAdaptiv…")
 	min_evals = 0
 	max_evals = 30
@@ -50,51 +55,59 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 	E, Var = op.calculate_expectation_and_variance(combiinstance)
 	print("E, Var", E, Var)
 
-	poly_deg_max = 4
+	if do_PCE:
+		poly_deg_max = 4
 
-	print("calculate_PCE…")
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-		boundary=boundary)
-	f_pce = op.get_PCE_Function(poly_deg_max)
-	combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
-		max_evaluations=max_evals, reference_solution=reference_expectation,
-		min_evaluations=min_evals, do_plot=can_plot)
-	op.calculate_PCE(poly_deg_max, combiinstance)
-	E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
-	first_sens = op.get_first_order_sobol_indices()
-	total_sens = op.get_total_order_sobol_indices()
+		print("calculate_PCE…")
+		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+			boundary=boundary, do_high_order=do_HighOrder)
+		f_pce = op.get_PCE_Function(poly_deg_max)
+		combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+			max_evaluations=max_evals, reference_solution=reference_expectation,
+			min_evaluations=min_evals, do_plot=can_plot)
+		op.calculate_PCE(poly_deg_max, combiinstance)
+		E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
+		first_sens = op.get_first_order_sobol_indices()
+		total_sens = op.get_total_order_sobol_indices()
 
-	print("calculate_PCE_chaospy…")
-	op.calculate_PCE_chaospy(poly_deg_max, 12)
-	E_PCE2, Var_PCE2 = op.get_expectation_and_variance_PCE()
-	first_sens2 = op.get_first_order_sobol_indices()
-	total_sens2 = op.get_total_order_sobol_indices()
+		print("calculate_PCE_chaospy…")
+		op.calculate_PCE_chaospy(poly_deg_max, 12)
+		E_PCE2, Var_PCE2 = op.get_expectation_and_variance_PCE()
+		first_sens2 = op.get_first_order_sobol_indices()
+		total_sens2 = op.get_total_order_sobol_indices()
 
-	print("\n"
-		"Expectation: {:.4g}, Variance: {:.4g}\n"
-		"PCE E: {:.4g}, Var: {:.4g}\n"
-		"first order sensitivity indices {}\n"
-		"total order sensitivity indices {}\n"
-		"non-sparsegrid PCE E: {:.4g}, Var: {:.4g}\n"
-		"non-sparsegrid first order sensitivity indices {}\n"
-		"non-sparsegrid total order sensitivity indices {}\n"
-		"".format(
-		E, Var,
-		E_PCE, Var_PCE,
-		first_sens,
-		total_sens,
-		E_PCE2, Var_PCE2,
-		first_sens2,
-		total_sens2))
+		print("\n"
+			"Expectation: {:.4g}, Variance: {:.4g}\n"
+			"PCE E: {:.4g}, Var: {:.4g}\n"
+			"first order sensitivity indices {}\n"
+			"total order sensitivity indices {}\n"
+			"non-sparsegrid PCE E: {:.4g}, Var: {:.4g}\n"
+			"non-sparsegrid first order sensitivity indices {}\n"
+			"non-sparsegrid total order sensitivity indices {}\n"
+			"".format(
+			E, Var,
+			E_PCE, Var_PCE,
+			first_sens,
+			total_sens,
+			E_PCE2, Var_PCE2,
+			first_sens2,
+			total_sens2))
+	else:
+		print("\n"
+			"Expectation: {:.4g}, Variance: {:.4g}\n"
+			"".format(
+			E, Var))
 
 
 def test_normal_integration():
 	print("Calculating the expectation with an Integration Operation")
 	d = 2
 	bigvalue = 7.0
-	# a and b are actually unused
 	a = np.array([-bigvalue, -bigvalue])
 	b = np.array([bigvalue, bigvalue])
+
+	# Whether to change weights for obtaining a higher order quadrature
+	high_order = True
 
 	distr = []
 	for _ in range(d):
@@ -108,7 +121,8 @@ def test_normal_integration():
 	op = Integration(fw, grid=grid, dim=d)
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
+	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+		do_high_order=high_order)
 	print("performSpatiallyAdaptiv…")
 	v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
 		max_evaluations=40,
@@ -127,7 +141,17 @@ def test_constant():
 	reference_expectation = 3.0
 
 	do_test(d, a, b, f, reference_expectation, "Uniform")
-	# ~ do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
+
+
+def test_constant_triangle():
+	print("Testing a simple constant function with uniform distribution")
+	d = 2
+	a = np.zeros(d)
+	b = np.ones(d)
+	f = ConstantValue(3.0)
+	reference_expectation = 3.0
+
+	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
 def test_linear():
@@ -141,7 +165,7 @@ def test_linear():
 	do_test(d, a, b, f, reference_expectation, "Uniform")
 
 
-def test_normal():
+def test_normal_vagebounds():
 	print("Testing normal distribution on linear function with calculated boundaries")
 	d = 2
 	bigvalue = 1.0
@@ -152,7 +176,7 @@ def test_normal():
 	f = FunctionLinearSum([2.0, 0.0])
 	reference_expectation = 0.000000000000000001
 
-	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, True)
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), calc_bounds=True)
 
 
 def test_normal_large_border():
@@ -163,9 +187,9 @@ def test_normal_large_border():
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.0
+	reference_expectation = 0.000000000000000001
 
-	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), boundary=False)
 
 
 def test_normal_inf_border():
@@ -175,9 +199,10 @@ def test_normal_inf_border():
 	b = np.array([math.inf, math.inf])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.0
+	reference_expectation = 0.000000000000000001
 
-	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), False, False)
+	# Variance is about 16, expectation is 0
+	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), boundary=False)
 
 
 def test_something():
@@ -190,7 +215,7 @@ def test_something():
 	f = GenzDiscontinious(border=midpoint, coeffs=coeffs)
 	reference_expectation = None
 
-	# Tests have shown: Expectation: 0.0403, Variance: 0.01559
+	# old Tests have shown: Expectation: 0.0403, Variance: 0.01559
 	do_test(d, a, b, f, reference_expectation, ("Triangle", 0.75))
 
 
@@ -198,6 +223,7 @@ def test_something():
 
 test_normal_inf_border()
 # ~ test_normal_large_border()
-# ~ test_normal()
+# ~ test_normal_vagebounds()
+# ~ test_constant_triangle()
 # ~ test_linear()
 # ~ test_something()
