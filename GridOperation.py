@@ -775,24 +775,25 @@ class UncertaintyQuantification(Integration):
         if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
             return
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
-        self.pce_polys = cp.orth_ttr(polynomial_degrees, self.distributions_joint)
+        self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
         self.polynomial_degrees = polynomial_degrees
 
     # Returns a function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
     def get_PCE_Function(self, polynomial_degrees):
         self._set_pce_polys(polynomial_degrees)
-        print(self.f)
         # self.f can change, so putting it to a local variable is important
         # ~ f = self.f
         # ~ polys = self.pce_polys
         # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
         # ~ return FunctionCustom(funcs)
-        return FunctionPolysPCE(self.f, self.pce_polys)
+        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
     def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         assert len(self.nodes) == len(self.weights)
+        if any([w <= 0.0 for w in self.weights]):
+            print("Some weights are not positive, weights are", self.weights)
         self.f_evals = [self.f(coord) for coord in self.nodes]
 
     def calculate_moment(self, k, combiinstance):
@@ -819,7 +820,7 @@ class UncertaintyQuantification(Integration):
 
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
-            self.weights, np.asarray(self.f_evals))
+            self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
 
     def get_expectation_PCE(self):
         # gPCE does not work right yet.
@@ -853,7 +854,7 @@ class UncertaintyQuantification(Integration):
         nodes, weights = cp.generate_quadrature(num_quad_points,
             self.distributions_joint, rule="G")
         f_evals = [self.f(c) for c in zip(*nodes)]
-        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals))
+        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
     def get_pdf_Function(self):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)

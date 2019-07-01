@@ -342,10 +342,11 @@ class FunctionPower(Function):
 
 # This can be used when calculating the PCE
 class FunctionPolysPCE(Function):
-    def __init__(self, function, polys):
+    def __init__(self, function, polys, norms):
         super().__init__()
         self.function = function
         self.polys = polys
+        self.norms = norms
 
     def eval(self, coordinates):
         '''
@@ -362,7 +363,7 @@ class FunctionPolysPCE(Function):
             # ~ values[i] = function_val * float(polyvals[i])
             # ~ values[i] = function_val * float(polyvals[i])
         '''
-        values = [float(self.function(coordinates) * self.polys[i](*coordinates)) for i in range(len(self.polys))]
+        values = [float(self.function(coordinates) * self.polys[i](*coordinates) / self.norms[i]) for i in range(len(self.polys))]
         return values
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
