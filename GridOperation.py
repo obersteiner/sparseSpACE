@@ -449,8 +449,8 @@ class Integration(AreaOperation):
         index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
         index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
 
-        left_parent_in_grid = self.grid.boundary or not(isclose(left_parent, self.a[d]))
-        right_parent_in_grid = self.grid.boundary or not(isclose(right_parent, self.b[d]))
+        left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
+        right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             factor_left_parent = (right_parent - child)/(right_parent - left_parent)
@@ -473,7 +473,7 @@ class Integration(AreaOperation):
                 assert (tuple(points_children[i]) in self.f.f_dict)
 
                 if left_parent_in_grid:
-                    if self.grid.modified_basis and not right_parent_in_grid:
+                    if self.grid_surplusses.modified_basis and not right_parent_in_grid:
                         assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
                         left_of_left_parent = list(points_left_parent[i])
@@ -494,11 +494,11 @@ class Integration(AreaOperation):
                             assert(tuple(left_of_left_parent) in self.f.f_dict)
 
                     else:
-                        assert points_left_parent[i] in self.f.f_dict
+                        assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
                         value -= factor_left_parent * self.f(points_left_parent[i])
                 if right_parent_in_grid:
-                    if self.grid.modified_basis and not left_parent_in_grid:
+                    if self.grid_surplusses.modified_basis and not left_parent_in_grid:
                         assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
 
                         right_of_right_parent = list(points_right_parent[i])
@@ -515,7 +515,8 @@ class Integration(AreaOperation):
                             #print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
                             assert(tuple(right_of_right_parent) in self.f.f_dict)
                     else:
-                        assert points_right_parent[i] in self.f.f_dict
+                        #print(points_right_parent[i], self.f.f_dict.keys())
+                        assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                         value -= factor_right_parent * self.f(points_right_parent[i])
                 volume += factor * abs(value) * (right_parent - left_parent)**exponent
         if self.version == 0 or self.version == 2:
