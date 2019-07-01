@@ -9,10 +9,10 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None, rebalancing=True):
         self.do_high_order = do_high_order
         if self.do_high_order:
-            self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls)
+            self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls, modified_basis=False)
             self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
         else:
@@ -21,7 +21,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
-        self.evaluationCounts = None
+        #self.evaluationCounts = None
         self.version = version
         self.dict_integral = {}
         self.dict_points = {}
@@ -33,6 +33,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             self.margin = margin
         self.operation = operation
         self.equidistant = False #True
+        self.rebalancing = rebalancing
 
     def interpolate_points(self, interpolation_points, component_grid):
         gridPointCoordsAsStripes, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -121,11 +122,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
                     if self.use_local_children:
                         indices_levelDim.append(refineObj.levels[1])
+                        #print(d, refineObj.end)
+
             if self.use_local_children:
                 for i in range(1,len(indices_levelDim)-1):
                     if self.is_child(indices_levelDim[i-1], indices_levelDim[i], indices_levelDim[i+1]):
+                        #print(d, indicesDim[i])
                         children_indices_dim.append((self.get_node_info(i, indicesDim, indices_levelDim, d)))
-                #print(children_indices_dim, indices_levelDim)
+                        #print(children_indices_dim, d)
             indicesList.append(indicesDim)
             children_indices.append(children_indices_dim)
         return indicesList, children_indices
@@ -219,9 +223,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             self.operation.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, children_indices, component_grid)
 
             # save the number of evaluations used per d-1 dimensional slice
-            for d in range(self.dim):
-                factor = component_grid.coefficient if self.grid.isNested() else 1
-                self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+            #for d in range(self.dim):
+            #    factor = component_grid.coefficient if self.grid.isNested() else 1
+            #    self.evaluationCounts[d][component_grid.levelvector[d] - 1] += factor * np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
             return np.prod(self.grid.numPoints)
         else:
             pass
@@ -231,12 +235,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def finalize_evaluation_operation(self, areas, evaluation_array):
         super().finalize_evaluation_operation(areas, evaluation_array)
 
-        if self.version == 1:
-            for d in range(self.dim):
-                container_d = self.refinement.get_refinement_container_for_dim(d)
-                for area in container_d.get_objects():
-                    level = max(area.levels)
-                    area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
+        #if self.version == 1:
+        #    for d in range(self.dim):
+        #        container_d = self.refinement.get_refinement_container_for_dim(d)
+        #        for area in container_d.get_objects():
+        #            level = max(area.levels)
+        #            area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
     def initialize_refinement(self):
         initial_points = []
@@ -251,7 +255,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                                                    range(self.dim)])
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
-        self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
+        #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
         if self.operation is not None:
             self.operation.init_dimension_wise(self.grid, self.grid_surplusses, self.f, self.refinement, self.lmin, self.lmax, self.a, self.b, self.version)
 
@@ -275,13 +279,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #max_level = self.rebalance(refinement_dim)
         #if lmaxChange is not None and max_level <= self.lmax[refinement_dim]:
         #    lmaxChange = None
-        if lmaxChange is not None:
-            for d in range(self.dim):
-                if lmaxChange[d] != 0:
-                    self.raise_lmax(d, lmaxChange[d])
-            #print("New scheme:")
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
-            return False
+        #if lmaxChange is not None:
+        #    for d in range(self.dim):
+        #        if lmaxChange[d] != 0:
+        #            self.raise_lmax(d, lmaxChange[d])
+        #    #print("New scheme:")
+        #    self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
+        #    return False
         return False
 
     def raise_lmax(self, d, value):
@@ -303,12 +307,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def rebalance(self, d):
         refinement_container = self.refinement.get_refinement_container_for_dim(d)
         self.rebalance_interval(0, refinement_container.size(), 1, refinement_container)
-
-        update_dimension = self.update_coarsening_values(refinement_container, d)
-        if update_dimension:
-            self.raise_lmax(d, 1)
         #refinement_container.printContainer()
-        return update_dimension
 
     def rebalance_interval(self, start, end, level, refinement_container):
         if end - start <= 2:
@@ -329,7 +328,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     break
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 10**-10#0.1
+        safetyfactor = 10**-1#0#0.1
         assert position_level is not None
         assert position_level_1_right is not None
         assert position_level_1_left is not None
@@ -397,22 +396,29 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
     def update_coarsening_values(self, refinement_container_d, d):
-        update_dimension = False
+        update_dimension = 0
         for refinement_object in refinement_container_d.get_objects():
             refinement_object.coarsening_level = self.lmax[d] - max(refinement_object.levels)
-            if refinement_object.coarsening_level == -1:
-                update_dimension = True
-            assert refinement_object.coarsening_level >= -1
-        return update_dimension
+            if refinement_object.coarsening_level < update_dimension :
+                update_dimension = refinement_object.coarsening_level
+            #assert refinement_object.coarsening_level >= -1
+        return update_dimension * -1
 
     def refinement_postprocessing(self):
         self.refinement.apply_remove(sort=True)
         self.refinement.refinement_postprocessing()
         self.refinement.reinit_new_objects()
-        self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
+        #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
+        if self.rebalancing:
+            for d in range(self.dim):
+                self.rebalance(d)
         for d in range(self.dim):
-            self.rebalance(d)
-
+            refinement_container_d = self.refinement.get_refinement_container_for_dim(d)
+            update_d = self.update_coarsening_values(refinement_container_d, d)
+            if update_d > 0:
+                self.raise_lmax(d, update_d)
+                refinement_container_d.update_values(update_d)
+        self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
 
 class NodeInfo(object):
     def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object):
