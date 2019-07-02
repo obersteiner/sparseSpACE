@@ -35,13 +35,16 @@ class RefinementContainer(object):
         new_objects, lmax_update, update_information = self.refinementObjects[object_id].refine()
         # update other RefinementObjects if necessary
         if update_information is not None:
-            for r in self.refinementObjects:
-                r.update(update_information)
+            self.update_values(update_information)
         # remove refined (and now outdated) RefinementObject
         self.prepare_remove(object_id)
         # add new RefinementObjects
         self.add(new_objects)
         return lmax_update
+
+    def update_values(self, update_info):
+        for r in self.refinementObjects:
+            r.update(update_info)
 
     def refinement_postprocessing(self):
         self.searchPosition = 0
@@ -262,10 +265,10 @@ class MetaRefinementContainer(object):
         # position[0]: which container(=dimension), position[1]: which object(=area)
         # self.updateGridSpecificRefinementInfo(position)
         new_lmax_change = self.refinementContainers[position[0]].refine(position[1])
-        if new_lmax_change is not None:
-            for d, c in enumerate(self.refinementContainers):
-                if d != position[0]:
-                    c.update_objects(new_lmax_change[d])
+        #if new_lmax_change is not None:
+        #    for d, c in enumerate(self.refinementContainers):
+        #        if d != position[0]:
+        #            c.update_objects(new_lmax_change[d])
         # self.print()
         return new_lmax_change
 
