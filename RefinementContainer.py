@@ -41,7 +41,7 @@ class RefinementContainer(object):
         self.prepare_remove(object_id)
         # add new RefinementObjects
         self.add(new_objects)
-        return lmax_update
+        return lmax_update, new_objects
 
     def refinement_postprocessing(self):
         self.searchPosition = 0
@@ -261,13 +261,13 @@ class MetaRefinementContainer(object):
     def refine(self, position):
         # position[0]: which container(=dimension), position[1]: which object(=area)
         # self.updateGridSpecificRefinementInfo(position)
-        new_lmax_change = self.refinementContainers[position[0]].refine(position[1])
+        new_lmax_change, new_objects = self.refinementContainers[position[0]].refine(position[1])
         if new_lmax_change is not None:
             for d, c in enumerate(self.refinementContainers):
                 if d != position[0]:
                     c.update_objects(new_lmax_change[d])
         # self.print()
-        return new_lmax_change
+        return new_lmax_change, new_objects
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id, f, norm):

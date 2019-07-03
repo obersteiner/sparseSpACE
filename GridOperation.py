@@ -55,10 +55,14 @@ class Integration(AreaOperation):
 
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
-        area.integral += partial_integral
+        if area.integral is None:
+            area.integral = partial_integral
+        else:
+            area.integral += partial_integral
+        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
             refinement_container.integral += partial_integral
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
+            #print("partial integral", partial_integral, "from grid", levelvector, evaluations, area.start, area.end)
         return evaluations
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
@@ -198,6 +202,9 @@ class Integration(AreaOperation):
 
     def area_preprocessing(self, area):
         area.set_integral(0.0)
+        area.evaluations = 0
+        area.levelvec_dict = {}
+        area.error = None
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
@@ -303,7 +310,8 @@ class Integration(AreaOperation):
 
     # returns the absolute error in the integrals of the given area object and its twin in the d'th dimension
     def get_twin_error(self, d, area, norm):
-        return LA.norm(abs(area.integral - area.twins[d].integral), norm)
+        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))        
+        #return LA.norm(abs(area.integral - area.twins[d].integral), norm)
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation

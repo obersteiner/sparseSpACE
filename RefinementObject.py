@@ -84,6 +84,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             if self.switch_to_parent_estimation:
                 correction = abs(self.parent_info.get_extend_error_correction())
                 benefit_extend += correction
+            print("Benefit split =", benefit_split, "Benefit extend =", benefit_extend)
 
         if (self.automatic_extend_split and benefit_extend < benefit_split) or (
                 not self.automatic_extend_split and
@@ -135,24 +136,28 @@ class RefinementObjectExtendSplit(RefinementObject):
                 return newRefinementObjects, None, None
                 '''
                 dims = self.get_split_dims()
+                #dims = [self.get_split_dim()]
                 newRefinementObjects = [self]
                 for d in dims:
                     newObjects = []
-                    print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
+                    print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d], self.twinErrors) #TODO
                     for area in newRefinementObjects:
                         newObjects.extend(area.split_area_single_dim(d))
                     newRefinementObjects = newObjects
                 for area in newRefinementObjects:
                     for d in dims[:-1]:
-                        area.twins[dims[d]] = None
+                        area.twins[d] = None
                 for i in range(len(newRefinementObjects)):
                     area = newRefinementObjects[i]
                     for d in range(len(dims)-1):
                         if area.twins[dims[d]] is None:
-                            twin_distance = 2**(self.dim - d - 1)
+                            twin_distance = 2**(len(dims) - d - 1)
                             twin = newRefinementObjects[i + twin_distance]
-                            area.set_twin(d, twin)
-                            print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                            assert twin is not None
+                            area.set_twin(dims[d], twin)
+                            #print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", dims[d])
+                    for d in range(self.dim):
+                        assert area.twins[d] is not None
                         
                 return newRefinementObjects, None, None
 
@@ -254,7 +259,7 @@ class RefinementObjectExtendSplit(RefinementObject):
     def get_split_dim(self):
         return np.argmax(self.twinErrors)
 
-    def get_split_dims(self, threshold=0.99):
+    def get_split_dims(self, threshold=0.9):
         print("Twin errors for", self.start, self.end, "are", self.twinErrors, "twins are", self.twins[0].start, self.twins[0].end, self.twins[1].start, self.twins[1].end,)
         assert 0 <= threshold <= 1
         max_error = max(self.twinErrors)        
