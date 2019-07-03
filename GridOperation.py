@@ -208,6 +208,8 @@ class Integration(AreaOperation):
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
             return None
+        elif LA.norm(self.reference_solution) == 0.0:
+            return LA.norm(abs(refinement_container.integral), norm)
         else:
             return LA.norm(abs((self.reference_solution - refinement_container.integral)/self.reference_solution), norm)
 
