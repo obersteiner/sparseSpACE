@@ -9,7 +9,7 @@ from ErrorCalculator import *
 from GridOperation import *
 
 do_PCE = True
-# ~ do_PCE = False
+do_PCE_func = False
 do_HighOrder = True
 # ~ do_HighOrder = False
 
@@ -45,7 +45,7 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		boundary=boundary, do_high_order=do_HighOrder)
 	print("performSpatiallyAdaptiv…")
 	min_evals = 0
-	max_evals = 30
+	max_evals = 20
 	tol = 10**-3
 	combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
 		max_evaluations=max_evals, reference_solution=reference_expectation,
@@ -59,12 +59,13 @@ def do_test(d, a, b, f, reference_expectation, distris, boundary=True, calc_boun
 		poly_deg_max = 4
 
 		print("calculate_PCE…")
-		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			boundary=boundary, do_high_order=do_HighOrder)
-		f_pce = op.get_PCE_Function(poly_deg_max)
-		combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
-			max_evaluations=max_evals, reference_solution=reference_expectation,
-			min_evaluations=min_evals, do_plot=can_plot)
+		if do_PCE_func:
+			combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+				boundary=boundary, do_high_order=do_HighOrder)
+			f_pce = op.get_PCE_Function(poly_deg_max)
+			combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+				max_evaluations=max_evals, reference_solution=reference_expectation,
+				min_evaluations=min_evals, do_plot=can_plot)
 		op.calculate_PCE(poly_deg_max, combiinstance)
 		E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
 		first_sens = op.get_first_order_sobol_indices()
@@ -174,7 +175,7 @@ def test_normal_vagebounds():
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.000000000000000001
+	reference_expectation = 0.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), calc_bounds=True)
 
@@ -187,7 +188,7 @@ def test_normal_large_border():
 	b = np.array([bigvalue, bigvalue])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.000000000000000001
+	reference_expectation = 0.0
 
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), boundary=False)
 
@@ -199,7 +200,7 @@ def test_normal_inf_border():
 	b = np.array([math.inf, math.inf])
 
 	f = FunctionLinearSum([2.0, 0.0])
-	reference_expectation = 0.000000000000000001
+	reference_expectation = 0.0
 
 	# Variance is about 16, expectation is 0
 	do_test(d, a, b, f, reference_expectation, ("Normal", 0, 2), boundary=False)
