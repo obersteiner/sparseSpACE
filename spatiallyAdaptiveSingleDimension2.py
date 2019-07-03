@@ -64,11 +64,23 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def get_points_component_grid(self, levelvec, numSubDiagonal):
         return self.get_points_all_dim(levelvec, numSubDiagonal)
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec, _numSubDiagonal):
         point_coords, _ = self.get_point_coord_for_each_dim(levelvec)
         self.grid.set_grid(point_coords)
         points, weights = self.grid.get_points_and_weights()
         return points, weights
+
+    def get_num_points_each_dim(self):
+        num_points = np.zeros(self.dim, dtype=int)
+        for component_grid in self.scheme:
+            point_coords, _ = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            self.grid.set_grid(point_coords)
+            num_points_component_grid = self.grid.levelToNumPoints(component_grid.levelvector)
+            for i, v in enumerate(num_points_component_grid):
+                if num_points[i] < v:
+                    num_points[i] = v
+        assert all([v > 0 for v in num_points])
+        return num_points
 
     # returns list of coordinates for each dimension (basically refinement stripes) + all points that are associated
     # with a child in the global refinement structure. There might be now such points that correspond to a global child.

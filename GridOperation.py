@@ -774,9 +774,25 @@ class UncertaintyQuantification(Integration):
     def _set_pce_polys(self, polynomial_degrees):
         if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
             return
-        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
-        self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
         self.polynomial_degrees = polynomial_degrees
+        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
+        # Should test if it's iterable
+        if not isinstance(polynomial_degrees, list):
+            self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
+            return
+
+        # Chaospy does not support different degrees for each dimension, so
+        # the higher degree polynomials are removed afterwards
+        polys, norms = cp.orth_ttr(max(polynomial_degrees), self.distributions_joint, retall=True)
+        polys_filtered, norms_filtered = [], []
+        for i,poly in enumerate(polys):
+            max_exponents = [max(exps) for exps in poly.exponents.T]
+            if any([max_exponents[d] > deg_max for d, deg_max in enumerate(polynomial_degrees)]):
+                continue
+            polys_filtered.append(poly)
+            norms_filtered.append(norms[i])
+        self.pce_polys = cp.Poly(polys_filtered)
+        self.pce_polys_norms = norms_filtered
 
     # Returns a function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
@@ -818,6 +834,12 @@ class UncertaintyQuantification(Integration):
         if self.f_evals is None:
             self._set_nodes_weights_evals(combiinstance)
 
+        # Restrict the polynomial degrees if in some dimension not enough points
+        # are available
+        num_points = combiinstance.get_num_points_each_dim()
+        polynomial_degrees = [min(polynomial_degrees, num_points[d]-1) for d in range(self.dim)]
+        # Setting different degrees in each dimension did not give good results
+        polynomial_degrees = min(polynomial_degrees)
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
