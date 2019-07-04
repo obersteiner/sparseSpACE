@@ -218,12 +218,12 @@ class FunctionUQWeighted(Function):
     def getAnalyticSolutionIntegral(self, start, end):
         self.dim = len(start)
         if self.dim == 3:
-            f = lambda x, y, z: self.eval([x, y, z]) * self.weight_function([x, y, z])
+            f = lambda x, y, z: self.eval([x, y, z])
             return \
                 integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
                                   lambda x, y: end[0])[0]
         elif self.dim == 2:
-            f = lambda x, y: self.eval([x, y]) * self.weight_function([x, y])
+            f = lambda x, y: self.eval([x, y])
             return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
         else:
             assert False
