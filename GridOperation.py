@@ -778,8 +778,7 @@ class UncertaintyQuantification(Integration):
             return
         self.polynomial_degrees = polynomial_degrees
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
-        # Should test if it's iterable
-        if not isinstance(polynomial_degrees, list):
+        if not hasattr(polynomial_degrees, "__iter__"):
             self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
             return
 

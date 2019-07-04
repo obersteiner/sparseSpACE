@@ -373,12 +373,10 @@ class FunctionCustom(Function):
     def __init__(self, func):
         super().__init__()
         self.func = func
+        self.is_multidimensional = hasattr(self.func, "__iter__")
 
     def eval(self, coordinates):
-        if isinstance(self.func, list):
-            # Multidimensional function
-            # ~ print("eval at", coordinates)
-            # ~ print("func", self.func)
+        if self.is_multidimensional:
             result = [float(f(coordinates)) for f in self.func]
         else:
             result = self.func(coordinates)
