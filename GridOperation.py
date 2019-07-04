@@ -809,13 +809,12 @@ class UncertaintyQuantification(Integration):
     def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         assert len(self.nodes) == len(self.weights)
-        if any([w <= 0.0 for w in self.weights]):
-            print("Some weights are not positive, weights are", self.weights)
+        # ~ if any([w <= 0.0 for w in self.weights]):
+            # ~ print("Some weights are not positive, weights are", self.weights)
         self.f_evals = [self.f(coord) for coord in self.nodes]
 
     def calculate_moment(self, k, combiinstance):
-        if self.f_evals is None:
-            self._set_nodes_weights_evals(combiinstance)
+        self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
         return sum(vals)[0]
 
@@ -832,15 +831,14 @@ class UncertaintyQuantification(Integration):
         return expectation, variance
 
     def calculate_PCE(self, polynomial_degrees, combiinstance):
-        if self.f_evals is None:
-            self._set_nodes_weights_evals(combiinstance)
+        self._set_nodes_weights_evals(combiinstance)
 
         # Restrict the polynomial degrees if in some dimension not enough points
         # are available
         num_points = combiinstance.get_num_points_each_dim()
         polynomial_degrees = [min(polynomial_degrees, num_points[d]-1) for d in range(self.dim)]
         # Setting different degrees in each dimension did not give good results
-        polynomial_degrees = min(polynomial_degrees)
+        # ~ polynomial_degrees = min(polynomial_degrees)
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
@@ -881,4 +879,5 @@ class UncertaintyQuantification(Integration):
 
     def get_pdf_Function(self):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
-        return FunctionCustom(lambda coords: float(self.distributions_joint.pdf(coords)))
+        pdf = self.distributions_joint.pdf
+        return FunctionCustom(lambda coords: float(pdf(coords)))
