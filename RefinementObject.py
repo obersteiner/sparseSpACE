@@ -433,18 +433,18 @@ class RefinementObjectSingleDimension(RefinementObject):
         update = None
         coarsening_value = 0
         # if we are already at maximum refinement coarsening_value stays at 0
-        if self.coarsening_level == 0:
-            coarsening_value = 0
-        else:  # otherwise decrease coarsening level
-            coarsening_value = self.coarsening_level - 1
+        #if self.coarsening_level == 0:
+        #    coarsening_value = 0
+        #else:  # otherwise decrease coarsening level
+        #    coarsening_value = self.coarsening_level - 1
         # in case we have refined complete scheme (i.e. coarensingLevel was 0) we have to increase level everywhere else
-        if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
-            # increase lmax by 1
-            lmax_increase = [1 if d == self.this_dim or self.dim_adaptive == False else 0 for d in range(self.dim)]
-            update = 1
-            # print("New scheme")
-            # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
-            # self.newScheme = True
+        #if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
+        #    # increase lmax by 1
+        #    lmax_increase = [1 if d == self.this_dim or self.dim_adaptive == False else 0 for d in range(self.dim)]
+        #    update = 1
+        #    # print("New scheme")
+        #    # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
+        #    # self.newScheme = True
         # add new refined interval to refinement array (it has half of the width)
         newWidth = (self.end - self.start) / 2.0
         newObjects = []
@@ -458,9 +458,10 @@ class RefinementObjectSingleDimension(RefinementObject):
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
     def update(self, update_info):
         self.coarsening_level += update_info
+        assert self.coarsening_level >= 0
 
     def print(self):
-        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit )
+        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit, "\tcoarsening", self.coarsening_level)
 
     def set_levels(self, levels):
         self.levels = levels
