@@ -593,11 +593,105 @@ class GlobalTrapezoidalGrid(Grid):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+class GlobalSimpsonGrid(Grid):
+    def __init__(self, a, b, boundary=True, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGrid(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = False #modified_basis
+        assert not(modified_basis) or not(boundary)
+
+    def is_global(self):
+        return True
+
+    def isNested(self):
+        return True
+
+    def set_grid(self, grid_points):
+        for d in range(self.dim):
+            assert len(grid_points[d]) % 2 == 1
+        self.coords = []
+        self.weights = []
+        if self.boundary:
+            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+        else:
+            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+
+        for d in range(self.dim):
+            # check if grid_points are sorted
+            assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
+            if self.boundary:
+                coordsD = grid_points[d]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])
+            else:
+                coordsD = grid_points[d][1:-1]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
+            if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
+                print(grid_points[d], weightsD)
+            if self.modified_basis:
+                assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
+
+            #print(coordsD, grid_points[d], weightsD)
+            self.coords.append(coordsD)
+            self.weights.append(weightsD)
+            self.numPoints[d] = len(coordsD)
+    # Weights computed using https://www.wolframalpha.com/input/?i=Solve+x%2By%2Bz+%3D+c+-+a,+a*x+%2B+b+*y+%2B+c+*+z+%3D+c%5E2+%2F+2+-+a%5E2+%2F+2,+++a%5E2*x+%2B+b%5E2+*y+%2B+c%5E2+*+z+%3D+c%5E3+%2F3+-+a%5E3+%2F+3++++for+++x,+y,+z
+    def compute_1D_quad_weights(self, grid_1D, a, b):
+        weights = np.zeros(len(grid_1D))
+        assert len(grid_1D) >= 3
+
+        for i in range(len(grid_1D)):
+
+            if i % 2 == 0:
+                if i > 0:
+                    x_1 = grid_1D[i - 2]
+                    x_2 = grid_1D[i - 1]
+                    x_3 = grid_1D[i]
+                    weights[i] += (x_1 - x_3) * (x_1 - 3*x_2 + 2*x_3) / (6 * (x_2 - x_3))
+                if i < len(grid_1D) - 1:
+                    x_1 = grid_1D[i]
+                    x_2 = grid_1D[i + 1]
+                    x_3 = grid_1D[i + 2]
+                    weights[i] += (x_3 - x_1) * (2*x_1 - 3*x_2 + x_3) / (6 *(x_1 - x_2))
+            else:
+                x_1 = grid_1D[i-1]
+                x_2 = grid_1D[i]
+                x_3 = grid_1D[i+1]
+                weights[i] += (x_3 - x_1)**3 / (6*(x_3 - x_2) * (x_2 - x_1))
+
+        return weights
+
+    def levelToNumPoints(self, levelvec):
+        if hasattr(self, 'numPoints'):
+            return self.numPoints
+        else:
+            return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
+
+    def getPoints(self):
+        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+
+    def getCoordinate(self, indexvector):
+        position = np.zeros(self.dim)
+        for d in range(self.dim):
+            position[d] = self.coords[d][indexvector[d]]
+        return position
+
+    def getWeight(self, indexvector):
+        weight = 1
+        for d in range(self.dim):
+            weight *= self.weights[d][indexvector[d]]
+        return weight
+
 from scipy.optimize import nnls
 import matplotlib.pyplot as plt
 
 class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
-    def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True):
+    def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
         self.a = a
@@ -607,6 +701,9 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         self.do_nnls = do_nnls
         self.max_degree = max_degree
         self.split_up = split_up
+        self.modified_basis = modified_basis
+        assert not(modified_basis) or not(boundary)
+
 
     def compute_1D_quad_weights(self, grid_1D, a, b):
         '''
@@ -623,19 +720,24 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         return weights
         '''
         #if self.max_degree == 2:
+
         weights, degree = self.get_1D_weights_and_order(grid_1D, a, b)
         #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
         if self.split_up:
-            weights, degree = self.recursive_splitting3(grid_1D, a, b, degree)
+            #print(grid, degree)
+            if len(grid_1D) > 1 and (len(grid_1D) > 3 or self.boundary):
+                weights, degree = self.recursive_splitting3(grid_1D, a, b, degree)
+        #print(weights, grid_1D, degree)
         #print("Degree", degree, len(grid_1D))
         #print(weights_1D, sum(abs(weights_1D)), sum(weights_1D), sum(weightsD), d_old)
         #print("Order", d)
         #for i in range(d):
         #    print(abs(sum([grid_1D[j]**i * weights_1D_old[j] for j in range(len(grid_1D))]) - 1 / (i+1)))
         #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
-        if degree == 1:
-            print(grid_1D)
-        return weights
+        #if degree == 1:
+            #print(grid_1D)
+        #print(grid_1D, weights, degree)
+        return np.array(weights)
 
     def recursive_splitting2(self, grid_1D, a, b, d):
         weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)])
@@ -702,25 +804,36 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
             return self.get_1D_weights_and_order(grid_1D, a, b)
 
     def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
-        if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
-            return np.array([1/6, 4/6, 1/6]) * (b-a), 2
-        if len(grid_1D) == 2:
-            return np.array([0.5, 0.5]) * (b-a), 1
-        if len(grid_1D) == 1:
-            return np.array([1]) * (b-a), -100
-        if len(grid_1D) == 0:
-            return np.array([0]) * (b - a), -100
+        #if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
+        #    return np.array([1/6, 4/6, 1/6]) * (b-a), 2
+        #if len(grid_1D) == 2:
+        #    return np.array([0.5, 0.5]) * (b-a), 1
         d = d_old = 1
         weights_1D_old = np.zeros(len(grid_1D))
         grid_1D_normalized = 2 * (np.array(grid_1D) - a) / (b - a) - 1
-        trapezoidal_weights = super().compute_1D_quad_weights(grid_1D_normalized, a, b)
+        if self.boundary:
+            trapezoidal_weights = super().compute_1D_quad_weights(grid_1D_normalized, a, b)
+        else:
+            trapezoidal_weights = np.array(super().compute_1D_quad_weights(grid_1D, a, b)[1:-1])
+            trapezoidal_weights = trapezoidal_weights * 2 / sum(trapezoidal_weights)
+            grid_1D_normalized = grid_1D_normalized[1:-1]
+            #print(grid_1D, trapezoidal_weights, grid_1D_normalized)
+        if len(grid_1D_normalized) == 1:
+            if self.boundary:
+                return np.array([1]) * (b-a), 0
+            else:
+                return np.array([0,1,0]) * (b-a), 0
+
+        if len(grid_1D_normalized) == 0:
+            return np.array([0]) * (b - a), -100
+        #print(trapezoidal_weights, grid_1D_normalized)
         weights_1D_old = np.array(trapezoidal_weights)
 
         while(d < len(grid_1D) - int(reduce_max_order_for_length) and d <= self.max_degree):
 
             #print("Trapezoidal weights", trapezoidal_weights)
             #print("Grid points", grid_1D_normalized)
-            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evalaluations(grid_1D_normalized,d, trapezoidal_weights)
+            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evaluations(grid_1D_normalized, d, trapezoidal_weights)
             coordsD, weightsD = legendre.leggauss(int((d+2)/2))
             #coordsD = np.array(coordsD)
             #coordsD += 1
@@ -758,8 +871,10 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
                 break
             d_old = d - 1
             weights_1D_old = weights_1D
-            if improve_weight and all([w > 0 for w in weights_1D]):
-                trapezoidal_weights = weights_1D
+            #if improve_weight and all([w > 0 for w in weights_1D]):
+            #    trapezoidal_weights = weights_1D
+        if not self.boundary:
+            weights_1D_old = np.array([0] + list(weights_1D_old) + [0])
         return weights_1D_old, d_old
 
 
@@ -784,7 +899,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         #return sum(weights_1D) < (b-a) * 2
         return bad_approximation
 
-    def get_polynomials_and_evalaluations(self, x_array, d, trapezoidal_weights):
+    def get_polynomials_and_evaluations(self, x_array, d, trapezoidal_weights):
         evaluations = np.ones((d+1,len(x_array)))
         x_array = np.array(x_array)
         alphas = np.zeros(d+1)
@@ -998,7 +1113,7 @@ class GaussLegendreGrid(Grid):
 
 class GaussLegendreGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
-        return 2 ** level + 1
+        return 2 ** level - 1
 
     def is_nested(self):
         return False
