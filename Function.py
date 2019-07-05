@@ -356,22 +356,26 @@ class GenzOszillatory(Function):
         return math.cos(result)
 
     def getAnalyticSolutionIntegral(self, start, end):
-        factor = ((-1) ** int(math.floor(self.dim / 2))) * 1.0 / np.prod(self.coeffs)
-        combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
+        not_zero_dims = [d for d in range(self.dim) if self.coeffs[d] != 0]
+        zero_dims = [d for d in range(self.dim) if self.coeffs[d] == 0]
+        factor_zero_dims = np.prod([end[d] - start[d] for d in zero_dims])
+        factor = ((-1) ** int(math.floor(len(not_zero_dims) / 2))) * 1.0 / np.prod([self.coeffs[d] for d in not_zero_dims])
+        combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in not_zero_dims])]))
         result = 0
         for c in combinations:
             partial_result = 2 * math.pi * self.offset
-            for d in range(self.dim):
-                if c[d] == 1:
+            for i in range(len(not_zero_dims)):
+                d = not_zero_dims[i]
+                if c[i] == 1:
                     value = start[d]
                 else:
                     value = end[d]
                 partial_result += value * self.coeffs[d]
-            if self.dim % 2 == 1:
+            if len(not_zero_dims) % 2 == 1:
                 result += (-1) ** sum(c) * math.sin(partial_result)
             else:
                 result += (-1) ** sum(c) * math.cos(partial_result)
-        return factor * result
+        return factor * result * factor_zero_dims
 
 
 class GenzDiscontinious(Function):
