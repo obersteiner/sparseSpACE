@@ -663,6 +663,9 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             weights[-1] = 0.0
             f = 1.0 / sum(weights[1:-1])
             weights[1:-1] = [f * v for v in weights[1:-1]]
+        else:
+            if abs(1.0 - sum(weights)) > 10 ** -4:
+                print("warning: 1D weights sum is {}".format(sum(weights)))
 
         return weights
 
