@@ -438,38 +438,37 @@ class RefinementObjectSingleDimension(RefinementObject):
         update = None
         coarsening_value = 0
         # if we are already at maximum refinement coarsening_value stays at 0
-        if self.coarsening_level == 0:
-            coarsening_value = 0
-        else:  # otherwise decrease coarsening level
-            coarsening_value = self.coarsening_level - 1
+        #if self.coarsening_level == 0:
+        #    coarsening_value = 0
+        #else:  # otherwise decrease coarsening level
+        #    coarsening_value = self.coarsening_level - 1
         # in case we have refined complete scheme (i.e. coarensingLevel was 0) we have to increase level everywhere else
-        if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
-            # increase lmax by 1
-            lmax_increase = [1 if d == self.this_dim or self.dim_adaptive == False else 0 for d in range(self.dim)]
-            update = 1
-            # print("New scheme")
-            # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
-            # self.newScheme = True
+        #if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
+        #    # increase lmax by 1
+        #    lmax_increase = [1 if d == self.this_dim or self.dim_adaptive == False else 0 for d in range(self.dim)]
+        #    update = 1
+        #    # print("New scheme")
+        #    # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
+        #    # self.newScheme = True
         # add new refined interval to refinement array
         mid = self.grid.get_mid_point(self.start, self.end, self.this_dim)
         assert self.start < mid < self.end, "{} < {} < {} does not hold.".format(self.start, mid, self.end)
+
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        newObjects.append(RefinementObjectSingleDimension(self.start, mid,
-            self.this_dim, self.dim, (self.levels[0], newLevel), self.grid,
-            coarsening_value, dim_adaptive=self.dim_adaptive))
-        newObjects.append(RefinementObjectSingleDimension(mid, self.end,
-            self.this_dim, self.dim, (newLevel, self.levels[1]), self.grid,
-            coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), coarsening_value, dim_adaptive=self.dim_adaptive))
+        # self.finestWidth = min(newWidth,self.finestWidth)
         return newObjects, lmax_increase, update
 
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
     def update(self, update_info):
         self.coarsening_level += update_info
+        assert self.coarsening_level >= 0
 
     def print(self):
-        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit )
+        print("refineObjSingleDim: ", self.start, "\t--\t", self.end, " \tthis_dim:", self.this_dim, "\terror:", self.error, "\tlevels:", self.levels, "\tvolume:", self.volume, "benefit:", self.benefit, "\tcoarsening", self.coarsening_level)
 
     def set_levels(self, levels):
         self.levels = levels

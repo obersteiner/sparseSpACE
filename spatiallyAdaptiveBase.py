@@ -289,6 +289,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         pass
 
     def finalize_evaluation_operation(self, areas, evaluation_array):
+        if self.print_output:
+            print("Curent number of function evaluations", self.get_total_num_points())
+
         for area in areas:
             self.operation.area_postprocessing(area)
 
@@ -300,5 +303,4 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.calc_error(i, self.f)
             self.refinement.set_benefit(i)
 
-        if self.print_output:
-            print("Curent number of function evaluations", self.get_total_num_points())
+
