@@ -8,8 +8,8 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
-# ~ calc_E_Var = True
-calc_E_Var = False
+calc_E_Var = True
+# ~ calc_E_Var = False
 # ~ do_PCE_func = False
 do_PCE_func = True
 do_HighOrder = True
@@ -81,17 +81,22 @@ def do_test(d, a, b, f, distris, boundary=True, calc_bounds=False, solutions=Non
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 40
+	max_evals = 140
 	tol = 10**-3
 	poly_deg_max = 4
 
 	E, Var = -1.0, -1.0
 	if calc_E_Var:
+		expectation_var_func = op.get_expectation_variance_Function()
 		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 			boundary=boundary, do_high_order=do_HighOrder)
 		print("performSpatiallyAdaptiv…")
-		combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
-			max_evaluations=max_evals, reference_solution=reference_expectation,
+		# ~ combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
+			# ~ max_evaluations=max_evals, reference_solution=reference_expectation,
+			# ~ min_evaluations=min_evals, do_plot=can_plot)
+		combiinstance.performSpatiallyAdaptiv(1, 2, expectation_var_func,
+			error_operator, tol=tol,
+			max_evaluations=max_evals,
 			min_evaluations=min_evals, do_plot=can_plot)
 
 		print("calculate_expectation_and_variance…")
@@ -226,8 +231,8 @@ def test_normal_large_border():
 def test_normal_inf_border():
 	print("Testing normal distribution on linear function with infinite boundaries")
 	d = 2
-	a = np.array([-math.inf, -math.inf])
-	b = np.array([math.inf, math.inf])
+	a = np.array([-math.inf] * d)
+	b = np.array([math.inf] * d)
 
 	f = FunctionLinearSum([2.0, 0.0])
 
@@ -246,7 +251,7 @@ def test_something():
 	do_test(d, a, b, f, ("Triangle", 0.75), solutions=(0.04237441517058615, 0.01564415095611312))
 
 
-def test_uq_discontinuity2():
+def test_uq_discontinuity2D():
 	print("Testing a discontinuous function")
 	d = 2
 	a = -np.ones(d)
@@ -255,11 +260,50 @@ def test_uq_discontinuity2():
 	do_test(d, a, b, f, ("Triangle", 0.0), solutions=(3.2412358262581886, 10.356669220098361))
 
 
-# ~ test_uq_discontinuity2()
+def test_uq_discontinuity3D():
+	print("Testing a discontinuous function")
+	d = 3
+	a = -np.ones(d)
+	b = np.ones(d)
+	f = FunctionUQ()
+	# Calculating the solutions took long here.
+	do_test(d, a, b, f, ("Triangle", 0.0), solutions=(3.2412358262581886, 10.523335886765029))
+
+
+def test_cantilever_beam_D():
+	print("Testing a Cantilever Beam function")
+	d = 3
+	a = np.array([-math.inf] * d)
+	b = np.array([math.inf] * d)
+	f = FunctionCantileverBeamD()
+	distrs = [("Normal", 2.9e7, 1.45e6), ("Normal", 500.0, 100.0), ("Normal", 1000.0, 100.0)]
+	# Does not work
+	do_test(d, a, b, f, distrs, boundary=False)
+
+
+def test_G_function():
+	print("Testing the G Function")
+	d = 2
+	a = np.zeros(d)
+	b = np.ones(d)
+	f = FunctionG(d)
+	expectation = f.get_expectation()
+	# ~ var = f.get_variance()
+	var = None
+	first_order_indices = None
+	# ~ first_order_indices = f.get_first_order_sobol_indices()
+	print(expectation, var, first_order_indices)
+	do_test(d, a, b, f, "Uniform", solutions=(1.0, 0.5308641975308643))
+
+
+# ~ test_uq_discontinuity3D()
+# ~ test_uq_discontinuity2D()
+# ~ test_cantilever_beam_D()
+test_G_function()
 
 # ~ test_normal_integration()
 
-test_normal_inf_border()
+# ~ test_normal_inf_border()
 # ~ test_normal_large_border()
 # ~ test_normal_vagebounds()
 # ~ test_constant_triangle()

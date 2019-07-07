@@ -788,13 +788,6 @@ class UncertaintyQuantification(Integration):
             b.append(float(dist.inv(1.0 - tol)))
         return a, b
 
-    # Returns a function which can be passed to performSpatiallyAdaptiv
-    # so that adapting is optimized for the k-th moment
-    def get_moment_Function(self, k):
-        if k == 1:
-            return self.f
-        return FunctionPower(self.f, k)
-
     def _set_pce_polys(self, polynomial_degrees):
         if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
             return
@@ -816,17 +809,6 @@ class UncertaintyQuantification(Integration):
             norms_filtered.append(norms[i])
         self.pce_polys = cp.Poly(polys_filtered)
         self.pce_polys_norms = norms_filtered
-
-    # Returns a function which can be passed to performSpatiallyAdaptiv
-    # so that adapting is optimized for the PCE
-    def get_PCE_Function(self, polynomial_degrees):
-        self._set_pce_polys(polynomial_degrees)
-        # self.f can change, so putting it to a local variable is important
-        # ~ f = self.f
-        # ~ polys = self.pce_polys
-        # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
-        # ~ return FunctionCustom(funcs)
-        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
     def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
@@ -903,3 +885,28 @@ class UncertaintyQuantification(Integration):
         self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         pdf = self.distributions_joint.pdf
         return FunctionCustom(lambda coords: float(pdf(coords)))
+
+    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the k-th moment
+    def get_moment_Function(self, k):
+        if k == 1:
+            return self.f
+        return FunctionPower(self.f, k)
+
+    # Optimizes adapting for multiple moments at once
+    def get_moments_Function(self, ks):
+        return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
+
+    def get_expectation_variance_Function(self):
+        return self.get_moments_Function([1, 2])
+
+    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the PCE
+    def get_PCE_Function(self, polynomial_degrees):
+        self._set_pce_polys(polynomial_degrees)
+        # self.f can change, so putting it to a local variable is important
+        # ~ f = self.f
+        # ~ polys = self.pce_polys
+        # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
+        # ~ return FunctionCustom(funcs)
+        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)

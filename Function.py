@@ -229,6 +229,54 @@ class FunctionUQWeighted(Function):
             assert False
 
 
+# An UQ test function: https://www.sfu.ca/~ssurjano/canti.html
+class FunctionCantileverBeamD(Function):
+    def __init__(self, width=20.0, thickness=2.0):
+        super().__init__()
+        self.w = width
+        self.t = thickness
+
+    def eval(self, coordinates):
+        assert len(coordinates) == 3
+        w = self.w
+        t = self.t
+        L = 100.0
+        E, Y, X = coordinates
+        D = 4.0 * L ** 3 / (E * w * t) * math.sqrt((Y / t ** 2) ** 2 + (X / w ** 2) ** 2)
+        return D
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "not implemented"
+
+
+# g-function of Sobol: https://www.sfu.ca/~ssurjano/gfunc.html
+class FunctionG(Function):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+        self.a = 0.5 * np.array(range(dim))
+
+    def eval(self, coordinates):
+        assert len(coordinates) == self.dim
+        a = self.a
+        return np.prod([(abs(4.0 * coordinates[d] - 2.0) + a[d]) / (1.0 + a[d]) for d in range(self.dim)])
+
+    # Uniform distributions in [0, 1] are required for this Function.
+    def get_expectation(self): return 1.0
+
+    # ~ def get_variance(self):
+        # ~ return
+
+    # This seems to be wrong
+    # ~ def get_first_order_sobol_indices(self):
+        # ~ fac = 1.0 / np.prod([1.0 / (3.0 * (1.0 + a_d) ** 2) for a_d in self.a])
+        # ~ return [fac * 1.0 / (3.0 * (1.0 + self.a[d]) ** 2) for d in range(self.dim)]
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        assert all([v == 0.0 for v in start])
+        assert all([v == 1.0 for v in end])
+        return self.get_expectation()
+
+
 class FunctionUQ(Function):
     def eval(self, coordinates):
         assert (len(coordinates) == 3)
@@ -382,6 +430,17 @@ class FunctionCustom(Function):
             result = self.func(coordinates)
             assert isinstance(result, float)
         return result
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
+
+
+class FunctionConcatenate(Function):
+    def __init__(self, funcs):
+        super().__init__()
+        self.funcs = funcs
+
+    def eval(self, coordinates):
+        return np.concatenate([f(coordinates) for f in self.funcs])
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
 
