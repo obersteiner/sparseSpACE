@@ -284,8 +284,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         levels = [0, 2, 1, 2, 0]
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
-                                                                                     initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])),
-                                                                                     self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
+                                                                                     initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), self.grid,
+                                                                                     coarsening_level=self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
                                                      range(2 ** 2)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:

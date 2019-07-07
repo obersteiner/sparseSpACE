@@ -476,10 +476,10 @@ class Integration(AreaOperation):
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
-            factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            # ~ factor_left_parent = (right_parent - child)/(right_parent - left_parent)
             points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
-            factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            # ~ factor_right_parent = (child - left_parent)/(right_parent - left_parent)
             points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
         indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
@@ -520,7 +520,8 @@ class Integration(AreaOperation):
                     else:
                         assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
-                        value -= factor_left_parent * self.f(points_left_parent[i])
+                        # ~ value -= factor_left_parent * self.f(points_left_parent[i])
+                        value -= 0.5 * self.f(points_left_parent[i])
                 if right_parent_in_grid:
                     if self.grid_surplusses.modified_basis and not left_parent_in_grid:
                         assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0

@@ -457,8 +457,8 @@ class RefinementObjectSingleDimension(RefinementObject):
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), coarsening_value, dim_adaptive=self.dim_adaptive))
-        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), self.grid, coarsening_level=coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), self.grid, coarsening_level=coarsening_value, dim_adaptive=self.dim_adaptive))
         # self.finestWidth = min(newWidth,self.finestWidth)
         return newObjects, lmax_increase, update
 
