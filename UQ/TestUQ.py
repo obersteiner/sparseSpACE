@@ -10,8 +10,8 @@ from GridOperation import *
 
 calc_E_Var = True
 # ~ calc_E_Var = False
-# ~ do_PCE_func = False
 do_PCE_func = True
+# ~ do_PCE_func = False
 do_HighOrder = True
 # ~ do_HighOrder = False
 
@@ -36,11 +36,7 @@ def get_numbers_info(description, value, reference_value=None):
 
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, distris, boundary=True, calc_bounds=False, solutions=None, calculate_solutions=False):
-	if calc_bounds:
-		op = UncertaintyQuantification(f, distris, a, b, dim=d)
-		a, b = op.get_boundaries(0.01)
-		print("Boundaries set to", a, b)
+def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_solutions=False):
 	op = UncertaintyQuantification(f, distris, a, b, dim=d)
 
 	reference_expectation = None
@@ -203,21 +199,18 @@ def test_linear():
 
 
 def test_normal_vagebounds():
-	print("Testing normal distribution on linear function with calculated boundaries")
+	print("Invalid corner case: normal distribution on linear function with calculated boundaries")
 	d = 2
-	bigvalue = 1.0
-	# a and b are actually unused
-	a = np.array([-bigvalue, -bigvalue])
-	b = np.array([bigvalue, bigvalue])
-
 	f = FunctionLinearSum([2.0, 0.0])
-
+	op = UncertaintyQuantification(f, ("Normal", 0, 2), np.array([-1.0, -1.0]), np.array([1.0, 1.0]), dim=d)
+	a, b = op.get_boundaries(0.01)
+	print("Boundaries set to", a, b)
 	# The reference variance refers to 0.01 cfd threshold
-	do_test(d, a, b, f, ("Normal", 0, 2), calc_bounds=True, solutions=(0.0, 13.422012439469572))
+	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, solutions=(0.0, 13.422012439469572))
 
 
 def test_normal_large_border():
-	print("Testing normal distribution on linear function with large boundaries")
+	print("Invalid corner case: normal distribution on linear function with large boundaries")
 	d = 2
 	bigvalue = 100.0
 	a = np.array([-bigvalue, -bigvalue])
@@ -229,7 +222,7 @@ def test_normal_large_border():
 
 
 def test_normal_inf_border():
-	print("Testing normal distribution on linear function with infinite boundaries")
+	print("Corner case: normal distribution on linear function with infinite boundaries")
 	d = 2
 	a = np.array([-math.inf] * d)
 	b = np.array([math.inf] * d)
@@ -297,15 +290,12 @@ def test_G_function():
 
 
 # ~ test_uq_discontinuity3D()
-# ~ test_uq_discontinuity2D()
+test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
-test_G_function()
+# ~ test_G_function()
 
 # ~ test_normal_integration()
 
-# ~ test_normal_inf_border()
-# ~ test_normal_large_border()
-# ~ test_normal_vagebounds()
 # ~ test_constant_triangle()
 # ~ test_constant()
 # ~ test_linear()
