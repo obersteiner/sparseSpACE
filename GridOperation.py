@@ -2,7 +2,7 @@ import abc
 import numpy as np
 from numpy import linalg as LA
 import numpy.testing as npt
-from math import log2, isclose
+from math import log2, isclose, isinf
 
 
 class GridOperation(object):
@@ -310,9 +310,7 @@ class Integration(AreaOperation):
         print("combiintegral:", combi_integral)
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
-        # reuse_old_values does not work for multidimensional function output
-        # ~ if reuse_old_values:
-        if False:
+        if reuse_old_values:
             previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
             integral = np.array(previous_integral)
             previous_points_coarsened = list(previous_points)
@@ -349,16 +347,8 @@ class Integration(AreaOperation):
         self.grid.set_grid(gridPointCoordsAsStripes)
         self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
-    # This function exchanges the operation's function so that the adaptive
-    # refinement can use a different function than the operation's function
     def set_function(self, f=None):
-        if f is None:
-            self.f = self.f_actual
-            self.f_actual = None
-        else:
-            assert self.f_actual is None
-            self.f_actual = self.f
-            self.f = f
+        assert f is None or f == self.f, "Integration and the refinement should use the same function"
 
     def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
@@ -463,11 +453,13 @@ class Integration(AreaOperation):
 
         #npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
 
-        for p in grid_points[d]:
-            if isclose(p, left_parent):
-                left_parent = p
-            if isclose(p, right_parent):
-                right_parent = p
+        # Searching close points does not work right when points have
+        # low distance to each other.
+        # ~ for p in grid_points[d]:
+            # ~ if isclose(p, left_parent):
+                # ~ left_parent = p
+            # ~ if isclose(p, right_parent):
+                # ~ right_parent = p
         index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
         index_child = grid_points[d].index(child) - 1 * int(not self.grid.boundary)
         index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
@@ -476,10 +468,16 @@ class Integration(AreaOperation):
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
-            # ~ factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
             points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
-            # ~ factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
             points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
         indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
@@ -518,10 +516,14 @@ class Integration(AreaOperation):
                             assert(tuple(left_of_left_parent) in self.f.f_dict)
 
                     else:
-                        assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+                        # TODO: this assertion happens
+                        plpi = points_left_parent[i]
+                        ws = self.grid.weights[d]
+                        wsl = ws[index_left_parent]
+                        assert plpi in self.f.f_dict or wsl == 0
+                        # ~ assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
-                        # ~ value -= factor_left_parent * self.f(points_left_parent[i])
-                        value -= 0.5 * self.f(points_left_parent[i])
+                        value -= factor_left_parent * self.f(points_left_parent[i])
                 if right_parent_in_grid:
                     if self.grid_surplusses.modified_basis and not left_parent_in_grid:
                         assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
@@ -542,10 +544,9 @@ class Integration(AreaOperation):
                     else:
                         #print(points_right_parent[i], self.f.f_dict.keys())
                         assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-                        value -= 0.5 * self.f(points_right_parent[i])
-                volume += factor * abs(value) * (weight_child * 2 ** -level_child)**exponent
-                        # ~ value -= factor_right_parent * self.f(points_right_parent[i])
-                # ~ volume += factor * abs(value) * (right_parent - left_parent)**exponent
+                        value -= factor_right_parent * self.f(points_right_parent[i])
+                # ~ volume += factor * abs(value) * (weight_child * 2 ** -level_child)**exponent
+                volume += factor * abs(value) * (2 ** -level_child) ** exponent
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
@@ -773,6 +774,26 @@ class UncertaintyQuantification(Integration):
             else:
                 assert False, "Distribution not implemented: " + distr_type
         self.distributions_joint = None
+
+    # reuse_old_values does not work for multidimensional function output,
+    # so this method is overridden here
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, _reuse_old_values=False):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
+        self.grid.set_grid(gridPointCoordsAsStripes)
+        integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+        self.refinement_container.integral += integral * component_grid.coefficient
+        return integral
+
+    # This function exchanges the operation's function so that the adaptive
+    # refinement can use a different function than the operation's function
+    def set_function(self, f=None):
+        if f is None:
+            self.f = self.f_actual
+            self.f_actual = None
+        else:
+            assert self.f_actual is None
+            self.f_actual = self.f
+            self.f = f
 
     def get_distributions(self): return self.distributions
 
