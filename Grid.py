@@ -597,6 +597,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def __init__(self, a, b, uq_operation, boundary=True):
         super().__init__(a, b, boundary)
         self.distributions = uq_operation.get_distributions()
+        self.weight_caches = [dict() for _ in range(self.dim)]
 
     @staticmethod
     def get_middle_weighted(a, b, cdf, ppf):
@@ -619,32 +620,39 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         return self.get_middle_weighted(a, b, distr.cdf, distr.inv)
 
     @staticmethod
-    def compute_weights(grid_1D, a, b, pdf, cdf, boundary):
+    def compute_weights(grid_1D, a, b, pdf, cdf, boundary, cached_weights=None):
         num_points = len(grid_1D)
         if num_points == 1:
             return [1.0]
         elif not boundary and num_points == 3:
             return [0.0, 1.0, 0.0]
         assert boundary or num_points > 3
+        have_cache = cached_weights is not None
         weights = np.zeros(num_points)
         for i in range(num_points-1):
-            # Calculate weights with the method of undetermined coefficients
             x1 = grid_1D[i]
             x2 = grid_1D[i+1]
-            moment_0 = cdf(x2) - cdf(x1)
-            # w1 + w2 = moment_0
-            moment_1 = integrate.quad(lambda x: x * pdf(x), x1, x2,
-                epsrel=10 ** -2, epsabs=10 ** -3)[0]
-            # w1 * x1 + w2 * x2 = moment_1
-            if math.isinf(x1):
-                # For infinite borders, L'Hospital leads to a simple w2
-                w2 = moment_0
-            elif math.isinf(x2):
-                w2 = 0
+            if have_cache and (x1, x2) in cached_weights:
+                # Reuse previously calculated weights when available
+                w1, w2 = cached_weights[(x1, x2)]
             else:
-                w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
-            w1 = moment_0 - w2
-            # ~ print("dd", w1, w2, x1, x2, moment_0, moment_1)
+                # Calculate weights with the method of undetermined coefficients
+                moment_0 = cdf(x2) - cdf(x1)
+                # w1 + w2 = moment_0
+                moment_1 = integrate.quad(lambda x: x * pdf(x), x1, x2,
+                    epsrel=10 ** -2, epsabs=10 ** -3)[0]
+                # w1 * x1 + w2 * x2 = moment_1
+                if math.isinf(x1):
+                    # For infinite borders, L'Hospital leads to a simple w2
+                    w2 = moment_0
+                elif math.isinf(x2):
+                    w2 = 0
+                else:
+                    w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
+                w1 = moment_0 - w2
+                # ~ print("dd", w1, w2, x1, x2, moment_0, moment_1)
+                if have_cache:
+                    cached_weights[(x1, x2)] = (w1, w2)
             # Add them to the composite quadrature weights
             weights[i] += w1
             weights[i+1] += w2
@@ -671,7 +679,8 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
     def compute_1D_quad_weights(self, grid_1D, a, b, d):
         distr = self.distributions[d]
-        return self.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf, self.boundary)
+        return self.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf,
+            self.boundary, cached_weights=self.weight_caches[d])
 
 
 class GlobalSimpsonGrid(Grid):
@@ -1056,10 +1065,14 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
         split_up = False
         super().__init__(a, b, boundary=boundary, do_nnls=do_nnls, max_degree=max_degree, split_up=split_up, modified_basis=modified_basis)
         self.distributions = uq_operation.get_distributions()
+        self.weight_caches = [dict() for _ in range(self.dim)]
 
     def get_composite_quad_weights(self, grid_1D, a, b):
-        distr = self.distributions[self.get_current_dimension()]
-        return GlobalTrapezoidalGridWeighted.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf, self.boundary)
+        d = self.get_current_dimension()
+        distr = self.distributions[d]
+        return GlobalTrapezoidalGridWeighted.compute_weights(
+            grid_1D, a, b, distr.pdf, distr.cdf, self.boundary,
+            cached_weights=self.weight_caches[d])
 
     def get_mid_point(self, a, b, d):
         distr = self.distributions[d]
