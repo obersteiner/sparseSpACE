@@ -9,16 +9,19 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None, rebalancing=True):
+    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None, rebalancing=True, grid=None):
         self.do_high_order = do_high_order
-        if self.do_high_order:
-            self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls, modified_basis=False)
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
+        if grid is None:
+            if self.do_high_order:
+                self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls, modified_basis=False)
+                self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
 
+            else:
+                self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+                self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         else:
-            self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+            self.grid = grid
             self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
-
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
