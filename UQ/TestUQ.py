@@ -10,10 +10,10 @@ from GridOperation import *
 
 calc_E_Var = True
 # ~ calc_E_Var = False
-do_PCE_func = True
-# ~ do_PCE_func = False
-do_HighOrder = True
-# ~ do_HighOrder = False
+# ~ do_PCE_func = True
+do_PCE_func = False
+# ~ do_HighOrder = True
+do_HighOrder = False
 
 assert calc_E_Var or do_PCE_func
 
@@ -24,15 +24,31 @@ plot_things = 'ipykernel' in sys.modules
 # This converts a number together with a description and reference value
 # to a string which shows these values and errors
 def get_numbers_info(description, value, reference_value=None):
+	text = f"{description:s}: "
 	if reference_value is None:
-		return "{:s}: {:.4g}\n".format(description, value)
-	error_abs = abs(value - reference_value)
-	if reference_value == 0:
-		return "{:s}: {:.4g}, reference: {:.4g}, abs. error: {:.4g}\n".format(
-			description, value, reference_value, error_abs)
-	error_rel = error_abs / abs(reference_value)
-	return "{:s}: {:.4g}, reference: {:.4g}, rel. error: {:.4g}, abs. error: {:.4g}\n".format(
-		description, value, reference_value, error_rel, error_abs)
+		if len(value) == 1:
+			return text + f"{value[0]:.4g}\n"
+		text += "\n"
+		for i, v in enumerate(value):
+			text += f"\t{v:.4g}\n"
+		return text
+	if len(value) == 1:
+		error_abs = abs(value[0] - reference_value[0])
+		text += f"{value[0]:.4g}, reference: {reference_value[0]:.4g}, abs. error: {error_abs:.4g}"
+		if reference_value[0] == 0:
+			return text + "\n"
+		error_rel = error_abs / abs(reference_value[0])
+		return text + f", rel. error: {error_rel:.4g}\n"
+	text += "\n"
+	for i, v in enumerate(value):
+		error_abs = abs(v - reference_value[i])
+		text += f"\t{v:.4g}, reference: {reference_value[i]:.4g}, abs. error: {error_abs:.4g}"
+		if reference_value[i] == 0:
+			text += "\n"
+			continue
+		error_rel = error_abs / abs(reference_value[i])
+		text += f", rel. error: {error_rel:.4g}\n"
+	return text
 
 
 # A helper function to reduce duplicate code
@@ -43,6 +59,7 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 	reference_variance = None
 	if calculate_solutions:
 		print("calculating reference solutions…")
+		# f must have a single dimensional output
 		pdf_function = op.get_pdf_Function()
 		expectation_func = FunctionUQWeighted(f, pdf_function)
 		reference_expectation = expectation_func.getAnalyticSolutionIntegral(a, b)
@@ -75,29 +92,40 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 		weighted_f.plot(pa, pb, points_per_dim=11)
 	can_plot = plot_things and not inf_borders
 
+	if reference_expectation is not None:
+		if not hasattr(reference_expectation, "__iter__"):
+			reference_expectation = [reference_expectation]
+	if reference_variance is not None:
+		if not hasattr(reference_variance, "__iter__"):
+			reference_variance = [reference_variance]
+
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 140
+	max_evals = 40
 	tol = 10**-3
 	poly_deg_max = 4
 
-	E, Var = -1.0, -1.0
+	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
 		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 			boundary=boundary, do_high_order=do_HighOrder)
 		print("performSpatiallyAdaptiv…")
+		reference_solution = None
+		if reference_expectation is not None and reference_variance is not None:
+			mom2 = [reference_variance[i] + ex * ex for i, ex in enumerate(reference_expectation)]
+			reference_solution = np.concatenate([reference_expectation, mom2])
 		# ~ combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
 			# ~ max_evaluations=max_evals, reference_solution=reference_expectation,
 			# ~ min_evaluations=min_evals, do_plot=can_plot)
 		combiinstance.performSpatiallyAdaptiv(1, 2, expectation_var_func,
 			error_operator, tol=tol,
-			max_evaluations=max_evals,
+			max_evaluations=max_evals, reference_solution=reference_solution,
 			min_evaluations=min_evals, do_plot=can_plot)
 
 		print("calculate_expectation_and_variance…")
 		E, Var = op.calculate_expectation_and_variance(combiinstance)
-		print("E, Var", E, Var)
+		print(f"E: {E}, Var: {Var}\n")
 
 	print("calculate_PCE…")
 	if do_PCE_func:

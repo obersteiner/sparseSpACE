@@ -206,6 +206,7 @@ class FunctionUQNormal2(Function):
             assert False
 
 
+# This function works only with single-dimensional output functions
 class FunctionUQWeighted(Function):
     def __init__(self, function, weight_function):
         super().__init__()
@@ -243,7 +244,7 @@ class FunctionCantileverBeamD(Function):
         L = 100.0
         E, Y, X = coordinates
         D = 4.0 * L ** 3 / (E * w * t) * math.sqrt((Y / t ** 2) ** 2 + (X / w ** 2) ** 2)
-        return D
+        return [D, 1.0]
 
     def getAnalyticSolutionIntegral(self, start, end): assert "not implemented"
 
@@ -383,7 +384,8 @@ class FunctionPower(Function):
         self.exponent = exponent
 
     def eval(self, coordinates):
-        return self.function.eval(coordinates) ** self.exponent
+        val_f = self.function(coordinates)
+        return [v ** self.exponent for v in val_f]
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
 
@@ -397,21 +399,12 @@ class FunctionPolysPCE(Function):
         self.norms = norms
 
     def eval(self, coordinates):
-        '''
-        # ~ print("polys", self.polys)
-        # ~ print("coeffs", self.polys.coefficients)
-        print("coords", coordinates)
-        values = [0.0 for i in range(len(self.polys))]
-        function_val = self.function(coordinates)
-        # ~ polyvals = self.polys(coordinates)
+        values = []
+        val_f = self.function(coordinates)
         for i in range(len(self.polys)):
-            poly = self.polys[i]
-            print("poly", poly)
-            print("poly eval", poly(*coordinates))
-            # ~ values[i] = function_val * float(polyvals[i])
-            # ~ values[i] = function_val * float(polyvals[i])
-        '''
-        values = [float(self.function(coordinates) * self.polys[i](*coordinates) / self.norms[i]) for i in range(len(self.polys))]
+            val_poly = self.polys[i](*coordinates) / self.norms[i]
+            # Concatenation required for functions with multidimensional output
+            values += [v * val_poly for v in val_f]
         return values
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"

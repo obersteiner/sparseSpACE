@@ -841,18 +841,20 @@ class UncertaintyQuantification(Integration):
     def calculate_moment(self, k, combiinstance):
         self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
-        return sum(vals)[0]
+        return sum(vals)
 
     def calculate_expectation(self, combiinstance):
         return self.calculate_moment(1, combiinstance)
 
     def calculate_expectation_and_variance(self, combiinstance):
-        expectation = self.calculate_expectation(combiinstance)
+        expectation = self.calculate_moment(1, combiinstance)
         expectation_of_squared = self.calculate_moment(2, combiinstance)
-        variance = expectation_of_squared - expectation * expectation
-        if variance < 0.0:
-            # This can happen when the variance is too small
-            variance = -variance
+        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
+        for i, v in enumerate(variance):
+            if v < 0.0:
+                # When the variance is zero, it can be set to something negative
+                # because of numerical errors
+                variance[i] = -v
         return expectation, variance
 
     def calculate_PCE(self, polynomial_degrees, combiinstance):
@@ -873,12 +875,12 @@ class UncertaintyQuantification(Integration):
         print("gPCE is ", cp.around(self.gPCE, 3))
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
-        return cp.E(self.gPCE, self.distributions_joint)[0]
+        return cp.E(self.gPCE, self.distributions_joint)
 
     def get_variance_PCE(self):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
-        return cp.Var(self.gPCE, self.distributions_joint)[0]
+        return cp.Var(self.gPCE, self.distributions_joint)
 
     def get_expectation_and_variance_PCE(self):
         return self.get_expectation_PCE(), self.get_variance_PCE()
