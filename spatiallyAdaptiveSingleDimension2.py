@@ -272,21 +272,44 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #            level = max(area.levels)
         #            area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
+    def _initialize_points(self, points, func_mid, d, i1, i2):
+        if i1+1 >= i2:
+            return
+        i = int((i1 + i2) / 2)
+        points[i] = func_mid(points[i1], points[i2], d)
+        self._initialize_points(points, func_mid, d, i1, i)
+        self._initialize_points(points, func_mid, d, i, i2)
+
+    def _initialize_levels(self, levels, i1, i2, level):
+        if i1+1 >= i2:
+            return
+        i = int((i1 + i2) / 2)
+        level = level+1
+        levels[i] = level
+        self._initialize_levels(levels, i1, i, level)
+        self._initialize_levels(levels, i, i2, level)
+
     def initialize_refinement(self):
         initial_points = []
 
+        maxv = self.lmax[0]
+        assert all([l == maxv for l in self.lmax])
+        num_points = 2 ** maxv + 1
+        levels = [0 for _ in range(num_points)]
+        self._initialize_levels(levels, 0, num_points-1, 0)
+        func_mid = self.grid.get_mid_point
         for d in range(self.dim):
-            points = [self.a[d], None, None, None, self.b[d]]
-            points[2] = self.grid.get_mid_point(points[0], points[4], d)
-            points[1] = self.grid.get_mid_point(points[0], points[2], d)
-            points[3] = self.grid.get_mid_point(points[2], points[4], d)
+            points = [None for _ in range(num_points)]
+            points[0] = self.a[d]
+            points[num_points-1] = self.b[d]
+            self._initialize_points(points, func_mid, d, 0, num_points-1)
             initial_points.append(np.array(points))
-        levels = [0, 2, 1, 2, 0]
+
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), self.grid,
                                                                                      coarsening_level=self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
-                                                     range(2 ** 2)], d, self.errorEstimator) for d in
+                                                     range(num_points-1)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
