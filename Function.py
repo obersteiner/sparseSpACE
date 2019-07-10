@@ -414,14 +414,13 @@ class FunctionCustom(Function):
     def __init__(self, func):
         super().__init__()
         self.func = func
-        self.is_multidimensional = hasattr(self.func, "__iter__")
+        self.has_multiple_functions = hasattr(self.func, "__iter__")
 
     def eval(self, coordinates):
-        if self.is_multidimensional:
+        if self.has_multiple_functions:
             result = [float(f(coordinates)) for f in self.func]
         else:
             result = self.func(coordinates)
-            assert isinstance(result, float)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"

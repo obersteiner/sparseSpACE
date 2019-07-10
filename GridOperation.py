@@ -870,9 +870,9 @@ class UncertaintyQuantification(Integration):
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
 
+    def get_gPCE(self): return self.gPCE
+
     def get_expectation_PCE(self):
-        # gPCE does not work right yet.
-        print("gPCE is ", cp.around(self.gPCE, 3))
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.E(self.gPCE, self.distributions_joint)
@@ -884,6 +884,11 @@ class UncertaintyQuantification(Integration):
 
     def get_expectation_and_variance_PCE(self):
         return self.get_expectation_PCE(), self.get_variance_PCE()
+
+    def get_Percentile_PCE(self, q, sample=10000):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Perc(self.gPCE, q, self.distributions_joint, sample)
 
     def get_first_order_sobol_indices(self):
         if self.gPCE is None:
