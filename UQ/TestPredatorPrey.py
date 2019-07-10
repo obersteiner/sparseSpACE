@@ -14,6 +14,13 @@ import sys
 import time
 import os
 
+# Load spatially adaptive sparse grid related files
+sys.path.append('../')
+from Function import *
+from spatiallyAdaptiveSingleDimension2 import *
+from ErrorCalculator import *
+from GridOperation import *
+
 #predator = coyote
 #prey = sheep
 
@@ -27,11 +34,26 @@ sheeps_Px0 = 2000 #initial population size of sheep population
 coyote_Px0 = 50 #initial population size of coyote population
 
 T = 70*365 # end of simulation
-NT = 0.01*T # no of time steps
+NT = int(0.01 * T + 0.5)  # number of time steps
+# ~ NT = 10  # number of time steps
 
-voracity_dist   = cp.Normal(voracity,   0.000002) #no uncertainty: 0.000000001, uncertainty: 0.000001
-sheep_Px0_dist  = cp.Normal(sheeps_Px0, 1) #no uncertainty: 0.000000001, uncertainty: 250, 100, 50, 25
-coyote_Px0_dist = cp.Normal(coyote_Px0, 0.1) #no uncertainty: 0.000000001, uncertainty: 2, 1, 0.5
+# Standard deviations
+sigma_voracity = 0.000002  # no uncertainty: 0.000000001, uncertainty: 0.000001
+sigma_sheeps_Px0 = 1.0  # no uncertainty: 0.000000001, uncertainty: 250, 100, 50, 25
+sigma_coyote_Px0 = 0.1  # no uncertainty: 0.000000001, uncertainty: 2, 1, 0.5
+
+# Distributions information to be passed to the UncertaintyQuantification Operation
+distris = [
+    ("Normal", voracity, sigma_voracity),
+    ("Normal", sheeps_Px0, sigma_sheeps_Px0),
+    ("Normal", coyote_Px0, sigma_coyote_Px0)
+]
+dim = len(distris)
+# Normal distribution requires infinite boundaries
+a = np.array([-np.inf for _ in range(dim)])
+b = np.array([np.inf for _ in range(dim)])
+# Setting for the adaptive refinement quad weights
+do_HighOrder = False
 
 # population model definition: as a initial value problem
 def f(t, pX):
@@ -88,31 +110,91 @@ def solver(voracity, Px0, f):
 
 measure_start = time.time()
 
+print("Generating quadrature nodes and weights")
+
+# Create a Function that can be used for refining
+def get_solver_values(input_values):
+    voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    # y contains the predator solutions and prey solutions for all time values
+    y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f).y
+    return np.concatenate(y)
+problem_function = FunctionCustom(get_solver_values)
+
+# This function is later required to bring calculated values into the right shape
+def reshape_result_values(vals):
+    mid = int(len(vals) / 2)
+    predators, preys = vals[:mid], vals[mid:]
+    return np.array([predators, preys]).T
+
+# Create the Operation
+op = UncertaintyQuantification(problem_function, distris, a, b, dim=dim)
+
+#'''
+# Do the spatially adaptive refinement for PCE
+poly_deg_max = 1
+error_operator = ErrorCalculatorSingleDimVolumeGuided()
+combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+    boundary=False, do_high_order=do_HighOrder)
+max_evals = 10 ** dim
+# ~ max_evals = 100
+tol = 10 ** -4
+f_pce = op.get_PCE_Function(poly_deg_max)
+combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+    max_evaluations=max_evals)
+if False:
+    f_exvar = op.get_expectation_variance_Function()
+    combiinstance.performSpatiallyAdaptiv(1, 2, f_exvar, error_operator, tol=tol,
+        max_evaluations=max_evals)
+
+# Calculate the gPCE using the nodes and weights from the refinement
+op.calculate_PCE(poly_deg_max, combiinstance)
+
+print("simulation time: " + str(time.time() - measure_start) + " s")
+
+if False:
+    E, var = op.calculate_expectation_and_variance(combiinstance)
+    E_pX = reshape_result_values(E)
+    Var = reshape_result_values(var)
+
+##extract the statistics
+# expectation value
+E_pX = reshape_result_values(op.get_expectation_PCE())
+# percentiles
+P10_pX = reshape_result_values(op.get_Percentile_PCE(10, 10*5))
+P90_pX = reshape_result_values(op.get_Percentile_PCE(90, 10*5))
+# variance
+Var = reshape_result_values(op.get_variance_PCE())
+
+'''
+
+# Retrieve Chaospy distributions from the Operation
+voracity_dist, sheep_Px0_dist, coyote_Px0_dist = op.get_distributions()
+
 #generate the joined distribution
 dist = cp.J(voracity_dist, sheep_Px0_dist, coyote_Px0_dist);
+
 #generate the nodes and weights
 nodes, weights = cp.generate_quadrature(10, dist)
 
 #solve for each collocation node
-sol = [solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f)
+samples_u = [get_solver_values([voracity_sample, sheep_Px0_sample, coyote_Px0_sample])
              for voracity_sample, sheep_Px0_sample, coyote_Px0_sample in nodes.T]
-samples_u = [s.y.T for s in sol]
 
 P = cp.orth_ttr(1, dist)
 # do the stochastic collocation simulation:
 coefficents_P = cp.fit_quadrature(P, nodes, weights, samples_u)
 
-measure_end = time.time()
-print("simulation time: " + str(measure_end - measure_start) + " sec")
+print("non-sparsegrid simulation time: " + str(time.time() - measure_start) + " s")
 
 ##extract the statistics
 # expectation value
-E_pX = cp.E(coefficents_P, dist)
+E_pX = reshape_result_values(cp.E(coefficents_P, dist))
 # percentiles
-P10_pX = cp.Perc(coefficents_P, 10, dist, 10*5)
-P90_pX = cp.Perc(coefficents_P, 90, dist, 10*5)
+P10_pX = reshape_result_values(cp.Perc(coefficents_P, 10, dist, 10*5))
+P90_pX = reshape_result_values(cp.Perc(coefficents_P, 90, dist, 10*5))
 # variance
-Var = cp.Var(coefficents_P, dist)
+Var = reshape_result_values(cp.Var(coefficents_P, dist))
+#'''
 
 #plot the stuff
 time_points = time_points/365
