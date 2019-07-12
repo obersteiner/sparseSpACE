@@ -42,6 +42,9 @@ sigma_voracity = 0.000002  # no uncertainty: 0.000000001, uncertainty: 0.000001
 sigma_sheeps_Px0 = 1.0  # no uncertainty: 0.000000001, uncertainty: 250, 100, 50, 25
 sigma_coyote_Px0 = 0.1  # no uncertainty: 0.000000001, uncertainty: 2, 1, 0.5
 
+# Maximum PCE polynomial degree
+poly_deg_max = 1
+
 # Distributions information to be passed to the UncertaintyQuantification Operation
 distris = [
     ("Normal", voracity, sigma_voracity),
@@ -54,6 +57,7 @@ a = np.array([-np.inf for _ in range(dim)])
 b = np.array([np.inf for _ in range(dim)])
 # Setting for the adaptive refinement quad weights
 do_HighOrder = False
+# ~ do_HighOrder = True
 
 # population model definition: as a initial value problem
 def f(t, pX):
@@ -131,15 +135,15 @@ op = UncertaintyQuantification(problem_function, distris, a, b, dim=dim)
 
 #'''
 # Do the spatially adaptive refinement for PCE
-poly_deg_max = 1
 error_operator = ErrorCalculatorSingleDimVolumeGuided()
+# ~ error_operator = ErrorCalculatorSingleDimVolumeGuidedPunishedDepth()
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-    boundary=False, do_high_order=do_HighOrder)
-max_evals = 10 ** dim
-# ~ max_evals = 100
+    boundary=False, norm=2, do_high_order=do_HighOrder)
+# ~ max_evals = 10 ** dim
+max_evals = 1000
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
-combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+combiinstance.performSpatiallyAdaptiv(1, 3, f_pce, error_operator, tol=tol,
     max_evaluations=max_evals)
 if False:
     f_exvar = op.get_expectation_variance_Function()
@@ -168,7 +172,7 @@ Var = reshape_result_values(op.get_variance_PCE())
 '''
 
 # Retrieve Chaospy distributions from the Operation
-voracity_dist, sheep_Px0_dist, coyote_Px0_dist = op.get_distributions()
+voracity_dist, sheep_Px0_dist, coyote_Px0_dist = op.get_distributions_chaospy()
 
 #generate the joined distribution
 dist = cp.J(voracity_dist, sheep_Px0_dist, coyote_Px0_dist);
@@ -180,7 +184,7 @@ nodes, weights = cp.generate_quadrature(10, dist)
 samples_u = [get_solver_values([voracity_sample, sheep_Px0_sample, coyote_Px0_sample])
              for voracity_sample, sheep_Px0_sample, coyote_Px0_sample in nodes.T]
 
-P = cp.orth_ttr(1, dist)
+P = cp.orth_ttr(poly_deg_max, dist)
 # do the stochastic collocation simulation:
 coefficents_P = cp.fit_quadrature(P, nodes, weights, samples_u)
 
