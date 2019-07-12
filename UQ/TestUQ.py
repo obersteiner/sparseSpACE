@@ -9,12 +9,12 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
-calc_E_Var = True
-# ~ calc_E_Var = False
+# ~ calc_E_Var = True
+calc_E_Var = False
 do_PCE_func = True
 # ~ do_PCE_func = False
-do_HighOrder = True
-# ~ do_HighOrder = False
+# ~ do_HighOrder = True
+do_HighOrder = False
 
 assert calc_E_Var or do_PCE_func
 
@@ -53,7 +53,7 @@ def get_numbers_info(description, value, reference_value=None):
 
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_solutions=False):
+def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculate_solutions=False):
 	op = UncertaintyQuantification(f, distris, a, b, dim=d)
 
 	reference_expectation = None
@@ -104,13 +104,13 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 	min_evals = 0
 	max_evals = 340
 	tol = 10**-3
-	poly_deg_max = 4
+	poly_deg_max = 3
 
 	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
 		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			boundary=boundary, do_high_order=do_HighOrder)
+			boundary=boundary, norm=2, do_high_order=do_HighOrder)
 		print("performSpatiallyAdaptiv…")
 		reference_solution = None
 		if reference_expectation is not None and reference_variance is not None:
@@ -119,7 +119,7 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 		# ~ combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
 			# ~ max_evaluations=max_evals, reference_solution=reference_expectation,
 			# ~ min_evaluations=min_evals, do_plot=can_plot)
-		combiinstance.performSpatiallyAdaptiv(1, 2, expectation_var_func,
+		combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 			error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=reference_solution,
 			min_evaluations=min_evals, do_plot=can_plot)
@@ -131,9 +131,9 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 	print("calculate_PCE…")
 	if do_PCE_func:
 		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			boundary=boundary, do_high_order=do_HighOrder)
+			boundary=boundary, norm=2, do_high_order=do_HighOrder)
 		f_pce = op.get_PCE_Function(poly_deg_max)
-		combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
 			min_evaluations=min_evals, do_plot=can_plot)
 	op.calculate_PCE(poly_deg_max, combiinstance)
@@ -238,7 +238,7 @@ def test_normal_vagebounds():
 	a, b = op.get_boundaries(0.01)
 	print("Boundaries set to", a, b)
 	# The reference variance refers to 0.01 cfd threshold
-	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, solutions=(0.0, 13.422012439469572))
+	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, lmax=4, solutions=(0.0, 13.422012439469572))
 
 
 def test_normal_large_border():
@@ -261,7 +261,7 @@ def test_normal_inf_border():
 
 	f = FunctionLinearSum([2.0, 0.0])
 
-	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, solutions=(0.0, 16.0))
+	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, lmax=4, solutions=(0.0, 16.0))
 
 
 def test_something():
@@ -326,6 +326,7 @@ def test_G_function():
 test_G_function()
 
 # ~ test_normal_integration()
+# ~ test_normal_vagebounds()
 
 # ~ test_constant_triangle()
 # ~ test_constant()
