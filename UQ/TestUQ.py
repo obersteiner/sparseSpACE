@@ -1,4 +1,5 @@
 import numpy as np
+import chaospy as cp  # Only cp.around is used here.
 import math
 
 import sys
@@ -10,10 +11,10 @@ from GridOperation import *
 
 calc_E_Var = True
 # ~ calc_E_Var = False
-# ~ do_PCE_func = True
-do_PCE_func = False
-# ~ do_HighOrder = True
-do_HighOrder = False
+do_PCE_func = True
+# ~ do_PCE_func = False
+do_HighOrder = True
+# ~ do_HighOrder = False
 
 assert calc_E_Var or do_PCE_func
 
@@ -101,7 +102,7 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 40
+	max_evals = 340
 	tol = 10**-3
 	poly_deg_max = 4
 
@@ -136,12 +137,15 @@ def do_test(d, a, b, f, distris, boundary=True, solutions=None, calculate_soluti
 			max_evaluations=max_evals, reference_solution=None,
 			min_evaluations=min_evals, do_plot=can_plot)
 	op.calculate_PCE(poly_deg_max, combiinstance)
+	print("gPCE is ", cp.around(op.get_gPCE(), 3))
+
 	E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
 	first_sens = op.get_first_order_sobol_indices()
 	total_sens = op.get_total_order_sobol_indices()
 
 	print("calculate_PCE_chaospy…")
 	op.calculate_PCE_chaospy(poly_deg_max, 12)
+	print("non-sparsegrid gPCE is ", cp.around(op.get_gPCE(), 3))
 	E_PCE2, Var_PCE2 = op.get_expectation_and_variance_PCE()
 	first_sens2 = op.get_first_order_sobol_indices()
 	total_sens2 = op.get_total_order_sobol_indices()
@@ -309,18 +313,17 @@ def test_G_function():
 	b = np.ones(d)
 	f = FunctionG(d)
 	expectation = f.get_expectation()
-	# ~ var = f.get_variance()
-	var = None
+	var = f.get_variance()
 	first_order_indices = None
 	# ~ first_order_indices = f.get_first_order_sobol_indices()
 	print(expectation, var, first_order_indices)
-	do_test(d, a, b, f, "Uniform", solutions=(1.0, 0.5308641975308643))
+	do_test(d, a, b, f, "Uniform", solutions=(expectation, var))
 
 
 # ~ test_uq_discontinuity3D()
-test_uq_discontinuity2D()
+# ~ test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
-# ~ test_G_function()
+test_G_function()
 
 # ~ test_normal_integration()
 

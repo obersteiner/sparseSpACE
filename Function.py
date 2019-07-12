@@ -264,13 +264,17 @@ class FunctionG(Function):
     # Uniform distributions in [0, 1] are required for this Function.
     def get_expectation(self): return 1.0
 
-    # ~ def get_variance(self):
-        # ~ return
+    def get_variance(self):
+        mom2 = np.prod([1.0 + 1.0 / (3.0 * (1.0 + a_d) ** 2) for a_d in self.a])
+        return mom2 - 1.0
 
-    # This seems to be wrong
     # ~ def get_first_order_sobol_indices(self):
+        # This seems to be wrong
         # ~ fac = 1.0 / np.prod([1.0 / (3.0 * (1.0 + a_d) ** 2) for a_d in self.a])
         # ~ return [fac * 1.0 / (3.0 * (1.0 + self.a[d]) ** 2) for d in range(self.dim)]
+
+        # ~ ivar = 1.0 / self.get_variance()
+        # ~ return [ivar * (1.0 + 1.0 / (3 * (1.0 + self.a[i]) ** 2)) for i in range(self.dim)]
 
     def getAnalyticSolutionIntegral(self, start, end):
         assert all([v == 0.0 for v in start])
