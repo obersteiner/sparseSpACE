@@ -3,6 +3,7 @@ import numpy as np
 import scipy as sp
 import scipy.integrate
 from scipy.interpolate import interpn
+from Hierarchization import *
 import math
 
 # This is the abstract interface of an integrator that integrates a given area specified by start for function f
@@ -11,7 +12,6 @@ class IntegratorBase(object):
     @abc.abstractmethod
     def __call__(self, f, numPoints, start, end):
         pass
-
 
 # This integrator computes the trapezoidal rule for the given interval without constructing the grid explicitly
 class IntegratorTrapezoidalFast(IntegratorBase):
@@ -252,6 +252,24 @@ def integrateVariableStartNumpyArbitraryDimAndInterpolate(f, numPoints, start, e
         gridIntegrals.append((gridValues[0], np.array(startoffsetGrid), np.array(endoffsetGrid)))
     endTime = time.time()
     return gridIntegrals
+
+
+class IntegratorHierarchicalBSpline(IntegratorBase):
+    def __init__(self, grid):
+        self.grid = grid
+        self.hierarchization = HierarchizationLSG(grid)
+
+    def __call__(self, f, numPoints, start=None, end=None):
+        surplus_values = self.hierarchization(f, numPoints, self.grid)
+        points, weights = self.grid.get_points_and_weights()
+        #print(sum(weights), np.prod(np.array(end) - np.array(start)), start,end, weights, self.grid.weights)
+        #if not isclose(sum(weights), np.prod(np.array(end) - np.array(start))):
+        #    assert False
+        #print(np.inner(surplus_values, weights))
+        if len(surplus_values) == 0:
+            return 0.0
+        else:
+            return np.inner(surplus_values, weights)
 
 
 class IntegratorHierarchical(IntegratorBase):

@@ -3,7 +3,8 @@ import numpy as np
 from numpy import linalg as LA
 import numpy.testing as npt
 from math import log2, isclose
-
+from Grid import *
+from BasisFunctions import *
 
 class GridOperation(object):
     def is_area_operation(self):
@@ -306,7 +307,8 @@ class Integration(AreaOperation):
             combi_integral = combi_integral[0]
         print("combiintegral:", combi_integral)
 
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, component_grid, start, end, reuse_old_values):
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, reuse_old_values):
+        reuse_old_values = False
         if reuse_old_values:
             previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
             integral = np.array(previous_integral)
@@ -327,17 +329,17 @@ class Integration(AreaOperation):
                                                         gridPointCoordsAsStripes)
                 integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
         else:
-            self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-            self.grid.set_grid(gridPointCoordsAsStripes)
+            self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
             integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
         self.refinement_container.integral += integral * component_grid.coefficient
         self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
         return integral
 
-    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, children_indices, component_grid):
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes)
-        self.grid.set_grid(gridPointCoordsAsStripes)
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
     def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
@@ -361,6 +363,12 @@ class Integration(AreaOperation):
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
+            if isinstance(self.grid, GlobalBSplineGrid):
+                grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
+                hierarchization_operator = HierarchizationLSG(self.grid)
+                surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(grid_values, self.grid.numPoints, self.f, d, True)
+                surplus_pole = np.zeros(self.grid.numPoints[d])
+                #toDo sum up pole surplusses and use below
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
