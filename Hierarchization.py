@@ -52,7 +52,7 @@ class HierarchizationLSG(object):
                 hierarchized_values = np.linalg.solve(matrix, pole_values[n,:])
                 for i in range(numPoints[d]):
                     pole_index = point_index[:d] + (i,) + point_index[d+1:]
-                    grid_values[:,self.get_1D_coordinate(pole_index, numPoints)] = hierarchized_values[i]
+                    grid_values[n,self.get_1D_coordinate(pole_index, numPoints)] = hierarchized_values[i]
         #print(grid_values)
         return grid_values
 
