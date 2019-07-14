@@ -367,13 +367,26 @@ class Integration(AreaOperation):
                 grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
                 hierarchization_operator = HierarchizationLSG(self.grid)
                 surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(grid_values, self.grid.numPoints, self.f, d, True)
-                surplus_pole = np.zeros(self.grid.numPoints[d])
+                surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
+                stride = int(np.prod(self.grid.numPoints[:d]))
+                for j in range(self.grid.numPoints[d]):
+                    i = j * stride
+                    while i < np.prod(self.grid.numPoints):
+                        surplus_pole[:,j] += np.sum(abs(surplusses_1d[:,i:i+stride]))
+                        i += stride * self.grid.numPoints[d]
                 #toDo sum up pole surplusses and use below
+                surplus_pole / np.prod(self.grid.numPoints) * self.grid.numPoints[d]
+                print("surplus pole", surplus_pole, surplusses_1d, stride)
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
-                volume, evaluations = self.sum_up_volumes_for_point(child_info=child_info, grid_points=grid_points, d=d)
+                #volume, evaluations = self.sum_up_volumes_for_point(child_info=child_info, grid_points=grid_points, d=d)
+                #print("surplus pole", surplus_pole[1], grid_values[d], child)
+                #print(surplus_pole[grid_points[d].index(child)])
+
+                volume = surplus_pole[:, grid_points[d].index(child)]
+                evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 k_old = 0
                 for i in range(refinement_dim.size() ):
                     if refinement_dim.get_object(i).start >= left_parent * (1 - tol):

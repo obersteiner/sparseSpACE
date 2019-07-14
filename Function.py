@@ -92,6 +92,9 @@ class Function(object):
             fig.savefig(filename, bbox_inches='tight')
         plt.show()
 
+    def output_length(self):
+        return 1
+
 
 from scipy import integrate
 from scipy.stats import norm

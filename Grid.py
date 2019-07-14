@@ -765,7 +765,7 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
             else:
                 knots = np.array([self.start + i * h if i < 0 or i >= len(level_coordinate_array[l]) else level_coordinate_array[l][i] for i in range(-self.p, 2 ** l + self.p + 1) if
                                   i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
-            print(knots, "level", l, "dimension", d)
+            #print(knots, "level", l, "dimension", d)
             #iterate over levels and add hierarchical B-Splines
             if l == 0:
                 start = 0
