@@ -135,6 +135,29 @@ class Grid(object):
         for d, grid in enumerate(self.grids):
             grid.boundary = boundaries[d]
 
+    def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
+        tol = 10 ** -14
+        bad_approximation = False #(sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
+        # if bad_approximation:
+        # print("Too much negative entries, error:",
+        #     (sum(abs(weights_1D)) - (b - a)) / (b - a))
+
+        if not bad_approximation:
+            for i in range(d + 1):
+                real_moment = b ** (i + 1) / (i + 1) - a ** (i + 1) / (i + 1)
+                if abs(sum([grid_1D[j] ** i * weights_1D[j] for j in range(len(grid_1D))]) - real_moment) / abs(
+                        real_moment) > tol:
+                    print("Bad approximation for degree",i, "with error", abs(sum([grid_1D[j]**i * weights_1D[j] for j in range(len(grid_1D))]) - real_moment) / abs(real_moment) )
+                    bad_approximation = True
+                    break
+
+        tolerance_lower = 0
+        #print(weights_1D, all([w > tolerance_lower for w in weights_1D]), d)
+        #return sum(weights_1D) < (b-a) * 2
+        return bad_approximation
+    def check_stability_of_quadrature_rule(self, weights_1D):
+        return not(all([w >= 0 for w in weights_1D]))
+
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
 
@@ -593,7 +616,7 @@ class GlobalTrapezoidalGrid(Grid):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
-class GlobalSimpsonGrid(Grid):
+class GlobalSimpsonGrid(GlobalTrapezoidalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
@@ -602,17 +625,10 @@ class GlobalSimpsonGrid(Grid):
         self.dim = len(a)
         self.length = np.array(b) - np.array(a)
         self.modified_basis = False #modified_basis
+        self.high_order_grid = GlobalHighOrderGrid(a, b, boundary=boundary, do_nnls=False, max_degree=2, split_up=False, modified_basis=False)
         assert not(modified_basis) or not(boundary)
 
-    def is_global(self):
-        return True
-
-    def isNested(self):
-        return True
-
     def set_grid(self, grid_points):
-        for d in range(self.dim):
-            assert len(grid_points[d]) % 2 == 1
         self.coords = []
         self.weights = []
         if self.boundary:
@@ -635,13 +651,27 @@ class GlobalSimpsonGrid(Grid):
                 print(grid_points[d], weightsD)
             if self.modified_basis:
                 assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
-
-            #print(coordsD, grid_points[d], weightsD)
+            bad_approximation = self.check_quality_of_quadrature_rule(self.a[d], self.b[d], min(len(grid_points), 2 if len(grid_points[d]) % 2 == 1 else 1), grid_points[d], weightsD)
+            if bad_approximation:
+                print(coordsD, grid_points[d], weightsD)
+            assert not(bad_approximation)
             self.coords.append(coordsD)
             self.weights.append(weightsD)
             self.numPoints[d] = len(coordsD)
+
     # Weights computed using https://www.wolframalpha.com/input/?i=Solve+x%2By%2Bz+%3D+c+-+a,+a*x+%2B+b+*y+%2B+c+*+z+%3D+c%5E2+%2F+2+-+a%5E2+%2F+2,+++a%5E2*x+%2B+b%5E2+*y+%2B+c%5E2+*+z+%3D+c%5E3+%2F3+-+a%5E3+%2F+3++++for+++x,+y,+z
     def compute_1D_quad_weights(self, grid_1D, a, b):
+        if len(grid_1D) == 1:
+            return np.array([b - a])
+        elif len(grid_1D) == 2:
+            return super().compute_1D_quad_weights(grid_1D, a, b)
+        elif len(grid_1D) % 2 != 1:
+            weights_left = self.high_order_grid.compute_1D_quad_weights(grid_1D[:4], a, grid_1D[3])
+            weight_right = self.compute_1D_quad_weights(grid_1D[3:], grid_1D[3], b)
+            weights = np.zeros(len(grid_1D))
+            weights[:4] += weights_left
+            weights[3:] += weight_right
+            return weights
         weights = np.zeros(len(grid_1D))
         assert len(grid_1D) >= 3
 
@@ -665,27 +695,6 @@ class GlobalSimpsonGrid(Grid):
                 weights[i] += (x_3 - x_1)**3 / (6*(x_3 - x_2) * (x_2 - x_1))
 
         return weights
-
-    def levelToNumPoints(self, levelvec):
-        if hasattr(self, 'numPoints'):
-            return self.numPoints
-        else:
-            return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
-
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
 
 from scipy.optimize import nnls
 import matplotlib.pyplot as plt
