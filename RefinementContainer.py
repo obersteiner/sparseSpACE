@@ -121,10 +121,10 @@ class RefinementContainer(object):
         self.refinementObjects.extend(new_refinement_objects)
 
     # calculate the error according to the error estimator for specified RefinementObjects
-    def calc_error(self, object_id, f, norm):
+    def calc_error(self, object_id, f, norm, volume_weights=None):
         refine_object = self.refinementObjects[object_id]
         assert refine_object.volume is not None
-        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm))
+        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm, volume_weights=volume_weights))
 
     # returns all RefinementObjects in the container
     def get_objects(self):
@@ -275,9 +275,10 @@ class MetaRefinementContainer(object):
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id, f, norm):
+        volume_weights = np.array([1.0 / v if v != 0.0 else 1.0 for v in self.integral])
         for cont in self.refinementContainers:
             for obj in range(0, cont.size()):
-                cont.calc_error(obj, f, norm)
+                cont.calc_error(obj, f, norm, volume_weights=volume_weights)
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def set_benefit(self, object_id):

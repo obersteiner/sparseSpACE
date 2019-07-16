@@ -67,10 +67,13 @@ class ErrorCalculatorExtendSplit(ErrorCalculator):
 
 
 class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
-    def calc_error(self, f, refineObj, norm):
+    def calc_error(self, f, refineObj, norm, volume_weights=None):
         # pagoda-volume
-        volume = refineObj.volume
-        return LA.norm(abs(volume), norm)
+        volumes = refineObj.volume
+        if volume_weights is None:
+            return LA.norm(abs(volumes), norm)
+        # Normalized volumes
+        return LA.norm(abs(volumes * volume_weights), norm)
 
 
 class ErrorCalculatorSingleDimVolumeGuidedPunishedDepth(ErrorCalculator):
