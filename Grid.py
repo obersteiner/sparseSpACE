@@ -604,20 +604,26 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         # This is used to split a refinement object so that the new
         # ones have the same probability
         cdf_mid = 0.5 * (cdf(a) + cdf(b))
-        mid = float(ppf(cdf_mid))
+        mid = ppf(cdf_mid)
+        assert isinstance(mid, float)
         # ~ mid = optimize.toms748(lambda x: distr.cdf(x) - cdf_mid,
             # ~ self.start, self.end, rtol=0.01)
         # ~ mid = max(min(mid, self.end), self.start)
+        # ~ print("a,b,mid,cdf_mid", a, b, mid, cdf_mid, cdf(a), cdf(b))
         if not a < mid < b:
             print("Could not calculate the weighted middle")
             mid = 0.5 * (a + b)
-            assert a < mid < b, "Could not calculate the middle between {} and {}".format(a, b)
+            if not a < mid < b:
+                print(f"Warning: Could not calculate the middle between {a} and {b}")
+                if math.isinf(a):
+                    mid = b - 10 ** -14
+                elif math.isinf(b):
+                    mid = a + 10 ** -14
         return mid
 
     def get_mid_point(self, a, b, d):
         distr = self.distributions[d]
-        # The inverse Rosenblatt transformation is the inverse cdf here
-        return self.get_middle_weighted(a, b, distr.cdf, distr.inv)
+        return self.get_middle_weighted(a, b, distr.cdf, distr.ppf)
 
     @staticmethod
     def compute_weights(grid_1D, a, b, pdf, cdf, boundary, cached_weights=None):
@@ -1065,6 +1071,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
         split_up = False
         super().__init__(a, b, boundary=boundary, do_nnls=do_nnls, max_degree=max_degree, split_up=split_up, modified_basis=modified_basis)
         self.distributions = uq_operation.get_distributions()
+        self.distributions_cp = uq_operation.get_distributions_chaospy()
         self.weight_caches = [dict() for _ in range(self.dim)]
 
     def get_composite_quad_weights(self, grid_1D, a, b):
@@ -1076,7 +1083,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
 
     def get_mid_point(self, a, b, d):
         distr = self.distributions[d]
-        return GlobalTrapezoidalGridWeighted.get_middle_weighted(a, b, distr.cdf, distr.inv)
+        return GlobalTrapezoidalGridWeighted.get_middle_weighted(a, b, distr.cdf, distr.ppf)
 
     def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False, trapezoidal_weights=None):
         # Corner cases, they are wrong if split_up is used.
@@ -1173,7 +1180,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
         return not(all([w >= 0.0 for w in weights_1D]))
 
     def do_gauss_quad_normalized(self, num_quad_points, a, b):
-        distr = self.distributions[self.get_current_dimension()]
+        distr = self.distributions_cp[self.get_current_dimension()]
         coords, weights = cp.generate_quadrature(num_quad_points, distr, rule="G")
         coords = coords[0]
         coords = self.normalize_coords(coords, a, b)

@@ -516,7 +516,6 @@ class Integration(AreaOperation):
                             assert(tuple(left_of_left_parent) in self.f.f_dict)
 
                     else:
-                        # TODO: this assertion happens
                         plpi = points_left_parent[i]
                         ws = self.grid.weights[d]
                         wsl = ws[index_left_parent]
@@ -730,6 +729,7 @@ class Interpolation(Integration):
 
 
 import chaospy as cp
+import scipy.stats as sps
 from Function import *
 
 class UncertaintyQuantification(Integration):
@@ -760,20 +760,36 @@ class UncertaintyQuantification(Integration):
     # creates the distributions list which contains Chaospy distributions
     def _prepare_distributions(self, distris, a, b):
         self.distributions = []
+        chaospy_distributions = []
         for d in range(self.dim):
             distr_type = distris[d][0]
             if distr_type == "Uniform":
-                self.distributions.append(cp.Uniform(a[d], b[d]))
+                distr = cp.Uniform(a[d], b[d])
+                self.distributions.append(UQDistribution.from_chaospy(distr))
+                chaospy_distributions.append(distr)
             elif distr_type == "Triangle":
                 midpoint = distris[d][1]
                 assert isinstance(midpoint, float), "invalid midpoint"
-                self.distributions.append(cp.Triangle(a[d], midpoint, b[d]))
+                distr = cp.Triangle(a[d], midpoint, b[d])
+                self.distributions.append(UQDistribution.from_chaospy(distr))
+                chaospy_distributions.append(distr)
             elif distr_type == "Normal":
-                self.distributions.append(cp.Normal(mu=distris[d][1],
-                    sigma=distris[d][2]))
+                mu = distris[d][1]
+                sigma = distris[d][2]
+                cp_distr = cp.Normal(mu=mu, sigma=sigma)
+                chaospy_distributions.append(cp_distr)
+                # The chaospy normal distribution does not work with big values
+                def pdf(x, _mu=mu, _sigma=sigma):
+                    return sps.norm.pdf(x, loc=_mu, scale=_sigma)
+                def cdf(x, _mu=mu, _sigma=sigma):
+                    return sps.norm.cdf(x, loc=_mu, scale=_sigma)
+                def ppf(x, _mu=mu, _sigma=sigma):
+                    return sps.norm.ppf(x, loc=_mu, scale=_sigma)
+                self.distributions.append(UQDistribution(pdf, cdf, ppf))
             else:
                 assert False, "Distribution not implemented: " + distr_type
-        self.distributions_joint = None
+        self.distributions_chaospy = chaospy_distributions
+        self.distributions_joint = cp.J(*chaospy_distributions)
 
     # reuse_old_values does not work for multidimensional function output,
     # so this method is overridden here
@@ -796,6 +812,7 @@ class UncertaintyQuantification(Integration):
             self.f = f
 
     def get_distributions(self): return self.distributions
+    def get_distributions_chaospy(self): return self.distributions_chaospy
 
     # This function returns boundaries for distributions which have an infinite
     # domain, such as normal distribution
@@ -805,15 +822,14 @@ class UncertaintyQuantification(Integration):
         b = []
         for d in range(self.dim):
             dist = self.distributions[d]
-            a.append(float(dist.inv(tol)))
-            b.append(float(dist.inv(1.0 - tol)))
+            a.append(dist.ppf(tol))
+            b.append(dist.ppf(1.0 - tol))
         return a, b
 
     def _set_pce_polys(self, polynomial_degrees):
         if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
             return
         self.polynomial_degrees = polynomial_degrees
-        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         if not hasattr(polynomial_degrees, "__iter__"):
             self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
             return
@@ -910,7 +926,6 @@ class UncertaintyQuantification(Integration):
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
     def get_pdf_Function(self):
-        self.distributions_joint = self.distributions_joint or cp.J(*self.distributions)
         pdf = self.distributions_joint.pdf
         return FunctionCustom(lambda coords: float(pdf(coords)))
 
@@ -938,3 +953,16 @@ class UncertaintyQuantification(Integration):
         # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
         # ~ return FunctionCustom(funcs)
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
+
+
+class UQDistribution:
+    def __init__(self, pdf, cdf, ppf):
+        self.pdf = pdf
+        self.cdf = cdf
+        self.ppf = ppf
+
+    @staticmethod
+    def from_chaospy(cp_distr):
+        # The inverse Rosenblatt transformation is the inverse cdf here
+        return UQDistribution(cp_distr.pdf, cp_distr.cdf,
+            lambda x: float(cp_distr.inv(x)))
