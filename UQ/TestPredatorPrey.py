@@ -140,10 +140,10 @@ error_operator = ErrorCalculatorSingleDimVolumeGuided()
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
     boundary=False, norm=2, do_high_order=do_HighOrder)
 # ~ max_evals = 10 ** dim
-max_evals = 1000
+max_evals = 50
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
-combiinstance.performSpatiallyAdaptiv(1, 3, f_pce, error_operator, tol=tol,
+combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
     max_evaluations=max_evals)
 if False:
     f_exvar = op.get_expectation_variance_Function()
@@ -152,8 +152,12 @@ if False:
 
 # Calculate the gPCE using the nodes and weights from the refinement
 op.calculate_PCE(poly_deg_max, combiinstance)
-
 print("simulation time: " + str(time.time() - measure_start) + " s")
+'''
+# Gauss quadrature
+op.calculate_PCE_chaospy(poly_deg_max, 10)
+print("non-sparsegrid simulation time: " + str(time.time() - measure_start) + " s")
+#'''
 
 if False:
     E, var = op.calculate_expectation_and_variance(combiinstance)
@@ -169,36 +173,6 @@ P90_pX = reshape_result_values(op.get_Percentile_PCE(90, 10*5))
 # variance
 Var = reshape_result_values(op.get_variance_PCE())
 
-'''
-
-# Retrieve Chaospy distributions from the Operation
-voracity_dist, sheep_Px0_dist, coyote_Px0_dist = op.get_distributions_chaospy()
-
-#generate the joined distribution
-dist = cp.J(voracity_dist, sheep_Px0_dist, coyote_Px0_dist);
-
-#generate the nodes and weights
-nodes, weights = cp.generate_quadrature(10, dist)
-
-#solve for each collocation node
-samples_u = [get_solver_values([voracity_sample, sheep_Px0_sample, coyote_Px0_sample])
-             for voracity_sample, sheep_Px0_sample, coyote_Px0_sample in nodes.T]
-
-P = cp.orth_ttr(poly_deg_max, dist)
-# do the stochastic collocation simulation:
-coefficents_P = cp.fit_quadrature(P, nodes, weights, samples_u)
-
-print("non-sparsegrid simulation time: " + str(time.time() - measure_start) + " s")
-
-##extract the statistics
-# expectation value
-E_pX = reshape_result_values(cp.E(coefficents_P, dist))
-# percentiles
-P10_pX = reshape_result_values(cp.Perc(coefficents_P, 10, dist, 10*5))
-P90_pX = reshape_result_values(cp.Perc(coefficents_P, 90, dist, 10*5))
-# variance
-Var = reshape_result_values(cp.Var(coefficents_P, dist))
-#'''
 
 #plot the stuff
 time_points = time_points/365
