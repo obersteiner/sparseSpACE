@@ -280,7 +280,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def _initialize_points(self, points, func_mid, d, i1, i2):
         if i1+1 >= i2:
             return
-        i = int((i1 + i2) / 2)
+        i = (i1 + i2) // 2
         points[i] = func_mid(points[i1], points[i2], d)
         self._initialize_points(points, func_mid, d, i1, i)
         self._initialize_points(points, func_mid, d, i, i2)
@@ -288,7 +288,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def _initialize_levels(self, levels, i1, i2, level):
         if i1+1 >= i2:
             return
-        i = int((i1 + i2) / 2)
+        i = (i1 + i2) // 2
         level = level+1
         levels[i] = level
         self._initialize_levels(levels, i1, i, level)
