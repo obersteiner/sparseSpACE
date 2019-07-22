@@ -646,7 +646,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
                 moment_0 = cdf(x2) - cdf(x1)
                 # w1 + w2 = moment_0
                 moment_1 = integrate.quad(lambda x: x * pdf(x), x1, x2,
-                    epsrel=10 ** -2, epsabs=10 ** -3)[0]
+                    epsrel=10 ** -2, epsabs=np.inf)[0]
                 # w1 * x1 + w2 * x2 = moment_1
                 if math.isinf(x1):
                     # For infinite borders, L'Hospital leads to a simple w2

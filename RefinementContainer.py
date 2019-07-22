@@ -275,7 +275,7 @@ class MetaRefinementContainer(object):
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id, f, norm):
-        volume_weights = np.array([1.0 / v if v != 0.0 else 1.0 for v in self.integral])
+        volume_weights = np.array([1.0 / v if abs(v) > 10 ** -14 else 1.0 for v in self.integral])
         for cont in self.refinementContainers:
             for obj in range(0, cont.size()):
                 cont.calc_error(obj, f, norm, volume_weights=volume_weights)
