@@ -4,6 +4,7 @@ from Integrator import *
 import numpy.polynomial.legendre as legendre
 from math import isclose
 from BasisFunctions import *
+from Utils import *
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -63,9 +64,7 @@ class Grid(object):
         return self.getPoints(), self.get_weights()
 
     def get_weights(self):
-        #print(list(zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])])))
-        return list(self.getWeight(index) for index in
-                    zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
+        return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
 
     def get_mid_point(self, a, b, d):
         #if self.numPoints[d] == 1:
@@ -116,7 +115,7 @@ class Grid(object):
 
     # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
+        return get_cross_product(self.coordinate_array)
 
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector):
@@ -241,6 +240,9 @@ class BSplineGrid1D(Grid1d):
     def __init__(self, a, b, boundary, p):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p #spline order
+        assert p % 2 == 1
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+
 
     def level_to_num_points_1d(self, level):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
@@ -262,6 +264,7 @@ class BSplineGrid1D(Grid1d):
     def compute_1D_quad_weights(self, grid_1D):
         self.start = np.array(self.start)
         self.end = np.array(self.end)
+
         # level = 0
         weights = np.zeros(2 ** self.level + 1)
         self.splines = np.empty(2 ** self.level + 1, dtype=object)
@@ -278,7 +281,7 @@ class BSplineGrid1D(Grid1d):
         for i in range(0, 2**l + 1):
             spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
             self.splines[i * stride] = spline
-            weights[i * stride] = spline.get_integral(self.start, self.end)
+            weights[i * stride] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
         #print(self.get_1D_level_points(self.level, self.start, self.end), knots)
         return weights
 
@@ -301,7 +304,7 @@ class BSplineGrid1D(Grid1d):
         for i in range(start, end, step):
             spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
             self.splines[i*stride] = spline
-            weights[i*stride] = spline.get_integral(self.a, self.b)
+            weights[i*stride] = spline.get_integral(self.a, self.b, self.coords_gauss, self.weights_gauss)
 
     def is_high_order_grid(self):
         return self.p > 1
@@ -676,7 +679,7 @@ class GlobalTrapezoidalGrid(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+        return get_cross_product(self.coords)
 
     def getCoordinate(self, indexvector):
         position = np.zeros(self.dim)
@@ -705,7 +708,9 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         self.dim = len(a)
         self.length = np.array(b) - np.array(a)
         self.modified_basis = modified_basis
+        assert p % 2 == 1
         self.p = p
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
         assert not(modified_basis) or not(boundary)
 
     def is_global(self):
@@ -718,7 +723,9 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         self.coords = []
         self.weights = []
         self.levels = []
+        #print("Points and levels", grid_points, grid_levels)
         self.splines = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
+
         if self.boundary:
             self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
             self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
@@ -737,10 +744,10 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
                 coordsD = grid_points[d][1:-1]
                 weightsD = self.compute_1D_quad_weights(grid_points[d], grid_levels[d], self.a[d], self.b[d], d)[1:-1]
                 levelsD = grid_levels[d][1:-1]
-            if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
-                print(grid_points[d], weightsD)
-            if self.modified_basis:
-                assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
+            #if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
+            #    print(grid_points[d], weightsD)
+            #if self.modified_basis:
+            #    assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
 
             #print(coordsD, grid_points[d], weightsD)
             self.coords.append(coordsD)
@@ -757,11 +764,12 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         self.end = b
         # level = 0
         weights = np.zeros(len(grid_1D))
-        for l in range(max_level + 1):
+        starting_level = 0 if self.boundary else 1
+        for l in range(starting_level, max_level + 1):
             h = (self.end - self.start) / 2 ** l
             # calculate knots for spline construction
             if l < log2(self.p + 1):
-                knots = np.linspace(self.start, self.end, 2 ** l + 1)
+                knots = level_coordinate_array[l] #np.linspace(self.start, self.end, 2 ** l + 1)
             else:
                 knots = np.array([self.start + i * h if i < 0 or i >= len(level_coordinate_array[l]) else level_coordinate_array[l][i] for i in range(-self.p, 2 ** l + self.p + 1) if
                                   i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
@@ -782,10 +790,15 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
                 # if this knot is part of the grid insert it
                 #print(i, x_basis, grid_1D, grid_levels_1D, l)
                 if x_basis in grid_1D:
-                    spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+                    if self.modified_basis:
+                        spline = HierarchicalNotAKnotBSplineModified(self.p, i, l, knots, a, b)
+                    else:
+                        spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
                     index = grid_1D.index(x_basis)
                     self.splines[d][index] = spline
-                    weights[index] = spline.get_integral(self.start, self.end)
+                    weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        if not self.boundary:
+            self.splines[d] = self.splines[d][1:-1]
         for spline in self.splines[d]:
             assert spline is not None
         return weights
