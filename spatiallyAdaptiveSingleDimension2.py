@@ -21,7 +21,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         else:
             self.grid = grid
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+            self.grid_surplusses = grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
@@ -331,6 +331,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     assert position_level_1_right is None
                     position_level_1_right = i
                     break
+
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
         safetyfactor = 10**-1#0#0.1
@@ -339,7 +340,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
-        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start -2) - 0.5) + safetyfactor:
+        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
 
             print("Rebalancing!")
