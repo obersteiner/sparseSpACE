@@ -13,6 +13,7 @@ import matplotlib.pyplot as plotter
 import sys
 import time
 import os
+from math import isclose
 
 # Load spatially adaptive sparse grid related files
 sys.path.append('../')
@@ -34,8 +35,7 @@ sheeps_Px0 = 2000 #initial population size of sheep population
 coyote_Px0 = 50 #initial population size of coyote population
 
 T = 70*365 # end of simulation
-NT = int(0.01 * T + 0.5)  # number of time steps
-# ~ NT = 10  # number of time steps
+NT = int(0.01 * T)  # number of time steps
 
 # Standard deviations
 sigma_voracity = 0.000002  # no uncertainty: 0.000000001, uncertainty: 0.000001
@@ -55,9 +55,14 @@ dim = len(distris)
 # Normal distribution requires infinite boundaries
 a = np.array([-np.inf for _ in range(dim)])
 b = np.array([np.inf for _ in range(dim)])
-# Setting for the adaptive refinement quad weights
+# Settings for the adaptive refinement quad weights
 do_HighOrder = False
 # ~ do_HighOrder = True
+# ~ max_evals = 10 ** dim
+max_evals = 5
+# Use reference values to calculate errors
+calculate_errors = True
+# ~ calculate_errors = False
 
 # population model definition: as a initial value problem
 def f(t, pX):
@@ -139,8 +144,6 @@ error_operator = ErrorCalculatorSingleDimVolumeGuided()
 # ~ error_operator = ErrorCalculatorSingleDimVolumeGuidedPunishedDepth()
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
     boundary=False, norm=2, do_high_order=do_HighOrder)
-# ~ max_evals = 10 ** dim
-max_evals = 50
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
 combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
@@ -174,13 +177,31 @@ P90_pX = reshape_result_values(op.get_Percentile_PCE(90, 10*5))
 Var = reshape_result_values(op.get_variance_PCE())
 
 
+if calculate_errors:
+    E_pX_halton, P10_pX_halton, P90_pX_halton, Var_pX_halton = np.load("halton_solutions.npy")
+    E_predator, E_prey = E_pX.T
+    P10_prey, P10_predator = P10_pX.T
+    P90_prey, P90_predator = P90_pX.T
+    Var_predator, Var_prey = Var.T
+    def calc_error(vals, reference_vals):
+        return np.array([abs((vals[i] - sol) / sol) if not isclose(sol, 0.0) else abs(vals[i]) for i,sol in enumerate(reference_vals)])
+    error_E_predator = calc_error(E_predator, E_pX_halton.T[0])
+    error_E_prey = calc_error(E_prey, E_pX_halton.T[1])
+    error_P10_predator = calc_error(P10_predator, P10_pX_halton.T[0])
+    error_P10_prey = calc_error(P10_prey, P10_pX_halton.T[1])
+    error_P90_predator = calc_error(P90_predator, P90_pX_halton.T[0])
+    error_P90_prey = calc_error(P90_prey, P90_pX_halton.T[1])
+    error_Var_predator = calc_error(Var_predator, Var_pX_halton.T[0])
+    error_Var_prey = calc_error(Var_prey, Var_pX_halton.T[1])
+
+
 #plot the stuff
 time_points = time_points/365
-figure = plotter.figure(1, figsize=(13,5))
+figure = plotter.figure(1, figsize=(13,10))
 figure.canvas.set_window_title('Stochastic Collocation: Coyote, Sheep (Predator, Prey)')
 
 #sheep expectation value
-plotter.subplot(221)
+plotter.subplot(421)
 plotter.title('Sheep (E_pX)')
 plotter.plot(time_points, E_pX.T[1], label='E Sheep')
 plotter.fill_between(time_points, P10_pX.T[1], P90_pX.T[1], facecolor='#5dcec6')
@@ -193,7 +214,7 @@ plotter.legend(loc=2) #enable the legend
 plotter.grid(True)
 
 #coyote expectation value
-plotter.subplot(223)
+plotter.subplot(423)
 plotter.title('Coyote (E_pX)')
 plotter.plot(time_points, E_pX.T[0], label='E Coyote')
 plotter.fill_between(time_points, P10_pX.T[0], P90_pX.T[0], facecolor='#5dcec6')
@@ -206,7 +227,7 @@ plotter.legend(loc=2) #enable the legend
 plotter.grid(True)
 
 #sheep variance
-plotter.subplot(222)
+plotter.subplot(422)
 plotter.title('Sheep (Var)')
 plotter.plot(time_points, Var.T[1], label="Sheep")
 plotter.xlabel('time (t) - years')
@@ -216,7 +237,7 @@ plotter.xlim(0, T/365)
 plotter.grid(True)
 
 #coyote variance
-plotter.subplot(224)
+plotter.subplot(424)
 plotter.title('Coyote (Var)')
 plotter.plot(time_points, Var.T[0], label="Coyote")
 plotter.xlabel('time (t) - years')
@@ -224,6 +245,24 @@ plotter.ylabel('variance')
 plotter.xlim(0, T/365)
 plotter.legend(loc=2) #enable the legend
 plotter.grid(True)
+
+
+if calculate_errors:
+    def plot_error(pos, descr_and_data):
+        plotter.subplot(pos)
+        for descr, data in descr_and_data:
+            plotter.plot(time_points, data, label=descr + ' relative error')
+        # ~ plotter.yscale("log")
+        plotter.xlim(0, T/365)
+        plotter.legend(loc=2)
+        plotter.grid(True)
+
+    plot_error(425, [("Sheep E_pX", error_E_predator), ("Coyote E_pX", error_E_prey)])
+    plot_error(426, [("Sheep Var", error_Var_prey), ("Coyote Var", error_Var_predator)])
+    plot_error(427, [("Sheep P10", error_P10_prey), ("Sheep P90", error_P90_prey)])
+    plot_error(428, [("Coyote P10", error_P10_predator), ("Coyote P90", error_P90_predator)])
+    # ~ plot_error(427, [("Sheep P10", error_P10_prey), ("Coyote P10", error_P10_predator)])
+    # ~ plot_error(428, [("Sheep P90", error_P90_prey), ("Coyote P90", error_P90_predator)])
 
 #save figure
 fileName = os.path.splitext(sys.argv[0])[0] + '.pdf'
