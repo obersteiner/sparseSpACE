@@ -3,6 +3,8 @@ import abc, logging
 from Integrator import *
 import numpy.polynomial.legendre as legendre
 from math import isclose
+from BasisFunctions import *
+from Utils import *
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -62,8 +64,7 @@ class Grid(object):
         return self.getPoints(), self.get_weights()
 
     def get_weights(self):
-        return list(self.getWeight(index) for index in
-                    zip(*[g.ravel() for g in np.meshgrid(*[range(self.numPoints[d]) for d in range(self.dim)])]))
+        return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
 
     def get_mid_point(self, a, b, d):
         #if self.numPoints[d] == 1:
@@ -88,7 +89,8 @@ class Grid(object):
         # prepare coordinates and weights
         for d in range(self.dim):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
-            coordsD, weightsD = self.grids[d].get_1d_points_and_weights()
+            coordsD = self.grids[d].coords
+            weightsD = self.grids[d].weights
             self.coordinate_array.append(coordsD)
             self.weights.append(weightsD)
         # print(coords)
@@ -113,7 +115,7 @@ class Grid(object):
 
     # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
+        return get_cross_product(self.coordinate_array)
 
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector):
@@ -134,6 +136,12 @@ class Grid(object):
     def set_boundaries(self, boundaries):
         for d, grid in enumerate(self.grids):
             grid.boundary = boundaries[d]
+
+    def get_coordinates(self):
+        return self.coordinate_array
+
+    def get_coordinates_dim(self, d):
+        return self.coordinate_array[d]
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -187,6 +195,10 @@ class Grid1d(object):
                 self.upperBorder = self.num_points_with_boundary
         # equidistant spacing; only valid for equidistant grids
         self.spacing = (end - start) / (self.num_points_with_boundary - 1)
+        coordsD, weightsD = self.get_1d_points_and_weights()
+        self.coords = coordsD
+        self.weights = weightsD
+
 
     @abc.abstractmethod
     def get_1d_points_and_weights(self):
@@ -208,6 +220,94 @@ class Grid1d(object):
 
     def is_high_order_grid(self):
         return False
+
+class BSplineGrid(Grid):
+    def __init__(self, a, b, dim, boundary=True, p=3):
+        self.boundary = boundary
+        self.a = a
+        self.b = b
+        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p) for d in range(dim)]
+        self.p = p
+
+    def is_high_order_grid(self):
+        return self.p > 1
+
+    def get_basis(self, d, index):
+        return self.grids[d].splines[index]
+
+class BSplineGrid1D(Grid1d):
+    def __init__(self, a, b, boundary, p):
+        super().__init__(a=a, b=b, boundary=boundary)
+        self.p = p #spline order
+        assert p % 2 == 1
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+
+
+    def level_to_num_points_1d(self, level):
+        return 2 ** level + 1 - (1 if not self.boundary else 0) * (
+                int(1 if isclose(self.start, self.a) else 0) + int(1 if self.end == self.b else 0))
+
+    def get_1d_points_and_weights(self):
+        coordsD = self.get_1D_level_points(self.level, self.start, self.end)
+        # print(coordsD)
+        weightsD = np.array(self.compute_1D_quad_weights(coordsD))
+        return coordsD, weightsD
+
+    def get_1D_level_points(self, level, a, b):
+        N = 2**level + 1 #inner points including boundary points
+        #h = (b - a) / (N - 1)
+        #N_knot = N + 2 * self.p
+        #self.knots = np.linspace(a - self.p * h, b + self.p * h, N_knot)
+        return np.linspace(a, b, N)
+
+    def compute_1D_quad_weights(self, grid_1D):
+        self.start = np.array(self.start)
+        self.end = np.array(self.end)
+
+        # level = 0
+        weights = np.zeros(2 ** self.level + 1)
+        self.splines = np.empty(2 ** self.level + 1, dtype=object)
+        l = self.level
+        stride = 2 ** (self.level - l)
+        h = (self.end - self.start) / 2 ** l
+        if l < log2(self.p + 1):
+            knots = np.linspace(self.start, self.end, 2 ** l + 1)
+        else:
+            knots = np.array([self.start + i * h for i in range(-self.p, 2 ** l + self.p + 1) if
+                              i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
+        #print(knots)
+
+        for i in range(0, 2**l + 1):
+            spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+            self.splines[i * stride] = spline
+            weights[i * stride] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        #print(self.get_1D_level_points(self.level, self.start, self.end), knots)
+        return weights
+
+    def get_hierarchical_splines(self, grid_1D, l, weights):
+        stride = 2**(self.level - l)
+        h = (self.b - self.a) / 2**l
+        if l < log2(self.p + 1):
+            knots = np.linspace(self.a, self.b, 2**l + 1)
+        else:
+            knots = np.array([self.a + i * h for i in range(-self.p,2**l + self.p + 1) if  i <= 0 or (self.p + 1)/2 <= i <= 2**l - (self.p+1)/2 or i >= 2**l])
+        #print(knots)
+        if l == 0:
+            start = 0
+            end = 2
+            step = 1
+        else:
+            start = 1
+            end = 2**l
+            step = 2
+        for i in range(start, end, step):
+            spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+            self.splines[i*stride] = spline
+            weights[i*stride] = spline.get_integral(self.a, self.b, self.coords_gauss, self.weights_gauss)
+
+    def is_high_order_grid(self):
+        return self.p > 1
 
 # this class generates a Leja grid which constructs 1D Leja grid structures
 # and constructs the tensorized grid according to the levelvector
@@ -492,7 +592,7 @@ class GlobalTrapezoidalGrid(Grid):
     def isNested(self):
         return True
 
-    def set_grid(self, grid_points):
+    def set_grid(self, grid_points, grid_levels):
         self.coords = []
         self.weights = []
         if self.boundary:
@@ -579,7 +679,7 @@ class GlobalTrapezoidalGrid(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+        return get_cross_product(self.coords)
 
     def getCoordinate(self, indexvector):
         position = np.zeros(self.dim)
@@ -689,6 +789,153 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             self.boundary, cached_weights=self.weight_caches[d])
 
 
+    def get_coordinates(self):
+        return self.coords
+
+    def get_coordinates_dim(self, d):
+        return self.coords[d]
+
+class GlobalBSplineGrid(GlobalTrapezoidalGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False, p=3):
+        self.boundary = boundary
+        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert p % 2 == 1
+        self.p = p
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+        assert not(modified_basis) or not(boundary)
+
+    def is_global(self):
+        return True
+
+    def isNested(self):
+        return True
+
+    def set_grid(self, grid_points, grid_levels):
+        self.coords = []
+        self.weights = []
+        self.levels = []
+        #print("Points and levels", grid_points, grid_levels)
+        self.splines = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
+
+        if self.boundary:
+            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+        else:
+            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
+            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+
+        for d in range(self.dim):
+            # check if grid_points are sorted
+            assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
+            if self.boundary:
+                coordsD = grid_points[d]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], grid_levels[d], self.a[d], self.b[d], d)
+                levelsD = grid_levels[d]
+            else:
+                coordsD = grid_points[d][1:-1]
+                weightsD = self.compute_1D_quad_weights(grid_points[d], grid_levels[d], self.a[d], self.b[d], d)[1:-1]
+                levelsD = grid_levels[d][1:-1]
+            #if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
+            #    print(grid_points[d], weightsD)
+            #if self.modified_basis:
+            #    assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
+
+            #print(coordsD, grid_points[d], weightsD)
+            self.coords.append(coordsD)
+            self.weights.append(weightsD)
+            self.levels.append(levelsD)
+            self.numPoints[d] = len(coordsD)
+
+    def compute_1D_quad_weights(self, grid_1D, grid_levels_1D, a, b, d):
+        max_level = max(grid_levels_1D)
+        grid_levels_1D = np.asarray(grid_levels_1D)
+        level_coordinate_array = self.get_full_level_hierarchy(grid_1D, grid_levels_1D, a, b)
+        #print(level_coordinate_array)
+        self.start = a
+        self.end = b
+        # level = 0
+        weights = np.zeros(len(grid_1D))
+        starting_level = 0 if self.boundary else 1
+        for l in range(starting_level, max_level + 1):
+            h = (self.end - self.start) / 2 ** l
+            # calculate knots for spline construction
+            if l < log2(self.p + 1):
+                knots = level_coordinate_array[l] #np.linspace(self.start, self.end, 2 ** l + 1)
+            else:
+                knots = np.array([self.start + i * h if i < 0 or i >= len(level_coordinate_array[l]) else level_coordinate_array[l][i] for i in range(-self.p, 2 ** l + self.p + 1) if
+                                  i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
+            #print(knots, "level", l, "dimension", d)
+            #iterate over levels and add hierarchical B-Splines
+            if l == 0:
+                start = 0
+                end = 2
+                step = 1
+            else:
+                start = 1
+                end = 2 ** l
+                step = 2
+            for i in range(start, end, step):
+                # i is the index of the basis function
+                # point associated to the basis (spline) with index i
+                x_basis = level_coordinate_array[l][i]
+                # if this knot is part of the grid insert it
+                #print(i, x_basis, grid_1D, grid_levels_1D, l)
+                if x_basis in grid_1D:
+                    if self.modified_basis:
+                        spline = HierarchicalNotAKnotBSplineModified(self.p, i, l, knots, a, b)
+                    else:
+                        spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+                    index = grid_1D.index(x_basis)
+                    self.splines[d][index] = spline
+                    weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        if not self.boundary:
+            self.splines[d] = self.splines[d][1:-1]
+        for spline in self.splines[d]:
+            assert spline is not None
+        return weights
+
+    def get_full_level_hierarchy(self, grid_1D, grid_levels_1D, a, b):
+        max_level = max(grid_levels_1D)
+        grid_levels_1D = np.asarray(grid_levels_1D)
+        level_coordinate_array = [[] for l in range(max_level + 1)]
+        level_coordinate_array_complete = [[] for l in range(max_level + 1)]
+        for i, coordinate in enumerate(grid_1D):
+            level_coordinate_array[grid_levels_1D[i]].append(coordinate)
+            if grid_levels_1D[i] == 0:
+                level_coordinate_array_complete[grid_levels_1D[i]].append(coordinate)
+
+        level_index = [[] for l in range(max_level + 1)]
+
+        # fill up missing coordinates
+        for l in range(1, max_level + 1):
+            for i in range(2**(l-1)):
+                level_coordinate_array_complete[l].append(level_coordinate_array_complete[l-1][i])
+                if i == len(level_coordinate_array[l]) or level_coordinate_array[l][i] > level_coordinate_array_complete[l-1][i+1]:
+                    start = level_coordinate_array_complete[l-1][i]
+
+                    end = level_coordinate_array_complete[l-1][i+1]
+
+                    midpoint = self.get_mid_point(start, end)
+                    level_coordinate_array[l].insert(i, midpoint)
+                    level_coordinate_array_complete[l].append(midpoint)
+                else:
+                    level_coordinate_array_complete[l].append(level_coordinate_array[l][i])
+            level_coordinate_array_complete[l].append(level_coordinate_array_complete[l-1][-1])
+        return level_coordinate_array_complete
+
+    def get_mid_point(self, start, end):
+        return 0.5 * (end + start)
+
+    def get_basis(self, d, i):
+        #print( self.splines)
+        #print(self.splines[d][i](0))
+        return self.splines[d][i]
+
 class GlobalSimpsonGrid(Grid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary
@@ -706,7 +953,7 @@ class GlobalSimpsonGrid(Grid):
     def isNested(self):
         return True
 
-    def set_grid(self, grid_points):
+    def set_grid(self, grid_points, grid_levels):
         for d in range(self.dim):
             assert len(grid_points[d]) % 2 == 1
         self.coords = []
@@ -1028,9 +1275,10 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
 
             betas[i] = beta
             evaluations[i] = (x_array - alpha) * evaluation_1 - beta * evaluation_2
-            # ~ print(np.inner(evaluations[i] * trapezoidal_weights, evaluations[i]))
-            lambdas[i] = 1.0 / math.sqrt(np.inner(evaluations[i]*trapezoidal_weights, evaluations[i]))
-            evaluations[i] *= lambdas[i]
+            #print(i, np.inner(evaluations[i] * trapezoidal_weights, evaluations[i]), evaluations[i], trapezoidal_weights, x_array, alpha, beta, evaluation_1, evaluation_2)
+            if sum(abs(evaluations[i] )) != 0:
+                lambdas[i] = 1.0 / math.sqrt(np.inner(evaluations[i]*trapezoidal_weights, evaluations[i]))
+                evaluations[i] *= lambdas[i]
         return evaluations, alphas, betas, lambdas
 
     @staticmethod
@@ -1595,3 +1843,5 @@ class TruncatedNormalDistributionGrid1D(Grid1d):
 
     def is_high_order_grid(self):
         return True
+
+

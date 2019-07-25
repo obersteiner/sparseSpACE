@@ -92,6 +92,9 @@ class Function(object):
             fig.savefig(filename, bbox_inches='tight')
         plt.show()
 
+    def output_length(self):
+        return 1
+
 
 from scipy import integrate
 from scipy.stats import norm
@@ -439,6 +442,26 @@ class FunctionConcatenate(Function):
         return np.concatenate([f(coordinates) for f in self.funcs])
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
+
+
+class FunctionPolynomial(Function):
+    def __init__(self, coeffs, degree=2):
+        super().__init__()
+        self.coeffs = np.array(coeffs)
+        self.dim = len(coeffs)
+        self.degree = degree
+
+    def eval(self, coordinates):
+        result = 1
+        for d in range(self.dim):
+            result *= self.coeffs[d] * coordinates[d] ** self.degree
+        return result
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        result = 1.0
+        for d in range(self.dim):
+            result *= self.coeffs[d] * (end[d]**(self.degree+1)/(self.degree + 1) - start[d]**(self.degree+1)/(self.degree + 1))
+        return result
 
 
 # This Function represents the corner Peak f the genz test functions
