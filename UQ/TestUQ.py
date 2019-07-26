@@ -52,11 +52,12 @@ def get_numbers_info(description, value, reference_value=None):
 	return text
 
 
-def get_combiinstance(a, b, op, boundary):
-	if do_HighOrder:
-		grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=False)
-	else:
-		grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary)
+def get_combiinstance(a, b, op, boundary, grid):
+	if grid is None:
+		if do_HighOrder:
+			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=False)
+		else:
+			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary)
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 		norm=2, grid=grid)
 	return combiinstance
@@ -96,7 +97,7 @@ def plot_function(f, op, a, b, inf_borders):
 
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculate_solutions=False):
+def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculate_solutions=False, grid=None):
 	op = UncertaintyQuantification(f, distris, a, b, dim=d)
 
 	reference_expectation = None
@@ -122,14 +123,14 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 340
+	max_evals = 140
 	tol = 10**-3
 	poly_deg_max = 3
 
 	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
-		combiinstance = get_combiinstance(a, b, op, boundary)
+		combiinstance = get_combiinstance(a, b, op, boundary, grid)
 		print("performSpatiallyAdaptiv…")
 		reference_solution = None
 		if reference_expectation is not None and reference_variance is not None:
@@ -139,6 +140,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 			error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=reference_solution,
 			min_evaluations=min_evals, do_plot=can_plot)
+		# ~ combiinstance.plot()
 
 		print("calculate_expectation_and_variance…")
 		E, Var = op.calculate_expectation_and_variance(combiinstance)
@@ -146,7 +148,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 
 	print("calculate_PCE…")
 	if do_PCE_func:
-		combiinstance = get_combiinstance(a, b, op, boundary)
+		combiinstance = get_combiinstance(a, b, op, boundary, grid)
 		f_pce = op.get_PCE_Function(poly_deg_max)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
@@ -332,15 +334,17 @@ def test_G_function():
 	first_order_indices = None
 	# ~ first_order_indices = f.get_first_order_sobol_indices()
 	print(expectation, var, first_order_indices)
-	do_test(d, a, b, f, "Uniform", solutions=(expectation, var))
+	grid = GlobalBSplineGridWeighted(a, b)
+	# ~ grid = None
+	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid)
 
 
 # ~ test_uq_discontinuity3D()
 # ~ test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
-# ~ test_G_function()
+test_G_function()
 
-test_normal_integration()
+# ~ test_normal_integration()
 # ~ test_normal_vagebounds()
 
 # ~ test_constant_triangle()
