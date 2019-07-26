@@ -21,14 +21,57 @@ class StandardCombi(object):
         assert (len(a) == len(b))
 
     def __call__(self, interpolation_points):
-        interpolation = np.zeros((len(interpolation_points),len(self.f(np.ones(self.dim)*0.5))))
+        interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
         for component_grid in self.scheme:
             interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
         return interpolation
 
-    def interpolate_points(self, interpolation_points, component_grid):
+    def interpolate_points(self, interpolation_points, component_grid: ComponentGridInfo):
         self.grid.setCurrentArea(start=self.a, end=self.b, levelvec=component_grid.levelvector)
         return Interpolation.interpolate_points(f=self.f, dim=self.dim, grid=self.grid, mesh_points_grid=self.grid.coordinate_array, evaluation_points=interpolation_points)
+
+    def interpolate_grid(self, grid):
+        num_points = np.prod([len(grid_d) for grid_d in grid])
+        interpolation = np.zeros((num_points, self.f.output_length()))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_grid_component(grid, component_grid) * component_grid.coefficient
+        return interpolation
+
+    def interpolate_grid_component(self, grid, component_grid: ComponentGridInfo):
+        grid_points = list(get_cross_product(grid))
+        return interpn(grid_points, component_grid)
+
+    def plot(self):
+        if self.dim != 2:
+            print("Can only plot 2D results")
+            return
+        xArray = np.linspace(self.a[0], self.b[0], 10 ** 2)
+        yArray = np.linspace(self.a[1], self.b[1], 10 ** 2)
+        X = [x for x in xArray]
+        Y = [y for y in yArray]
+        points = list(get_cross_product([X, Y]))
+        # print(points)
+        #f_values = np.asarray(self.interpolate_grid([X,Y]))
+
+        X, Y = np.meshgrid(X, Y, indexing="ij")
+        Z = np.zeros(np.shape(X))
+        f_values = np.asarray((self(points)))
+        # print(f_values)
+        for i in range(len(X)):
+            for j in range(len(X[i])):
+                # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
+                Z[i, j] = f_values[j + i * len(X)]
+        # Z=self.eval((X,Y))
+        # print Z
+        fig = plt.figure(figsize=(14, 6))
+
+        # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+        ax = fig.add_subplot(1, 2, 1, projection='3d')
+
+        # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False)
+        # plt.show()
+        plt.show()
 
     def set_combi_parameters(self, minv, maxv, f):
         # compute minimum and target level vector
