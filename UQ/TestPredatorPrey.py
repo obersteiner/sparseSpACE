@@ -59,7 +59,7 @@ b = np.array([np.inf for _ in range(dim)])
 do_HighOrder = False
 # ~ do_HighOrder = True
 # ~ max_evals = 10 ** dim
-max_evals = 5
+max_evals = 500
 # Use reference values to calculate errors
 calculate_errors = True
 # ~ calculate_errors = False
@@ -194,6 +194,19 @@ if calculate_errors:
     error_Var_predator = calc_error(Var_predator, Var_pX_halton.T[0])
     error_Var_prey = calc_error(Var_prey, Var_pX_halton.T[1])
 
+    def mean_error(data):
+        return np.sum(data) / len(data)
+    mean_errs = (
+        mean_error(error_E_prey), mean_error(error_E_predator),
+        mean_error(error_P10_prey), mean_error(error_P10_predator),
+        mean_error(error_P90_prey), mean_error(error_P90_predator),
+        mean_error(error_Var_prey), mean_error(error_Var_predator)
+    )
+    mean_err_descs = ("E prey", "E predator", "P10 prey", "P10 predator",
+        "P90 prey", "P90 predator", "Var prey", "Var predator")
+    for i,desc in enumerate(mean_err_descs):
+        print(f"{desc} mean relative error: {mean_errs[i]:.5g}")
+
 
 #plot the stuff
 time_points = time_points/365
@@ -263,6 +276,7 @@ if calculate_errors:
     plot_error(428, [("Coyote P10", error_P10_predator), ("Coyote P90", error_P90_predator)])
     # ~ plot_error(427, [("Sheep P10", error_P10_prey), ("Coyote P10", error_P10_predator)])
     # ~ plot_error(428, [("Sheep P90", error_P90_prey), ("Coyote P90", error_P90_predator)])
+
 
 #save figure
 fileName = os.path.splitext(sys.argv[0])[0] + '.pdf'
