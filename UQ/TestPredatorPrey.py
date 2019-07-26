@@ -180,8 +180,8 @@ Var = reshape_result_values(op.get_variance_PCE())
 if calculate_errors:
     E_pX_halton, P10_pX_halton, P90_pX_halton, Var_pX_halton = np.load("halton_solutions.npy")
     E_predator, E_prey = E_pX.T
-    P10_prey, P10_predator = P10_pX.T
-    P90_prey, P90_predator = P90_pX.T
+    P10_predator, P10_prey = P10_pX.T
+    P90_predator, P90_prey = P90_pX.T
     Var_predator, Var_prey = Var.T
     def calc_error(vals, reference_vals):
         return np.array([abs((vals[i] - sol) / sol) if not isclose(sol, 0.0) else abs(vals[i]) for i,sol in enumerate(reference_vals)])
