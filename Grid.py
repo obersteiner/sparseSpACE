@@ -991,6 +991,103 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         #print(results)
         return results
 
+class GlobalLagrangeGrid(GlobalBSplineGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False, p=3):
+        self.boundary = boundary
+        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert p >= 1
+        self.p = p
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+        assert not(modified_basis) or not(boundary)
+        self.surplus_values = {}
+
+    def compute_1D_quad_weights(self, grid_1D, grid_levels_1D, a, b, d):
+        max_level = max(grid_levels_1D)
+        grid_levels_1D = np.asarray(grid_levels_1D)
+        level_coordinate_array = [[] for l in range(max_level+1)]
+        for i, p in enumerate(grid_1D):
+            level_coordinate_array[grid_levels_1D[i]].append(p)
+
+        #print(level_coordinate_array)
+        self.start = a
+        self.end = b
+        # level = 0
+        weights = np.zeros(len(grid_1D))
+        starting_level = 0 if self.boundary else 1
+        parents = {}
+        for l in range(starting_level, max_level + 1):
+            h = (self.end - self.start) / 2 ** l
+            # calculate knots for spline construction
+            #print(knots, "level", l, "dimension", d)
+            #iterate over levels and add hierarchical B-Splines
+            if l == 0:
+                start = 0
+                end = 2
+                step = 1
+            else:
+                start = 1
+                end = 2 ** l
+                step = 2
+            for i in range(len(level_coordinate_array[l])):
+                # i is the index of the basis function
+                # point associated to the basis (spline) with index i
+                x_basis = level_coordinate_array[l][i]
+                if l == 0:
+                    knots = list(level_coordinate_array[l])
+                elif l == 1:
+                    knots = list(sorted(level_coordinate_array[0] + level_coordinate_array[1]))
+                else:
+                    parent = self.get_parent(x_basis, grid_1D, grid_levels_1D)
+                    knots = list(sorted(parents[parent] + [x_basis]))
+                parents[x_basis] = knots
+                if len(knots) > self.p + 1:
+                    index_x = knots.index(x_basis)
+                    left = index_x
+                    right = len(knots) - index_x - 1
+                    if left < int((self.p+1)/2):
+                        knots = knots[: self.p+1]
+                    elif right < int(self.p/2):
+                        knots = knots[-(self.p+1):]
+                    else:
+                        knots = knots[index_x - int((self.p + 1)/2): index_x + int(self.p/2) + 1]
+                    assert len(knots) == self.p + 1
+                # if this knot is part of the grid insert it
+                #print(i, x_basis, grid_1D, grid_levels_1D, l)
+                if self.modified_basis:
+                    assert False
+                    spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots, a, b)
+                else:
+                    spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots)
+                index = grid_1D.index(x_basis)
+                self.splines[d][index] = spline
+                weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        if not self.boundary:
+            self.splines[d] = self.splines[d][1:-1]
+        for spline in self.splines[d]:
+            assert spline is not None
+        return weights
+
+    def get_parent(self, p, grid_1D, grid_levels):
+        index_p = grid_1D.index(p)
+        level_p = grid_levels[index_p]
+        found_parent=False
+        for i in reversed(range(index_p)):
+            if grid_levels[i] == level_p - 1:
+                return grid_1D[i]
+            elif grid_levels[i] < level_p - 1:
+                break
+        for i in range(index_p+1, len(grid_1D)):
+            if grid_levels[i] == level_p - 1:
+                return grid_1D[i]
+            elif grid_levels[i] < level_p - 1:
+                break
+        assert False
+
 class GlobalSimpsonGrid(Grid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary

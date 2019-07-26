@@ -94,6 +94,43 @@ class LagrangeBasis(object):
                 result += 1/(self.knots[self.index] - self.knots[i]) * self.derivative_for_index(x, [self.index, i])
         return result
 
+    def get_integral(self, a, b, coordsD, weightsD):
+        result = 0.0
+
+        left_border = a
+        right_border = b
+        coords = np.array(coordsD)
+        coords += np.ones(int((self.p+1)/2))
+        coords *= (right_border - left_border) / 2.0
+        coords += left_border
+        weights = np.array(weightsD) * (right_border - left_border) / 2
+        f_evals = np.array([self(coord) for coord in coords])
+        #print(coordsD, a, b, weights)
+        result += np.inner(f_evals, weights)
+        return result
+
+class LagrangeBasisRestricted(LagrangeBasis):
+    def __call__(self, x):
+        if self.knots[max(0,self.index - 1)] <= x <= self.knots[min(self.index + 1, len(self.knots) - 1)]:
+            return super().__call__(x)
+        else:
+            return 0.0
+
+    def get_integral(self, a, b, coordsD, weightsD):
+        result = 0.0
+
+        left_border = self.knots[max(0,self.index - 1)]
+        right_border = self.knots[min(self.index + 1, len(self.knots) - 1)]
+        coords = np.array(coordsD)
+        coords += np.ones(int((self.p+1)/2))
+        coords *= (right_border - left_border) / 2.0
+        coords += left_border
+        weights = np.array(weightsD) * (right_border - left_border) / 2
+        f_evals = np.array([self(coord) for coord in coords])
+        #print(coordsD, a, b, weights)
+        result += np.inner(f_evals, weights)
+        return result
+
 from math import log2
 import numpy.polynomial.legendre as legendre
 
