@@ -331,7 +331,7 @@ class Integration(AreaOperation):
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
             self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
         self.refinement_container.integral += integral * component_grid.coefficient
         self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)

@@ -222,13 +222,15 @@ class Grid1d(object):
         return False
 
 class BSplineGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, p=3):
+    def __init__(self, a, b, dim, boundary=True, p=3, modified_basis=False):
         self.boundary = boundary
         self.a = a
         self.b = b
         self.integrator = IntegratorHierarchicalBSpline(self)
-        self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p) for d in range(dim)]
+        self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(dim)]
         self.p = p
+        self.modified_basis = modified_basis
+        assert not boundary or not modified_basis
 
     def is_high_order_grid(self):
         return self.p > 1
@@ -237,12 +239,13 @@ class BSplineGrid(Grid):
         return self.grids[d].splines[index]
 
 class BSplineGrid1D(Grid1d):
-    def __init__(self, a, b, boundary, p):
+    def __init__(self, a, b, boundary=True, p=3, modified_basis=False):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p #spline order
         assert p % 2 == 1
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
-
+        self.modified_basis = modified_basis
+        assert not boundary or not modified_basis
 
     def level_to_num_points_1d(self, level):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
@@ -259,7 +262,7 @@ class BSplineGrid1D(Grid1d):
         #h = (b - a) / (N - 1)
         #N_knot = N + 2 * self.p
         #self.knots = np.linspace(a - self.p * h, b + self.p * h, N_knot)
-        return np.linspace(a, b, N)
+        return np.linspace(a, b, N)[self.lowerBorder: self.upperBorder]
 
     def compute_1D_quad_weights(self, grid_1D):
         self.start = np.array(self.start)
@@ -277,13 +280,58 @@ class BSplineGrid1D(Grid1d):
             knots = np.array([self.start + i * h for i in range(-self.p, 2 ** l + self.p + 1) if
                               i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
         #print(knots)
-
-        for i in range(0, 2**l + 1):
-            spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+        for i in range(self.lowerBorder, self.upperBorder):
+            if self.modified_basis:
+                spline = HierarchicalNotAKnotBSplineModified(self.p, i, l, knots, self.start, self.end)
+            else:
+                spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
             self.splines[i * stride] = spline
             weights[i * stride] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
         #print(self.get_1D_level_points(self.level, self.start, self.end), knots)
-        return weights
+        if not self.boundary:
+            self.splines = self.splines[self.lowerBorder: self.upperBorder]
+        return weights[self.lowerBorder:self.upperBorder]
+
+    def compute_1D_quad_weights(self, grid_1D):
+        max_level = self.level
+
+        # print(level_coordinate_array)
+        # level = 0
+        weights = np.zeros(2 ** self.level + 1)
+        self.splines = np.empty(2 ** self.level + 1, dtype=object)
+        starting_level = 0 if self.boundary else 1
+        for l in range(starting_level, max_level + 1):
+            level_coordinates = np.linspace(self.start, self.end, 2 ** l + 1)
+            h = (self.end - self.start) / 2 ** l
+            stride = 2 ** (self.level - l)
+            # calculate knots for spline construction
+            if l < log2(self.p + 1):
+                knots = np.linspace(self.start, self.end, 2 ** l + 1)
+            else:
+                knots = np.array([self.start + i * h for i in range(-self.p, 2 ** l + self.p + 1) if
+                                  i <= 0 or (self.p + 1) / 2 <= i <= 2 ** l - (self.p + 1) / 2 or i >= 2 ** l])
+            # print(knots, "level", l, "dimension", d)
+            # iterate over levels and add hierarchical B-Splines
+            if l == 0:
+                start = 0
+                end = 2
+                step = 1
+            else:
+                start = 1
+                end = 2 ** l
+                step = 2
+            for i in range(start, end, step):
+                # if this knot is part of the grid insert it
+                # print(i, x_basis, grid_1D, grid_levels_1D, l)
+                if self.modified_basis:
+                    spline = HierarchicalNotAKnotBSplineModified(self.p, i, l, knots, self.start, self.end)
+                else:
+                    spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
+                self.splines[stride * i] = spline
+                weights[stride * i] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        if not self.boundary:
+            self.splines = self.splines[self.lowerBorder: self.upperBorder]
+        return weights[self.lowerBorder:self.upperBorder]
 
     def get_hierarchical_splines(self, grid_1D, l, weights):
         stride = 2**(self.level - l)
@@ -712,6 +760,7 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         self.p = p
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
         assert not(modified_basis) or not(boundary)
+        self.surplus_values = {}
 
     def is_global(self):
         return True
@@ -839,6 +888,85 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         #print( self.splines)
         #print(self.splines[d][i](0))
         return self.splines[d][i]
+
+    def get_surplusses(self, levelvec):
+        return self.surplus_values[tuple(levelvec)]
+
+    # integrates the grid on the specified area for function f
+    def integrate(self, f, levelvec, start, end):
+        print("Integrating levelvec", levelvec)
+        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
+        self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
+        return integral
+
+    def interpolate(self, evaluation_points, component_grid):
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        #print(surplusses)
+        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
+            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
+        indexList = get_cross_product_range(self.numPoints)
+        #print(indexList)
+        for i, index in enumerate(indexList):
+            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
+            intermediate_result *= np.array(surplusses[:,i])
+            for d in range(self.dim):
+                for j in range(np.shape(surplusses)[0]):
+                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
+            #print(intermediate_result)
+            results[:,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        return results
+
+    def interpolate_grid(self, grid, component_grid):
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        num_points = np.prod([len(grid_d) for grid_d in grid])
+        num_points_grid = [len(grid_d) for grid_d in grid]
+        #print(surplusses)
+        results = np.zeros((num_points, np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = grid[d]
+            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    #print(p, spline(p))
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
+
+        #print(indexList)
+        pointIndexList = get_cross_product_range(num_points_grid)
+        for n, p in enumerate(pointIndexList):
+            indexList = get_cross_product_range(self.numPoints)
+            for i, index in enumerate(indexList):
+                intermediate_result = np.array(surplusses[:,i])
+                for d in range(self.dim):
+                    for j in range(np.shape(surplusses)[0]):
+                        intermediate_result *= evaluations[d][p[d], index[d]]
+                    #print(intermediate_result, surplusses[:,i], evaluations[d][p[d],:], grid[d], grid[d][p[d]], p[d])
+                #print(intermediate_result)
+                results[n,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        #print(list(pointIndexList))
+
+        #print(results)
+        return results
 
 class GlobalSimpsonGrid(Grid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
