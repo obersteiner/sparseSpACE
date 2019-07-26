@@ -13,6 +13,8 @@ class BSpline(object):
         return self.recursive_eval(x, self.p, self.index)
 
     def recursive_eval(self, x, p, k):
+        if x < self.knots[k] or x > self.knots[k+p+1]:
+            return 0.0
         if p == 0:
             return self.chi(x, k)
         else:
@@ -57,14 +59,18 @@ class LagrangeBasis(object):
         self.p = p
         self.knots = knots
         self.index = index
+        self.factor = 1
+        for i, knot in enumerate(self.knots):
+            if self.index != i:
+                self.factor *= 1 / (self.knots[self.index] - self.knots[i])
         #assert(index <= len(knots) - p - 2)
 
     def __call__(self, x):
         result = 1
         for i, knot in enumerate(self.knots):
             if self.index != i:
-                result *= (x - self.knots[i]) / (self.knots[self.index] - self.knots[i])
-        return result
+                result *= (x - self.knots[i])
+        return result * self.factor
 
     def get_first_derivative(self, x):
         return self.derivative_for_index(x, [self.index])
@@ -99,15 +105,19 @@ class HierarchicalNotAKnotBSpline(object):
         self.knots = knots
         if self.level < log2(self.p+1):
             self.spline = LagrangeBasis(p, index, knots)
+            self.startIndex = 0
+            self.endIndex = len(knots) - 1
         else:
             self.spline = BSpline(p, index, knots)
+            self.startIndex = index
+            self.endIndex = index + p + 1
 
     def __call__(self, x):
         return self.spline(x)
 
     def get_integral(self, a, b, coordsD, weightsD):
         result = 0.0
-        for i in range(len(self.knots) - 1):
+        for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
                 left_border = max(self.knots[i], a)
                 right_border = min(self.knots[i+1], b)
@@ -143,12 +153,15 @@ class HierarchicalNotAKnotBSplineModified(object):
             if self.index == 1 or self.index == 2**self.level - 1:
                 self.spline2 = LagrangeBasis(self.p, 0, self.knots)
                 self.spline3 = LagrangeBasis(self.p, 2**self.level, self.knots)
-
+            self.startIndex = 0
+            self.endIndex = len(knots) - 1
         else:
             self.spline = BSpline(p, index, knots)
             if self.index == 1 or self.index == 2**self.level - 1:
                 self.spline2 = BSpline(self.p, 0, self.knots)
                 self.spline3 = BSpline(self.p, 2**self.level, self.knots)
+            self.startIndex = index
+            self.endIndex = index + p + 1
 
     def __call__(self, x):
         if self.level == 1:
@@ -173,7 +186,7 @@ class HierarchicalNotAKnotBSplineModified(object):
 
     def get_integral(self, a, b, coordsD, weightsD):
         result = 0.0
-        for i in range(len(self.knots) - 1):
+        for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
                 left_border = max(self.knots[i], a)
                 right_border = min(self.knots[i+1], b)
