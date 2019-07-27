@@ -898,15 +898,16 @@ class UncertaintyQuantification(Integration):
                 variance[i] = -v
         return expectation, variance
 
-    def calculate_PCE(self, polynomial_degrees, combiinstance):
+    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False):
         self._set_nodes_weights_evals(combiinstance)
 
-        # Restrict the polynomial degrees if in some dimension not enough points
-        # are available
-        num_points = combiinstance.get_num_points_each_dim()
-        polynomial_degrees = [min(polynomial_degrees, num_points[d]-1) for d in range(self.dim)]
-        # Setting different degrees in each dimension did not give good results
-        # ~ polynomial_degrees = min(polynomial_degrees)
+        if restrict_degrees:
+            # Restrict the polynomial degrees if in some dimension not enough points
+            # are available
+            # For degree deg, deg+(deg-1)+1 points should be available
+            num_points = combiinstance.get_num_points_each_dim()
+            polynomial_degrees = [min(polynomial_degrees, num_points[d] // 2) for d in range(self.dim)]
+
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
             self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
