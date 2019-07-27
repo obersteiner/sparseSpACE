@@ -258,19 +258,22 @@ class IntegratorHierarchicalBSpline(IntegratorBase):
     def __init__(self, grid):
         self.grid = grid
         self.hierarchization = HierarchizationLSG(grid)
+        self.surplus_values = None
 
     def __call__(self, f, numPoints, start=None, end=None):
-        surplus_values = self.hierarchization(f, numPoints, self.grid)
+        self.surplus_values = self.hierarchization(f, numPoints, self.grid)
         points, weights = self.grid.get_points_and_weights()
         #print(sum(weights), np.prod(np.array(end) - np.array(start)), start,end, weights, self.grid.weights)
         #if not isclose(sum(weights), np.prod(np.array(end) - np.array(start))):
         #    assert False
-        #print(np.inner(surplus_values, weights))
-        if len(surplus_values) == 0:
+        #print(np.inner(self.surplus_values, weights))
+        if len(self.surplus_values) == 0:
             return 0.0
         else:
-            return np.inner(surplus_values, weights)
+            return np.inner(self.surplus_values, weights)
 
+    def get_surplusses(self):
+        return self.surplus_values
 
 class IntegratorHierarchical(IntegratorBase):
     def __call__(self, f, numPoints, start, end):

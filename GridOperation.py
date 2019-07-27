@@ -338,7 +338,7 @@ class Integration(AreaOperation):
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
             self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
         self.refinement_container.integral += integral * component_grid.coefficient
         self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
@@ -373,7 +373,7 @@ class Integration(AreaOperation):
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
-            if isinstance(self.grid, GlobalBSplineGrid):
+            if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
                 grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
                 hierarchization_operator = HierarchizationLSG(self.grid)
                 points, weights = self.grid.get_points_and_weights()
@@ -392,7 +392,7 @@ class Integration(AreaOperation):
                 right_parent = child_info.right_parent
                 child = child_info.child
                 level_child = child_info.level_child
-                if isinstance(self.grid, GlobalBSplineGrid):
+                if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
                     index_child = grid_points[d].index(child) - int(not(self.grid.boundary))
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
