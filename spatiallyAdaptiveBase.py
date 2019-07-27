@@ -198,10 +198,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         while True:
             error, surplus_error = self.evaluate_operation()
             self.error_array.append(error)
-            if self.reference_solution is not None and LA.norm(self.reference_solution) != 0.0:
-                self.surplus_error_array.append(surplus_error / abs(self.reference_solution))
-            else:
-                self.surplus_error_array.append(surplus_error)
+            self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.print_output:
                 print("Current error:", error)
