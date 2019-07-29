@@ -365,7 +365,7 @@ class FunctionLinear(Function):
         return result
 
 
-class FunctionLinearSum(Function):
+class FunctionMultilinear(Function):
     def __init__(self, coeffs):
         super().__init__()
         self.coeffs = np.array(coeffs)

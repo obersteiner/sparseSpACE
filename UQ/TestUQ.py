@@ -196,20 +196,20 @@ def test_normal_integration():
 	for _ in range(d):
 		distr.append(cp.Normal(0,2))
 	distr_joint = cp.J(*distr)
-	f = FunctionLinearSum([2.0, 0.0])
+	f = FunctionMultilinear([2.0, 0.0])
 	fw = FunctionCustom(lambda coords: f(coords)[0]
 		* float(distr_joint.pdf(coords)))
 
-	grid = TrapezoidalGrid(a=a, b=b, dim=d)
-	op = Integration(fw, grid=grid, dim=d)
+	# ~ grid = TrapezoidalGrid(a=a, b=b, dim=d)
+	grid = GlobalBSplineGrid(a, b)
+	op = Integration(fw, grid="Hund", dim=d)
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-		do_high_order=high_order)
+		do_high_order=high_order, grid=grid)
 	print("performSpatiallyAdaptiv…")
 	v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
-		max_evaluations=40,
-		min_evaluations=25, do_plot=plot_things)
+		max_evaluations=40, min_evaluations=25, do_plot=plot_things)
 	integral = v[3][0]
 	print("expectation", integral)
 
@@ -240,7 +240,7 @@ def test_linear():
 	d = 2
 	a = np.zeros(d)
 	b = np.ones(d)
-	f = FunctionLinearSum([2.0, 0.0])
+	f = FunctionMultilinear([2.0, 0.0])
 
 	do_test(d, a, b, f, "Uniform", solutions=(1.0, 0.3333333333333333))
 
@@ -248,7 +248,7 @@ def test_linear():
 def test_normal_vagebounds():
 	print("Invalid corner case: normal distribution on linear function with calculated boundaries")
 	d = 2
-	f = FunctionLinearSum([2.0, 0.0])
+	f = FunctionMultilinear([2.0, 0.0])
 	op = UncertaintyQuantification(f, ("Normal", 0, 2), np.array([-1.0, -1.0]), np.array([1.0, 1.0]), dim=d)
 	a, b = op.get_boundaries(0.01)
 	print("Boundaries set to", a, b)
@@ -263,7 +263,7 @@ def test_normal_large_border():
 	a = np.array([-bigvalue, -bigvalue])
 	b = np.array([bigvalue, bigvalue])
 
-	f = FunctionLinearSum([2.0, 0.0])
+	f = FunctionMultilinear([2.0, 0.0])
 
 	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, solutions=(0.0, 15.99999999996796))
 
@@ -274,7 +274,7 @@ def test_normal_inf_border():
 	a = np.array([-math.inf] * d)
 	b = np.array([math.inf] * d)
 
-	f = FunctionLinearSum([2.0, 0.0])
+	f = FunctionMultilinear([2.0, 0.0])
 
 	do_test(d, a, b, f, ("Normal", 0, 2), boundary=False, lmax=4, solutions=(0.0, 16.0))
 
@@ -338,9 +338,9 @@ def test_G_function():
 # ~ test_uq_discontinuity3D()
 # ~ test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
-test_G_function()
+# ~ test_G_function()
 
-# ~ test_normal_integration()
+test_normal_integration()
 # ~ test_normal_vagebounds()
 
 # ~ test_constant_triangle()
