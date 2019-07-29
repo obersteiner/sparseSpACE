@@ -1583,7 +1583,7 @@ class GlobalHighOrderGrid(GlobalGrid):
         return bad_approximation
 
     @staticmethod
-    def get_polynomials_and_evalaluations(x_array, d, trapezoidal_weights):
+    def get_polynomials_and_evaluations(x_array, d, trapezoidal_weights):
         evaluations = np.ones((d+1,len(x_array)))
         x_array = np.array(x_array)
         alphas = np.zeros(d+1)
@@ -1727,7 +1727,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
 
             #print("Trapezoidal weights", trapezoidal_weights)
             #print("Grid points", grid_1D_normalized)
-            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evalaluations(grid_1D_normalized,d, weights_lower_order)
+            evaluations, alphas, betas, lambdas = self.get_polynomials_and_evaluations(grid_1D_normalized,d, weights_lower_order)
             coordsD_normalized, weightsD = self.do_gauss_quad_normalized(int((d+2)/2), a, b)
             # ~ print("Gauss Points, alphas, betas and lambdas:", coordsD_normalized, alphas, betas, lambdas)
             evaluations_moments = self.evaluate_polynomials(coordsD_normalized, alphas, betas, lambdas)
