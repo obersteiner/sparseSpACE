@@ -22,6 +22,22 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
+
+# Settings
+silent_mode = True
+# ~ silent_mode = False
+do_HighOrder = False
+# ~ do_HighOrder = True
+if "max_evals" in os.environ:
+    max_evals = int(os.environ["max_evals"])
+else:
+    max_evals = 10 ** dim
+# Use reference values to calculate errors
+calculate_errors = True
+# ~ calculate_errors = False
+save_errors = True
+
+
 #predator = coyote
 #prey = sheep
 
@@ -55,14 +71,6 @@ dim = len(distris)
 # Normal distribution requires infinite boundaries
 a = np.array([-np.inf for _ in range(dim)])
 b = np.array([np.inf for _ in range(dim)])
-# Settings for the adaptive refinement quad weights
-do_HighOrder = False
-# ~ do_HighOrder = True
-# ~ max_evals = 10 ** dim
-max_evals = 500
-# Use reference values to calculate errors
-calculate_errors = True
-# ~ calculate_errors = False
 
 # population model definition: as a initial value problem
 def f(t, pX):
@@ -147,7 +155,7 @@ combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
 combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
-    max_evaluations=max_evals)
+    max_evaluations=max_evals, print_output=not silent_mode)
 if False:
     f_exvar = op.get_expectation_variance_Function()
     combiinstance.performSpatiallyAdaptiv(1, 2, f_exvar, error_operator, tol=tol,
@@ -155,7 +163,8 @@ if False:
 
 # Calculate the gPCE using the nodes and weights from the refinement
 op.calculate_PCE(poly_deg_max, combiinstance)
-print("simulation time: " + str(time.time() - measure_start) + " s")
+if not silent_mode:
+    print("simulation time: " + str(time.time() - measure_start) + " s")
 '''
 # Gauss quadrature
 op.calculate_PCE_chaospy(poly_deg_max, 10)
@@ -202,11 +211,25 @@ if calculate_errors:
         mean_error(error_P90_prey), mean_error(error_P90_predator),
         mean_error(error_Var_prey), mean_error(error_Var_predator)
     )
-    mean_err_descs = ("E prey", "E predator", "P10 prey", "P10 predator",
-        "P90 prey", "P90 predator", "Var prey", "Var predator")
-    for i,desc in enumerate(mean_err_descs):
-        print(f"{desc} mean relative error: {mean_errs[i]:.5g}")
+    if not silent_mode:
+        mean_err_descs = ("E prey", "E predator", "P10 prey", "P10 predator",
+            "P90 prey", "P90 predator", "Var prey", "Var predator")
+        for i,desc in enumerate(mean_err_descs):
+            print(f"{desc} mean relative error: {mean_errs[i]:.5g}")
 
+    if save_errors:
+        num_evals = problem_function.get_f_dict_size()
+        tmpdir = os.getenv("XDG_RUNTIME_DIR")
+        results_path = tmpdir + "/uqtest.npy"
+        solutions_data = []
+        if os.path.isfile(results_path):
+            solutions_data = list(np.load(results_path, allow_pickle=True))
+        solutions_data.append((num_evals, mean_errs))
+        np.save(results_path, solutions_data)
+
+
+if silent_mode:
+    sys.exit()
 
 #plot the stuff
 time_points = time_points/365
