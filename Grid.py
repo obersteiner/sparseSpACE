@@ -74,6 +74,8 @@ class Grid(object):
         #        return sorted(self.coordinate_array[d])[int(self.numPoints[d]/2)]
         return self.grids[d].get_mid_point(a, b)
 
+    # This method adjusts the grid to the given area defined by start and end. We initialize the weights and the grids
+    # for the given levelvector.
     def setCurrentArea(self, start, end, levelvec):
         self.start = start
         self.end = end
@@ -91,8 +93,8 @@ class Grid(object):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
             coordsD = self.grids[d].coords
             weightsD = self.grids[d].weights
-            self.coordinate_array.append(coordsD)
-            self.weights.append(weightsD)
+            self.coordinate_array.append(np.asarray(coordsD))
+            self.weights.append(np.asarray(weightsD))
         # print(coords)
 
     # this method returns the number of points in the grid that correspond to the specified levelvector
@@ -124,25 +126,32 @@ class Grid(object):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
+    # this mehtod returns if the grid is a high order (>1) grid
     def is_high_order_grid(self):
         return False
 
+    # this method returns the boundary flags for each dimension
     def get_boundaries(self):
         boundaries = []
         for grid in self.grids:
             boundaries.append(grid.boundary)
         return boundaries
 
+    # this method sets the boundary flags for each dimension
     def set_boundaries(self, boundaries):
         for d, grid in enumerate(self.grids):
             grid.boundary = boundaries[d]
 
+    # this method returns the point coordinates array for all dimension (list of vectors)
     def get_coordinates(self):
         return self.coordinate_array
 
+    # this method returns the point coordinates in the specified dimension d
     def get_coordinates_dim(self, d):
         return self.coordinate_array[d]
 
+    # this method checks if the quadrature rule is accurate up to degree d in the interval [a,b]. the grid_1D and weights_1D
+    # define the quadrature rule (i.e. point coordinates and their weights)
     def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
         tol = 10 ** -14
         bad_approximation = False #(sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
@@ -163,6 +172,8 @@ class Grid(object):
         #print(weights_1D, all([w > tolerance_lower for w in weights_1D]), d)
         #return sum(weights_1D) < (b-a) * 2
         return bad_approximation
+
+    # This method checks if the quadrature rule is stable (i.e. all weights are >= 0)
     def check_stability_of_quadrature_rule(self, weights_1D):
         return not(all([w >= 0 for w in weights_1D]))
 
@@ -170,6 +181,7 @@ from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
 
 
+# This grid can be used to define a grid consisting of arbitrary 1D Grids
 class MixedGrid(Grid):
     def __init__(self, a, b, dim, grids, boundary=None, integrator=None):
         self.a = a
@@ -189,6 +201,8 @@ class MixedGrid(Grid):
     def is_high_order_grid(self):
         return any([grid.is_high_order_grid() for grid in self.grids])
 
+
+# This abstract class defines the common structure and interface of all 1D Grids
 class Grid1d(object):
     def __init__(self, a=None, b=None, boundary=True):
         self.boundary = boundary
@@ -219,8 +233,8 @@ class Grid1d(object):
         # equidistant spacing; only valid for equidistant grids
         self.spacing = (end - start) / (self.num_points_with_boundary - 1)
         coordsD, weightsD = self.get_1d_points_and_weights()
-        self.coords = coordsD
-        self.weights = weightsD
+        self.coords = np.asarray(coordsD)
+        self.weights = np.asarray(weightsD)
 
 
     @abc.abstractmethod
@@ -917,7 +931,6 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
 
     # integrates the grid on the specified area for function f
     def integrate(self, f, levelvec, start, end):
-        print("Integrating levelvec", levelvec)
         integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
         self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
         return integral
