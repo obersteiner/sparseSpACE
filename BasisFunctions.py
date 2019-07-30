@@ -9,10 +9,10 @@ class BSpline(object):
         self.index = index
         assert(index <= len(knots) - p - 2)
 
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         return self.recursive_eval(x, self.p, self.index)
 
-    def recursive_eval(self, x: float, p: int, k: int):
+    def recursive_eval(self, x: float, p: int, k: int) -> float:
         if x < self.knots[k] or x > self.knots[k+p+1]:
             return 0.0
         if p == 0:
@@ -22,19 +22,19 @@ class BSpline(object):
             result += (self.knots[k + p + 1] - x) / (self.knots[k + p + 1] - self.knots[k + 1]) * self.recursive_eval(x, p-1, k + 1)
             return result
 
-    def chi(self, x: float, k: int):
+    def chi(self, x: float, k: int) -> float:
         if self.knots[k] <= x < self.knots[k+1]:
             return 1.0
         else:
             return 0.0
 
-    def get_first_derivative(self, x: float):
+    def get_first_derivative(self, x: float) -> float:
         return self.get_first_derivative_recursive(x, self.p, self.index)
 
-    def get_second_derivative(self, x: float):
+    def get_second_derivative(self, x: float) -> float:
         return self.get_second_derivative_recursive(x, self.p, self.index)
 
-    def get_first_derivative_recursive(self, x: float, p: int, k: int):
+    def get_first_derivative_recursive(self, x: float, p: int, k: int) -> float:
         if p == 0:
             return 0.0
         dh1 = 1 / (self.knots[k + p] - self.knots[k])
@@ -44,7 +44,7 @@ class BSpline(object):
         result += (self.knots[k + p + 1] - x) / (self.knots[k + p + 1] - self.knots[k + 1]) * self.get_first_derivative_recursive(x, p-1, k+1)
         return result
 
-    def get_second_derivative_recursive(self, x: float, p: int, k: int):
+    def get_second_derivative_recursive(self, x: float, p: int, k: int) -> float:
         if p <= 1:
             return 0.0
         dh1 = 1 / (self.knots[k + p] - self.knots[k])
@@ -65,17 +65,17 @@ class LagrangeBasis(object):
                 self.factor *= 1 / (self.knots[self.index] - self.knots[i])
         #assert(index <= len(knots) - p - 2)
 
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         result = 1
         for i, knot in enumerate(self.knots):
             if self.index != i:
                 result *= (x - self.knots[i])
         return result * self.factor
 
-    def get_first_derivative(self, x: float):
+    def get_first_derivative(self, x: float) -> float:
         return self.derivative_for_index(x, [self.index])
 
-    def derivative_for_index(self, x: float, indexSet: list):
+    def derivative_for_index(self, x: float, indexSet: list) -> float:
         result = 0.0
         for i, knot in enumerate(self.knots):
             if i not in indexSet:
@@ -87,14 +87,14 @@ class LagrangeBasis(object):
                 result += summation_factor
         return result
 
-    def get_second_derivative(self, x: float):
+    def get_second_derivative(self, x: float) -> float:
         result = 0.0
         for i, knot in enumerate(self.knots):
             if self.index != i:
                 result += 1/(self.knots[self.index] - self.knots[i]) * self.derivative_for_index(x, [self.index, i])
         return result
 
-    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
         result = 0.0
 
         left_border = a
@@ -110,25 +110,25 @@ class LagrangeBasis(object):
         return result
 
 class LagrangeBasisRestricted(LagrangeBasis):
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         if self.point_in_support(x):
             return super().__call__(x)
         else:
             return 0.0
 
-    def get_first_derivative(self, x: float):
+    def get_first_derivative(self, x: float) -> float:
         if self.point_in_support(x):
             return super().get_first_derivative(x)
         else:
             return 0.0
 
-    def get_second_derivative(self, x: float):
+    def get_second_derivative(self, x: float) -> float:
         if self.point_in_support(x):
             return super().get_second_derivative(x)
         else:
             return 0.0
 
-    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
         result = 0.0
 
         left_border = self.knots[max(0,self.index - 1)]
@@ -166,7 +166,7 @@ class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
         if self.is_right_border:
             self.basis3 = LagrangeBasis(self.p, len(self.knots) - 1, self.knots)
 
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         if self.point_in_support(x):
             if self.level == 1:
                 return 1.0
@@ -210,10 +210,10 @@ class HierarchicalNotAKnotBSpline(object):
             self.startIndex = index
             self.endIndex = index + p + 1
 
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         return self.spline(x)
 
-    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
         result = 0.0
         for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
@@ -261,7 +261,7 @@ class HierarchicalNotAKnotBSplineModified(object):
             self.startIndex = index
             self.endIndex = index + p + 1
 
-    def __call__(self, x: float):
+    def __call__(self, x: float) -> float:
         if self.level == 1:
             assert(self.index == 1)
             return 1.0
@@ -282,7 +282,7 @@ class HierarchicalNotAKnotBSplineModified(object):
         else:
             return self.spline(x)
 
-    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
         result = 0.0
         for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
