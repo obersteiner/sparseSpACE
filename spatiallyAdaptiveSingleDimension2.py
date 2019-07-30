@@ -39,8 +39,29 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.rebalancing = rebalancing
 
     def interpolate_points(self, interpolation_points, component_grid):
-        gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
-        return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
+        # check if dedicatged interpolation routine is present in grid
+        interpolation_op = getattr(self.grid, "interpolate", None)
+        if callable(interpolation_op):
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+            return self.grid.interpolate(interpolation_points, component_grid)
+        else:
+            # call default d-linear interpolation based on points in grid
+            # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
+
+    def interpolate_grid_component(self, grid, component_grid: ComponentGridInfo):
+        # check if dedicatged interpolation routine is present in grid
+        interpolation_op = getattr(self.grid, "interpolate_grid", None)
+        if callable(interpolation_op):
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+            return self.grid.interpolate_grid(grid, component_grid)
+        else:
+            # call default d-linear interpolation based on points in grid
+            # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
+            super().interpolate_grid_component(grid, component_grid)
 
     def coarsen_grid(self, area, levelvec):
         pass
@@ -107,8 +128,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     if False:#self.version == 2 and d != 0:
                         #if levelvec[d] > self.lmax[d] - subtraction_value:
                         #    subtraction_value = self.lmax[d]
-                        subtraction_value = 0
-                    if self.version == 4:
                         subtraction_value = 0
                     if self.version == 3:
                         subtraction_value /= self.dim
@@ -185,7 +204,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename=None, markersize=10):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =10):  # update with meta container
         plt.rcParams.update({'font.size': 32})
         refinement = self.refinement
         dim = self.dim
@@ -216,7 +235,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def init_evaluation_operation(self, areas):
         self.operation.initialize_refinement_container_dimension_wise(areas[0])
 
-    def evaluate_operation_area(self, component_grid, area, additional_info=None):
+    def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
             # get 1d coordinates of the grid points that define the grid; they are calculated based on the levelvector
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -293,7 +312,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #    return False
         return False
 
-    def raise_lmax(self, d, value):
+    def raise_lmax(self, d: int, value: int):
         self.lmax[d] += value
         if self.dim_adaptive:
             if self.print_output:
