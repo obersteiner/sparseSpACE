@@ -3,16 +3,16 @@ import scipy.integrate as integrate
 import numpy as np
 
 class BSpline(object):
-    def __init__(self, p, index, knots):
+    def __init__(self, p: int, index: int, knots: np.array):
         self.p = p
         self.knots = knots
         self.index = index
         assert(index <= len(knots) - p - 2)
 
-    def __call__(self, x):
+    def __call__(self, x: float):
         return self.recursive_eval(x, self.p, self.index)
 
-    def recursive_eval(self, x, p, k):
+    def recursive_eval(self, x: float, p: int, k: int):
         if x < self.knots[k] or x > self.knots[k+p+1]:
             return 0.0
         if p == 0:
@@ -22,19 +22,19 @@ class BSpline(object):
             result += (self.knots[k + p + 1] - x) / (self.knots[k + p + 1] - self.knots[k + 1]) * self.recursive_eval(x, p-1, k + 1)
             return result
 
-    def chi(self, x, k):
+    def chi(self, x: float, k: int):
         if self.knots[k] <= x < self.knots[k+1]:
             return 1.0
         else:
             return 0.0
 
-    def get_first_derivative(self,x):
+    def get_first_derivative(self, x: float):
         return self.get_first_derivative_recursive(x, self.p, self.index)
 
-    def get_second_derivative(self, x):
+    def get_second_derivative(self, x: float):
         return self.get_second_derivative_recursive(x, self.p, self.index)
 
-    def get_first_derivative_recursive(self, x, p, k):
+    def get_first_derivative_recursive(self, x: float, p: int, k: int):
         if p == 0:
             return 0.0
         dh1 = 1 / (self.knots[k + p] - self.knots[k])
@@ -44,7 +44,7 @@ class BSpline(object):
         result += (self.knots[k + p + 1] - x) / (self.knots[k + p + 1] - self.knots[k + 1]) * self.get_first_derivative_recursive(x, p-1, k+1)
         return result
 
-    def get_second_derivative_recursive(self, x, p, k):
+    def get_second_derivative_recursive(self, x: float, p: int, k: int):
         if p <= 1:
             return 0.0
         dh1 = 1 / (self.knots[k + p] - self.knots[k])
@@ -55,7 +55,7 @@ class BSpline(object):
         return result
 
 class LagrangeBasis(object):
-    def __init__(self, p, index, knots):
+    def __init__(self, p: int, index: int, knots: np.array):
         self.p = p
         self.knots = knots
         self.index = index
@@ -65,17 +65,17 @@ class LagrangeBasis(object):
                 self.factor *= 1 / (self.knots[self.index] - self.knots[i])
         #assert(index <= len(knots) - p - 2)
 
-    def __call__(self, x):
+    def __call__(self, x: float):
         result = 1
         for i, knot in enumerate(self.knots):
             if self.index != i:
                 result *= (x - self.knots[i])
         return result * self.factor
 
-    def get_first_derivative(self, x):
+    def get_first_derivative(self, x: float):
         return self.derivative_for_index(x, [self.index])
 
-    def derivative_for_index(self, x, indexSet):
+    def derivative_for_index(self, x: float, indexSet: list):
         result = 0.0
         for i, knot in enumerate(self.knots):
             if i not in indexSet:
@@ -87,14 +87,14 @@ class LagrangeBasis(object):
                 result += summation_factor
         return result
 
-    def get_second_derivative(self, x):
+    def get_second_derivative(self, x: float):
         result = 0.0
         for i, knot in enumerate(self.knots):
             if self.index != i:
                 result += 1/(self.knots[self.index] - self.knots[i]) * self.derivative_for_index(x, [self.index, i])
         return result
 
-    def get_integral(self, a, b, coordsD, weightsD):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
         result = 0.0
 
         left_border = a
@@ -110,25 +110,25 @@ class LagrangeBasis(object):
         return result
 
 class LagrangeBasisRestricted(LagrangeBasis):
-    def __call__(self, x):
+    def __call__(self, x: float):
         if self.point_in_support(x):
             return super().__call__(x)
         else:
             return 0.0
 
-    def get_first_derivative(self, x):
+    def get_first_derivative(self, x: float):
         if self.point_in_support(x):
             return super().get_first_derivative(x)
         else:
             return 0.0
 
-    def get_second_derivative(self, x):
+    def get_second_derivative(self, x: float):
         if self.point_in_support(x):
             return super().get_second_derivative(x)
         else:
             return 0.0
 
-    def get_integral(self, a, b, coordsD, weightsD):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
         result = 0.0
 
         left_border = self.knots[max(0,self.index - 1)]
@@ -148,7 +148,7 @@ class LagrangeBasisRestricted(LagrangeBasis):
 
 from math import isclose
 class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
-    def __init__(self, p, index, knots, a, b, level):
+    def __init__(self, p: int, index: int, knots: np.array, a: float, b: float, level: int):
         self.p = p
         self.knots = knots
         self.index = index
@@ -162,39 +162,41 @@ class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
         self.is_left_border = isclose(self.knots[self.index - 1], a)
         self.is_right_border = isclose(self.knots[self.index + 1], b)
         if self.is_left_border:
-            self.basis2 = LagrangeBasisRestricted(self.p, 0, self.knots)
+            self.basis2 = LagrangeBasis(self.p, 0, self.knots)
         if self.is_right_border:
-            self.basis3 = LagrangeBasisRestricted(self.p, len(self.knots) - 1, self.knots)
-        print(self.is_right_border, self.is_left_border)
+            self.basis3 = LagrangeBasis(self.p, len(self.knots) - 1, self.knots)
 
-    def __call__(self, x):
-        if self.level == 1:
-            return 1.0
+    def __call__(self, x: float):
+        if self.point_in_support(x):
+            if self.level == 1:
+                return 1.0
+            else:
+                result = super().__call__(x)
+
+                if self.is_left_border:
+                    #print(self.spline.get_second_derivative(self.a), self.spline2.get_second_derivative(self.a))
+                    if self.p > 1:
+                        #print(self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a), self.get_second_derivative(self.a), self.basis2.get_second_derivative(self.a))
+                        result -= self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a) * self.basis2(x)
+                    else:
+                        result += 2 * self.basis2(x)
+                elif self.is_right_border:
+                    if self.p > 1:
+                        #print(self.get_second_derivative(self.b), self.basis3.get_second_derivative(self.b))
+                        result -= self.get_second_derivative(self.b)/ self.basis3.get_second_derivative(self.b) * self.basis3(x)
+                    else:
+                        result += 2 * self.basis3(x)
+
+                return result
         else:
-            result = super().__call__(x)
-
-            if self.is_left_border:
-                #print(self.spline.get_second_derivative(self.a), self.spline2.get_second_derivative(self.a))
-                if self.p > 1:
-                    print(self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a), self.get_second_derivative(self.a), self.basis2.get_second_derivative(self.a))
-                    result -= self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a) * self.basis2(x)
-                else:
-                    result += 2 * self.basis2(x)
-            elif self.is_right_border:
-                if self.p > 1:
-                    print(self.get_second_derivative(self.b), self.basis3.get_second_derivative(self.b))
-                    result -= self.get_second_derivative(self.b)/ self.basis3.get_second_derivative(self.b) * self.basis3(x)
-                else:
-                    result += 2 * self.basis3(x)
-
-            return result
+            return 0.0
 
 
 from math import log2
 import numpy.polynomial.legendre as legendre
 
 class HierarchicalNotAKnotBSpline(object):
-    def __init__(self, p, index, level, knots):
+    def __init__(self, p: int, index: int, level: int, knots: np.array):
         self.p = p
         self.index = index
         self.level = level
@@ -208,10 +210,10 @@ class HierarchicalNotAKnotBSpline(object):
             self.startIndex = index
             self.endIndex = index + p + 1
 
-    def __call__(self, x):
+    def __call__(self, x: float):
         return self.spline(x)
 
-    def get_integral(self, a, b, coordsD, weightsD):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
         result = 0.0
         for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
@@ -237,7 +239,7 @@ class HierarchicalNotAKnotBSpline(object):
         return result
 
 class HierarchicalNotAKnotBSplineModified(object):
-    def __init__(self, p, index, level, knots, a, b):
+    def __init__(self, p: int, index: int, level: int, knots: np.array, a: float, b: float):
         self.p = p
         self.index = index
         self.level = level
@@ -259,7 +261,7 @@ class HierarchicalNotAKnotBSplineModified(object):
             self.startIndex = index
             self.endIndex = index + p + 1
 
-    def __call__(self, x):
+    def __call__(self, x: float):
         if self.level == 1:
             assert(self.index == 1)
             return 1.0
@@ -280,7 +282,7 @@ class HierarchicalNotAKnotBSplineModified(object):
         else:
             return self.spline(x)
 
-    def get_integral(self, a, b, coordsD, weightsD):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array):
         result = 0.0
         for i in range(self.startIndex, self.endIndex):
             if self.knots[i+1] >= a and self.knots[i] <= b:
@@ -304,9 +306,3 @@ class HierarchicalNotAKnotBSplineModified(object):
         #print(result, result2)
 
         return result
-
-
-class ModifiedHierarchicalNotAKnotBSpline(object):
-    def __init__(self, p, index, level, knots):
-        pass
-    #toDo
