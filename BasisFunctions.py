@@ -111,8 +111,20 @@ class LagrangeBasis(object):
 
 class LagrangeBasisRestricted(LagrangeBasis):
     def __call__(self, x):
-        if self.knots[max(0,self.index - 1)] <= x <= self.knots[min(self.index + 1, len(self.knots) - 1)]:
+        if self.point_in_support(x):
             return super().__call__(x)
+        else:
+            return 0.0
+
+    def get_first_derivative(self, x):
+        if self.point_in_support(x):
+            return super().get_first_derivative(x)
+        else:
+            return 0.0
+
+    def get_second_derivative(self, x):
+        if self.point_in_support(x):
+            return super().get_second_derivative(x)
         else:
             return 0.0
 
@@ -130,6 +142,53 @@ class LagrangeBasisRestricted(LagrangeBasis):
         #print(coordsD, a, b, weights)
         result += np.inner(f_evals, weights)
         return result
+
+    def point_in_support(self, x):
+        return self.knots[max(0, self.index - 1)] <= x <= self.knots[min(self.index + 1, len(self.knots) - 1)]
+
+from math import isclose
+class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
+    def __init__(self, p, index, knots, a, b, level):
+        self.p = p
+        self.knots = knots
+        self.index = index
+        self.factor = 1
+        for i, knot in enumerate(self.knots):
+            if self.index != i:
+                self.factor *= 1 / (self.knots[self.index] - self.knots[i])
+        self.a = a
+        self.b = b
+        self.level = level
+        self.is_left_border = isclose(self.knots[self.index - 1], a)
+        self.is_right_border = isclose(self.knots[self.index + 1], b)
+        if self.is_left_border:
+            self.basis2 = LagrangeBasisRestricted(self.p, 0, self.knots)
+        if self.is_right_border:
+            self.basis3 = LagrangeBasisRestricted(self.p, len(self.knots) - 1, self.knots)
+        print(self.is_right_border, self.is_left_border)
+
+    def __call__(self, x):
+        if self.level == 1:
+            return 1.0
+        else:
+            result = super().__call__(x)
+
+            if self.is_left_border:
+                #print(self.spline.get_second_derivative(self.a), self.spline2.get_second_derivative(self.a))
+                if self.p > 1:
+                    print(self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a), self.get_second_derivative(self.a), self.basis2.get_second_derivative(self.a))
+                    result -= self.get_second_derivative(self.a)/ self.basis2.get_second_derivative(self.a) * self.basis2(x)
+                else:
+                    result += 2 * self.basis2(x)
+            elif self.is_right_border:
+                if self.p > 1:
+                    print(self.get_second_derivative(self.b), self.basis3.get_second_derivative(self.b))
+                    result -= self.get_second_derivative(self.b)/ self.basis3.get_second_derivative(self.b) * self.basis3(x)
+                else:
+                    result += 2 * self.basis3(x)
+
+            return result
+
 
 from math import log2
 import numpy.polynomial.legendre as legendre
@@ -209,12 +268,12 @@ class HierarchicalNotAKnotBSplineModified(object):
             if self.index == 1:
                 #print(self.spline.get_second_derivative(self.a), self.spline2.get_second_derivative(self.a))
                 if self.p > 1:
-                    result -=self.spline.get_second_derivative(self.a)/ self.spline2.get_second_derivative(self.a) * self.spline2(x)
+                    result -= self.spline.get_second_derivative(self.a)/ self.spline2.get_second_derivative(self.a) * self.spline2(x)
                 else:
                     result += 2 * self.spline2(x)
             else:
                 if self.p > 1:
-                    result -= self.spline(x) - self.spline.get_second_derivative(self.b)/ self.spline3.get_second_derivative(self.b) * self.spline3(x)
+                    result -= self.spline.get_second_derivative(self.b)/ self.spline3.get_second_derivative(self.b) * self.spline3(x)
                 else:
                     result += 2 *  self.spline3(x)
             return result
