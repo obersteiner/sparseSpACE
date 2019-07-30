@@ -258,6 +258,142 @@ class Grid1d(object):
     def is_high_order_grid(self):
         return False
 
+
+class LagrangeGrid(Grid):
+    def __init__(self, a, b, dim, boundary=True, p=3, modified_basis=False):
+        self.boundary = boundary
+        self.a = a
+        self.b = b
+        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(dim)]
+        self.p = p
+        self.modified_basis = modified_basis
+        assert not boundary or not modified_basis
+
+    def is_high_order_grid(self):
+        return self.p > 1
+
+    def get_basis(self, d, index):
+        return self.grids[d].splines[index]
+
+
+class LagrangeGrid1D(Grid1d):
+    def __init__(self, a, b, boundary=True, p=3, modified_basis=False):
+        super().__init__(a=a, b=b, boundary=boundary)
+        self.p = p  # spline order
+        assert p % 2 == 1
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p + 1) / 2))
+        self.modified_basis = modified_basis
+        assert not boundary or not modified_basis
+
+    def level_to_num_points_1d(self, level):
+        return 2 ** level + 1 - (1 if not self.boundary else 0) * (
+                int(1 if isclose(self.start, self.a) else 0) + int(1 if self.end == self.b else 0))
+
+    def get_1d_points_and_weights(self):
+        coordsD = self.get_1D_level_points(self.level, self.start, self.end)
+        # print(coordsD)
+        weightsD = np.array(self.compute_1D_quad_weights(coordsD))
+        return coordsD, weightsD
+
+    def get_1D_level_points(self, level, a, b):
+        N = 2 ** level + 1  # inner points including boundary points
+        # h = (b - a) / (N - 1)
+        # N_knot = N + 2 * self.p
+        # self.knots = np.linspace(a - self.p * h, b + self.p * h, N_knot)
+        return list(np.linspace(a, b, N)[self.lowerBorder: self.upperBorder])
+
+    def compute_1D_quad_weights(self, grid_1D):
+        self.splines = np.empty(2 ** self.level + 1, dtype=object)
+        grid_levels_1D = np.zeros(len(grid_1D), dtype=int)
+        for l in range(1, self.level + 1):
+            offset = 2**(self.level - l)
+            for i in range(offset, len(grid_levels_1D), 2*offset):
+                grid_levels_1D[i] = l
+        #print(grid_levels_1D)
+        max_level = max(grid_levels_1D)
+        grid_levels_1D = np.asarray(grid_levels_1D)
+        level_coordinate_array = [[] for l in range(max_level+1)]
+        for i, p in enumerate(grid_1D):
+            level_coordinate_array[grid_levels_1D[i]].append(p)
+
+        #print(level_coordinate_array)
+        # level = 0
+        weights = np.zeros(len(grid_1D))
+        starting_level = 0 if self.boundary else 1
+        parents = {}
+        for l in range(starting_level, max_level + 1):
+            h = (self.end - self.start) / 2 ** l
+            # calculate knots for spline construction
+            #print(knots, "level", l, "dimension", d)
+            #iterate over levels and add hierarchical B-Splines
+            if l == 0:
+                start = 0
+                end = 2
+                step = 1
+            else:
+                start = 1
+                end = 2 ** l
+                step = 2
+            for i in range(len(level_coordinate_array[l])):
+                # i is the index of the basis function
+                # point associated to the basis (spline) with index i
+                x_basis = level_coordinate_array[l][i]
+                if l == 0:
+                    knots = list(level_coordinate_array[l])
+                elif l == 1:
+                    knots = list(sorted(level_coordinate_array[0] + level_coordinate_array[1]))
+                else:
+                    parent = self.get_parent(x_basis, grid_1D, grid_levels_1D)
+                    knots = list(sorted(parents[parent] + [x_basis]))
+                parents[x_basis] = knots
+                if len(knots) > self.p + 1:
+                    index_x = knots.index(x_basis)
+                    left = index_x
+                    right = len(knots) - index_x - 1
+                    if left < int((self.p+1)/2):
+                        knots = knots[: self.p+1]
+                    elif right < int(self.p/2):
+                        knots = knots[-(self.p+1):]
+                    else:
+                        knots = knots[index_x - int((self.p + 1)/2): index_x + int(self.p/2) + 1]
+                    assert len(knots) == self.p + 1
+                # if this knot is part of the grid insert it
+                #print(i, x_basis, grid_1D, grid_levels_1D, l)
+                if self.modified_basis:
+                    assert False
+                    spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots, a, b)
+                else:
+                    spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots)
+                index = grid_1D.index(x_basis)
+                self.splines[index] = spline
+                weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+        if not self.boundary:
+            self.splines = self.splines[1:-1]
+        for spline in self.splines:
+            assert spline is not None
+        return weights
+
+    def is_high_order_grid(self):
+        return self.p > 1
+
+    def get_parent(self, p, grid_1D, grid_levels):
+        index_p = grid_1D.index(p)
+        level_p = grid_levels[index_p]
+        found_parent=False
+        for i in reversed(range(index_p)):
+            if grid_levels[i] == level_p - 1:
+                return grid_1D[i]
+            elif grid_levels[i] < level_p - 1:
+                break
+        for i in range(index_p+1, len(grid_1D)):
+            if grid_levels[i] == level_p - 1:
+                return grid_1D[i]
+            elif grid_levels[i] < level_p - 1:
+                break
+        assert False
+
+
 class BSplineGrid(Grid):
     def __init__(self, a, b, dim, boundary=True, p=3, modified_basis=False):
         self.boundary = boundary
@@ -1072,8 +1208,7 @@ class GlobalLagrangeGrid(GlobalBSplineGrid):
                 # if this knot is part of the grid insert it
                 #print(i, x_basis, grid_1D, grid_levels_1D, l)
                 if self.modified_basis:
-                    assert False
-                    spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots, a, b)
+                    spline = LagrangeBasisRestrictedModified(self.p, knots.index(x_basis), knots, a, b, l)
                 else:
                     spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots)
                 index = grid_1D.index(x_basis)
