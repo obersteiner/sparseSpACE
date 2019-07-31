@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
+from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set, Tuple
 
 # The function class is used to define several functions for testing the algorithm
 # it defines the basic interface that is used by the algorithm
@@ -18,11 +18,11 @@ class Function(object):
         self.old_f_dict = {}
         self.do_cache = True  # indicates whether function values should be cached
 
-    def reset_dictionary(self):
+    def reset_dictionary(self) -> None:
         self.old_f_dict = {**self.old_f_dict, **self.f_dict}
         self.f_dict = {}
 
-    def __call__(self, coordinates):
+    def __call__(self, coordinates: Tuple[float, ...]) -> Sequence[float]:
         f_value = None
         if self.do_cache:
             coords = tuple(coordinates)
@@ -39,10 +39,10 @@ class Function(object):
             f_value = [f_value]
         return np.array(f_value)
 
-    def deactivate_caching(self):
+    def deactivate_caching(self) -> None:
         self.do_cache = False
 
-    def get_f_dict_size(self):
+    def get_f_dict_size(self) -> int:
         return len(self.f_dict)
 
     def get_f_dict_points(self):
@@ -53,17 +53,17 @@ class Function(object):
 
     # evaluates the function at the specified coordinate
     @abc.abstractmethod
-    def eval(self, coordinates):
-        return
+    def eval(self, coordinates: Tuple[float, ...]) -> Sequence[float]:
+        pass
 
     # this returns the analytic solution of the integral in the specified area
     # currently necessary for the error estimator
     @abc.abstractmethod
-    def getAnalyticSolutionIntegral(self, start, end):
-        return
+    def getAnalyticSolutionIntegral(self, start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+        pass
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start, end, filename=None, plotdimension=0):
+    def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0) -> None:
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
@@ -92,7 +92,7 @@ class Function(object):
             fig.savefig(filename, bbox_inches='tight')
         plt.show()
 
-    def output_length(self):
+    def output_length(self) -> int:
         return 1
 
 
@@ -275,6 +275,7 @@ class FunctionCompose(Function):
             result += f.getAnalyticSolutionIntegral(start, end) * factor
         return result
 
+
 class FunctionLinear(Function):
     def __init__(self, coeffs):
         super().__init__()
@@ -427,6 +428,31 @@ class GenzDiscontinious(Function):
                 result *= (np.exp(-self.coeffs[d] * start[d]) - np.exp(-self.coeffs[d] * end[d])) / self.coeffs[d]
         return result
 
+class GenzDiscontinious2(Function):
+    def __init__(self, coeffs, border):
+        super().__init__()
+        self.coeffs = coeffs
+        self.border = border
+        self.dim = len(coeffs)
+
+    def eval(self, coordinates):
+        result = 0
+        for d in range(self.dim):
+            if coordinates[d] >= self.border[d]:
+                return [0.0, 0.0]
+            result -= self.coeffs[d] * coordinates[d]
+        return [np.exp(result), np.exp(result)]
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        result = 1
+        end = list(end)
+        for d in range(self.dim):
+            if start[d] >= self.border[d]:
+                return 0.0
+            else:
+                end[d] = min(end[d], self.border[d])
+                result *= (np.exp(-self.coeffs[d] * start[d]) - np.exp(-self.coeffs[d] * end[d])) / self.coeffs[d]
+        return np.asarray([result, result])
 
 class GenzC0(Function):
     def __init__(self, coeffs, midpoint):
