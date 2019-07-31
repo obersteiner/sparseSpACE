@@ -16,7 +16,7 @@ class Grid(object):
         self.b = b
 
     # integrates the grid on the specified area for function f
-    def integrate(self, f: Callable[[Tuple[float, ...], Sequence[float]]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+    def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         if not self.is_global():
             self.setCurrentArea(start, end, levelvec)
         return self.integrator(f, self.levelToNumPoints(levelvec), start, end)
@@ -809,7 +809,7 @@ class GlobalGrid(Grid):
         self.weights = []
         self.levels = []
         #print("Points and levels", grid_points, grid_levels)
-        self.basis_functions = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
+        self.basis = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
 
         if self.boundary:
             self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
@@ -1184,12 +1184,12 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
                 else:
                     spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots)
                 index = grid_1D.index(x_basis)
-                self.splines[d][index] = spline
+                self.basis[d][index] = spline
                 weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
         if not self.boundary:
-            self.splines[d] = self.splines[d][1:-1]
-        for spline in self.splines[d]:
-            assert spline is not None
+            self.basis[d] = self.basis[d][1:-1]
+        for basis in self.basis[d]:
+            assert basis is not None
         return weights
 
     def get_parent(self, point_position: float, grid_1D: Sequence[float], grid_levels: Sequence[int]) -> float:

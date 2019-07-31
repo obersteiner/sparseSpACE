@@ -1,6 +1,6 @@
 import numpy as np
 from Utils import *
-from Grid import Grid
+import Grid
 from typing import List, Set, Dict, Tuple, Optional, Union, Sequence, Callable
 
 class HierarchizationLSG(object):
