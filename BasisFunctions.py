@@ -1,12 +1,36 @@
 from math import log2
 import scipy.integrate as integrate
 import numpy as np
+import abc
+from math import isclose
+from math import log2
 
-class BSpline(object):
+
+class BasisFunction(object):
+    @abc.abstractmethod
+    def __call__(self, x: float) -> float:
+        pass
+
+    @abc.abstractmethod
+    def get_first_derivative(self, x: float) -> float:
+        pass
+
+    @abc.abstractmethod
+    def get_second_derivative(self, x: float) -> float:
+        pass
+
+    @abc.abstractmethod
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
+        pass
+
+
+class BSpline(BasisFunction):
     def __init__(self, p: int, index: int, knots: np.array):
         self.p = p
         self.knots = knots
         self.index = index
+        self.startIndex = index
+        self.endIndex = index + p + 1
         assert(index <= len(knots) - p - 2)
 
     def __call__(self, x: float) -> float:
@@ -54,7 +78,23 @@ class BSpline(object):
         result += (self.knots[k + p + 1] - x) / (self.knots[k + p + 1] - self.knots[k + 1]) * self.get_second_derivative_recursive(x, p-1, k+1)
         return result
 
-class LagrangeBasis(object):
+    def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
+        result = 0.0
+        for i in range(self.startIndex, self.endIndex):
+            if self.knots[i+1] >= a and self.knots[i] <= b:
+                left_border = max(self.knots[i], a)
+                right_border = min(self.knots[i+1], b)
+                coords = np.array(coordsD)
+                coords += np.ones(int((self.p+1)/2))
+                coords *= (right_border - left_border) / 2.0
+                coords += left_border
+                weights = np.array(weightsD) * (right_border - left_border) / 2
+                f_evals = np.array([self(coord) for coord in coords])
+                result += np.inner(f_evals, weights)
+        return result
+
+
+class LagrangeBasis(BasisFunction):
     def __init__(self, p: int, index: int, knots: np.array):
         self.p = p
         self.knots = knots
@@ -109,6 +149,7 @@ class LagrangeBasis(object):
         result += np.inner(f_evals, weights)
         return result
 
+
 class LagrangeBasisRestricted(LagrangeBasis):
     def __call__(self, x: float) -> float:
         if self.point_in_support(x):
@@ -146,7 +187,7 @@ class LagrangeBasisRestricted(LagrangeBasis):
     def point_in_support(self, x):
         return self.knots[max(0, self.index - 1)] <= x <= self.knots[min(self.index + 1, len(self.knots) - 1)]
 
-from math import isclose
+
 class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
     def __init__(self, p: int, index: int, knots: np.array, a: float, b: float, level: int):
         self.p = p
@@ -192,10 +233,7 @@ class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):
             return 0.0
 
 
-from math import log2
-import numpy.polynomial.legendre as legendre
-
-class HierarchicalNotAKnotBSpline(object):
+class HierarchicalNotAKnotBSpline(BasisFunction):
     def __init__(self, p: int, index: int, level: int, knots: np.array):
         self.p = p
         self.index = index
@@ -238,7 +276,14 @@ class HierarchicalNotAKnotBSpline(object):
 
         return result
 
-class HierarchicalNotAKnotBSplineModified(object):
+    def get_first_derivative(self, x: float) -> float:
+        return self.spline.get_first_derivative(x)
+
+    def get_second_derivative(self, x: float) -> float:
+        return self.spline.get_second_derivative(x)
+
+
+class HierarchicalNotAKnotBSplineModified(BasisFunction):
     def __init__(self, p: int, index: int, level: int, knots: np.array, a: float, b: float):
         self.p = p
         self.index = index
@@ -277,7 +322,7 @@ class HierarchicalNotAKnotBSplineModified(object):
                 if self.p > 1:
                     result -= self.spline.get_second_derivative(self.b)/ self.spline3.get_second_derivative(self.b) * self.spline3(x)
                 else:
-                    result += 2 *  self.spline3(x)
+                    result += 2 * self.spline3(x)
             return result
         else:
             return self.spline(x)
@@ -294,15 +339,46 @@ class HierarchicalNotAKnotBSplineModified(object):
                 coords += left_border
                 weights = np.array(weightsD) * (right_border - left_border) / 2
                 f_evals = np.array([self(coord) for coord in coords])
-                #print(coordsD, a, b, weights)
                 result += np.inner(f_evals, weights)
-
-        #if self.level < log2(self.p + 1):
-        #    #print(integrate.quad(self, a, b, epsabs=1.49e-20, epsrel=1.49e-14))
-        #    result2 = integrate.quad(self, a, b, epsabs=1.49e-20, epsrel=1.49e-14)[0]
-        #else:
-        #    #print(integrate.quad(self, max(a,self.knots[self.index]), min(b, self.knots[self.index + (self.p+1)]), epsabs=1.49e-20, epsrel=1.49e-14))
-        #    result2 = integrate.quad(self, max(a,self.knots[self.index]), min(b, self.knots[self.index + (self.p+1)]), epsabs=1.49e-20, epsrel=1.49e-14)[0]
-        #print(result, result2)
-
         return result
+
+    def get_first_derivative(self, x: float) -> float:
+        if self.level == 1:
+            assert(self.index == 1)
+            return 0
+        elif self.level >= 2 and (self.index == 1 or self.index == 2**self.level - 1):
+            derivative = self.spline.get_first_derivative(x)
+            if self.index == 1:
+                if self.p > 1:
+                    derivative -= self.spline.get_second_derivative(self.a)/ self.spline2.get_second_derivative(self.a) * self.spline2.get_first_derivative(x)
+                else:
+                    derivative += 2 * self.spline2.get_first_derivative(x)
+            else:
+                if self.p > 1:
+                    derivative -= self.spline.get_second_derivative(self.b)/ self.spline3.get_second_derivative(self.b) * self.spline3.get_first_derivative(x)
+                else:
+                    derivative += 2 * self.spline3.get_first_derivative(x)
+            return derivative
+        else:
+            return self.spline.get_first_derivative(x)
+
+    def get_second_derivative(self, x: float) -> float:
+        if self.level == 1:
+            assert(self.index == 1)
+            return 0
+        elif self.level >= 2 and (self.index == 1 or self.index == 2**self.level - 1):
+            derivative = self.spline.get_second_derivative(x)
+            if self.index == 1:
+                if self.p > 1:
+                    derivative -= self.spline.get_second_derivative(self.a)/ self.spline2.get_second_derivative(self.a) * self.spline2.get_second_derivative(x)
+                else:
+                    derivative += 2 * self.spline2.get_second_derivative(x)
+            else:
+                if self.p > 1:
+                    derivative -= self.spline.get_second_derivative(self.b)/ self.spline3.get_second_derivative(self.b) * self.spline3.get_second_derivative(x)
+                else:
+                    derivative += 2 * self.spline3.get_second_derivative(x)
+            return derivative
+        else:
+            return self.spline.get_second_derivative(x)
+
