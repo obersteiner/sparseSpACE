@@ -1,10 +1,10 @@
 import numpy as np
 import math
 from ComponentGridInfo import ComponentGridInfo
-
+from typing import List, Set, Dict, Tuple, Optional
 
 class CombiScheme:
-    def __init__(self, dim):
+    def __init__(self, dim: int):
         self.initialized_adaptive = False
         self.active_index_set = set()
         self.old_index_set = set()
@@ -12,16 +12,16 @@ class CombiScheme:
 
     # This method initializes the adaptive combination scheme. Here we create the old and the active index set
     # for the standard scheme with specified maximum and minimum level.
-    def init_adaptive_combi_scheme(self, lmax, lmin):
+    def init_adaptive_combi_scheme(self, lmax: int, lmin: int) -> None:
         assert lmax >= lmin
         self.lmin = lmin
         self.lmax = lmax
-        self.initialized_adaptive = True
-        self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin, self.dim)
-        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)
-        self.lmax_adaptive = lmax
+        self.initialized_adaptive = True  # type: bool
+        self.active_index_set = CombiScheme.init_active_index_set(lmax, lmin, self.dim)  # type: Set[Tuple[int, ...]]
+        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)  # type: Set[Tuple[int, ...]]
+        self.lmax_adaptive = lmax  # type: int
 
-    def extendable_level(self, levelvec):
+    def extendable_level(self, levelvec: List[int]) -> Tuple[bool, int]:
         assert self.initialized_adaptive
         counter = 0
         extendable_dim = 0
@@ -32,7 +32,7 @@ class CombiScheme:
         return counter == 1, extendable_dim
 
     # checks if the component grid is refinable, i.e. it is in the active index set
-    def is_refinable(self, levelvec):
+    def is_refinable(self, levelvec: List[int]) -> bool:
         assert self.initialized_adaptive
         return tuple(levelvec) in self.active_index_set
 
@@ -40,7 +40,7 @@ class CombiScheme:
     # It tries to add all forward neighbours of the grid and adds all of them that can be added.
     # This method returns the dimensions for which forward neighbours were added to the scheme. If this list is empty,
     # no grid was added.
-    def update_adaptive_combi(self, levelvec):
+    def update_adaptive_combi(self, levelvec: List[int]) -> List[int]:
         assert self.initialized_adaptive
         if not self.is_refinable(levelvec):
             return
@@ -53,7 +53,7 @@ class CombiScheme:
                 refined_dims.append(d)
         return refined_dims
 
-    def has_forward_neighbour(self, levelvec):
+    def has_forward_neighbour(self, levelvec: List[int]) -> bool:
         assert self.initialized_adaptive
         for d in range(self.dim):
             temp = list(levelvec)
@@ -64,7 +64,7 @@ class CombiScheme:
 
     # This method tries to add the forward neighbour in dimension d for the grid with the specified levelvector.
     # If the grid was added successfully the return value will be True, otherwise False.
-    def __refine_scheme(self, d, levelvec):
+    def __refine_scheme(self, d: int, levelvec: List[int]) -> Set[Tuple[int, ...]]:
         assert self.initialized_adaptive
         # print(CombiScheme.old_index_set, CombiScheme.active_index_set, levelvec, CombiScheme.lmin)
         levelvec = list(levelvec)
@@ -81,7 +81,7 @@ class CombiScheme:
     # This method initializes the active index set for the standard combination technique with specified maximum
     # and minimum level. Dim specifies the dimension of the problem.
     @staticmethod
-    def init_active_index_set(lmax, lmin, dim):
+    def init_active_index_set(lmax: int, lmin: int, dim: int) -> Set[Tuple[int, ...]]:
         grids = CombiScheme.getGrids(dim, lmax - lmin + 1)
         grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
         print(grids)
@@ -90,7 +90,7 @@ class CombiScheme:
     # This method initializes the old index set for the standard combination technique with specified maximum
     # and minimum level. Dim specifies the dimension of the problem.
     @staticmethod
-    def init_old_index_set(lmax, lmin, dim):
+    def init_old_index_set(lmax: int, lmin: int, dim: int) -> Set[Tuple[int, ...]]:
         grid_array = []
         for q in range(1, min(dim, lmax - lmin + 1)):
             grids = CombiScheme.getGrids(dim, lmax - lmin + 1 - q)
@@ -100,10 +100,10 @@ class CombiScheme:
         return set(grid_array)
 
     # This method returns the whole index set, i.e. the union of the old and active index set
-    def get_index_set(self):
+    def get_index_set(self) -> Set[Tuple[int, ...]]:
         return self.old_index_set | self.active_index_set
 
-    def get_active_indices(self):
+    def get_active_indices(self) -> Set[Tuple[int, ...]]:
         return self.active_index_set
 
     # This method returns a list containing the whole combination scheme for the specified minimum and maximum level.
@@ -111,7 +111,7 @@ class CombiScheme:
     # current adaptive combination scheme. Here only the grids with a non-zero coeficient are returned.
     # In the adaptive case lmin and lmax parameters are not used.
     # do_print can be set to true of we want to print the combination scheme to standard output.
-    def getCombiScheme(self, lmin=1, lmax=2, do_print=True):
+    def getCombiScheme(self, lmin: int=1, lmax: int=2, do_print: bool=True) -> List[ComponentGridInfo]:
         grid_array = []
         if not self.initialized_adaptive:  # use default scheme
             for q in range(min(self.dim, lmax-lmin+1)):
@@ -133,7 +133,7 @@ class CombiScheme:
     # This method computes the coefficient for all component grids (identified by their levelvector)
     # in the specified index set. It returns a list of ComponentGridInfo Structure containing all component grids with
     # non-zero coefficients.
-    def get_coefficients_to_index_set(self, index_set):
+    def get_coefficients_to_index_set(self, index_set: Set[Tuple[int, ...]]) -> List[ComponentGridInfo]:
         grid_array = []
         grid_dict = {}
         for grid_levelvec in index_set:
@@ -153,18 +153,18 @@ class CombiScheme:
                     grid_dict[levelvec] = update_coefficient
 
         for levelvec, coefficient in grid_dict.items():
-            if coefficient != 0 and sum(levelvec) > self.lmax + (self.dim - 1) * self.lmin - self.dim:
+            if coefficient != 0:
                 grid_array.append(ComponentGridInfo(levelvector=levelvec, coefficient=coefficient))
         return grid_array
 
     # This method checks if the specified levelvector is contained in the old index set.
-    def is_old_index(self, levelvec):
+    def is_old_index(self, levelvec: List[int]) -> bool:
         return tuple(levelvec) in self.old_index_set
 
     # This method computes recursively all possible level vectors of dimension dim_left
     # that have an l_1 norm of values_left. This is used to efficiently compute the standard combination scheme.
     @staticmethod
-    def getGrids(dim_left, values_left):
+    def getGrids(dim_left: int, values_left: int) -> List[List[int]]:
         if dim_left == 1:
             return [[values_left]]
         grids = []
@@ -174,5 +174,5 @@ class CombiScheme:
         return grids
 
     # This method checks if the specified levelvector is contained in the index set.
-    def in_index_set(self, levelvec):
+    def in_index_set(self, levelvec: List[int]) -> bool:
         return tuple(levelvec) in self.active_index_set or tuple(levelvec) in self.old_index_set

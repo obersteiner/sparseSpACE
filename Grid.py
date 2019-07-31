@@ -5,6 +5,7 @@ import numpy.polynomial.legendre as legendre
 from math import isclose
 from BasisFunctions import *
 from Utils import *
+from ComponentGridInfo import *
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -260,7 +261,7 @@ class Grid1d(object):
 
 
 class LagrangeGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, p=3, modified_basis=False):
+    def __init__(self, a: float, b: float, dim: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
         self.boundary = boundary
         self.a = a
         self.b = b
@@ -270,15 +271,15 @@ class LagrangeGrid(Grid):
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
-    def is_high_order_grid(self):
+    def is_high_order_grid(self) -> bool:
         return self.p > 1
 
-    def get_basis(self, d, index):
+    def get_basis(self, d: int, index: int):
         return self.grids[d].splines[index]
 
 
 class LagrangeGrid1D(Grid1d):
-    def __init__(self, a, b, boundary=True, p=3, modified_basis=False):
+    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p  # spline order
         assert p % 2 == 1
@@ -286,7 +287,7 @@ class LagrangeGrid1D(Grid1d):
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
-    def level_to_num_points_1d(self, level):
+    def level_to_num_points_1d(self, level: int) -> int:
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
                 int(1 if isclose(self.start, self.a) else 0) + int(1 if self.end == self.b else 0))
 
@@ -296,7 +297,7 @@ class LagrangeGrid1D(Grid1d):
         weightsD = np.array(self.compute_1D_quad_weights(coordsD))
         return coordsD, weightsD
 
-    def get_1D_level_points(self, level, a, b):
+    def get_1D_level_points(self, level: int, a: float, b: float):
         N = 2 ** level + 1  # inner points including boundary points
         # h = (b - a) / (N - 1)
         # N_knot = N + 2 * self.p
@@ -374,10 +375,10 @@ class LagrangeGrid1D(Grid1d):
             assert spline is not None
         return weights
 
-    def is_high_order_grid(self):
+    def is_high_order_grid(self) -> bool:
         return self.p > 1
 
-    def get_parent(self, p, grid_1D, grid_levels):
+    def get_parent(self, p: int, grid_1D, grid_levels):
         index_p = grid_1D.index(p)
         level_p = grid_levels[index_p]
         found_parent=False
@@ -395,7 +396,7 @@ class LagrangeGrid1D(Grid1d):
 
 
 class BSplineGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, p=3, modified_basis=False):
+    def __init__(self, a: float, b: float, dim: int, boundary: bool=True, p: int=3, modified_basis: bool=False):
         self.boundary = boundary
         self.a = a
         self.b = b
@@ -405,14 +406,14 @@ class BSplineGrid(Grid):
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
-    def is_high_order_grid(self):
+    def is_high_order_grid(self) -> bool:
         return self.p > 1
 
-    def get_basis(self, d, index):
+    def get_basis(self, d: int, index: int):
         return self.grids[d].splines[index]
 
 class BSplineGrid1D(Grid1d):
-    def __init__(self, a, b, boundary=True, p=3, modified_basis=False):
+    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p #spline order
         assert p % 2 == 1
@@ -420,7 +421,7 @@ class BSplineGrid1D(Grid1d):
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
-    def level_to_num_points_1d(self, level):
+    def level_to_num_points_1d(self, level: int):
         return 2 ** level + 1 - (1 if not self.boundary else 0) * (
                 int(1 if isclose(self.start, self.a) else 0) + int(1 if self.end == self.b else 0))
 
@@ -430,7 +431,7 @@ class BSplineGrid1D(Grid1d):
         weightsD = np.array(self.compute_1D_quad_weights(coordsD))
         return coordsD, weightsD
 
-    def get_1D_level_points(self, level, a, b):
+    def get_1D_level_points(self, level, a: float, b: float):
         N = 2**level + 1 #inner points including boundary points
         #h = (b - a) / (N - 1)
         #N_knot = N + 2 * self.p
@@ -506,7 +507,7 @@ class BSplineGrid1D(Grid1d):
             self.splines = self.splines[self.lowerBorder: self.upperBorder]
         return weights[self.lowerBorder:self.upperBorder]
 
-    def get_hierarchical_splines(self, grid_1D, l, weights):
+    def get_hierarchical_splines(self, grid_1D, l: int, weights):
         stride = 2**(self.level - l)
         h = (self.b - self.a) / 2**l
         if l < log2(self.p + 1):
@@ -1054,10 +1055,10 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
             level_coordinate_array_complete[l].append(level_coordinate_array_complete[l-1][-1])
         return level_coordinate_array_complete
 
-    def get_mid_point(self, start, end):
+    def get_mid_point(self, start: float, end: float, d: int=0):
         return 0.5 * (end + start)
 
-    def get_basis(self, d, i):
+    def get_basis(self, d: int, i: int):
         #print( self.splines)
         #print(self.splines[d][i](0))
         return self.splines[d][i]
@@ -1071,7 +1072,7 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
         return integral
 
-    def interpolate(self, evaluation_points, component_grid):
+    def interpolate(self, evaluation_points, component_grid: ComponentGridInfo):
         levelvec = component_grid.levelvector
         surplusses = self.surplus_values[tuple(levelvec)]
         #print(surplusses)

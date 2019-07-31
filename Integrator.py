@@ -5,17 +5,18 @@ import scipy.integrate
 from scipy.interpolate import interpn
 from Hierarchization import *
 import math
+from typing import Callable, Iterator, Union, Optional, List, Tuple, Sequence
 
 # This is the abstract interface of an integrator that integrates a given area specified by start for function f
 # using numPoints many points per dimension
 class IntegratorBase(object):
     @abc.abstractmethod
-    def __call__(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[int, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         pass
 
 # This integrator computes the trapezoidal rule for the given interval without constructing the grid explicitly
 class IntegratorTrapezoidalFast(IntegratorBase):
-    def __call__(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         dim = len(start)
         length = np.empty(dim)
         offsets = np.ones(dim, dtype=np.int64)
@@ -48,7 +49,7 @@ class IntegratorTrapezoidalFast(IntegratorBase):
 # This integrator computes the trapezoidal rule for the given interval by constructing the grid explicitly
 # and applying iteratively 1D trapezoidal rules
 class IntegratorGenerateGridTrapezoidal(IntegratorBase):
-    def __call_(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         dim = len(start)
         length = np.zeros(dim)
         offsets = np.ones(dim, dtype=np.int64)
@@ -93,7 +94,7 @@ class IntegratorArbitraryGrid(IntegratorBase):
     def __init__(self, grid):
         self.grid = grid
 
-    def __call__(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         dim = len(start)
         offsets = np.ones(dim, dtype=np.int64)
         gridsize = np.int64(1)
@@ -128,7 +129,7 @@ class IntegratorArbitraryGridScalarProduct(IntegratorBase):
     def __init__(self, grid):
         self.grid = grid
 
-    def __call__(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         points, weights = self.grid.get_points_and_weights()
         f_values = np.empty((len(f(points[0])), len(points)))
         for i, point in enumerate(points):
@@ -260,7 +261,7 @@ class IntegratorHierarchicalBSpline(IntegratorBase):
         self.hierarchization = HierarchizationLSG(grid)
         self.surplus_values = None
 
-    def __call__(self, f, numPoints, start=None, end=None):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         self.surplus_values = self.hierarchization(f, numPoints, self.grid)
         points, weights = self.grid.get_points_and_weights()
         #print(sum(weights), np.prod(np.array(end) - np.array(start)), start,end, weights, self.grid.weights)
@@ -276,8 +277,9 @@ class IntegratorHierarchicalBSpline(IntegratorBase):
         return self.surplus_values
 
 class IntegratorHierarchical(IntegratorBase):
-    def __call__(self, f, numPoints, start, end):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         print("Normal Call in hierarchicalIntegror... does not work!")
+        assert False
         # NotImplementedError()
 
     def integrate_hierarchical(self, f, gridPointCoordsForEachDimension, start, end, widthPerDimension, metaRefineContainer, levelVec, lmin, lmax):
