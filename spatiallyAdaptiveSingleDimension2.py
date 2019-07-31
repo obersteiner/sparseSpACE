@@ -39,7 +39,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.rebalancing = rebalancing
 
     def interpolate_points(self, interpolation_points, component_grid):
-        # check if dedicatged interpolation routine is present in grid
+        # check if dedicated interpolation routine is present in grid
         interpolation_op = getattr(self.grid, "interpolate", None)
         if callable(interpolation_op):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -266,16 +266,42 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #            level = max(area.levels)
         #            area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
+    def _initialize_points(self, points, func_mid, d, i1, i2):
+        if i1+1 >= i2:
+            return
+        i = (i1 + i2) // 2
+        points[i] = func_mid(points[i1], points[i2], d)
+        self._initialize_points(points, func_mid, d, i1, i)
+        self._initialize_points(points, func_mid, d, i, i2)
+
+    def _initialize_levels(self, levels, i1, i2, level):
+        if i1+1 >= i2:
+            return
+        i = (i1 + i2) // 2
+        level = level+1
+        levels[i] = level
+        self._initialize_levels(levels, i1, i, level)
+        self._initialize_levels(levels, i, i2, level)
+
     def initialize_refinement(self):
         initial_points = []
+        maxv = self.lmax[0]
+        assert all([l == maxv for l in self.lmax])
+        num_points = 2 ** maxv + 1
+        levels = [0 for _ in range(num_points)]
+        self._initialize_levels(levels, 0, num_points-1, 0)
+        func_mid = self.grid.get_mid_point
         for d in range(self.dim):
-            initial_points.append(np.linspace(self.a[d], self.b[d], 2 ** 2 + 1))
-        levels = [0, 2, 1, 2, 0]
+            points = [None for _ in range(num_points)]
+            points[0] = self.a[d]
+            points[num_points-1] = self.b[d]
+            self._initialize_points(points, func_mid, d, 0, num_points-1)
+            initial_points.append(np.array(points))
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])),
-                                                                                     self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
-                                                     range(2 ** 2)], d, self.errorEstimator) for d in
+                                                                                     coarsening_level=0, dim_adaptive=self.dim_adaptive) for i in
+                                                     range(2 ** maxv)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
