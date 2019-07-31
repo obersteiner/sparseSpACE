@@ -16,7 +16,7 @@ class Grid(object):
         self.b = b
 
     # integrates the grid on the specified area for function f
-    def integrate(self, f, levelvec, start, end):
+    def integrate(self, f: Callable[[Tuple[float, ...], Sequence[float]]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         if not self.is_global():
             self.setCurrentArea(start, end, levelvec)
         return self.integrator(f, self.levelToNumPoints(levelvec), start, end)
@@ -27,47 +27,47 @@ class Grid(object):
     #    return self.integrator.integrate_point(f, point)
 
     # returns if all grid components are nested
-    def isNested(self):
+    def isNested(self) -> bool:
         return all([self.grids[d].is_nested() for d in range(len(self.grids))])
 
     # the default case is that a grid is not globally but only locally defined
-    def is_global(self):
+    def is_global(self) -> bool:
         return False
 
     # this method can be used to generate a local grid for the given area and the specified number of points
     # typically the local grid is constructed for each area in the refinement graph during the algorithm
     @abc.abstractmethod
-    def setCurrentArea(self, start, end, levelvec):
+    def setCurrentArea(self, start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]):
         pass
 
     # this method returns the actual coordinate of a point specified by the indexvector of the point
     # (e.g. in a 3 by 3 equdistant grid on the unit interval, the point [1,1] would have coordinate (0.5,0.5) and point [0,2] coordinate (0,1)
     # overwrite if necessary
-    def getCoordinate(self, indexvector):
+    def getCoordinate(self, indexvector: Sequence[int]):
         position = np.empty(self.dim)
         for d in range(self.dim):
             position[d] = self.coordinate_array[d][indexvector[d]]
         return position
 
-    # this method translates a point in an equidistant mesh of level self.levelvec to its corresponding index
-    def getIndexTo1DCoordinate(self, coordinate, level):
+    # this method translates a point in an equidistant mesh of level self.levelvec in the Domain [0,1] to its corresponding index
+    def getIndexTo1DCoordinate(self, coordinate: float, level: int) -> int:
         return coordinate * 2 ** level
 
-    def point_not_zero(self, p):
+    def point_not_zero(self, p: Sequence[float]) -> bool:
         # print(p, self.grid.boundary or not (self.point_on_boundary(p)))
         return self.boundary or not (self.point_on_boundary(p))
 
-    def point_on_boundary(self, p):
+    def point_on_boundary(self, p: Sequence[float]) -> bool:
         # print("2",p, (p == self.a).any() or (p == self.b).any())
         return ([isclose(c, self.a) for c in p]).any() or ([isclose(c, self.b) for c in p]).any()
 
-    def get_points_and_weights(self):
+    def get_points_and_weights(self) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         return self.getPoints(), self.get_weights()
 
-    def get_weights(self):
+    def get_weights(self) -> Sequence[float]:
         return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
 
-    def get_mid_point(self, a, b, d):
+    def get_mid_point(self, a: float, b: float, d: int) -> float:
         #if self.numPoints[d] == 1:
         #    return self.coordinate_array[d][0]
         #else:
@@ -77,7 +77,7 @@ class Grid(object):
 
     # This method adjusts the grid to the given area defined by start and end. We initialize the weights and the grids
     # for the given levelvector.
-    def setCurrentArea(self, start, end, levelvec):
+    def setCurrentArea(self, start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]) -> None:
         self.start = start
         self.end = end
         self.dim = len(start)
@@ -99,14 +99,14 @@ class Grid(object):
         # print(coords)
 
     # this method returns the number of points in the grid that correspond to the specified levelvector
-    def levelToNumPoints(self, levelvec):
+    def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
         numPoints = np.zeros(len(levelvec), dtype=int)
         for d in range(len(levelvec)):
             numPoints[d] = self.grids[d].level_to_num_points_1d(levelvec[d])
         return numPoints
 
     # this method returns the number of points in the grid that correspond to the specified levelvector
-    def levelToNumPointsWithBoundary(self, levelvec):
+    def levelToNumPointsWithBoundary(self, levelvec: Sequence[int]) -> Sequence[int]:
         numPoints = np.zeros(len(levelvec), dtype=int)
         for d in range(len(levelvec)):
             boundary_save = self.grids[d].boundary
@@ -117,25 +117,25 @@ class Grid(object):
         return numPoints
 
     # this method returns all the coordinate tuples of all points in the grid
-    def getPoints(self):
+    def getPoints(self) -> Sequence[Tuple[float, ...]]:
         return get_cross_product(self.coordinate_array)
 
     # this method returns the quadrature weight for the point specified by the indexvector
-    def getWeight(self, indexvector):
+    def getWeight(self, indexvector: Sequence[int]) -> float:
         weight = 1
         for d in range(self.dim):
             weight *= self.weights[d][indexvector[d]]
         return weight
 
     # this mehtod returns if the grid is a high order (>1) grid
-    def is_high_order_grid(self):
+    def is_high_order_grid(self) -> bool:
         return False
 
     # this method returns the boundary flags for each dimension
-    def get_boundaries(self):
-        boundaries = []
-        for grid in self.grids:
-            boundaries.append(grid.boundary)
+    def get_boundaries(self) -> Sequence[bool]:
+        boundaries = np.array(self.dim, dtype=bool)
+        for d, grid in enumerate(self.grids):
+            boundaries[d] = grid.boundary
         return boundaries
 
     # this method sets the boundary flags for each dimension
@@ -144,16 +144,16 @@ class Grid(object):
             grid.boundary = boundaries[d]
 
     # this method returns the point coordinates array for all dimension (list of vectors)
-    def get_coordinates(self):
+    def get_coordinates(self) -> Sequence[Sequence[float]]:
         return self.coordinate_array
 
     # this method returns the point coordinates in the specified dimension d
-    def get_coordinates_dim(self, d):
+    def get_coordinates_dim(self, d) -> Sequence[float]:
         return self.coordinate_array[d]
 
-    # this method checks if the quadrature rule is accurate up to degree d in the interval [a,b]. the grid_1D and weights_1D
+    # this method checks if the quadrature rule is accurate up to specified degree in the interval [a,b]. the grid_1D and weights_1D
     # define the quadrature rule (i.e. point coordinates and their weights)
-    def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
+    def check_quality_of_quadrature_rule(self, a: float, b: float, degree: int, grid_1D: Sequence[float], weights_1D: Sequence[float]) -> bool:
         tol = 10 ** -14
         bad_approximation = False #(sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
         # if bad_approximation:
@@ -161,7 +161,7 @@ class Grid(object):
         #     (sum(abs(weights_1D)) - (b - a)) / (b - a))
 
         if not bad_approximation:
-            for i in range(d + 1):
+            for i in range(degree + 1):
                 real_moment = b ** (i + 1) / (i + 1) - a ** (i + 1) / (i + 1)
                 if abs(sum([grid_1D[j] ** i * weights_1D[j] for j in range(len(grid_1D))]) - real_moment) / abs(
                         real_moment) > tol:
@@ -175,42 +175,21 @@ class Grid(object):
         return bad_approximation
 
     # This method checks if the quadrature rule is stable (i.e. all weights are >= 0)
-    def check_stability_of_quadrature_rule(self, weights_1D):
+    def check_stability_of_quadrature_rule(self, weights_1D: Sequence[float]) -> bool:
         return not(all([w >= 0 for w in weights_1D]))
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
 
 
-# This grid can be used to define a grid consisting of arbitrary 1D Grids
-class MixedGrid(Grid):
-    def __init__(self, a, b, dim, grids, boundary=None, integrator=None):
-        self.a = a
-        self.b = b
-        if integrator is None:
-            self.integrator = IntegratorArbitraryGridScalarProduct(self)
-        else:
-            if integrator == 'old':
-                self.integrator = IntegratorArbitraryGrid(self)
-            else:
-                assert False
-        self.dim = dim
-        assert (len(grids) == dim)
-        self.grids = grids
-        self.boundary = all([grid.boundary for grid in grids])
-
-    def is_high_order_grid(self):
-        return any([grid.is_high_order_grid() for grid in self.grids])
-
-
 # This abstract class defines the common structure and interface of all 1D Grids
 class Grid1d(object):
-    def __init__(self, a=None, b=None, boundary=True):
+    def __init__(self, a: float=None, b: float=None, boundary: bool=True):
         self.boundary = boundary
         self.a = a
         self.b = b
 
-    def set_current_area(self, start, end, level):
+    def set_current_area(self, start: float, end: float, level: int) -> None:
         self.start = start
         self.end = end
         self.level = level
@@ -239,25 +218,46 @@ class Grid1d(object):
 
 
     @abc.abstractmethod
-    def get_1d_points_and_weights(self):
+    def get_1d_points_and_weights(self) -> Sequence[float]:
         pass
 
-    def get_1D_level_weights(self):
+    def get_1D_level_weights(self) -> Sequence[float]:
         return [self.get_1d_weight(i) for i in range(self.num_points)]
 
     @abc.abstractmethod
-    def get_1d_weight(self, index):
+    def get_1d_weight(self, index: int) -> float:
         pass
 
-    def get_mid_point(self, a, b):
+    def get_mid_point(self, a: float, b: float) -> float:
         return (a + b) / 2.0
 
     # the default case is that a grid is nested; overwrite this if not nested!
-    def is_nested(self):
+    def is_nested(self) -> bool:
         return True
 
-    def is_high_order_grid(self):
+    def is_high_order_grid(self) -> bool:
         return False
+
+
+# This grid can be used to define a grid consisting of arbitrary 1D Grids
+class MixedGrid(Grid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], dim: int, grids: Sequence[Grid1d], boundary: bool=None, integrator: IntegratorBase=None):
+        self.a = a
+        self.b = b
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
+        self.dim = dim
+        assert (len(grids) == dim)
+        self.grids = grids
+        self.boundary = all([grid.boundary for grid in grids])
+
+    def is_high_order_grid(self):
+        return any([grid.is_high_order_grid() for grid in self.grids])
 
 
 class LagrangeGrid(Grid):
@@ -796,27 +796,21 @@ class ClenshawCurtisGrid1D(Grid1d):
     def is_high_order_grid(self):
         return True
 
+class GlobalGrid(Grid):
 
-class GlobalTrapezoidalGrid(Grid):
-    def __init__(self, a, b, boundary=True, modified_basis=False):
-        self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
-        self.a = a
-        self.b = b
-        self.dim = len(a)
-        self.length = np.array(b) - np.array(a)
-        self.modified_basis = modified_basis
-        assert not(modified_basis) or not(boundary)
-
-    def is_global(self):
+    def is_global(self) -> bool:
         return True
 
-    def isNested(self):
+    def isNested(self) -> bool:
         return True
 
-    def set_grid(self, grid_points, grid_levels):
+    def set_grid(self, grid_points: Sequence[Sequence[float]], grid_levels: Sequence[Sequence[int]]) -> None:
         self.coords = []
         self.weights = []
+        self.levels = []
+        #print("Points and levels", grid_points, grid_levels)
+        self.basis_functions = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
+
         if self.boundary:
             self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
             self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
@@ -829,21 +823,67 @@ class GlobalTrapezoidalGrid(Grid):
             assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
             if self.boundary:
                 coordsD = grid_points[d]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d])
+                levelsD = grid_levels[d]
             else:
                 coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
-            if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
-                print(grid_points[d], weightsD)
-            if self.modified_basis:
-                assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
-
-            #print(coordsD, grid_points[d], weightsD)
+                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1]
+                levelsD = grid_levels[d][1:-1]
             self.coords.append(coordsD)
             self.weights.append(weightsD)
+            self.levels.append(levelsD)
             self.numPoints[d] = len(coordsD)
+        self.coords = np.asarray(self.coords)
+        self.weights = np.asarray(self.weights)
+        self.levels = np.asarray(self.levels)
 
-    def compute_1D_quad_weights(self, grid_1D, a, b):
+    def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
+        if hasattr(self, 'numPoints'):
+            return self.numPoints
+        else:
+            return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
+
+    def getPoints(self) -> Sequence[Tuple[float, ...]]:
+        return get_cross_product(self.coords)
+
+    def getCoordinate(self, indexvector: Sequence[int]) -> Sequence[float]:
+        position = np.zeros(self.dim)
+        for d in range(self.dim):
+            position[d] = self.coords[d][indexvector[d]]
+        return position
+
+    def getWeight(self, indexvector: Sequence[int]) -> float:
+        weight = 1
+        for d in range(self.dim):
+            weight *= self.weights[d][indexvector[d]]
+        return weight
+
+    def get_coordinates(self) -> Sequence[Sequence[float]]:
+        return self.coords
+
+    def get_coordinates_dim(self, d: int) -> Sequence[float]:
+        return self.coords[d]
+
+    @abc.abstractmethod
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        pass
+
+    def get_mid_point(self, start: float, end: float, d: int=0) -> float:
+        return 0.5 * (end + start)
+
+
+class GlobalTrapezoidalGrid(Grid):
+    def __init__(self, a, b, boundary=True, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGrid(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert not(modified_basis) or not(boundary)
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         weights = np.zeros(len(grid_1D))
         if self.modified_basis and len(grid_1D) == 3:
             weights[1] = b - a
@@ -867,9 +907,6 @@ class GlobalTrapezoidalGrid(Grid):
                     else:
                         if not (self.modified_basis and i == len(grid_1D) - 2):
                             weights[i] += 0.5 * (grid_1D[i] - grid_1D[i - 1])
-                #elif grid_1D[0] > a:
-                #    weights[i] += 0.5 * (grid_1D[i] - a)
-                #print(weights)
 
                 if i < len(grid_1D) - 1:
                     if self.modified_basis and i == len(grid_1D) - 2:
@@ -888,41 +925,101 @@ class GlobalTrapezoidalGrid(Grid):
                     else:
                         if not(self.modified_basis and i == 1):
                             weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
-                #elif grid_1D[len(grid_1D) - 1] < b:
-                #    weights[i] += 0.5 * (b - grid_1D[i])
-                #print(weights)
-        #print(grid_1D, weights)
+
+        if self.modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+                b - a) * (1 + 10 ** -12):
+            print(grid_1D, weights)
+        if self.modified_basis:
+            assert (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+                b - a) * (1 + 10 ** -12)
         return weights
 
-    def levelToNumPoints(self, levelvec):
-        if hasattr(self, 'numPoints'):
-            return self.numPoints
-        else:
-            return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
-    def getPoints(self):
-        return get_cross_product(self.coords)
+class GlobalBasisGrid(GlobalGrid):
+    def get_basis(self, d: int, i: int) -> BasisFunction:
+        return self.basis[d][i]
 
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
+    def get_surplusses(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        return self.surplus_values[tuple(levelvec)]
+
+    # integrates the grid on the specified area for function f
+    def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
+        self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
+        return integral
+
+    def interpolate(self, evaluation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        #print(surplusses)
+        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
         for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
+            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
+            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
+        indexList = get_cross_product_range(self.numPoints)
+        #print(indexList)
+        for i, index in enumerate(indexList):
+            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
+            intermediate_result *= np.array(surplusses[:,i])
+            for d in range(self.dim):
+                for j in range(np.shape(surplusses)[0]):
+                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
+            #print(intermediate_result)
+            results[:,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        return results
 
-    def getWeight(self, indexvector):
-        weight = 1
+    def interpolate_grid(self, grid_points_for_dims: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        num_points = np.prod([len(grid_d) for grid_d in grid_points_for_dims])
+        num_points_grid = [len(grid_d) for grid_d in grid_points_for_dims]
+        #print(surplusses)
+        results = np.zeros((num_points, np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
         for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
+            points_d = grid_points_for_dims[d]
+            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    #print(p, spline(p))
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
 
-    def get_coordinates(self):
-        return self.coords
+        #print(indexList)
+        pointIndexList = get_cross_product_range(num_points_grid)
+        for n, p in enumerate(pointIndexList):
+            indexList = get_cross_product_range(self.numPoints)
+            for i, index in enumerate(indexList):
+                intermediate_result = np.array(surplusses[:,i])
+                for d in range(self.dim):
+                    for j in range(np.shape(surplusses)[0]):
+                        intermediate_result *= evaluations[d][p[d], index[d]]
+                    #print(intermediate_result, surplusses[:,i], evaluations[d][p[d],:], grid[d], grid[d][p[d]], p[d])
+                #print(intermediate_result)
+                results[n,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        #print(list(pointIndexList))
 
-    def get_coordinates_dim(self, d):
-        return self.coords[d]
+        #print(results)
+        return results
 
-class GlobalBSplineGrid(GlobalTrapezoidalGrid):
-    def __init__(self, a, b, boundary=True, modified_basis=False, p=3):
+
+class GlobalBSplineGrid(GlobalBasisGrid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBSpline(self)
         self.a = a
@@ -936,49 +1033,7 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
 
-    def is_global(self):
-        return True
-
-    def isNested(self):
-        return True
-
-    def set_grid(self, grid_points, grid_levels):
-        self.coords = []
-        self.weights = []
-        self.levels = []
-        #print("Points and levels", grid_points, grid_levels)
-        self.splines = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
-
-        if self.boundary:
-            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
-        else:
-            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
-
-        for d in range(self.dim):
-            # check if grid_points are sorted
-            assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
-            if self.boundary:
-                coordsD = grid_points[d]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], grid_levels[d], self.a[d], self.b[d], d)
-                levelsD = grid_levels[d]
-            else:
-                coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], grid_levels[d], self.a[d], self.b[d], d)[1:-1]
-                levelsD = grid_levels[d][1:-1]
-            #if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
-            #    print(grid_points[d], weightsD)
-            #if self.modified_basis:
-            #    assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
-
-            #print(coordsD, grid_points[d], weightsD)
-            self.coords.append(coordsD)
-            self.weights.append(weightsD)
-            self.levels.append(levelsD)
-            self.numPoints[d] = len(coordsD)
-
-    def compute_1D_quad_weights(self, grid_1D, grid_levels_1D, a, b, d):
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         max_level = max(grid_levels_1D)
         grid_levels_1D = np.asarray(grid_levels_1D)
         level_coordinate_array = self.get_full_level_hierarchy(grid_1D, grid_levels_1D, a, b)
@@ -1018,11 +1073,11 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
                     else:
                         spline = HierarchicalNotAKnotBSpline(self.p, i, l, knots)
                     index = grid_1D.index(x_basis)
-                    self.splines[d][index] = spline
+                    self.basis[d][index] = spline
                     weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
         if not self.boundary:
-            self.splines[d] = self.splines[d][1:-1]
-        for spline in self.splines[d]:
+            self.basis[d] = self.basis[d][1:-1]
+        for spline in self.basis[d]:
             assert spline is not None
         return weights
 
@@ -1055,94 +1110,10 @@ class GlobalBSplineGrid(GlobalTrapezoidalGrid):
             level_coordinate_array_complete[l].append(level_coordinate_array_complete[l-1][-1])
         return level_coordinate_array_complete
 
-    def get_mid_point(self, start: float, end: float, d: int=0):
-        return 0.5 * (end + start)
 
-    def get_basis(self, d: int, i: int):
-        #print( self.splines)
-        #print(self.splines[d][i](0))
-        return self.splines[d][i]
 
-    def get_surplusses(self, levelvec):
-        return self.surplus_values[tuple(levelvec)]
-
-    # integrates the grid on the specified area for function f
-    def integrate(self, f, levelvec, start, end):
-        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
-        self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
-        return integral
-
-    def interpolate(self, evaluation_points, component_grid: ComponentGridInfo):
-        levelvec = component_grid.levelvector
-        surplusses = self.surplus_values[tuple(levelvec)]
-        #print(surplusses)
-        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
-        #print(np.shape(results))
-        #for n, evaluation_point in enumerate(evaluation_points):
-        evaluations = np.empty(self.dim, dtype=object)
-        for d in range(self.dim):
-            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
-            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
-            for i, spline in enumerate(self.splines[d]):
-                for j, p in enumerate(points_d):
-                    evaluations1D[j, i] = spline(p)
-            evaluations[d] = evaluations1D
-        #print(evaluations)
-        indexList = get_cross_product_range(self.numPoints)
-        #print(indexList)
-        for i, index in enumerate(indexList):
-            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
-            intermediate_result *= np.array(surplusses[:,i])
-            for d in range(self.dim):
-                for j in range(np.shape(surplusses)[0]):
-                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
-            #print(intermediate_result)
-            results[:,:] += intermediate_result
-            #print(results[n,:])
-        #print(results)
-        return results
-
-    def interpolate_grid(self, grid, component_grid):
-        levelvec = component_grid.levelvector
-        surplusses = self.surplus_values[tuple(levelvec)]
-        num_points = np.prod([len(grid_d) for grid_d in grid])
-        num_points_grid = [len(grid_d) for grid_d in grid]
-        #print(surplusses)
-        results = np.zeros((num_points, np.shape(surplusses)[0]))
-        #print(np.shape(results))
-        #for n, evaluation_point in enumerate(evaluation_points):
-        evaluations = np.empty(self.dim, dtype=object)
-        for d in range(self.dim):
-            points_d = grid[d]
-            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
-            for i, spline in enumerate(self.splines[d]):
-                for j, p in enumerate(points_d):
-                    #print(p, spline(p))
-                    evaluations1D[j, i] = spline(p)
-            evaluations[d] = evaluations1D
-        #print(evaluations)
-
-        #print(indexList)
-        pointIndexList = get_cross_product_range(num_points_grid)
-        for n, p in enumerate(pointIndexList):
-            indexList = get_cross_product_range(self.numPoints)
-            for i, index in enumerate(indexList):
-                intermediate_result = np.array(surplusses[:,i])
-                for d in range(self.dim):
-                    for j in range(np.shape(surplusses)[0]):
-                        intermediate_result *= evaluations[d][p[d], index[d]]
-                    #print(intermediate_result, surplusses[:,i], evaluations[d][p[d],:], grid[d], grid[d][p[d]], p[d])
-                #print(intermediate_result)
-                results[n,:] += intermediate_result
-            #print(results[n,:])
-        #print(results)
-        #print(list(pointIndexList))
-
-        #print(results)
-        return results
-
-class GlobalLagrangeGrid(GlobalBSplineGrid):
-    def __init__(self, a, b, boundary=True, modified_basis=False, p=3):
+class GlobalLagrangeGrid(GlobalBasisGrid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBSpline(self)
         self.a = a
@@ -1156,7 +1127,7 @@ class GlobalLagrangeGrid(GlobalBSplineGrid):
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
 
-    def compute_1D_quad_weights(self, grid_1D, grid_levels_1D, a, b, d):
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         max_level = max(grid_levels_1D)
         grid_levels_1D = np.asarray(grid_levels_1D)
         level_coordinate_array = [[] for l in range(max_level+1)]
@@ -1221,8 +1192,8 @@ class GlobalLagrangeGrid(GlobalBSplineGrid):
             assert spline is not None
         return weights
 
-    def get_parent(self, p, grid_1D, grid_levels):
-        index_p = grid_1D.index(p)
+    def get_parent(self, point_position: float, grid_1D: Sequence[float], grid_levels: Sequence[int]) -> float:
+        index_p = grid_1D.index(point_position)
         level_p = grid_levels[index_p]
         found_parent=False
         for i in reversed(range(index_p)):
@@ -1237,8 +1208,8 @@ class GlobalLagrangeGrid(GlobalBSplineGrid):
                 break
         assert False
 
-class GlobalSimpsonGrid(Grid):
-    def __init__(self, a, b, boundary=True, modified_basis=False):
+class GlobalSimpsonGrid(GlobalGrid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
         self.a = a
@@ -1249,47 +1220,8 @@ class GlobalSimpsonGrid(Grid):
         self.high_order_grid = GlobalHighOrderGrid(a, b, boundary=boundary, do_nnls=False, max_degree=2, split_up=False, modified_basis=False)
         assert not(modified_basis) or not(boundary)
 
-    def is_global(self):
-        return True
-
-    def isNested(self):
-        return True
-
-    def set_grid(self, grid_points, grid_levels):
-        for d in range(self.dim):
-            assert len(grid_points[d]) % 2 == 1
-        self.coords = []
-        self.weights = []
-        if self.boundary:
-            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
-        else:
-            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
-
-        for d in range(self.dim):
-            # check if grid_points are sorted
-            assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
-            if self.boundary:
-                coordsD = grid_points[d]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])
-            else:
-                coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d])[1:-1]
-            if self.modified_basis and not (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12):
-                print(grid_points[d], weightsD)
-            if self.modified_basis:
-                assert (self.b[d]-self.a[d]) * (1-10**-12) <= sum(weightsD) <= (self.b[d]-self.a[d]) * (1+10**-12)
-            bad_approximation = self.check_quality_of_quadrature_rule(self.a[d], self.b[d], min(len(grid_points), 2 if len(grid_points[d]) % 2 == 1 else 1), grid_points[d], weightsD)
-            if bad_approximation:
-                print(coordsD, grid_points[d], weightsD)
-            assert not(bad_approximation)
-            self.coords.append(coordsD)
-            self.weights.append(weightsD)
-            self.numPoints[d] = len(coordsD)
-
     # Weights computed using https://www.wolframalpha.com/input/?i=Solve+x%2By%2Bz+%3D+c+-+a,+a*x+%2B+b+*y+%2B+c+*+z+%3D+c%5E2+%2F+2+-+a%5E2+%2F+2,+++a%5E2*x+%2B+b%5E2+*y+%2B+c%5E2+*+z+%3D+c%5E3+%2F3+-+a%5E3+%2F+3++++for+++x,+y,+z
-    def compute_1D_quad_weights(self, grid_1D, a, b):
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         if len(grid_1D) == 1:
             return np.array([b - a])
         elif len(grid_1D) == 2:
@@ -1323,33 +1255,24 @@ class GlobalSimpsonGrid(Grid):
                 x_3 = grid_1D[i+1]
                 weights[i] += (x_3 - x_1)**3 / (6*(x_3 - x_2) * (x_2 - x_1))
 
+        if self.modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+                b - a) * (1 + 10 ** -12):
+            print(grid_1D, weights)
+        if self.modified_basis:
+            assert (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+                b - a) * (1 + 10 ** -12)
+        bad_approximation = self.check_quality_of_quadrature_rule(a, b, min(len(grid_1D), 2 if len(
+            grid_1D) % 2 == 1 else 1), grid_1D, weights)
+        if bad_approximation:
+            print(grid_1D, weights)
+        assert not bad_approximation
         return weights
 
-    def levelToNumPoints(self, levelvec):
-        if hasattr(self, 'numPoints'):
-            return self.numPoints
-        else:
-            return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
-
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
 
 from scipy.optimize import nnls
 import matplotlib.pyplot as plt
 
-class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
+class GlobalHighOrderGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, do_nnls=False, max_degree=5, split_up=True, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGrid(self)
@@ -1364,7 +1287,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         assert not(modified_basis) or not(boundary)
 
 
-    def compute_1D_quad_weights(self, grid_1D, a, b):
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         '''
         weights = np.zeros(len(grid_1D))
         for i in range(len(grid_1D)):
@@ -1537,7 +1460,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
         return weights_1D_old, d_old
 
 
-    def check_quality_of_quadrature_rule(self, a, b, d, grid_1D, weights_1D):
+    def check_quality_of_quadrature_rule(self, a, b, degree, grid_1D, weights_1D):
         tol = 10 ** -14
         bad_approximation = (sum(abs(weights_1D)) - (b - a)) / (b - a) > tol  # (tol/(10**-15))**(1/self.dim)
         # if bad_approximation:
@@ -1604,22 +1527,7 @@ class GlobalHighOrderGrid(GlobalTrapezoidalGrid):
             evaluations[i] = lambdas[i] * ((points - alphas[i]) * evaluation_1 - betas[i] * evaluation_2)
         return evaluations
 
-    def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
-
-    def getCoordinate(self, indexvector):
-        position = np.zeros(self.dim)
-        for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
-        return position
-
-    def getWeight(self, indexvector):
-        weight = 1
-        for d in range(self.dim):
-            weight *= self.weights[d][indexvector[d]]
-        return weight
-
-
+# this class is outdated
 class EquidistantGridGlobal(Grid):
     def __init__(self, a, b, boundary=True):
         self.boundary = boundary
@@ -1698,8 +1606,7 @@ class GlobalHierarchizationGrid(EquidistantGridGlobal):
         self.integrator = IntegratorHierarchical()
 
 
-# this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
-# the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
+# this class is outdated
 class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
     def __init__(self, a, b, boundary=True):
         self.boundary = boundary
@@ -1747,8 +1654,6 @@ class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
         return self.a[d] + (
                 1 - math.cos(math.pi * (index + self.lowerBorder[d]) / (self.numPointsWithoutCoarsening[d] - 1))) * \
                self.length[d] / 2
-
-
 
 
 # this class generates a grid according to the Gauss-Legendre quadrature
