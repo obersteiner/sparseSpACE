@@ -397,6 +397,8 @@ class FunctionPower(Function):
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
 
+    def output_length(self): return self.function.output_length()
+
 
 # This can be used when calculating the PCE
 class FunctionPolysPCE(Function):
@@ -405,6 +407,7 @@ class FunctionPolysPCE(Function):
         self.function = function
         self.polys = polys
         self.norms = norms
+        self.output_dimension = function.output_length() * len(polys)
 
     def eval(self, coordinates):
         values = []
@@ -417,12 +420,17 @@ class FunctionPolysPCE(Function):
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
 
+    def output_length(self): return self.output_dimension
+
 
 class FunctionCustom(Function):
-    def __init__(self, func):
+    def __init__(self, func, output_dim=None):
         super().__init__()
         self.func = func
         self.has_multiple_functions = hasattr(self.func, "__iter__")
+        self.output_dimension = output_dim
+        if self.output_dimension is None:
+            self.output_dimension = len(self.func) if self.has_multiple_functions else 1
 
     def eval(self, coordinates):
         if self.has_multiple_functions:
@@ -433,16 +441,21 @@ class FunctionCustom(Function):
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
 
+    def output_length(self): return self.output_dimension
+
 
 class FunctionConcatenate(Function):
     def __init__(self, funcs):
         super().__init__()
         self.funcs = funcs
+        self.output_dimension = sum([f.output_length() for f in funcs])
 
     def eval(self, coordinates):
         return np.concatenate([f(coordinates) for f in self.funcs])
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
+
+    def output_length(self): return self.output_dimension
 
 
 class FunctionPolynomial(Function):
