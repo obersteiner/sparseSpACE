@@ -1108,7 +1108,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
         return weights
 
-    def compute_1D_quad_weights(self, grid_1D, a, b, d):
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr.pdf, distr.cdf,
             self.boundary, cached_weights=self.weight_caches[d])
