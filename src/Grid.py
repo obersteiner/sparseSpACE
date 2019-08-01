@@ -943,89 +943,6 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         return self.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
-class GlobalBasisGrid(GlobalGrid):
-    def get_basis(self, d: int, i: int) -> BasisFunction:
-        return self.basis[d][i]
-
-    def get_surplusses(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        return self.surplus_values[tuple(levelvec)]
-
-    # integrates the grid on the specified area for function f
-    def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
-        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
-        self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
-        return integral
-
-    def interpolate(self, evaluation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
-        levelvec = component_grid.levelvector
-        surplusses = self.surplus_values[tuple(levelvec)]
-        #print(surplusses)
-        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
-        #print(np.shape(results))
-        #for n, evaluation_point in enumerate(evaluation_points):
-        evaluations = np.empty(self.dim, dtype=object)
-        for d in range(self.dim):
-            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
-            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
-            for i, spline in enumerate(self.splines[d]):
-                for j, p in enumerate(points_d):
-                    evaluations1D[j, i] = spline(p)
-            evaluations[d] = evaluations1D
-        #print(evaluations)
-        indexList = get_cross_product_range(self.numPoints)
-        #print(indexList)
-        for i, index in enumerate(indexList):
-            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
-            intermediate_result *= np.array(surplusses[:,i])
-            for d in range(self.dim):
-                for j in range(np.shape(surplusses)[0]):
-                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
-            #print(intermediate_result)
-            results[:,:] += intermediate_result
-            #print(results[n,:])
-        #print(results)
-        return results
-
-    def interpolate_grid(self, grid_points_for_dims: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
-        levelvec = component_grid.levelvector
-        surplusses = self.surplus_values[tuple(levelvec)]
-        num_points = np.prod([len(grid_d) for grid_d in grid_points_for_dims])
-        num_points_grid = [len(grid_d) for grid_d in grid_points_for_dims]
-        #print(surplusses)
-        results = np.zeros((num_points, np.shape(surplusses)[0]))
-        #print(np.shape(results))
-        #for n, evaluation_point in enumerate(evaluation_points):
-        evaluations = np.empty(self.dim, dtype=object)
-        for d in range(self.dim):
-            points_d = grid_points_for_dims[d]
-            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
-            for i, spline in enumerate(self.splines[d]):
-                for j, p in enumerate(points_d):
-                    #print(p, spline(p))
-                    evaluations1D[j, i] = spline(p)
-            evaluations[d] = evaluations1D
-        #print(evaluations)
-
-        #print(indexList)
-        pointIndexList = get_cross_product_range(num_points_grid)
-        for n, p in enumerate(pointIndexList):
-            indexList = get_cross_product_range(self.numPoints)
-            for i, index in enumerate(indexList):
-                intermediate_result = np.array(surplusses[:,i])
-                for d in range(self.dim):
-                    for j in range(np.shape(surplusses)[0]):
-                        intermediate_result *= evaluations[d][p[d], index[d]]
-                    #print(intermediate_result, surplusses[:,i], evaluations[d][p[d],:], grid[d], grid[d][p[d]], p[d])
-                #print(intermediate_result)
-                results[n,:] += intermediate_result
-            #print(results[n,:])
-        #print(results)
-        #print(list(pointIndexList))
-
-        #print(results)
-        return results
-
-
 class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def __init__(self, a, b, uq_operation, boundary=True, modified_basis=False):
         super().__init__(a, b, boundary, modified_basis)
@@ -1115,6 +1032,89 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
+
+
+class GlobalBasisGrid(GlobalGrid):
+    def get_basis(self, d: int, i: int) -> BasisFunction:
+        return self.basis[d][i]
+
+    def get_surplusses(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        return self.surplus_values[tuple(levelvec)]
+
+    # integrates the grid on the specified area for function f
+    def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
+        self.surplus_values[tuple(levelvec)] = self.integrator.get_surplusses()
+        return integral
+
+    def interpolate(self, evaluation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        #print(surplusses)
+        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
+            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
+        indexList = get_cross_product_range(self.numPoints)
+        #print(indexList)
+        for i, index in enumerate(indexList):
+            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
+            intermediate_result *= np.array(surplusses[:,i])
+            for d in range(self.dim):
+                for j in range(np.shape(surplusses)[0]):
+                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
+            #print(intermediate_result)
+            results[:,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        return results
+
+    def interpolate_grid(self, grid_points_for_dims: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        levelvec = component_grid.levelvector
+        surplusses = self.surplus_values[tuple(levelvec)]
+        num_points = np.prod([len(grid_d) for grid_d in grid_points_for_dims])
+        num_points_grid = [len(grid_d) for grid_d in grid_points_for_dims]
+        #print(surplusses)
+        results = np.zeros((num_points, np.shape(surplusses)[0]))
+        #print(np.shape(results))
+        #for n, evaluation_point in enumerate(evaluation_points):
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = grid_points_for_dims[d]
+            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
+            for i, spline in enumerate(self.splines[d]):
+                for j, p in enumerate(points_d):
+                    #print(p, spline(p))
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+        #print(evaluations)
+
+        #print(indexList)
+        pointIndexList = get_cross_product_range(num_points_grid)
+        for n, p in enumerate(pointIndexList):
+            indexList = get_cross_product_range(self.numPoints)
+            for i, index in enumerate(indexList):
+                intermediate_result = np.array(surplusses[:,i])
+                for d in range(self.dim):
+                    for j in range(np.shape(surplusses)[0]):
+                        intermediate_result *= evaluations[d][p[d], index[d]]
+                    #print(intermediate_result, surplusses[:,i], evaluations[d][p[d],:], grid[d], grid[d][p[d]], p[d])
+                #print(intermediate_result)
+                results[n,:] += intermediate_result
+            #print(results[n,:])
+        #print(results)
+        #print(list(pointIndexList))
+
+        #print(results)
+        return results
 
 
 class GlobalBSplineGrid(GlobalBasisGrid):
