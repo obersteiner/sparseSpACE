@@ -884,56 +884,63 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         self.modified_basis = modified_basis
         assert not(modified_basis) or not(boundary)
 
-    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+    @staticmethod
+    def compute_weights(grid_1D: Sequence[float], a: float, b: float, modified_basis: bool) -> Sequence[float]:
         weights = np.zeros(len(grid_1D))
-        if self.modified_basis and len(grid_1D) == 3:
+        if modified_basis and len(grid_1D) == 3:
             weights[1] = b - a
-        elif self.modified_basis and len(grid_1D) == 4:
+        elif modified_basis and len(grid_1D) == 4:
             weights[2] = (b**2/2 - b *grid_1D[1] - a**2/2 + a * grid_1D[1]) / (grid_1D[2] - grid_1D[1])
             weights[1] = -1 *weights[2] + b - a
         else:
-            for i in range(len(grid_1D)):
+            for i in range(0, len(grid_1D)):
                 if i > 0:
-                    if self.modified_basis and i == 1:
+                    if modified_basis and i == 1:
                         #weights[i] += (grid_1D[i+1] - grid_1D[i - 1])
                         h_b = (grid_1D[i + 1] - grid_1D[i - 1])
                         h_a = (grid_1D[i + 1] - grid_1D[i])
                         #print(h_b, h_a, h_b ** 2 / (2 * h_a))
                         weights[i] += h_b ** 2 / (2 * h_a)
-                    elif self.modified_basis and i == 2:
+                    elif modified_basis and i == 2:
                         #pass
                         h_b = (grid_1D[i] - grid_1D[i - 2])
                         h_a = (grid_1D[i] - grid_1D[i - 1])
                         weights[i] += h_b - h_b ** 2 / (2 * h_a)
                     else:
-                        if not (self.modified_basis and i == len(grid_1D) - 2):
+                        if not (modified_basis and i == len(grid_1D) - 2):
                             weights[i] += 0.5 * (grid_1D[i] - grid_1D[i - 1])
 
                 if i < len(grid_1D) - 1:
-                    if self.modified_basis and i == len(grid_1D) - 2:
+                    if modified_basis and i == len(grid_1D) - 2:
                         if i > 1:
                             h_b = (grid_1D[i + 1] - grid_1D[i-1])
                             h_a = (grid_1D[i] - grid_1D[i - 1])
                             #weights[i] += (grid_1D[i + 1] - grid_1D[i-1])
                             weights[i] += h_b**2 / (2*h_a)
 
-                    elif self.modified_basis and i == len(grid_1D) - 3:
+                    elif modified_basis and i == len(grid_1D) - 3:
                         #pass
                         if i > 1:
                             h_b = (grid_1D[i + 2] - grid_1D[i])
                             h_a = (grid_1D[i + 1] - grid_1D[i])
                             weights[i] += h_b - h_b**2/(2*h_a)
                     else:
-                        if not(self.modified_basis and i == 1):
+                        if not(modified_basis and i == 1):
                             weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
+                if modified_basis:
+                    weights[0] = 0.0
+                    weights[-1] = 0.0
 
-        if self.modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+        if modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
                 b - a) * (1 + 10 ** -12):
-            print(grid_1D, weights)
-        if self.modified_basis:
+            print(grid_1D, weights, sum(weights))
+        if modified_basis:
             assert (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
                 b - a) * (1 + 10 ** -12)
         return weights
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        return self.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
 class GlobalBasisGrid(GlobalGrid):
@@ -1020,8 +1027,8 @@ class GlobalBasisGrid(GlobalGrid):
 
 
 class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
-    def __init__(self, a, b, uq_operation, boundary=True):
-        super().__init__(a, b, boundary)
+    def __init__(self, a, b, uq_operation, boundary=True, modified_basis=False):
+        super().__init__(a, b, boundary, modified_basis)
         self.distributions = uq_operation.get_distributions()
 
     @staticmethod
@@ -1051,13 +1058,18 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         return self.get_middle_weighted(a, b, distr.cdf, distr.ppf)
 
     @staticmethod
-    def compute_weights(grid_1D: Sequence[float], a: float, b: float, distribution, boundary: bool) -> Sequence[float]:
+    def compute_weights(grid_1D: Sequence[float], a: float, b: float, distribution, boundary: bool, modified_basis: bool) -> Sequence[float]:
         num_points = len(grid_1D)
         if num_points == 1:
             return [1.0]
         elif not boundary and num_points == 3:
             return [0.0, 1.0, 0.0]
         assert boundary or num_points > 3
+        if modified_basis:
+            # This only works with the Uniform distribution.
+            weights = GlobalTrapezoidalGrid.compute_weights(grid_1D, a, b, True) / (b - a)
+            assert isclose(sum(weights), 1.0), sum(weights)
+            return weights
         weights = np.zeros(num_points)
         for i in range(num_points-1):
             x1 = grid_1D[i]
@@ -1102,7 +1114,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
-        return self.compute_weights(grid_1D, a, b, distr, self.boundary)
+        return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
 
 
 class GlobalBSplineGrid(GlobalBasisGrid):
@@ -1650,7 +1662,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
     def get_composite_quad_weights(self, grid_1D, a, b):
         d = self.get_current_dimension()
         distr = self.distributions[d]
-        return GlobalTrapezoidalGridWeighted.compute_weights(grid_1D, a, b, distr, self.boundary)
+        return GlobalTrapezoidalGridWeighted.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
 
     def get_mid_point(self, a, b, d):
         distr = self.distributions[d]
