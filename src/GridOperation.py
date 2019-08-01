@@ -821,6 +821,19 @@ class UncertaintyQuantification(Integration):
                     def ppf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.ppf(x, loc=_mu, scale=_sigma)
                     self.distributions.append(UQDistribution(pdf, cdf, ppf))
+            elif distr_type == "Laplace":
+                mu = distr_info[1]
+                scale = distr_info[2]
+                cp_distr = cp.Laplace(mu=mu, scale=scale)
+                chaospy_distributions.append(cp_distr)
+                if not distr_known:
+                    def pdf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.pdf(x, loc=_mu, scale=_scale)
+                    def cdf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.cdf(x, loc=_mu, scale=_scale)
+                    def ppf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.ppf(x, loc=_mu, scale=_scale)
+                    self.distributions.append(UQDistribution(pdf, cdf, ppf))
             else:
                 assert False, "Distribution not implemented: " + distr_type
         self.distributions_chaospy = chaospy_distributions
