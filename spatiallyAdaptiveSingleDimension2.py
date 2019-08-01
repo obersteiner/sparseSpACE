@@ -9,30 +9,11 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a, b, norm=np.inf, dim_adaptive=True, version=2, do_high_order=False, max_degree=1000, split_up=True, do_nnls=False, boundary = True, modified_basis=False, operation=None, margin=None, rebalancing=True, grid=None):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=2, do_high_order: bool=False, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, grid: Grid=None):
         self.do_high_order = do_high_order
+        assert grid is not None
         self.grid = grid
         self.grid_surplusses = grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
-        if isinstance(operation, UncertaintyQuantification):
-            assert not modified_basis, "modified_basis not yet available for UQ"
-            if self.do_high_order:
-                if grid is None:
-                    self.grid = GlobalHighOrderGridWeighted(a, b, operation, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls, modified_basis=False)
-                    self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
-            else:
-                if grid is None:
-                    self.grid = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
-                    self.grid_surplusses = GlobalTrapezoidalGridWeighted(a, b, operation, boundary=boundary)
-        else:
-            if self.do_high_order:
-                if grid is None:
-                    self.grid = GlobalHighOrderGrid(a, b, boundary=boundary, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls, modified_basis=False)
-                    self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis) # GlobalHighOrderGrid(a, b, boundary=True, max_degree=max_degree, split_up=split_up, do_nnls=do_nnls) #GlobalTrapezoidalGrid(a, b, boundary=True)
-            else:
-                if grid is None:
-                    self.grid = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
-                    self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
-
         SpatiallyAdaptivBase.__init__(self, a, b, self.grid, norm=norm)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
@@ -49,15 +30,36 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.equidistant = not isinstance(operation, UncertaintyQuantification)
         self.rebalancing = rebalancing
 
-    def interpolate_points(self, interpolation_points, component_grid):
-        gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
-        return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
+    def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        # check if dedicated interpolation routine is present in grid
+        interpolation_op = getattr(self.grid, "interpolate", None)
+        if callable(interpolation_op):
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+            return self.grid.interpolate(interpolation_points, component_grid)
+        else:
+            # call default d-linear interpolation based on points in grid
+            # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
 
-    def coarsen_grid(self, area, levelvec):
+    def interpolate_grid_component(self, grid: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        # check if dedicatged interpolation routine is present in grid
+        interpolation_op = getattr(self.grid, "interpolate_grid", None)
+        if callable(interpolation_op):
+            gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
+            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+            return self.grid.interpolate_grid(grid, component_grid)
+        else:
+            # call default d-linear interpolation based on points in grid
+            # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
+            super().interpolate_grid_component(grid, component_grid)
+
+    def coarsen_grid(self, area, levelvec: Sequence[int]):
         pass
 
     # returns the points coordinates of a single component grid with refinement
-    def get_points_all_dim(self, levelvec, numSubDiagonal):
+    def get_points_all_dim(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
         indicesList, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(levelvec)
         if not self.grid.boundary:
             indicesList = [indices[1:-1] for indices in indicesList]
@@ -66,10 +68,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return allPoints
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
         return self.get_points_all_dim(levelvec, numSubDiagonal)
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         point_coords, point_levels, _ =self.get_point_coord_for_each_dim(levelvec)
         self.grid.set_grid(point_coords, point_levels)
         points, weights = self.grid.get_points_and_weights()
@@ -89,7 +91,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     # returns list of coordinates for each dimension (basically refinement stripes) + all points that are associated
     # with a child in the global refinement structure. There might be now such points that correspond to a global child.
-    def get_point_coord_for_each_dim(self, levelvec):
+    def get_point_coord_for_each_dim(self, levelvec: Sequence[int]):
         refinement = self.refinement
         # get a list of all coordinates for every this_dim (so (0, 1), (0, 0.5, 1) for example)
         indicesList = []
@@ -132,8 +134,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         #if levelvec[d] > self.lmax[d] - subtraction_value:
                         #    subtraction_value = self.lmax[d]
                         subtraction_value = 0
-                    if self.version == 4:
-                        subtraction_value = 0
                     if self.version == 3:
                         subtraction_value /= self.dim
                         if subtraction_value - int(subtraction_value) > d/self.dim:
@@ -173,7 +173,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return indicesList, indices_level, children_indices
 
     # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
-    def is_child(self, level_left_point, level_point, level_right_point):
+    def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
         return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
         #return True
         if level_left_point < level_point or level_right_point < level_point:
@@ -218,7 +218,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename=None, markersize=10):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =10):  # update with meta container
         plt.rcParams.update({'font.size': 32})
         refinement = self.refinement
         dim = self.dim
@@ -249,7 +249,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def init_evaluation_operation(self, areas):
         self.operation.initialize_refinement_container_dimension_wise(areas[0])
 
-    def evaluate_operation_area(self, component_grid, area, additional_info=None):
+    def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
             # get 1d coordinates of the grid points that define the grid; they are calculated based on the levelvector
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -299,7 +299,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     def initialize_refinement(self):
         initial_points = []
-
         maxv = self.lmax[0]
         assert all([l == maxv for l in self.lmax])
         num_points = 2 ** maxv + 1
@@ -312,12 +311,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             points[num_points-1] = self.b[d]
             self._initialize_points(points, func_mid, d, 0, num_points-1)
             initial_points.append(np.array(points))
-
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), self.grid,
-                                                                                     coarsening_level=self.lmax[d] - 2, dim_adaptive=self.dim_adaptive) for i in
-                                                     range(num_points-1)], d, self.errorEstimator) for d in
+                                                                                     coarsening_level=0, dim_adaptive=self.dim_adaptive) for i in
+                                                     range(2 ** maxv)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
@@ -354,7 +352,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #    return False
         return False
 
-    def raise_lmax(self, d, value):
+    def raise_lmax(self, d: int, value: int):
         self.lmax[d] += value
         if self.dim_adaptive:
             if self.print_output:

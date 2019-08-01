@@ -1,11 +1,13 @@
 import numpy as np
 from Utils import *
+import Grid
+from typing import List, Set, Dict, Tuple, Optional, Union, Sequence, Callable
 
 class HierarchizationLSG(object):
     def __init__(self, grid):
         self.grid = grid
 
-    def __call__(self, f, numPoints, grid):
+    def __call__(self, f: Callable[[Tuple[float, ...]], Sequence[float]], numPoints: Sequence[int], grid: Grid) -> Sequence[Sequence[float]]:
         self.grid = grid
         self.dim = len(numPoints)
         #grid values to be filled with hierarchical surplusses
@@ -19,7 +21,7 @@ class HierarchizationLSG(object):
 
     # this function applies a one dimensional hierarchization (in dimension d) to the array grid_values with
     # numPoints (array) many points for each dimension
-    def hierarchize_poles_for_dim(self, grid_values, numPoints, f, d, first_dimension):
+    def hierarchize_poles_for_dim(self, grid_values: Sequence[Sequence[float]], numPoints: Sequence[int], f: Callable[[Tuple[float, ...]], Sequence[float]], d: int, first_dimension: bool) -> Sequence[Sequence[float]]:
         self.dim = len(numPoints)
         numPoints_slice = np.array(numPoints)
         numPoints_slice[d] = 1
@@ -61,7 +63,7 @@ class HierarchizationLSG(object):
         return grid_values
 
     # this function maps the d-dimensional index to a one-dimensional array index
-    def get_1D_coordinate(self, index_vector, numPoints):
+    def get_1D_coordinate(self, index_vector: Sequence[int], numPoints: Sequence[int]) -> int:
         offsets = np.array([int(np.prod(numPoints[d+1:])) for d in range(self.dim)])
         index = np.sum(np.array(index_vector)*offsets)
         return index
