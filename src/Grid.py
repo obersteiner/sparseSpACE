@@ -1750,10 +1750,11 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
     def check_quality_of_quadrature_rule(weights_1D):
         return not(all([w >= 0.0 for w in weights_1D]))
 
-    def do_gauss_quad_normalized(self, num_quad_points, a, b):
-        distr = self.distributions_cp[self.get_current_dimension()]
-        coords, weights = cp.generate_quadrature(num_quad_points, distr, rule="G")
-        coords = coords[0]
+    def do_gauss_quad_normalized(self, num_quad_points: int, a: float, b: float):
+        d = self.get_current_dimension()
+        cp_distr = self.distributions_cp[d]
+        distr = self.distributions[d]
+        coords, weights = distr.get_quad_points_weights(num_quad_points, a, b, cp_distr)
         coords = self.normalize_coords(coords, a, b)
         return coords, weights
 

@@ -999,6 +999,7 @@ class UQDistribution:
         self.cdf = cdf
         self.ppf = ppf
         self.cached_moments = [dict() for _ in range(2)]
+        self.cache_gauss_quad = dict()
 
     @staticmethod
     def from_chaospy(cp_distr):
@@ -1022,3 +1023,13 @@ class UQDistribution:
             epsrel=10 ** -2, epsabs=np.inf)[0]
         cache[(x1, x2)] = moment_1
         return moment_1
+
+    # Returns single-dimensional quadrature points and weights
+    # for the high order grid
+    def get_quad_points_weights(self, num_quad_points: int, a: float, b: float, cp_distribution) -> Tuple[Sequence[float], Sequence[float]]:
+        cache = self.cache_gauss_quad
+        if num_quad_points in cache:
+            return cache[num_quad_points]
+        (coords,), weights = cp.generate_quadrature(num_quad_points, cp_distribution, rule="G")
+        cache[num_quad_points] = (coords, weights)
+        return coords, weights
