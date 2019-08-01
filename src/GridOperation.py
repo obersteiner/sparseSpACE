@@ -783,31 +783,44 @@ class UncertaintyQuantification(Integration):
     def _prepare_distributions(self, distris, a, b):
         self.distributions = []
         chaospy_distributions = []
+        known_distributions = dict()
         for d in range(self.dim):
-            distr_type = distris[d][0]
+            distr_info = distris[d]
+            distr_known = distr_info in known_distributions
+            if distr_known:
+                # Reuse the same distribution objects for multiple dimensions
+                d_prev = known_distributions[distr_info]
+                self.distributions.append(self.distributions[d_prev])
+            else:
+                known_distributions[distr_info] = d
+
+            distr_type = distr_info[0]
             if distr_type == "Uniform":
                 distr = cp.Uniform(a[d], b[d])
-                self.distributions.append(UQDistribution.from_chaospy(distr))
                 chaospy_distributions.append(distr)
+                if not distr_known:
+                    self.distributions.append(UQDistribution.from_chaospy(distr))
             elif distr_type == "Triangle":
-                midpoint = distris[d][1]
+                midpoint = distr_info[1]
                 assert isinstance(midpoint, float), "invalid midpoint"
                 distr = cp.Triangle(a[d], midpoint, b[d])
-                self.distributions.append(UQDistribution.from_chaospy(distr))
                 chaospy_distributions.append(distr)
+                if not distr_known:
+                    self.distributions.append(UQDistribution.from_chaospy(distr))
             elif distr_type == "Normal":
-                mu = distris[d][1]
-                sigma = distris[d][2]
+                mu = distr_info[1]
+                sigma = distr_info[2]
                 cp_distr = cp.Normal(mu=mu, sigma=sigma)
                 chaospy_distributions.append(cp_distr)
-                # The chaospy normal distribution does not work with big values
-                def pdf(x, _mu=mu, _sigma=sigma):
-                    return sps.norm.pdf(x, loc=_mu, scale=_sigma)
-                def cdf(x, _mu=mu, _sigma=sigma):
-                    return sps.norm.cdf(x, loc=_mu, scale=_sigma)
-                def ppf(x, _mu=mu, _sigma=sigma):
-                    return sps.norm.ppf(x, loc=_mu, scale=_sigma)
-                self.distributions.append(UQDistribution(pdf, cdf, ppf))
+                if not distr_known:
+                    # The chaospy normal distribution does not work with big values
+                    def pdf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.pdf(x, loc=_mu, scale=_sigma)
+                    def cdf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.cdf(x, loc=_mu, scale=_sigma)
+                    def ppf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.ppf(x, loc=_mu, scale=_sigma)
+                    self.distributions.append(UQDistribution(pdf, cdf, ppf))
             else:
                 assert False, "Distribution not implemented: " + distr_type
         self.distributions_chaospy = chaospy_distributions
@@ -978,14 +991,34 @@ class UncertaintyQuantification(Integration):
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
 
+from scipy import integrate
+
 class UQDistribution:
     def __init__(self, pdf, cdf, ppf):
         self.pdf = pdf
         self.cdf = cdf
         self.ppf = ppf
+        self.cached_moments = [dict() for _ in range(2)]
 
     @staticmethod
     def from_chaospy(cp_distr):
         # The inverse Rosenblatt transformation is the inverse cdf here
         return UQDistribution(cp_distr.pdf, cp_distr.cdf,
             lambda x: float(cp_distr.inv(x)))
+
+    def get_zeroth_moment(self, x1: float, x2: float):
+        cache = self.cached_moments[0]
+        if (x1, x2) in cache:
+            return cache[(x1, x2)]
+        moment_0 = self.cdf(x2) - self.cdf(x1)
+        cache[(x1, x2)] = moment_0
+        return moment_0
+
+    def get_first_moment(self, x1: float, x2: float):
+        cache = self.cached_moments[1]
+        if (x1, x2) in cache:
+            return cache[(x1, x2)]
+        moment_1 = integrate.quad(lambda x: x * self.pdf(x), x1, x2,
+            epsrel=10 ** -2, epsabs=np.inf)[0]
+        cache[(x1, x2)] = moment_1
+        return moment_1
