@@ -15,6 +15,8 @@ class CombiScheme:
     # for the standard scheme with specified maximum and minimum level.
     def init_adaptive_combi_scheme(self, lmax: int, lmin: int) -> None:
         assert lmax >= lmin
+        assert lmax >= 0
+        assert lmin >= 0
         self.lmin = lmin
         self.lmax = lmax
         self.initialized_adaptive = True  # type: bool
@@ -85,7 +87,6 @@ class CombiScheme:
     def init_active_index_set(lmax: int, lmin: int, dim: int) -> Set[Tuple[int, ...]]:
         grids = CombiScheme.getGrids(dim, lmax - lmin + 1)
         grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
-        print(grids)
         return set(grids)
 
     # This method initializes the old index set for the standard combination technique with specified maximum
@@ -93,11 +94,10 @@ class CombiScheme:
     @staticmethod
     def init_old_index_set(lmax: int, lmin: int, dim: int) -> Set[Tuple[int, ...]]:
         grid_array = []
-        for q in range(1, min(dim, lmax - lmin + 1)):
+        for q in range(1, lmax - lmin + 1):
             grids = CombiScheme.getGrids(dim, lmax - lmin + 1 - q)
             grids = [tuple([l + (lmin - 1) for l in g]) for g in grids]
             grid_array.extend(grids)
-        print(grid_array)
         return set(grid_array)
 
     # This method returns the whole index set, i.e. the union of the old and active index set
