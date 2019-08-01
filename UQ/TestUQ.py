@@ -9,8 +9,8 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
-# ~ calc_E_Var = True
-calc_E_Var = False
+calc_E_Var = True
+# ~ calc_E_Var = False
 do_PCE_func = True
 # ~ do_PCE_func = False
 # ~ do_HighOrder = True
@@ -52,6 +52,49 @@ def get_numbers_info(description, value, reference_value=None):
 	return text
 
 
+def get_combiinstance(a, b, op, boundary):
+	if do_HighOrder:
+		grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=False)
+	else:
+		grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary)
+	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
+		norm=2, grid=grid)
+	return combiinstance
+
+
+def calculate_reference_solutions(f, op, a, b, solutions):
+	print("calculating reference solutions…")
+	assert f.output_length() == 1, "f must have a single dimensional output"
+	pdf_function = op.get_pdf_Function()
+	expectation_func = FunctionUQWeighted(f, pdf_function)
+	reference_expectation = expectation_func.getAnalyticSolutionIntegral(a, b)
+	mom2_func = FunctionUQWeighted(op.get_moment_Function(2), pdf_function)
+	mom2 = mom2_func.getAnalyticSolutionIntegral(a, b)
+	reference_variance = mom2 - reference_expectation ** 2
+	print("calculated reference E and Var:", reference_expectation, reference_variance)
+	if solutions is not None:
+		# Ensure that the calculated values do not differ significantly from
+		# the solutions arguments
+		assert solutions[0] is None or abs(reference_expectation - solutions[0]) < 10 ** -2
+		assert solutions[1] is None or abs(reference_variance - solutions[1]) < 10 ** -2
+	return reference_expectation, reference_variance
+
+
+def plot_function(f, op, a, b, inf_borders):
+	pa, pb = a, b
+	if inf_borders:
+		# Set plot boundaries to include the place with high probability
+		pa, pb = op.get_boundaries(0.01)
+	print("Showing function", f)
+	f.plot(pa, pb)
+	print("Showing pdf")
+	pdf = op.get_pdf_Function()
+	pdf.plot(pa, pb, points_per_dim=11)
+	print("Showing weighted function")
+	weighted_f = FunctionUQWeighted(f, pdf)
+	weighted_f.plot(pa, pb, points_per_dim=11)
+
+
 # A helper function to reduce duplicate code
 def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculate_solutions=False):
 	op = UncertaintyQuantification(f, distris, a, b, dim=d)
@@ -59,38 +102,15 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 	reference_expectation = None
 	reference_variance = None
 	if calculate_solutions:
-		print("calculating reference solutions…")
-		# f must have a single dimensional output
-		pdf_function = op.get_pdf_Function()
-		expectation_func = FunctionUQWeighted(f, pdf_function)
-		reference_expectation = expectation_func.getAnalyticSolutionIntegral(a, b)
-		mom2_func = FunctionUQWeighted(op.get_moment_Function(2), pdf_function)
-		mom2 = mom2_func.getAnalyticSolutionIntegral(a, b)
-		reference_variance = mom2 - reference_expectation ** 2
-		print("reference E and Var:", reference_expectation, reference_variance)
-		if solutions is not None:
-			# Ensure that the calculated values do not differ significantly from
-			# the solutions arguments
-			assert solutions[0] is None or abs(reference_expectation - solutions[0]) < 10 ** -2
-			assert solutions[1] is None or abs(reference_variance - solutions[1]) < 10 ** -2
+		reference_expectation, reference_variance = calculate_reference_solutions(f, op, a, b, solutions)
 	elif solutions is not None:
 		reference_expectation = solutions[0]
 		reference_variance = solutions[1]
 
 	inf_borders = any([math.isinf(v) for v in list(a) + list(b)])
 	if plot_things:
-		pa, pb = a, b
-		if inf_borders:
-			# Set plot boundaries to include the place with high probability
-			pa, pb = op.get_boundaries(0.01)
-		print("Showing function", f)
-		f.plot(pa, pb)
-		print("Showing pdf")
-		pdf = op.get_pdf_Function()
-		pdf.plot(pa, pb, points_per_dim=11)
-		print("Showing weighted function")
-		weighted_f = FunctionUQWeighted(f, pdf)
-		weighted_f.plot(pa, pb, points_per_dim=11)
+		plot_function(f, op, a, b, inf_borders)
+
 	can_plot = plot_things and not inf_borders
 
 	if reference_expectation is not None:
@@ -109,16 +129,12 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
-		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			boundary=boundary, norm=2, do_high_order=do_HighOrder)
+		combiinstance = get_combiinstance(a, b, op, boundary)
 		print("performSpatiallyAdaptiv…")
 		reference_solution = None
 		if reference_expectation is not None and reference_variance is not None:
 			mom2 = [reference_variance[i] + ex * ex for i, ex in enumerate(reference_expectation)]
 			reference_solution = np.concatenate([reference_expectation, mom2])
-		# ~ combiinstance.performSpatiallyAdaptiv(1, 2, f, error_operator, tol=tol,
-			# ~ max_evaluations=max_evals, reference_solution=reference_expectation,
-			# ~ min_evaluations=min_evals, do_plot=can_plot)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 			error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=reference_solution,
@@ -130,8 +146,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 
 	print("calculate_PCE…")
 	if do_PCE_func:
-		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			boundary=boundary, norm=2, do_high_order=do_HighOrder)
+		combiinstance = get_combiinstance(a, b, op, boundary)
 		f_pce = op.get_PCE_Function(poly_deg_max)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
@@ -154,7 +169,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 		get_numbers_info("Expectation", E, reference_expectation) +
 		get_numbers_info("Variance", Var, reference_variance) +
 		get_numbers_info("PCE E", E_PCE, reference_expectation) +
-		get_numbers_info("PCE Var", Var_PCE, reference_variance) +
+		get_numbers_info("PCE Var", Var_PCE) +
 		"first order sensitivity indices {}\n"
 		"total order sensitivity indices {}\n".format(first_sens,
 			total_sens) +
