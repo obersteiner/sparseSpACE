@@ -285,19 +285,19 @@ class StandardCombi(object):
                 '''
             assert (value == 1)
 
-    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal):
+    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
         return self.get_points_component_grid(levelvec, numSubDiagonal)
 
-    def get_points_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.getPoints()
         return points
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         return self.grid.get_points_and_weights()
 
-    def get_points_and_weights(self):
+    def get_points_and_weights(self) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         total_points = []
         total_weights = []
         for component_grid in self.scheme:
@@ -307,7 +307,19 @@ class StandardCombi(object):
             # adjust weights for combination -> multiply with combi coefficient
             weights = [w * component_grid.coefficient for w in weights]
             total_weights.extend(weights)
-        return total_points, total_weights
+        return np.asarray(total_points), np.asarray(total_weights)
+
+    def get_surplusses(self) -> Sequence[Sequence[float]]:
+        surplus_op = getattr(self.grid, "get_surplusses", None)
+        if callable(surplus_op):
+            total_surplusses = []
+            for component_grid in self.scheme:
+                surplusses = self.grid.get_surplusses(component_grid.levelvector)
+                total_surplusses.extend(surplusses)
+            return np.asarray(total_surplusses)
+        else:
+            print("Grid does not support surplusses")
+            return None
 
     def add_refinment_to_figure_axe(self, ax, linewidth=1):
         pass
