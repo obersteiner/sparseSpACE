@@ -31,7 +31,7 @@ do_HighOrder = False
 if "max_evals" in os.environ:
     max_evals = int(os.environ["max_evals"])
 else:
-    max_evals = 10 ** dim
+    max_evals = 500
 # Use reference values to calculate errors
 calculate_errors = True
 # ~ calculate_errors = False
@@ -150,8 +150,12 @@ op = UncertaintyQuantification(problem_function, distris, a, b, dim=dim)
 # Do the spatially adaptive refinement for PCE
 error_operator = ErrorCalculatorSingleDimVolumeGuided()
 # ~ error_operator = ErrorCalculatorSingleDimVolumeGuidedPunishedDepth()
+if do_HighOrder:
+    grid = GlobalHighOrderGridWeighted(a, b, op, boundary=False, modified_basis=False)
+else:
+    grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-    boundary=False, norm=2, do_high_order=do_HighOrder)
+    norm=2, grid=grid)
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
 combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
