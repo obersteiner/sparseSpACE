@@ -2,6 +2,7 @@ import numpy as np
 import abc, logging
 from Integrator import *
 import numpy.polynomial.legendre as legendre
+import math
 from math import isclose, isinf
 from BasisFunctions import *
 from Utils import *
