@@ -52,12 +52,12 @@ def get_numbers_info(description, value, reference_value=None):
 	return text
 
 
-def get_combiinstance(a, b, op, boundary, grid):
+def get_combiinstance(a, b, op, boundary, grid, modified_basis):
 	if grid is None:
 		if do_HighOrder:
-			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=False)
+			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
 		else:
-			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary)
+			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
 	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 		norm=2, grid=grid)
 	return combiinstance
@@ -97,7 +97,7 @@ def plot_function(f, op, a, b, inf_borders):
 
 
 # A helper function to reduce duplicate code
-def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculate_solutions=False, grid=None):
+def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, solutions=None, calculate_solutions=False, grid=None):
 	op = UncertaintyQuantification(f, distris, a, b, dim=d)
 
 	reference_expectation = None
@@ -124,13 +124,13 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
 	max_evals = 140
-	tol = 10**-3
+	tol = -1
 	poly_deg_max = 3
 
 	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
-		combiinstance = get_combiinstance(a, b, op, boundary, grid)
+		combiinstance = get_combiinstance(a, b, op, boundary, grid, modified_basis)
 		print("performSpatiallyAdaptiv…")
 		reference_solution = None
 		if reference_expectation is not None and reference_variance is not None:
@@ -148,7 +148,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 
 	print("calculate_PCE…")
 	if do_PCE_func:
-		combiinstance = get_combiinstance(a, b, op, boundary, grid)
+		combiinstance = get_combiinstance(a, b, op, boundary, grid, modified_basis)
 		f_pce = op.get_PCE_Function(poly_deg_max)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
@@ -176,7 +176,7 @@ def do_test(d, a, b, f, distris, boundary=True, lmax=2, solutions=None, calculat
 		"total order sensitivity indices {}\n".format(first_sens,
 			total_sens) +
 		get_numbers_info("non-sparsegrid PCE E", E_PCE2, reference_expectation) +
-		get_numbers_info("non-sparsegrid PCE Var", Var_PCE2, reference_variance) +
+		get_numbers_info("non-sparsegrid PCE Var", Var_PCE2) +
 		"non-sparsegrid first order sensitivity indices {}\n"
 		"non-sparsegrid total order sensitivity indices {}\n"
 		"".format(
@@ -337,6 +337,8 @@ def test_G_function():
 	grid = GlobalBSplineGridWeighted(a, b)
 	# ~ grid = None
 	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid)
+	# ~ do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid,
+		# ~ modified_basis=True, lmax=3, boundary=False)
 
 
 # ~ test_uq_discontinuity3D()
