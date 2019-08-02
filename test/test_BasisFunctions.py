@@ -3,7 +3,7 @@ from sys import path
 path.append('../src/')
 from BasisFunctions import *
 
-class TestUtils(unittest.TestCase):
+class TestBasisFunctions(unittest.TestCase):
     def test_lagrange_basis(self):
         for n in range(10):
             for i in range(n):
