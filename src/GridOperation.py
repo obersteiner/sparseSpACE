@@ -700,7 +700,7 @@ class Interpolation(Integration):
     @staticmethod
     def interpolate_points(f, dim, grid, mesh_points_grid, evaluation_points):
         # constructing all points from mesh definition
-        mesh_points = list(zip(*[g.ravel() for g in np.meshgrid(*[mesh_points_grid[d] for d in range(dim)])]))
+        mesh_points = get_cross_product(mesh_points_grid)
 
         function_value_dim = len(f(np.ones(dim)*0.5))
 
@@ -710,9 +710,7 @@ class Interpolation(Integration):
         for d in range(function_value_dim):
             values_1D = np.asarray([value[d] for value in values])
 
-            values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in reversed(range(dim))])
-
-            values_1D = np.transpose(values_1D)
+            values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in (range(dim))])
 
             # interpolate evaluation points from mesh points with bilinear interpolation
             interpolated_values = interpn(mesh_points_grid, values_1D, evaluation_points, method='linear')
