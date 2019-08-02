@@ -2,7 +2,7 @@ import numpy as np
 import abc, logging
 from Integrator import *
 import numpy.polynomial.legendre as legendre
-from math import isclose
+from math import isclose, isinf
 from BasisFunctions import *
 from Utils import *
 from ComponentGridInfo import *
@@ -964,9 +964,9 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             mid = 0.5 * (a + b)
             if not a < mid < b:
                 print(f"Warning: Could not calculate the middle between {a} and {b}")
-                if math.isinf(a):
+                if isinf(a):
                     mid = b - 10 ** -14
-                elif math.isinf(b):
+                elif isinf(b):
                     mid = a + 10 ** -14
         return mid
 
@@ -996,10 +996,10 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
             # w1 + w2 = moment_0
             moment_1 = distribution.get_first_moment(x1, x2)
             # w1 * x1 + w2 * x2 = moment_1
-            if math.isinf(x1):
+            if isinf(x1):
                 # For infinite borders, L'Hospital leads to a simple w2
                 w2 = moment_0
-            elif math.isinf(x2):
+            elif isinf(x2):
                 w2 = 0
             else:
                 w2 = (moment_1 - moment_0 * x1) / (x2 - x1)
