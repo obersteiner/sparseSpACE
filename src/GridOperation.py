@@ -1034,7 +1034,17 @@ class UncertaintyQuantification(Integration):
                 variance[i] = -v
         return expectation, variance
 
-    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False):
+    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True):
+        if use_combiinstance_solution:
+            assert self.pce_polys is not None
+            assert not restrict_degrees
+            integral = self._get_combiintegral(combiinstance)
+            num_polys = len(self.pce_polys)
+            output_dim = len(integral) // num_polys
+            coefficients = integral.reshape((num_polys, output_dim))
+            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            return
+
         self._set_nodes_weights_evals(combiinstance)
 
         if restrict_degrees:
