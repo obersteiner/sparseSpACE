@@ -867,7 +867,7 @@ class GlobalGrid(Grid):
         return self.coords[d]
 
     @abc.abstractmethod
-    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         pass
 
     def get_mid_point(self, start: float, end: float, d: int=0) -> float:
