@@ -3,7 +3,7 @@ import chaospy as cp  # Only cp.around is used here.
 import math
 
 import sys
-sys.path.append('../')
+sys.path.append('../src/')
 from Function import *
 from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
