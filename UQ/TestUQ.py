@@ -123,7 +123,7 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 140
+	max_evals = 240
 	tol = -1
 	poly_deg_max = 3
 
@@ -153,7 +153,9 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
 			min_evaluations=min_evals, do_plot=can_plot)
-	op.calculate_PCE(poly_deg_max, combiinstance)
+		op.calculate_PCE(poly_deg_max, combiinstance)
+	else:
+		op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
 	print("gPCE is ", cp.around(op.get_gPCE(), 3))
 
 	E_PCE, Var_PCE = op.get_expectation_and_variance_PCE()
@@ -334,7 +336,7 @@ def test_G_function():
 	first_order_indices = None
 	# ~ first_order_indices = f.get_first_order_sobol_indices()
 	print(expectation, var, first_order_indices)
-	grid = GlobalBSplineGridWeighted(a, b)
+	grid = GlobalBSplineGrid(a, b)
 	# ~ grid = None
 	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid)
 	# ~ do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid,
