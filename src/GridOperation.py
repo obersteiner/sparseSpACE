@@ -951,6 +951,7 @@ class UncertaintyQuantification(Integration):
                 assert False, "Distribution not implemented: " + distr_type
         self.distributions_chaospy = chaospy_distributions
         self.distributions_joint = cp.J(*chaospy_distributions)
+        self.all_uniform = all(k[0] == "Uniform" for k in known_distributions)
 
     # reuse_old_values does not work for multidimensional function output,
     # so this method is overridden here
@@ -1011,21 +1012,45 @@ class UncertaintyQuantification(Integration):
     def _set_nodes_weights_evals(self, combiinstance):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         assert len(self.nodes) == len(self.weights)
-        # ~ if any([w <= 0.0 for w in self.weights]):
-            # ~ print("Some weights are not positive, weights are", self.weights)
-        self.f_evals = [self.f(coord) for coord in self.nodes]
+        if combiinstance.has_basis_grid():
+            assert self.all_uniform, "Basis grids currently work only for uniform distributions"
+            div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
+            self.weights = self.weights * div
+            # ~ self.f_evals = combiinstance.get_surplusses()
+            # Surpluses are required here..
+            self.f_evals = [self.f(coord) for coord in self.nodes]
+        else:
+            self.f_evals = [self.f(coord) for coord in self.nodes]
 
-    def calculate_moment(self, k, combiinstance):
+    def _get_combiintegral(self, combiinstance):
+        integral = combiinstance.get_calculated_solution()
+        if combiinstance.has_basis_grid():
+            assert self.all_uniform, "Basis grids currently work only for uniform distributions"
+            div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
+            integral = integral * div
+        return integral
+
+    def calculate_moment(self, combiinstance, k=None, use_combiinstance_solution=True):
+        if use_combiinstance_solution:
+            mom = self._get_combiintegral(combiinstance)
+            assert len(mom) == self.f.output_length()
+            return mom
         self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
         return sum(vals)
 
-    def calculate_expectation(self, combiinstance):
-        return self.calculate_moment(1, combiinstance)
+    def calculate_expectation(self, combiinstance, use_combiinstance_solution=True):
+        return self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=use_combiinstance_solution)
 
-    def calculate_expectation_and_variance(self, combiinstance):
-        expectation = self.calculate_moment(1, combiinstance)
-        expectation_of_squared = self.calculate_moment(2, combiinstance)
+    def calculate_expectation_and_variance(self, combiinstance, use_combiinstance_solution=True):
+        if use_combiinstance_solution:
+            integral = self._get_combiintegral(combiinstance)
+            output_dim = len(integral) // 2
+            expectation = integral[:output_dim]
+            expectation_of_squared = integral[output_dim:]
+        else:
+            expectation = self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=False)
+            expectation_of_squared = self.calculate_moment(combiinstance, k=2, use_combiinstance_solution=False)
         variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
         for i, v in enumerate(variance):
             if v < 0.0:

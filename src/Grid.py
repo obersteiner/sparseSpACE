@@ -1212,18 +1212,6 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         return level_coordinate_array_complete
 
 
-# Currently supports only uniform distributions
-class GlobalBSplineGridWeighted(GlobalBSplineGrid):
-    def compute_1D_quad_weights(self, grid_1D, grid_levels_1D, a, b, d):
-        ws = super().compute_1D_quad_weights(grid_1D, grid_levels_1D, a, b, d)
-        # ~ ws = ws / (b - a)
-        # ~ print("sum", sum(ws))
-        return ws
-
-    # ~ def get_mid_point(self, start, end, d):
-        # ~ return 0.5 * (end + start)
-
-
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary

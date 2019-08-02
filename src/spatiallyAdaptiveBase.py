@@ -20,6 +20,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.operation = operation
         self.norm = norm
         self.margin = 0.9
+        self.calculated_solution = None
         assert (len(a) == len(b))
 
     # returns the number of points in a single component grid with refinement
@@ -176,6 +177,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
         self.reference_solution = reference_solution
+        self.calculated_solution = None
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time,
             max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
@@ -221,6 +223,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
         self.operation.set_function(None)
+        self.calculated_solution = combiintegral
         return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
 
     @abc.abstractmethod
@@ -287,4 +290,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.calc_error(i, self.f)
             self.refinement.set_benefit(i)
 
+    def get_calculated_solution(self): return self.calculated_solution
 
+    def has_basis_grid(self): return isinstance(self.grid, GlobalBasisGrid)
