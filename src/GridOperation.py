@@ -475,70 +475,76 @@ class Integration(AreaOperation):
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             factor_left_parent = (right_parent - child)/(right_parent - left_parent)
-            points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+            #points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
+            #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
             factor_right_parent = (child - left_parent)/(right_parent - left_parent)
-            points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
-        points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
-        for i in range(len(points_children)):
-            index = indices[i]
+            #points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
+            #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        points_children = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])
+        #points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = get_cross_product([range(len(self.grid_surplusses.coords[d2])) if d != d2 else [1] for d2 in range(self.dim)])
+        #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        for (point_child, index) in zip(points_children, indices):
+            #index = indices[i]
             factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
             #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
             if factor != 0:
                 exponent = 1# if not self.do_high_order else 2
                 #if factor2 != 0:
-                value = self.f(points_children[i])
+                value = self.f(point_child)
                 #print(points_children[i], self.f.f_dict.keys())
                 # avoid evaluating on boundary points if grids has none
-                assert (tuple(points_children[i]) in self.f.f_dict)
+                assert (tuple(point_child) in self.f.f_dict)
 
                 if left_parent_in_grid:
+                    point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
                     if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-                        assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
-                        left_of_left_parent = list(points_left_parent[i])
+                        left_of_left_parent = list(point_left_parent)
                         left_of_left_parent[d] = left_parent_of_left_parent
                         #print("Left of left:", left_of_left_parent, points_left_parent[i])
                         #value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
                         #assert (tuple(points_left_parent[i]) in self.f.f_dict)
 
                         if isclose(left_of_left_parent[d], self.a[d]):
-                            value = self.f(points_children[i]) - self.f(points_left_parent[i])
+                            value = self.f(point_child) - self.f(point_left_parent)
                         else:
-                            m = (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])) / (
+                            m = (self.f(tuple(left_of_left_parent)) - self.f(point_left_parent)) / (
                                         left_parent_of_left_parent - left_parent)
-                            previous_value_at_child = m * (child - left_parent) + self.f(points_left_parent[i])
-                            value = self.f(points_children[i]) - previous_value_at_child
+                            previous_value_at_child = m * (child - left_parent) + self.f(point_left_parent)
+                            value = self.f(point_child) - previous_value_at_child
                             #print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
 
                             assert(tuple(left_of_left_parent) in self.f.f_dict)
 
                     else:
-                        assert points_left_parent[i] in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
 
-                        value -= factor_left_parent * self.f(points_left_parent[i])
+                        value -= factor_left_parent * self.f(point_left_parent)
                 if right_parent_in_grid:
+                    point_right_parent = tuple(point_child[:d] + tuple([right_parent]) + point_child[d+1:])
                     if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-                        assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
 
-                        right_of_right_parent = list(points_right_parent[i])
+                        right_of_right_parent = list(point_right_parent)
                         right_of_right_parent[d] = right_parent_of_right_parent
                         #print("Right of right:", right_of_right_parent, points_right_parent[i])
                         #value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
                         #assert (tuple(points_right_parent[i]) in self.f.f_dict)
                         if isclose(right_of_right_parent[d], self.b[d]):
-                            value = self.f(points_children[i]) - self.f(points_right_parent[i])
+                            value = self.f(point_child) - self.f(point_right_parent)
                         else:
-                            m = (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i]))  / (right_parent_of_right_parent - right_parent)
-                            previous_value_at_child = m * (child - right_parent) + self.f(points_right_parent[i])
-                            value = self.f(points_children[i]) - previous_value_at_child
+                            m = (self.f(tuple(right_of_right_parent)) - self.f(point_right_parent))  / (right_parent_of_right_parent - right_parent)
+                            previous_value_at_child = m * (child - right_parent) + self.f(point_right_parent)
+                            value = self.f(point_child) - previous_value_at_child
                             #print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
                             assert(tuple(right_of_right_parent) in self.f.f_dict)
                     else:
                         #print(points_right_parent[i], self.f.f_dict.keys())
-                        assert points_right_parent[i] in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-                        value -= factor_right_parent * self.f(points_right_parent[i])
+                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+                        value -= factor_right_parent * self.f(point_right_parent)
                 volume += factor * abs(value) * (right_parent - left_parent)**exponent
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
