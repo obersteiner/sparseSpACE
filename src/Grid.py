@@ -876,7 +876,7 @@ class GlobalGrid(Grid):
 class GlobalTrapezoidalGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
         self.a = a
         self.b = b
         self.dim = len(a)
