@@ -66,7 +66,8 @@ class Grid(object):
         return self.getPoints(), self.get_weights()
 
     def get_weights(self) -> Sequence[float]:
-        return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
+        #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
+        return np.asarray(np.prod(get_cross_product(self.weights), axis=1))
 
     def get_mid_point(self, a: float, b: float, d: int) -> float:
         #if self.numPoints[d] == 1:
