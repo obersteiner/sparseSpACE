@@ -1057,10 +1057,10 @@ class GlobalBasisGrid(GlobalGrid):
         evaluations = np.empty(self.dim, dtype=object)
         for d in range(self.dim):
             points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
-            evaluations1D = np.zeros((len(evaluation_points), len(self.splines[d])))
-            for i, spline in enumerate(self.splines[d]):
+            evaluations1D = np.zeros((len(evaluation_points), len(self.basis[d])))
+            for i, basis in enumerate(self.basis[d]):
                 for j, p in enumerate(points_d):
-                    evaluations1D[j, i] = spline(p)
+                    evaluations1D[j, i] = basis(p)
             evaluations[d] = evaluations1D
         #print(evaluations)
         indexList = get_cross_product_range(self.numPoints)
@@ -1228,6 +1228,7 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         max_level = max(grid_levels_1D)
+        grid_1D = list(grid_1D)
         grid_levels_1D = np.asarray(grid_levels_1D)
         level_coordinate_array = [[] for l in range(max_level+1)]
         for i, p in enumerate(grid_1D):

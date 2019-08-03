@@ -8,13 +8,14 @@ class StandardCombi(object):
     # initialization
     # a = lower bound of integral; b = upper bound of integral
     # grid = specified grid (e.g. Trapezoidal);
-    def __init__(self, a, b, grid=None):
+    def __init__(self, a, b, grid=None, print_output=True):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
         self.grid = grid
         self.combischeme = CombiScheme(self.dim)
+        self.print_output = print_output
         assert (len(a) == len(b))
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
@@ -36,7 +37,7 @@ class StandardCombi(object):
 
     def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         grid_points = list(get_cross_product(grid_coordinates))
-        return interpn(grid_points, component_grid)
+        return self.interpolate_points(grid_points, component_grid)
 
     def plot(self) -> None:
         if self.dim != 2:
@@ -75,7 +76,7 @@ class StandardCombi(object):
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
         # get combi scheme
-        self.scheme = self.combischeme.getCombiScheme(minv, maxv)
+        self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.print_output)
         self.f = f
 
     # standard combination scheme for quadrature
@@ -91,10 +92,12 @@ class StandardCombi(object):
             integral = self.grid.integrate(self.f, component_grid.levelvector, start, end) * component_grid.coefficient
             combiintegral += integral
         real_integral = reference_solution
-        print("CombiSolution", combiintegral)
+        if self.print_output:
+            print("CombiSolution", combiintegral)
         if reference_solution is not None:
-            print("Analytic Solution", real_integral)
-            print("Difference", abs(combiintegral - real_integral))
+            if self.print_output:
+                print("Analytic Solution", real_integral)
+                print("Difference", abs(combiintegral - real_integral))
             return self.scheme, max(abs(combiintegral - real_integral)), combiintegral
         else:
             return self.scheme, None, combiintegral
