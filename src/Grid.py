@@ -66,7 +66,8 @@ class Grid(object):
         return self.getPoints(), self.get_weights()
 
     def get_weights(self) -> Sequence[float]:
-        return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
+        #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
+        return np.asarray(np.prod(get_cross_product(self.weights), axis=1))
 
     def get_mid_point(self, a: float, b: float, d: int) -> float:
         #if self.numPoints[d] == 1:
@@ -876,7 +877,7 @@ class GlobalGrid(Grid):
 class GlobalTrapezoidalGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False):
         self.boundary = boundary
-        self.integrator = IntegratorArbitraryGrid(self)
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
         self.a = a
         self.b = b
         self.dim = len(a)
