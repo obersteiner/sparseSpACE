@@ -3,6 +3,7 @@ from Utils import *
 import Grid
 from typing import Tuple, Sequence, Callable
 from Function import *
+from scipy.linalg import solve_triangular
 
 class HierarchizationLSG(object):
     def __init__(self, grid):
@@ -30,16 +31,16 @@ class HierarchizationLSG(object):
         # create all indeces in d-1 dimensional slice
         point_indeces = get_cross_product_range(numPoints_slice)
         # in the first dimension we need to fill it with the actual function values
-        if first_dimension:
-            points, _ = self.grid.get_points_and_weights()
-            for i, point in enumerate(points):
-                grid_values[:, i] = f(point)
+
         # create and fill matrix for linear system of equations
         # evaluate all basis functions at all grid points
         matrix = np.empty((numPoints[d], numPoints[d]))
         for i in range(numPoints[d]):
             for j in range(numPoints[d]):
                 matrix[i, j] = self.grid.get_basis(d, j)(self.grid.get_coordinates_dim(d)[i])
+        if numPoints[d] >= 15:
+            Q, R = np.linalg.qr(matrix)
+        #M_inv = np.linalg.inv(matrix)
 
         pole_coordinates_base = np.empty(numPoints[d], dtype=int)
         for i in range(numPoints[d]):
@@ -64,7 +65,16 @@ class HierarchizationLSG(object):
             # toDo replace by LU factorization to save time
             #(matrix, self.grid.get_coordinates_dim(d), d)
             for n in range(f.output_length()):
-                hierarchized_values = np.linalg.solve(matrix, pole_values[n,:])
+                #hierarchized_values = np.linalg.solve(matrix, pole_values[n,:])
+                #print(hierarchized_values)
+                if numPoints[d] >= 15:
+                    hierarchized_values = solve_triangular(R, np.inner(Q.T, pole_values[n, :]), check_finite=False)
+                else:
+                    hierarchized_values = np.linalg.solve(matrix, pole_values[n, :])
+                #hierarchized_values = (np.inner(M_inv, pole_values[n,:]))
+                #print(hierarchized_values - hierarchized_values2)
+                #if (np.sum(hierarchized_values - hierarchized_values2) > 10**-7):
+                #    print(hierarchized_values, hierarchized_values2)
                 for i in range(numPoints[d]):
                     #pole_index = point_index[:d] + (i,) + point_index[d+1:]
                     grid_values[n,pole_coordinates[i]] = hierarchized_values[i]
