@@ -25,7 +25,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             self.margin = margin
         self.operation = operation
-        self.equidistant = not isinstance(operation, UncertaintyQuantification)
+        # ~ self.equidistant = not isinstance(operation, UncertaintyQuantification)
+        self.equidistant = False
         self.rebalancing = rebalancing
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
