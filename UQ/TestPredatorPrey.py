@@ -24,14 +24,15 @@ from GridOperation import *
 
 
 # Settings
-silent_mode = True
-# ~ silent_mode = False
+# ~ silent_mode = True
+silent_mode = False
 do_HighOrder = False
 # ~ do_HighOrder = True
+lmax = 4
 if "max_evals" in os.environ:
     max_evals = int(os.environ["max_evals"])
 else:
-    max_evals = 500
+    max_evals = 2000
 # Use reference values to calculate errors
 calculate_errors = True
 # ~ calculate_errors = False
@@ -55,8 +56,8 @@ NT = int(0.01 * T)  # number of time steps
 
 # Standard deviations
 sigma_voracity = 0.000002  # no uncertainty: 0.000000001, uncertainty: 0.000001
-sigma_sheeps_Px0 = 1.0  # no uncertainty: 0.000000001, uncertainty: 250, 100, 50, 25
-sigma_coyote_Px0 = 0.1  # no uncertainty: 0.000000001, uncertainty: 2, 1, 0.5
+sigma_sheeps_Px0 = 1
+sigma_coyote_Px0 = 5
 
 # Maximum PCE polynomial degree
 poly_deg_max = 1
@@ -158,7 +159,7 @@ combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
     norm=2, grid=grid)
 tol = 10 ** -4
 f_pce = op.get_PCE_Function(poly_deg_max)
-combiinstance.performSpatiallyAdaptiv(1, 2, f_pce, error_operator, tol=tol,
+combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
     max_evaluations=max_evals, print_output=not silent_mode)
 if False:
     f_exvar = op.get_expectation_variance_Function()
@@ -197,9 +198,12 @@ if calculate_errors:
     P90_predator, P90_prey = P90_pX.T
     Var_predator, Var_prey = Var.T
     def calc_error(vals, reference_vals):
-        return np.array([abs((vals[i] - sol) / sol) if not isclose(sol, 0.0) else abs(vals[i]) for i,sol in enumerate(reference_vals)])
-    error_E_predator = calc_error(E_predator, E_pX_halton.T[0])
-    error_E_prey = calc_error(E_prey, E_pX_halton.T[1])
+        return np.array([abs(vals[i] - sol) for i,sol in enumerate(reference_vals)])
+    def calc_error_relative(vals, reference_vals):
+        errs = calc_error(vals, reference_vals)
+        return np.array([abs(errs[i] / sol) if not isclose(sol, 0.0) else errs[i] for i,sol in enumerate(reference_vals)])
+    error_E_predator = calc_error_relative(E_predator, E_pX_halton.T[0])
+    error_E_prey = calc_error_relative(E_prey, E_pX_halton.T[1])
     error_P10_predator = calc_error(P10_predator, P10_pX_halton.T[0])
     error_P10_prey = calc_error(P10_prey, P10_pX_halton.T[1])
     error_P90_predator = calc_error(P90_predator, P90_pX_halton.T[0])
@@ -219,7 +223,7 @@ if calculate_errors:
         mean_err_descs = ("E prey", "E predator", "P10 prey", "P10 predator",
             "P90 prey", "P90 predator", "Var prey", "Var predator")
         for i,desc in enumerate(mean_err_descs):
-            print(f"{desc} mean relative error: {mean_errs[i]:.5g}")
+            print(f"{desc} mean error: {mean_errs[i]:.5g}")
 
     if save_errors:
         num_evals = problem_function.get_f_dict_size()
@@ -291,13 +295,13 @@ if calculate_errors:
     def plot_error(pos, descr_and_data):
         plotter.subplot(pos)
         for descr, data in descr_and_data:
-            plotter.plot(time_points, data, label=descr + ' relative error')
+            plotter.plot(time_points, data, label=descr + ' error')
         # ~ plotter.yscale("log")
         plotter.xlim(0, T/365)
         plotter.legend(loc=2)
         plotter.grid(True)
 
-    plot_error(425, [("Sheep E_pX", error_E_predator), ("Coyote E_pX", error_E_prey)])
+    plot_error(425, [("Sheep E_pX relative", error_E_predator), ("Coyote E_pX relative", error_E_prey)])
     plot_error(426, [("Sheep Var", error_Var_prey), ("Coyote Var", error_Var_predator)])
     plot_error(427, [("Sheep P10", error_P10_prey), ("Sheep P90", error_P90_prey)])
     plot_error(428, [("Coyote P10", error_P10_predator), ("Coyote P90", error_P90_predator)])
