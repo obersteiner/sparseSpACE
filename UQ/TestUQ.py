@@ -112,7 +112,7 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 	if plot_things:
 		plot_function(f, op, a, b, inf_borders)
 
-	can_plot = plot_things and not inf_borders
+	plot_grids = plot_things
 
 	if reference_expectation is not None:
 		if not hasattr(reference_expectation, "__iter__"):
@@ -139,7 +139,7 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 		combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 			error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=reference_solution,
-			min_evaluations=min_evals, do_plot=can_plot)
+			min_evaluations=min_evals, do_plot=plot_grids)
 		# ~ combiinstance.plot()
 
 		print("calculate_expectation_and_variance…")
@@ -152,7 +152,7 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 		f_pce = op.get_PCE_Function(poly_deg_max)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
 			max_evaluations=max_evals, reference_solution=None,
-			min_evaluations=min_evals, do_plot=can_plot)
+			min_evaluations=min_evals, do_plot=plot_grids)
 		op.calculate_PCE(poly_deg_max, combiinstance)
 	else:
 		op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
@@ -184,38 +184,6 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 		"".format(
 			first_sens2,
 			total_sens2))
-
-
-def test_normal_integration():
-	print("Calculating the expectation with an Integration Operation")
-	d = 2
-	bigvalue = 7.0
-	a = np.array([-bigvalue, -bigvalue])
-	b = np.array([bigvalue, bigvalue])
-
-	# Whether to change weights for obtaining a higher order quadrature
-	high_order = True
-
-	distr = []
-	for _ in range(d):
-		distr.append(cp.Normal(0,2))
-	distr_joint = cp.J(*distr)
-	f = FunctionMultilinear([2.0, 0.0])
-	fw = FunctionCustom(lambda coords: f(coords)[0]
-		* float(distr_joint.pdf(coords)))
-
-	# ~ grid = TrapezoidalGrid(a=a, b=b, dim=d)
-	grid = GlobalBSplineGrid(a, b)
-	op = Integration(fw, grid="Hund", dim=d)
-
-	error_operator = ErrorCalculatorSingleDimVolumeGuided()
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-		do_high_order=high_order, grid=grid)
-	print("performSpatiallyAdaptiv…")
-	v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
-		max_evaluations=40, min_evaluations=25, do_plot=plot_things)
-	integral = v[3][0]
-	print("expectation", integral)
 
 
 # Very simple, can be used to test what happens when the variance is zero
@@ -321,7 +289,6 @@ def test_cantilever_beam_D():
 	b = np.array([math.inf] * d)
 	f = FunctionCantileverBeamD()
 	distrs = [("Normal", 2.9e7, 1.45e6), ("Normal", 500.0, 100.0), ("Normal", 1000.0, 100.0)]
-	# Does not work
 	do_test(d, a, b, f, distrs, boundary=False)
 
 
@@ -336,9 +303,10 @@ def test_G_function():
 	first_order_indices = None
 	# ~ first_order_indices = f.get_first_order_sobol_indices()
 	print(expectation, var, first_order_indices)
-	grid = GlobalBSplineGrid(a, b)
+	grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False)
+	# ~ grid = GlobalBSplineGrid(a, b)
 	# ~ grid = None
-	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid)
+	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid, lmax=3)
 	# ~ do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid,
 		# ~ modified_basis=True, lmax=3, boundary=False)
 
@@ -348,7 +316,7 @@ def test_G_function():
 # ~ test_cantilever_beam_D()
 test_G_function()
 
-# ~ test_normal_integration()
+# ~ test_normal_inf_border()
 # ~ test_normal_vagebounds()
 
 # ~ test_constant_triangle()
