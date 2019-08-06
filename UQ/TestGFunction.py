@@ -10,7 +10,7 @@ from ErrorCalculator import *
 from GridOperation import *
 
 
-types = ((0, "Gauss"), (1, "adaptiveTrapez"), (2, "adaptiveHO"))
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline")
 
 d = 2
 a = np.zeros(d)
@@ -21,18 +21,21 @@ reference_variance = f_g.get_variance()
 # Create the operation only once
 op = UncertaintyQuantification(None, "Uniform", a, b, dim=d)
 
-def run_test(evals_num, typ, exceed_evals=None):
+def run_test(evals_num, typid, exceed_evals=None):
 	lmax = 2
 	f = FunctionCustom(lambda x: f_g(x))
 	op.f = f
 
+	typ = types[typid]
 	if typ != "Gauss":
 		if typ == "adaptiveHO":
 			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=True)
 		elif typ == "adaptiveTrapez":
 			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=True)
-		# ~ elif typ == "BSpline":
-			# ~ grid = GlobalBSplineGrid(a, b)
+		elif typ == "BSpline":
+			# ~ grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False, p=3)
+			grid = GlobalBSplineGrid(a, b)
+			# ~ lmax = 3
 		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
 			norm=2, grid=grid)
 
@@ -70,12 +73,6 @@ def run_test(evals_num, typ, exceed_evals=None):
 
 	print("evals, relative errors:", num_evals, err_E, err_Var)
 
-	typid = -1
-	for t in types:
-		if t[1] == typ:
-			typid = t[0]
-			break
-
 	result_data = (num_evals, typid, err_E, err_Var)
 
 	tmpdir = os.getenv("XDG_RUNTIME_DIR")
@@ -90,15 +87,17 @@ def run_test(evals_num, typ, exceed_evals=None):
 	return num_evals
 
 
-for _,typ in types[1:]:
+for i,typ in enumerate(types[1:]):
+	typid = i+1
 	print("Calculations for", typ)
-	evals_num = run_test(1, typ)
+	evals_num = run_test(1, typid)
 	while evals_num < 1280:
 		print("last evals:", evals_num)
-		evals_num = run_test(None, typ, exceed_evals=evals_num)
+		evals_num = run_test(None, typid, exceed_evals=evals_num)
 
 print("Calculating convent. errors")
 for i in range(1, 36):
 	print("order: ", i)
-	run_test(i, "Gauss")
+	# Gauss
+	run_test(i, 0)
 
