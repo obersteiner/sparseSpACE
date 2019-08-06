@@ -95,7 +95,7 @@ def static_var(varname, value):
     return decorate
 
 @static_var("counter", 0)
-def solver(voracity, Px0, f):
+def solver(voracity, Px0, f, time_pts):
     #set the parameter
     f.preyBirthRate = sheepBirthRate
     f.predatorDeathRate = coyoteDeathRate
@@ -110,7 +110,7 @@ def solver(voracity, Px0, f):
     #solves the population model
     #u = ode.odeint(f, Px0, time_points)
     #u = ode.solve_ivp(f, [0, T], Px0, method='BDF', t_eval=time_points)
-    u = ode.solve_ivp(f, [0, T], Px0, method='RK45', t_eval=time_points)
+    u = ode.solve_ivp(f, [0, T], Px0, method='RK45', t_eval=time_pts)
 
     return u
 
@@ -118,11 +118,10 @@ measure_start = time.time()
 
 print("Generating quadrature nodes and weights")
 
-# Create a Function that can be used for refining
 def get_solver_values(input_values):
     voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
     # y contains the predator solutions and prey solutions for all time values
-    y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f).y
+    y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points).y
     return np.concatenate(y)
 problem_function = FunctionCustom(get_solver_values)
 
@@ -132,6 +131,17 @@ def reshape_result_values(vals):
     predators, preys = vals[:mid], vals[mid:]
     return np.array([predators, preys]).T
 
+
+time_points_proxy = np.linspace(0, T, 31)
+# ~ time_points_proxy = time_points
+def get_solver_values_proxy(input_values):
+    voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    # y contains the predator solutions and prey solutions for all time values
+    y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points_proxy).y
+    return np.concatenate(y)
+proxy_function = FunctionCustom(get_solver_values_proxy)
+
+
 # Create the Operation
 op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 
@@ -139,6 +149,7 @@ types = ("Gauss", "adaptiveTrapez", "adaptiveHO")
 
 def run_test(evals_num, typid, exceed_evals=None):
     problem_function_wrapped = FunctionCustom(lambda x: problem_function(x))
+    proxy_function_wrapped = FunctionCustom(lambda x: proxy_function(x))
     op.f = problem_function_wrapped
 
     typ = types[typid]
@@ -151,21 +162,26 @@ def run_test(evals_num, typid, exceed_evals=None):
             norm=2, grid=grid)
         tol = 10 ** -4
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
-        f_pce = op.get_PCE_Function(poly_deg_max)
+        # ~ f_pce = op.get_PCE_Function(poly_deg_max)
+        op.f = proxy_function_wrapped
+        f_refinement = op.get_expectation_variance_Function()
+        op.f = -1
+
         lmax = 3
         if exceed_evals is None:
-            combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce,
+            combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
                 error_operator, tol=0,
                 max_evaluations=evals_num,
                 print_output=False)
         else:
-            combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce,
+            combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
                 error_operator, tol=np.inf,
                 max_evaluations=np.inf, min_evaluations=exceed_evals+1,
                 print_output=False)
 
         # Calculate the gPCE using the nodes and weights from the refinement
-        op.calculate_PCE(poly_deg_max, combiinstance)
+        op.f = problem_function_wrapped
+        op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
     else:
         op.calculate_PCE_chaospy(poly_deg_max, evals_num)
 
@@ -214,6 +230,7 @@ def run_test(evals_num, typid, exceed_evals=None):
             print(f"{desc} mean error: {mean_errs[i]:.5g}")
 
     num_evals = problem_function_wrapped.get_f_dict_size()
+    # ~ num_evals = proxy_function_wrapped.get_f_dict_size()
     result_data = (num_evals, typid, mean_errs)
 
     tmpdir = os.getenv("XDG_RUNTIME_DIR")
@@ -225,13 +242,15 @@ def run_test(evals_num, typid, exceed_evals=None):
         solutions_data.append(result_data)
         np.save(results_path, solutions_data)
 
-    return num_evals
+    # ~ return num_evals
+    return proxy_function_wrapped.get_f_dict_size()
 
 
-evals_end = 4000
+evals_end = 400
 
-for i,typ in enumerate(types[1:]):
-    typid = i+1
+for typid,typ in enumerate(types):
+    if typid == 0:
+        continue
     print("Calculations for", typ)
     evals_num = run_test(1, typid)
     while evals_num < evals_end:
