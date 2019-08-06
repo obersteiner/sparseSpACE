@@ -14,16 +14,19 @@ class HierarchizationLSG(object):
         self.dim = len(numPoints)
         #grid values to be filled with hierarchical surplusses
         grid_values = np.empty((f.output_length(), np.prod(numPoints)))
+        points, _ = self.grid.get_points_and_weights()
+        for i, point in enumerate(points):
+            grid_values[:, i] = f(point)
         for d in range(self.dim):
             #print(numPoints[d], self.grid.get_coordinates_dim(d))
             assert numPoints[d] == len(self.grid.get_coordinates_dim(d))
         for d in range(self.dim):
-            grid_values = self.hierarchize_poles_for_dim(grid_values, numPoints, f, d, d==0)
+            grid_values = self.hierarchize_poles_for_dim(grid_values, numPoints, f, d)
         return grid_values
 
     # this function applies a one dimensional hierarchization (in dimension d) to the array grid_values with
     # numPoints (array) many points for each dimension
-    def hierarchize_poles_for_dim(self, grid_values: Sequence[Sequence[float]], numPoints: Sequence[int], f: Function, d: int, first_dimension: bool) -> Sequence[Sequence[float]]:
+    def hierarchize_poles_for_dim(self, grid_values: Sequence[Sequence[float]], numPoints: Sequence[int], f: Function, d: int) -> Sequence[Sequence[float]]:
         self.dim = len(numPoints)
         offsets = np.array([int(np.prod(numPoints[d+1:])) for d in range(self.dim)])
         numPoints_slice = np.array(numPoints)

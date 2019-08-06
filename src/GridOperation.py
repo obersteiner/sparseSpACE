@@ -372,9 +372,12 @@ class Integration(AreaOperation):
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
             if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
                 grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
+                points, _ = self.grid.get_points_and_weights()
+                for i, point in enumerate(points):
+                    grid_values[:, i] = self.f(point)
                 hierarchization_operator = HierarchizationLSG(self.grid)
                 points, weights = self.grid.get_points_and_weights()
-                surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(grid_values, self.grid.numPoints, self.f, d, True)
+                surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values), self.grid.numPoints, self.f, d)
                 surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
                 stride = int(np.prod(self.grid.numPoints[d+1:]))
                 for j in range(self.grid.numPoints[d]):
@@ -382,7 +385,6 @@ class Integration(AreaOperation):
                     while i < np.prod(self.grid.numPoints):
                         surplus_pole[:,j] += np.sum(abs(surplusses_1d[:,i:i+stride])) #* weights[i:i+stride]))
                         i += stride * self.grid.numPoints[d]
-                #toDo sum up pole surplusses and use below
                 #print("surplus pole", surplus_pole, surplusses_1d, stride)
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
