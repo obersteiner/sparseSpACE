@@ -582,6 +582,7 @@ class Integration(AreaOperation):
     def sum_up_volumes_for_point_vectorized(self, child_info, grid_points, d):
         #print(grid_points)
         child = child_info.child
+        level_child = child_info.level_child
         left_parent = child_info.left_parent
         right_parent = child_info.right_parent
         left_parent_of_left_parent = child_info.left_parent_of_left_parent
@@ -602,11 +603,17 @@ class Integration(AreaOperation):
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
-            factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
             points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
             #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
-            factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
             points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
             #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         if self.grid_surplusses.modified_basis and not right_parent_in_grid:
@@ -681,7 +688,8 @@ class Integration(AreaOperation):
                 #assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                 values -= factor_right_parent * point_values_right_parent
         #print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
-        volume = np.sum(factors * abs(values), axis=0) * (right_parent - left_parent)**exponent
+        volume = np.sum(factors * abs(values), axis=0) * (2 ** -level_child)**exponent
+        # ~ volume = np.sum(factors * abs(values), axis=0) * (right_parent - left_parent)**exponent
         #print("Volume", volume)
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
