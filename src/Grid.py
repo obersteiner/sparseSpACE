@@ -1652,8 +1652,6 @@ class GlobalHighOrderGrid(GlobalGrid):
         return a + (np.array(coordinates) + 1.0) * 0.5 * (b - a)
 
 
-import chaospy as cp
-
 class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
     def __init__(self, a, b, uq_operation, boundary=True, do_nnls=False, max_degree=5, split_up=True, modified_basis=False):
         # split_up is not yet supported
