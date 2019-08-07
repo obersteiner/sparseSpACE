@@ -55,6 +55,9 @@ class Integration(AreaOperation):
         self.dict_integral = {}
         self.dict_points = {}
 
+    def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
+        return combined_solution + component_grid_info.coefficient * new_solution
+
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
         area.integral += partial_integral
@@ -62,6 +65,11 @@ class Integration(AreaOperation):
         if refinement_container is not None:
             refinement_container.integral += partial_integral
         return evaluations
+
+    def evaluate_levelvec(self, start, end, levelvector):
+        partial_integral = self.grid.integrate(self.f, levelvector, start, end)
+        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
+        return partial_integral, evaluations
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         if additional_info.error_name == "extend_parent":
