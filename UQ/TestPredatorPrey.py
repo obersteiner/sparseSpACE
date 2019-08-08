@@ -32,7 +32,7 @@ lmax = 4
 if "max_evals" in os.environ:
     max_evals = int(os.environ["max_evals"])
 else:
-    max_evals = 2000
+    max_evals = 200
 # Use reference values to calculate errors
 calculate_errors = True
 # ~ calculate_errors = False
@@ -133,6 +133,8 @@ print("Generating quadrature nodes and weights")
 # Create a Function that can be used for refining
 def get_solver_values(input_values):
     voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    # ~ voracity_sample, coyote_Px0_sample = input_values
+    # ~ sheep_Px0_sample = sheeps_Px0
     # y contains the predator solutions and prey solutions for all time values
     y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f).y
     return np.concatenate(y)
@@ -146,6 +148,8 @@ def reshape_result_values(vals):
 
 # Create the Operation
 op = UncertaintyQuantification(problem_function, distris, a, b, dim=dim)
+# ~ pa, pb = op.get_boundaries(0.01)
+# ~ problem_function.plot(pa, pb, points_per_dim=31, plotdimension=410)
 
 #'''
 # Do the spatially adaptive refinement for PCE
@@ -157,7 +161,7 @@ else:
     grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
     norm=2, grid=grid)
-tol = 10 ** -4
+tol = 0
 f_pce = op.get_PCE_Function(poly_deg_max)
 combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
     max_evaluations=max_evals, print_output=not silent_mode)
@@ -192,7 +196,7 @@ Var = reshape_result_values(op.get_variance_PCE())
 
 
 if calculate_errors:
-    E_pX_halton, P10_pX_halton, P90_pX_halton, Var_pX_halton = np.load("halton_solutions.npy")
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
     E_predator, E_prey = E_pX.T
     P10_predator, P10_prey = P10_pX.T
     P90_predator, P90_prey = P90_pX.T
@@ -202,14 +206,14 @@ if calculate_errors:
     def calc_error_relative(vals, reference_vals):
         errs = calc_error(vals, reference_vals)
         return np.array([abs(errs[i] / sol) if not isclose(sol, 0.0) else errs[i] for i,sol in enumerate(reference_vals)])
-    error_E_predator = calc_error_relative(E_predator, E_pX_halton.T[0])
-    error_E_prey = calc_error_relative(E_prey, E_pX_halton.T[1])
-    error_P10_predator = calc_error(P10_predator, P10_pX_halton.T[0])
-    error_P10_prey = calc_error(P10_prey, P10_pX_halton.T[1])
-    error_P90_predator = calc_error(P90_predator, P90_pX_halton.T[0])
-    error_P90_prey = calc_error(P90_prey, P90_pX_halton.T[1])
-    error_Var_predator = calc_error(Var_predator, Var_pX_halton.T[0])
-    error_Var_prey = calc_error(Var_prey, Var_pX_halton.T[1])
+    error_E_predator = calc_error_relative(E_predator, E_pX_ref.T[0])
+    error_E_prey = calc_error_relative(E_prey, E_pX_ref.T[1])
+    error_P10_predator = calc_error(P10_predator, P10_pX_ref.T[0])
+    error_P10_prey = calc_error(P10_prey, P10_pX_ref.T[1])
+    error_P90_predator = calc_error(P90_predator, P90_pX_ref.T[0])
+    error_P90_prey = calc_error(P90_prey, P90_pX_ref.T[1])
+    error_Var_predator = calc_error(Var_predator, Var_pX_ref.T[0])
+    error_Var_prey = calc_error(Var_prey, Var_pX_ref.T[1])
 
     def mean_error(data):
         return np.sum(data) / len(data)

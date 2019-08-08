@@ -131,15 +131,16 @@ def reshape_result_values(vals):
     predators, preys = vals[:mid], vals[mid:]
     return np.array([predators, preys]).T
 
-
-time_points_proxy = np.linspace(0, T, 31)
-# ~ time_points_proxy = time_points
-def get_solver_values_proxy(input_values):
-    voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
-    # y contains the predator solutions and prey solutions for all time values
-    y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points_proxy).y
-    return np.concatenate(y)
-proxy_function = FunctionCustom(get_solver_values_proxy)
+use_proxy = False
+if use_proxy:
+    time_points_proxy = np.linspace(0, T, 31)
+    # ~ time_points_proxy = time_points
+    def get_solver_values_proxy(input_values):
+        voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+        # y contains the predator solutions and prey solutions for all time values
+        y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points_proxy).y
+        return np.concatenate(y)
+    proxy_function = FunctionCustom(get_solver_values_proxy)
 
 
 # Create the Operation
@@ -148,8 +149,9 @@ op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO")
 
 def run_test(evals_num, typid, exceed_evals=None):
+    if use_proxy:
+        proxy_function_wrapped = FunctionCustom(lambda x: proxy_function(x))
     problem_function_wrapped = FunctionCustom(lambda x: problem_function(x))
-    proxy_function_wrapped = FunctionCustom(lambda x: proxy_function(x))
     op.f = problem_function_wrapped
 
     typ = types[typid]
@@ -163,9 +165,12 @@ def run_test(evals_num, typid, exceed_evals=None):
         tol = 10 ** -4
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         # ~ f_pce = op.get_PCE_Function(poly_deg_max)
-        op.f = proxy_function_wrapped
-        f_refinement = op.get_expectation_variance_Function()
-        op.f = -1
+        if use_proxy:
+            op.f = proxy_function_wrapped
+            f_refinement = op.get_expectation_variance_Function()
+            op.f = -1
+        else:
+            f_refinement = op.get_expectation_variance_Function()
 
         lmax = 3
         if exceed_evals is None:
@@ -194,7 +199,7 @@ def run_test(evals_num, typid, exceed_evals=None):
     # variance
     Var = reshape_result_values(op.get_variance_PCE())
 
-    E_pX_halton, P10_pX_halton, P90_pX_halton, Var_pX_halton = np.load("halton_solutions.npy")
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
     E_predator, E_prey = E_pX.T
     P10_predator, P10_prey = P10_pX.T
     P90_predator, P90_prey = P90_pX.T
@@ -204,14 +209,14 @@ def run_test(evals_num, typid, exceed_evals=None):
     def calc_error_relative(vals, reference_vals):
         errs = calc_error(vals, reference_vals)
         return np.array([abs(errs[i] / sol) if not isclose(sol, 0.0) else errs[i] for i,sol in enumerate(reference_vals)])
-    error_E_predator = calc_error_relative(E_predator, E_pX_halton.T[0])
-    error_E_prey = calc_error_relative(E_prey, E_pX_halton.T[1])
-    error_P10_predator = calc_error(P10_predator, P10_pX_halton.T[0])
-    error_P10_prey = calc_error(P10_prey, P10_pX_halton.T[1])
-    error_P90_predator = calc_error(P90_predator, P90_pX_halton.T[0])
-    error_P90_prey = calc_error(P90_prey, P90_pX_halton.T[1])
-    error_Var_predator = calc_error(Var_predator, Var_pX_halton.T[0])
-    error_Var_prey = calc_error(Var_prey, Var_pX_halton.T[1])
+    error_E_predator = calc_error_relative(E_predator, E_pX_ref.T[0])
+    error_E_prey = calc_error_relative(E_prey, E_pX_ref.T[1])
+    error_P10_predator = calc_error(P10_predator, P10_pX_ref.T[0])
+    error_P10_prey = calc_error(P10_prey, P10_pX_ref.T[1])
+    error_P90_predator = calc_error(P90_predator, P90_pX_ref.T[0])
+    error_P90_prey = calc_error(P90_prey, P90_pX_ref.T[1])
+    error_Var_predator = calc_error(Var_predator, Var_pX_ref.T[0])
+    error_Var_prey = calc_error(Var_prey, Var_pX_ref.T[1])
 
     # ~ def mean_squared_error(data):
         # ~ return np.sum([v*v for v in data]) / len(data)
@@ -232,6 +237,7 @@ def run_test(evals_num, typid, exceed_evals=None):
     num_evals = problem_function_wrapped.get_f_dict_size()
     # ~ num_evals = proxy_function_wrapped.get_f_dict_size()
     result_data = (num_evals, typid, mean_errs)
+    assert len(result_data) == 3
 
     tmpdir = os.getenv("XDG_RUNTIME_DIR")
     results_path = tmpdir + "/uqtest.npy"
@@ -242,11 +248,12 @@ def run_test(evals_num, typid, exceed_evals=None):
         solutions_data.append(result_data)
         np.save(results_path, solutions_data)
 
-    # ~ return num_evals
-    return proxy_function_wrapped.get_f_dict_size()
+    if use_proxy:
+        return proxy_function_wrapped.get_f_dict_size()
+    return num_evals
 
 
-evals_end = 400
+evals_end = 1280
 
 for typid,typ in enumerate(types):
     if typid == 0:
