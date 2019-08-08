@@ -53,16 +53,17 @@ class SpatiallyAdaptivBase(StandardCombi):
     def init_adaptive_combi(self, f: Callable[[Tuple[float, ...]], Sequence[float]], minv: int, maxv: int, refinement_container: RefinementContainer, tol: float) -> None:
         self.tolerance = tol
         self.f = f
-        if self.realIntegral is not None:
-            print("Reference solution:", self.realIntegral)
-        else:
-            print("No reference solution present. Working purely on surplus error estimates.")
+        if self.print_output:
+            if self.realIntegral is not None:
+                print("Reference solution:", self.realIntegral)
+            else:
+                print("No reference solution present. Working purely on surplus error estimates.")
         if (refinement_container == []):  # initialize refinement
             self.lmin = [minv for i in range(self.dim)]
             self.lmax = [maxv for i in range(self.dim)]
             # calculate the combination scheme
             self.combischeme = CombiScheme(self.dim)
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=self.print_output)
             self.initialize_refinement()
             self.f.reset_dictionary()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object

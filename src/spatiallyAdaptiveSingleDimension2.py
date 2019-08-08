@@ -401,7 +401,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
 
-            print("Rebalancing!")
+            if self.print_output:
+                print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -429,7 +430,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
 
-            print("Rebalancing!")
+            if self.print_output:
+                print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
