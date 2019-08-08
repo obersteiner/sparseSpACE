@@ -61,7 +61,7 @@ class Grid(object):
 
     def point_on_boundary(self, p: Sequence[float]) -> bool:
         # print("2",p, (p == self.a).any() or (p == self.b).any())
-        return ([isclose(c, self.a) for c in p]).any() or ([isclose(c, self.b) for c in p]).any()
+        return  any([isclose(c, self.a[d]) for d, c in enumerate(p)]) or any([isclose(c, self.b[d]) for d, c in enumerate(p)])
 
     def get_points_and_weights(self) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         return self.getPoints(), self.get_weights()

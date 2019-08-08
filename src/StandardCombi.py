@@ -8,7 +8,7 @@ class StandardCombi(object):
     # initialization
     # a = lower bound of integral; b = upper bound of integral
     # grid = specified grid (e.g. Trapezoidal);
-    def __init__(self, a, b, grid=None, print_output=True):
+    def __init__(self, a, b, grid=None, print_output=True, operation=None):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -17,6 +17,7 @@ class StandardCombi(object):
         self.combischeme = CombiScheme(self.dim)
         self.print_output = print_output
         assert (len(a) == len(b))
+        self.operation = operation
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
@@ -83,6 +84,8 @@ class StandardCombi(object):
     # lmin = minimum level; lmax = target level
     # f = function to integrate;
     def perform_combi(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]], reference_solution: Sequence[float]=None) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
+        if self.operation is not None:
+            return self.perform_operation(minv, maxv, f, reference_solution)
         start = self.a
         end = self.b
         self.set_combi_parameters(minv, maxv, f)
@@ -101,6 +104,36 @@ class StandardCombi(object):
             return self.scheme, max(abs(combiintegral - real_integral)), combiintegral
         else:
             return self.scheme, None, combiintegral
+
+    def perform_operation(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]], reference_solution: Sequence[float]=None) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
+        assert self.operation is not None
+        start = self.a
+        end = self.b
+        self.set_combi_parameters(minv, maxv, f)
+        self.f.reset_dictionary()
+        combivalue = None
+        for component_grid in self.scheme:  # iterate over component grids
+            if self.operation.is_area_operation():
+                value, evaluations = self.operation.evaluate_levelvec(start, end, component_grid.levelvector)
+                if combivalue is None:
+                    combivalue = value
+                else:
+                    combivalue = self.operation.add_value(combivalue, value, component_grid)
+            else:
+                assert (False)  # not implemented yet
+                #points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
+                #self.operation.perform_operation(points)
+                #self.compute_evaluations(evaluation_array, points)
+        real_integral = reference_solution
+        if self.print_output:
+            print("CombiSolution", combivalue)
+        if reference_solution is not None:
+            if self.print_output:
+                print("Analytic Solution", real_integral)
+                print("Difference", abs(combivalue - real_integral))
+            return self.scheme, max(abs(combivalue - real_integral)), combivalue
+        else:
+            return self.scheme, None, combivalue
 
     def get_num_points_component_grid(self, levelvector: Sequence[int], doNaive: bool, num_sub_diagonal: int):
         return np.prod(self.grid.levelToNumPoints(levelvector))

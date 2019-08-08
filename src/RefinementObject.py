@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import abc, logging
-
+from Grid import *
 
 # This class defines the general template of a Refinement Object that can be stored in the refinement container
 class RefinementObject(object):
@@ -33,14 +33,46 @@ class RefinementObject(object):
         self.evaluations += evaluations
 
 
+# This class is used in the Extend Split RefinementObject as a container
+# to store various variables used for the error estimates
+class ErrorInfo(object):
+    def __init__(self, previous_value=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
+                 level_parent=-1,
+                 num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
+                 sum_siblings=None, last_refinement_split=False):
+        self.previous_value = previous_value
+        self.parent = parent
+        self.split_parent_integral = split_parent_integral
+        self.extend_parent_integral = extend_parent_integral
+        self.level_parent = level_parent
+        self.num_points_split_parent = num_points_split_parent
+        self.num_points_extend_parent = num_points_extend_parent
+        self.benefit_extend = benefit_extend
+        self.benefit_split = benefit_Split
+        self.num_points_reference = None
+        self.sum_siblings = sum_siblings
+        self.comparison = None
+        self.extend_error_correction = None
+        self.last_refinement_split = last_refinement_split
+
+
+    def get_extend_benefit(self):
+        return self.benefit_extend
+
+    def get_split_benefit(self):
+        return self.benefit_split
+
+    def get_extend_error_correction(self):
+        return self.extend_error_correction
+
 
 # This is the special class for the RefinementObject defined in the split extend scheme
 class RefinementObjectExtendSplit(RefinementObject):
-    def __init__(self, start, end, grid, number_of_refinements_before_extend,
-                 parent_info,
-                 coarseningValue=0,
-                 needExtendScheme=0,
-                 automatic_extend_split=False):
+    def __init__(self, start: Sequence[float], end: Sequence[float], grid: Grid, number_of_refinements_before_extend: int =2,
+                 parent_info: ErrorInfo =None,
+                 coarseningValue: int=0,
+                 needExtendScheme: int=0,
+                 automatic_extend_split: bool=False):
         # start of subarea
         self.start = start
         # end of subarea
@@ -69,7 +101,7 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.children = []
 
     # this routine decides if we split or extend the RefinementObject
-    def refine(self):
+    def refine(self) -> Tuple[RefinementObject, Sequence[int], int]:
         correction = 0.0
         coarsening_level = self.coarseningValue
         benefit_extend = benefit_split = None
@@ -132,15 +164,18 @@ class RefinementObjectExtendSplit(RefinementObject):
             assert False
 
     # in case lmax was changed the coarsening value of other RefinementObjects need to be increased
-    def update(self, update_info):
+    def update(self, update_info: int):
         self.coarseningValue += update_info
         self.levelvec_dict = {}
 
-    def add_level(self, levelvec_coarsened, levelvec):
+    def add_level(self, levelvec_coarsened: Tuple[int, ...], levelvec: Sequence[int]):
         # print("adding", levelvec_coarsened, levelvec)
         self.levelvec_dict[levelvec_coarsened] = levelvec
 
-    def is_already_calculated(self, levelvec_coarsened, levelvec):
+    # this method indicates whether for this area already a grid has been calculated with by another levelvector with the same
+    # levelvector_coarsened. This is necessary since collisions in coarsening process are guaranteed to happen.
+    # The levelvec parameter is the uncoarsened parameter.
+    def is_already_calculated(self, levelvec_coarsened: Tuple[int, ...], levelvec: Tuple[int, ...]):
         if levelvec_coarsened not in self.levelvec_dict:
             return False
         else:
@@ -195,38 +230,6 @@ class RefinementObjectExtendSplit(RefinementObject):
             if self.contains(p):
                 contained_points.append(p)
         return contained_points
-
-# This class is used in the Extend Split RefinementObject as a container
-# to store various variables used for the error estimates
-class ErrorInfo(object):
-    def __init__(self, previous_value=None, parent=None, split_parent_integral=None, extend_parent_integral=None,
-                 level_parent=-1,
-                 num_points_split_parent=None, num_points_extend_parent=None, benefit_extend=None, benefit_Split=None,
-                 sum_siblings=None, last_refinement_split=False):
-        self.previous_value = previous_value
-        self.parent = parent
-        self.split_parent_integral = split_parent_integral
-        self.extend_parent_integral = extend_parent_integral
-        self.level_parent = level_parent
-        self.num_points_split_parent = num_points_split_parent
-        self.num_points_extend_parent = num_points_extend_parent
-        self.benefit_extend = benefit_extend
-        self.benefit_split = benefit_Split
-        self.num_points_reference = None
-        self.sum_siblings = sum_siblings
-        self.comparison = None
-        self.extend_error_correction = None
-        self.last_refinement_split = last_refinement_split
-
-
-    def get_extend_benefit(self):
-        return self.benefit_extend
-
-    def get_split_benefit(self):
-        return self.benefit_split
-
-    def get_extend_error_correction(self):
-        return self.extend_error_correction
 
 
 # This is the special class for the RefinementObject defined in the split extend scheme
@@ -419,6 +422,8 @@ class RefinementObjectSingleDimension(RefinementObject):
         # The middle between two nodes can be calculated with the probability if
         # available so that infinite boundaries are possible
         self.grid = grid
+
+        assert(end > start)
 
     def refine(self):
         # coarseningLevel = self.refinement[dimValue][area[dimValue]][2]
