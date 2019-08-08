@@ -223,8 +223,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         dim = self.dim
         fig, ax = plt.subplots(ncols=1, nrows=dim, figsize=(20, 10))
         for d in range(dim):
-            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].get_objects()]
-            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].get_objects()]
+            objs = refinement.refinementContainers[d].get_objects()
+            infinite_bounds = isinf(objs[0].start)
+            if infinite_bounds:
+                # Ignore refinement objects with infinite borders
+                objs = objs[1:-1]
+            starts = [refinementObject.start for refinementObject in objs]
+            ends = [refinementObject.end for refinementObject in objs]
             for i in range(len(starts)):
                 ax[d].add_patch(
                     patches.Rectangle(
@@ -237,7 +242,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
             ax[d].plot(xValues, yValues, 'bo', markersize=markersize, color="black")
-            ax[d].set_xlim([self.a[d], self.b[d]])
+            if infinite_bounds:
+                start, end = objs[0].start, objs[-1].end
+                offset = (end - start) * 0.1
+                ax[d].set_xlim([start - offset, end + offset])
+            else:
+                ax[d].set_xlim([self.a[d], self.b[d]])
             ax[d].set_ylim([-0.1, 0.1])
             ax[d].set_yticks([])
         if filename is not None:
