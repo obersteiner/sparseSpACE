@@ -67,9 +67,9 @@ class ErrorCalculatorExtendSplit(ErrorCalculator):
 
 
 class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
-    def calc_error(self, f, refineObj, norm):
+    def calc_error(self, f, refine_object, norm):
         # pagoda-volume
-        volume = refineObj.volume
+        volume = refine_object.volume
         return LA.norm(abs(volume), norm)
 
 

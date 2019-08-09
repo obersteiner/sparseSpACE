@@ -203,6 +203,9 @@ class MetaRefinementContainer(object):
                 max_benefit = benefit
         return max_benefit
 
+    def get_object(self, object_position: Tuple[int, int]) -> RefinementObject:
+        return self.refinementContainers[object_position[0]].get_object(object_position[1])
+
     # return the maximal error among all RefinementContainers
     def get_total_error(self) -> float:
         total_error = 0.0
@@ -224,6 +227,7 @@ class MetaRefinementContainer(object):
 
     # delegate to containers
     def reinit_new_objects(self) -> None:
+        self.curContainer = 0
         for c in self.refinementContainers:
             c.reinit_new_objects()
 
@@ -239,12 +243,13 @@ class MetaRefinementContainer(object):
 
     def get_next_object_for_refinement(self, tolerance: float) -> Tuple[bool, Tuple[int, int], RefinementObject]:
         foundObj = False
+        if self.curContainer == len(self.refinementContainers):
+            return False, None, None
         while foundObj == False:
             result, index, obj = self.refinementContainers[self.curContainer].get_next_object_for_refinement(tolerance)
             if (result == False):
                 self.curContainer += 1
                 if (self.curContainer == len(self.refinementContainers)):
-                    self.curContainer = 0
                     return False, None, None
                 # check current obj
             else:

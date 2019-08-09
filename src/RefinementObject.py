@@ -435,12 +435,12 @@ class RefinementObjectSingleDimension(RefinementObject):
 
         lmax_increase = None
         update = None
-        coarsening_value = 0
+        #coarsening_value = 0
         # if we are already at maximum refinement coarsening_value stays at 0
-        #if self.coarsening_level == 0:
-        #    coarsening_value = 0
-        #else:  # otherwise decrease coarsening level
-        #    coarsening_value = self.coarsening_level - 1
+        if self.coarsening_level == 0:
+            coarsening_value = 0
+        else:  # otherwise decrease coarsening level
+            coarsening_value = self.coarsening_level - 1
         # in case we have refined complete scheme (i.e. coarensingLevel was 0) we have to increase level everywhere else
         #if (self.coarsening_level == 0):  # extend scheme if we are at maximum refinement
         #    # increase lmax by 1
