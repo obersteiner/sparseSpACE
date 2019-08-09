@@ -55,6 +55,5 @@ class TestBasisFunctions(unittest.TestCase):
                         self.assertEqual(basis(points2[j]), 0.0)
 
 
-
 if __name__ == '__main__':
     unittest.main()
