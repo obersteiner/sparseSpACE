@@ -63,7 +63,7 @@ class Function(object):
         pass
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, points_per_dim: int=10 ** 2) -> None:
+    def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, points_per_dim: int=10 ** 2, plotdimensions: Sequence[int]=None, consistent_axes: bool=False, show_plot: bool=True) -> None:
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
@@ -73,24 +73,44 @@ class Function(object):
         X = [x for x in xArray]
         Y = [y for y in yArray]
         X, Y = np.meshgrid(X, Y)
-        Z = np.zeros(np.shape(X))
+        evals = np.zeros(np.shape(X) + (self.output_length(),))
         for i in range(len(X)):
             for j in range(len(X[i])):
-                # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
-                Z[i, j] = self.__call__((X[i, j], Y[i, j]))[plotdimension]
-        # Z=self.eval((X,Y))
-        # print Z
-        fig = plt.figure(figsize=(14, 6))
+                evals[i, j] = self.__call__((X[i, j], Y[i, j]))
+        if plotdimensions is None:
+            plotdimensions = [plotdimension]
+        single_dim = len(plotdimensions) == 1
+        if consistent_axes:
+            assert not single_dim
+            # Find the minimum and maximum output value to be able to set a
+            # consistent z axis
+            minz = evals[0,0,plotdimensions[0]]
+            maxz = minz
+            for output_dim in plotdimensions:
+                minz = min(minz, evals.T[output_dim].min())
+                maxz = max(maxz, evals.T[output_dim].max())
+        for output_dim in plotdimensions:
+            Z = np.zeros(np.shape(X))
+            for i in range(len(X)):
+                for j in range(len(X[i])):
+                    Z[i, j] = self.__call__((X[i, j], Y[i, j]))[output_dim]
+            # ~ fig = plt.figure(figsize=(14, 6))
+            fig = plt.figure(figsize=(21, 9))
 
-        # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
-        ax = fig.add_subplot(1, 2, 1, projection='3d')
+            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+            ax = fig.add_subplot(1, 2, 1, projection='3d')
+            if consistent_axes:
+                ax.set_zlim(minz, maxz)
 
-        # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False)
-        # plt.show()
-        if filename is not None:
-            fig.savefig(filename, bbox_inches='tight')
-        plt.show()
+            # ~ p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False, vmin=100)
+            if filename is not None:
+                if single_dim:
+                    fig.savefig(filename, bbox_inches='tight')
+                else:
+                    fig.savefig(f"{filename}_{output_dim}", bbox_inches='tight')
+            if show_plot:
+                plt.show()
 
     def output_length(self) -> int:
         return 1
