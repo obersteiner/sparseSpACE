@@ -928,11 +928,11 @@ class GlobalTrapezoidalGrid(GlobalGrid):
                         if not(self.modified_basis and i == 1):
                             weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
 
-        if self.modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+        if self.modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights[1:-1]) <= (
                 b - a) * (1 + 10 ** -12):
             print(grid_1D, weights)
         if self.modified_basis:
-            assert (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+            assert (b - a) * (1 - 10 ** -12) <= sum(weights[1:-1]) <= (
                 b - a) * (1 + 10 ** -12)
         return weights
 
