@@ -25,6 +25,7 @@ from GridOperation import *
 
 # Settings
 timestep_problem = 25
+uniform_distr = False
 
 
 #predator = coyote
@@ -51,15 +52,25 @@ sigma_coyote_Px0 = 5
 poly_deg_max = 1
 
 # Distributions information to be passed to the UncertaintyQuantification Operation
-distris = [
-    ("Normal", voracity, sigma_voracity),
-    # ~ ("Normal", sheeps_Px0, sigma_sheeps_Px0),
-    ("Normal", coyote_Px0, sigma_coyote_Px0)
-]
-dim = len(distris)
-# Normal distribution requires infinite boundaries
-a = np.array([-np.inf for _ in range(dim)])
-b = np.array([np.inf for _ in range(dim)])
+# ~ dim = len(distris)
+dim = 2
+if uniform_distr:
+    distris = [
+        "Uniform", "Uniform"
+    ]
+    # ~ a = np.array([0.000115, 35])
+    # ~ b = np.array([0.000125, 65])
+    a = np.array([0, 0])
+    b = np.array([1, 1])
+else:
+    distris = [
+        ("Normal", voracity, sigma_voracity),
+        # ~ ("Normal", sheeps_Px0, sigma_sheeps_Px0),
+        ("Normal", coyote_Px0, sigma_coyote_Px0)
+    ]
+    # Normal distribution requires infinite boundaries
+    a = np.array([-np.inf for _ in range(dim)])
+    b = np.array([np.inf for _ in range(dim)])
 
 # population model definition: as a initial value problem
 def f(t, pX):
@@ -118,6 +129,10 @@ def get_solver_values(input_values):
     # ~ voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
     voracity_sample, coyote_Px0_sample = input_values
     sheep_Px0_sample = sheeps_Px0
+    if uniform_distr:
+        # Chaospy uniform distribution does not work with small values
+        voracity_sample = 0.000115 + 0.00001 * voracity_sample
+        coyote_Px0_sample = 35 + coyote_Px0_sample * 30
     # y contains the predator solutions and prey solutions for all time values
     y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f).y
     return y[1][timestep_problem]
@@ -132,7 +147,10 @@ op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO")
 
 # ~ i_ref = 256 + timestep_problem
-E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
+if uniform_distr:
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_uniform_solutions.npy")
+else:
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
 assert len(Var_pX_ref) == 256
 assert len(Var_pX_ref[0]) == 2
 E_ref = E_pX_ref[timestep_problem][1]
@@ -151,9 +169,9 @@ def run_test(evals_num, typid, exceed_evals=None):
     typ = types[typid]
     if typ != "Gauss":
         if typ == "adaptiveHO":
-            grid = GlobalHighOrderGridWeighted(a, b, op, boundary=False, modified_basis=False)
+            grid = GlobalHighOrderGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ == "adaptiveTrapez":
-            grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
+            grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=uniform_distr)
         combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
             norm=2, grid=grid)
         f_refinement = op.get_PCE_Function(poly_deg_max)

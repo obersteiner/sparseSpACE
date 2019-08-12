@@ -38,7 +38,7 @@ for i,desc in enumerate(err_descs):
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f'{desc} error')
 	plotter.yscale("log")
-	plotter.legend(loc="lower left")
+	plotter.legend(loc="upper right")
 	plotter.grid(True)
 
 fileName = os.path.splitext(sys.argv[0])[0] + '.pdf'
