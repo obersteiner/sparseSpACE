@@ -85,7 +85,7 @@ class BSpline(BasisFunction):
                 left_border = max(self.knots[i], a)
                 right_border = min(self.knots[i+1], b)
                 coords = np.array(coordsD)
-                coords += np.ones(int((self.p+1)/2))
+                coords += 1
                 coords *= (right_border - left_border) / 2.0
                 coords += left_border
                 weights = np.array(weightsD) * (right_border - left_border) / 2
@@ -98,6 +98,7 @@ class LagrangeBasis(BasisFunction):
     def __init__(self, p: int, index: int, knots: np.array):
         self.p = p
         self.knots = knots
+        #assert p == len(knots) - 1
         self.index = index
         self.factor = 1
         for i, knot in enumerate(self.knots):
@@ -140,7 +141,7 @@ class LagrangeBasis(BasisFunction):
         left_border = a
         right_border = b
         coords = np.array(coordsD)
-        coords += np.ones(int((self.p+1)/2))
+        coords += 1
         coords *= (right_border - left_border) / 2.0
         coords += left_border
         weights = np.array(weightsD) * (right_border - left_border) / 2
@@ -175,7 +176,7 @@ class LagrangeBasisRestricted(LagrangeBasis):
         left_border = self.knots[max(0,self.index - 1)]
         right_border = self.knots[min(self.index + 1, len(self.knots) - 1)]
         coords = np.array(coordsD)
-        coords += np.ones(int((self.p+1)/2))
+        coords += 1
         coords *= (right_border - left_border) / 2.0
         coords += left_border
         weights = np.array(weightsD) * (right_border - left_border) / 2
@@ -258,7 +259,7 @@ class HierarchicalNotAKnotBSpline(BasisFunction):
                 left_border = max(self.knots[i], a)
                 right_border = min(self.knots[i+1], b)
                 coords = np.array(coordsD)
-                coords += np.ones(int((self.p+1)/2))
+                coords += 1
                 coords *= (right_border - left_border) / 2.0
                 coords += left_border
                 weights = np.array(weightsD) * (right_border - left_border) / 2
@@ -334,7 +335,7 @@ class HierarchicalNotAKnotBSplineModified(BasisFunction):
                 left_border = max(self.knots[i], a)
                 right_border = min(self.knots[i+1], b)
                 coords = np.array(coordsD)
-                coords += np.ones(int((self.p+1)/2))
+                coords += 1
                 coords *= (right_border - left_border) / 2.0
                 coords += left_border
                 weights = np.array(weightsD) * (right_border - left_border) / 2

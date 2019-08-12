@@ -286,7 +286,7 @@ class LagrangeGrid1D(Grid1d):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p  # spline order
         assert p % 2 == 1
-        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p + 1) / 2))
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p / 2) + 1)
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
@@ -420,7 +420,7 @@ class BSplineGrid1D(Grid1d):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p #spline order
         assert p % 2 == 1
-        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
 
@@ -929,15 +929,15 @@ class GlobalTrapezoidalGrid(GlobalGrid):
                     else:
                         if not(modified_basis and i == 1):
                             weights[i] += 0.5*(grid_1D[i + 1] - grid_1D[i])
-                if modified_basis:
-                    weights[0] = 0.0
-                    weights[-1] = 0.0
+            if modified_basis:
+                weights[0] = 0.0
+                weights[-1] = 0.0
 
-        if modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+        if modified_basis and not (b - a) * (1 - 10 ** -12) <= sum(weights[1:-1]) <= (
                 b - a) * (1 + 10 ** -12):
-            print(grid_1D, weights, sum(weights))
+            print(grid_1D, weights)
         if modified_basis:
-            assert (b - a) * (1 - 10 ** -12) <= sum(weights) <= (
+            assert (b - a) * (1 - 10 ** -12) <= sum(weights[1:-1]) <= (
                 b - a) * (1 + 10 ** -12)
         return weights
 
@@ -1130,7 +1130,7 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         self.modified_basis = modified_basis
         assert p % 2 == 1
         self.p = p
-        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
 
@@ -1223,7 +1223,7 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
         self.modified_basis = modified_basis
         assert p >= 1
         self.p = p
-        self.coords_gauss, self.weights_gauss = legendre.leggauss(int((self.p+1)/2))
+        self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
 

@@ -6,7 +6,9 @@ from RefinementObject import *
 from RefinementContainer import *
 from combiScheme import *
 from ErrorCalculator import *
-class TestRefinementObject(unittest.TestCase):
+
+
+class TestRefinementContainer(unittest.TestCase):
 
     def test_error_setting(self):
         # initialize container
