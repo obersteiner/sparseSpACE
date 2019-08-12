@@ -28,7 +28,7 @@ from GridOperation import *
 silent_mode = False
 do_HighOrder = False
 # ~ do_HighOrder = True
-lmax = 4
+lmax = 3
 if "max_evals" in os.environ:
     max_evals = int(os.environ["max_evals"])
 else:
@@ -161,16 +161,21 @@ else:
     grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
     norm=2, grid=grid)
+# ~ combiinstance = StandardCombi(a, b, operation=op, grid=grid)
 tol = 0
-f_pce = op.get_PCE_Function(poly_deg_max)
-combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
-    max_evaluations=max_evals, print_output=not silent_mode)
+f_refinement = op.get_PCE_Function(poly_deg_max)
+# ~ f_refinement = ConstantValue(1.0)
+combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement, error_operator, tol=tol,
+    max_evaluations=max_evals, print_output=not silent_mode, do_plot=False)
+# ~ op.grid=grid
+# ~ combiinstance.perform_combi(1, lmax, f_refinement)
 if False:
     f_exvar = op.get_expectation_variance_Function()
     combiinstance.performSpatiallyAdaptiv(1, 2, f_exvar, error_operator, tol=tol,
         max_evaluations=max_evals)
 
 # Calculate the gPCE using the nodes and weights from the refinement
+# ~ op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
 op.calculate_PCE(poly_deg_max, combiinstance)
 if not silent_mode:
     print("simulation time: " + str(time.time() - measure_start) + " s")

@@ -148,9 +148,9 @@ if use_proxy:
 # Create the Operation
 op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Trapez")
 
-def run_test(evals_num, typid, exceed_evals=None):
+def run_test(testi, typid, exceed_evals=None):
     if use_proxy:
         proxy_function_wrapped = FunctionCustom(lambda x: proxy_function(x))
     problem_function_wrapped = FunctionCustom(lambda x: problem_function(x))
@@ -160,7 +160,7 @@ def run_test(evals_num, typid, exceed_evals=None):
     if typ != "Gauss":
         if typ == "adaptiveHO":
             grid = GlobalHighOrderGridWeighted(a, b, op, boundary=False, modified_basis=False)
-        elif typ == "adaptiveTrapez":
+        elif typ in ("adaptiveTrapez", "Trapez"):
             grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
         combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
             norm=2, grid=grid)
@@ -175,10 +175,12 @@ def run_test(evals_num, typid, exceed_evals=None):
             f_refinement = op.get_expectation_variance_Function()
 
         lmax = 3
-        if exceed_evals is None:
+        if typ == "Trapez":
+            lmax = testi + 2
+        if exceed_evals is None or typ == "Trapez":
             combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
                 error_operator, tol=0,
-                max_evaluations=evals_num,
+                max_evaluations=1,
                 print_output=False)
         else:
             combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
@@ -190,7 +192,7 @@ def run_test(evals_num, typid, exceed_evals=None):
         op.f = problem_function_wrapped
         op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
     else:
-        op.calculate_PCE_chaospy(poly_deg_max, evals_num)
+        op.calculate_PCE_chaospy(poly_deg_max, testi+1)
 
     ##extract the statistics
     # expectation value
@@ -256,21 +258,21 @@ def run_test(evals_num, typid, exceed_evals=None):
     return num_evals
 
 
-evals_end = 1280
+evals_end = 200
 
 for typid,typ in enumerate(types):
-    if typid == 0:
-        continue
     print("Calculations for", typ)
-    evals_num = run_test(1, typid)
+    testi = 0
+    evals_num = run_test(testi, typid)
     while evals_num < evals_end:
-        print("last evals:", evals_num)
-        evals_num = run_test(None, typid, exceed_evals=evals_num)
+        testi = testi+1
+        print(f"last evals: {evals_num}, testi {testi}")
+        evals_num = run_test(testi, typid, exceed_evals=evals_num)
 
-print("Calculating convent. errors")
-for i in range(1, math.ceil(evals_end ** (1/dim))):
-    print("order: ", i)
-    # Gauss
-    run_test(i, 0)
+# ~ print("Calculating convent. errors")
+# ~ for i in range(1, math.ceil(evals_end ** (1/dim))):
+    # ~ print("order: ", i)
+    # ~ # Gauss
+    # ~ run_test(i, 0)
 
 
