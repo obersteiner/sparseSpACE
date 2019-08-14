@@ -32,7 +32,7 @@ lmax = 4
 if "max_evals" in os.environ:
     max_evals = int(os.environ["max_evals"])
 else:
-    max_evals = 200
+    max_evals = 380
 # Use reference values to calculate errors
 calculate_errors = True
 # ~ calculate_errors = False
@@ -65,7 +65,7 @@ poly_deg_max = 1
 # Distributions information to be passed to the UncertaintyQuantification Operation
 distris = [
     ("Normal", voracity, sigma_voracity),
-    ("Normal", sheeps_Px0, sigma_sheeps_Px0),
+    # ~ ("Normal", sheeps_Px0, sigma_sheeps_Px0),
     ("Normal", coyote_Px0, sigma_coyote_Px0)
 ]
 dim = len(distris)
@@ -132,13 +132,13 @@ print("Generating quadrature nodes and weights")
 
 # Create a Function that can be used for refining
 def get_solver_values(input_values):
-    voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
-    # ~ voracity_sample, coyote_Px0_sample = input_values
-    # ~ sheep_Px0_sample = sheeps_Px0
+    # ~ voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    voracity_sample, coyote_Px0_sample = input_values
+    sheep_Px0_sample = sheeps_Px0
     # y contains the predator solutions and prey solutions for all time values
     y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f).y
     return np.concatenate(y)
-problem_function = FunctionCustom(get_solver_values)
+problem_function = FunctionCustom(get_solver_values, output_dim=2*len(time_points))
 
 # This function is later required to bring calculated values into the right shape
 def reshape_result_values(vals):
@@ -196,7 +196,8 @@ Var = reshape_result_values(op.get_variance_PCE())
 
 
 if calculate_errors:
-    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
+    # ~ E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
     E_predator, E_prey = E_pX.T
     P10_predator, P10_prey = P10_pX.T
     P90_predator, P90_prey = P90_pX.T
@@ -250,7 +251,7 @@ figure.canvas.set_window_title('Stochastic Collocation: Coyote, Sheep (Predator,
 
 #sheep expectation value
 plotter.subplot(421)
-plotter.title('Sheep (E_pX)')
+plotter.title('Sheep Expectation')
 plotter.plot(time_points, E_pX.T[1], label='E Sheep')
 plotter.fill_between(time_points, P10_pX.T[1], P90_pX.T[1], facecolor='#5dcec6')
 plotter.plot(time_points, P10_pX.T[1], label='P10')
@@ -263,7 +264,7 @@ plotter.grid(True)
 
 #coyote expectation value
 plotter.subplot(423)
-plotter.title('Coyote (E_pX)')
+plotter.title('Coyote Expectation')
 plotter.plot(time_points, E_pX.T[0], label='E Coyote')
 plotter.fill_between(time_points, P10_pX.T[0], P90_pX.T[0], facecolor='#5dcec6')
 plotter.plot(time_points, P10_pX.T[0], label='P10')
@@ -276,7 +277,7 @@ plotter.grid(True)
 
 #sheep variance
 plotter.subplot(422)
-plotter.title('Sheep (Var)')
+plotter.title('Sheep Variance')
 plotter.plot(time_points, Var.T[1], label="Sheep")
 plotter.xlabel('time (t) - years')
 plotter.ylabel('variance')
@@ -286,7 +287,7 @@ plotter.grid(True)
 
 #coyote variance
 plotter.subplot(424)
-plotter.title('Coyote (Var)')
+plotter.title('Coyote Variance')
 plotter.plot(time_points, Var.T[0], label="Coyote")
 plotter.xlabel('time (t) - years')
 plotter.ylabel('variance')
@@ -306,7 +307,8 @@ if calculate_errors:
         plotter.grid(True)
 
     plot_error(425, [("Sheep E_pX relative", error_E_predator), ("Coyote E_pX relative", error_E_prey)])
-    plot_error(426, [("Sheep Var", error_Var_prey), ("Coyote Var", error_Var_predator)])
+    # ~ plot_error(426, [("Sheep Var", error_Var_prey), ("Coyote Var", error_Var_predator)])
+    plot_error(426, [("Sheep Var", error_Var_prey)])
     plot_error(427, [("Sheep P10", error_P10_prey), ("Sheep P90", error_P90_prey)])
     plot_error(428, [("Coyote P10", error_P10_predator), ("Coyote P90", error_P90_predator)])
     # ~ plot_error(427, [("Sheep P10", error_P10_prey), ("Coyote P10", error_P10_predator)])

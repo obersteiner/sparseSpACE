@@ -16,7 +16,9 @@ for v in solutions_data:
 	typid = int(typid)
 	if typid < 0 or typid >= len(typ_descs):
 		continue
-	# ~ if num_evals > 1500: continue
+	if num_evals > 900:
+		# Gauss reference
+		continue
 	datas[typid].append((num_evals, *mean_errs))
 
 for typid in range(len(typ_descs)):

@@ -8,18 +8,22 @@ results_path = tmpdir + "/uqtestSD.npy"
 assert os.path.isfile(results_path)
 solutions_data = list(np.load(results_path, allow_pickle=True))
 
-typ_descs = ("full grid Gauß", "Trapez", "HighOrder")
+typ_descs = ("full grid Gauß", "Trapez", "HighOrder", "full grid Fejer")
+# ~ typ_descs = ("full grid Gauß", "Trapez", "HighOrder")
 
 datas = [[] for _ in typ_descs]
 for v in solutions_data:
-	(num_evals, step, typid, errs) = v
+	(num_evals, timestep, typid, errs) = v
 	typid = int(typid)
 	if typid < 0 or typid >= len(typ_descs):
 		continue
-	if num_evals == 961:
+	# ~ if num_evals == 961:
 		# Gauss reference solution
+		# ~ continue
+	if num_evals < 17:
+		# min evals with lmax=3
 		continue
-	if step != 25:
+	if timestep != 25:
 		continue
 	datas[typid].append((num_evals, *errs))
 
@@ -32,7 +36,9 @@ figure = plotter.figure(1, figsize=(13,10))
 figure.canvas.set_window_title('Stocha')
 
 for i,desc in enumerate(err_descs):
-	plotter.subplot(4, 2, 1 + i)
+	if not i & 1:
+		continue
+	plotter.subplot(4, 1, 1 + (i-1)//2)
 	for typid, typdesc in enumerate(typ_descs):
 		plotter.plot(datas[typid][0], datas[typid][i + 1], ".-", label=typdesc)
 	plotter.xlabel('function evaluations')

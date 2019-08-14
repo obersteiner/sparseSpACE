@@ -53,7 +53,7 @@ poly_deg_max = 1
 # Distributions information to be passed to the UncertaintyQuantification Operation
 distris = [
     ("Normal", voracity, sigma_voracity),
-    ("Normal", sheeps_Px0, sigma_sheeps_Px0),
+    # ~ ("Normal", sheeps_Px0, sigma_sheeps_Px0),
     ("Normal", coyote_Px0, sigma_coyote_Px0)
 ]
 dim = len(distris)
@@ -119,7 +119,9 @@ measure_start = time.time()
 print("Generating quadrature nodes and weights")
 
 def get_solver_values(input_values):
-    voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    # ~ voracity_sample, sheep_Px0_sample, coyote_Px0_sample = input_values
+    voracity_sample, coyote_Px0_sample = input_values
+    sheep_Px0_sample = sheeps_Px0
     # y contains the predator solutions and prey solutions for all time values
     y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points).y
     return np.concatenate(y)
@@ -199,7 +201,8 @@ def run_test(evals_num, typid, exceed_evals=None):
     # variance
     Var = reshape_result_values(op.get_variance_PCE())
 
-    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
+    # ~ E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_solutions.npy")
+    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
     E_predator, E_prey = E_pX.T
     P10_predator, P10_prey = P10_pX.T
     P90_predator, P90_prey = P90_pX.T

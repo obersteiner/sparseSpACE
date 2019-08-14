@@ -142,14 +142,18 @@ error_operator = ErrorCalculatorSingleDimVolumeGuided()
 op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 # ~ op = UncertaintyQuantification(problem_function, distris, a, b, dim=dim)
 # ~ pa, pb = op.get_boundaries(0.01)
-# ~ problem_function.plot(pa, pb, points_per_dim=5)
+# ~ problem_function.plot(pa, pb, points_per_dim=5, filename="25.pdf")
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer")
+typids = dict()
+for i,v in enumerate(types):
+    typids[v] = i
 
 # ~ i_ref = 256 + timestep_problem
 if uniform_distr:
     E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_uniform_solutions.npy")
 else:
+    # ~ E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("halton_2D_solutions.npy")
     E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
 assert len(Var_pX_ref) == 256
 assert len(Var_pX_ref[0]) == 2
@@ -167,7 +171,7 @@ def run_test(evals_num, typid, exceed_evals=None):
 
     measure_start = time.time()
     typ = types[typid]
-    if typ != "Gauss":
+    if typ != "Gauss" and typ != "Fejer":
         if typ == "adaptiveHO":
             grid = GlobalHighOrderGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ == "adaptiveTrapez":
@@ -192,8 +196,15 @@ def run_test(evals_num, typid, exceed_evals=None):
         # Calculate the gPCE using the nodes and weights from the refinement
         op.calculate_PCE(None, combiinstance)
     else:
-        # Gauss
-        op.calculate_PCE_chaospy(poly_deg_max, evals_num)
+        polys, polys_norms = cp.orth_ttr(poly_deg_max, op.distributions_joint, retall=True)
+        if typ == "Gauss":
+            nodes, weights = cp.generate_quadrature(evals_num,
+                op.distributions_joint, rule="G")
+        elif typ == "Fejer":
+            nodes, weights = cp.generate_quadrature(evals_num,
+                op.distributions_joint, rule="F", normalize=True)
+        f_evals = [problem_function_wrapped(c) for c in zip(*nodes)]
+        op.gPCE = cp.fit_quadrature(polys, nodes, weights, np.asarray(f_evals), norms=polys_norms)
 
     print("simulation time: " + str(time.time() - measure_start) + " s")
 
@@ -241,10 +252,11 @@ def run_test(evals_num, typid, exceed_evals=None):
     return num_evals
 
 
-evals_end = 900
+# ~ evals_end = 900
+evals_end = 400
 
 for typid,typ in enumerate(types):
-    if typid == 0:
+    if typ == "Gauss" or typ == "Fejer":
         continue
     print("Calculations for", typ)
     evals_num = run_test(1, typid)
@@ -252,10 +264,10 @@ for typid,typ in enumerate(types):
         print("last evals:", evals_num)
         evals_num = run_test(None, typid, exceed_evals=evals_num)
 
-print("Calculating convent. errors")
+print("Calculating full grid errors")
 for i in range(1, math.ceil(evals_end ** (1/dim))):
     print("order: ", i)
-    # Gauss
-    run_test(i, 0)
+    run_test(i, typids["Gauss"])
+    run_test(i, typids["Fejer"])
 
 
