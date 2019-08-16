@@ -1025,30 +1025,33 @@ class UncertaintyQuantification(Integration):
         self.pce_polys = cp.Poly(polys_filtered)
         self.pce_polys_norms = norms_filtered
 
-    def _set_nodes_weights_evals(self, combiinstance):
+    def _scale_values(self, values):
+        assert self.all_uniform, "Division by the domain volume should be used for uniform distributions only"
+        div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
+        return values * div
+
+    def _set_nodes_weights_evals(self, combiinstance, scale_weights=False):
         self.nodes, self.weights = combiinstance.get_points_and_weights()
         assert len(self.nodes) == len(self.weights)
-        if combiinstance.has_basis_grid():
-            assert self.all_uniform, "Basis grids currently work only for uniform distributions"
-            div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
-            self.weights = self.weights * div
+        if scale_weights:
+            assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
+            self.weights = self._scale_values(self.weights)
             # ~ self.f_evals = combiinstance.get_surplusses()
             # Surpluses are required here..
             self.f_evals = [self.f(coord) for coord in self.nodes]
         else:
             self.f_evals = [self.f(coord) for coord in self.nodes]
 
-    def _get_combiintegral(self, combiinstance):
+    def _get_combiintegral(self, combiinstance, scale_weights=False):
         integral = combiinstance.get_calculated_solution()
-        if combiinstance.has_basis_grid():
-            assert self.all_uniform, "Basis grids currently work only for uniform distributions"
-            div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
-            integral = integral * div
+        if scale_weights:
+            assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
+            return self._scale_values(integral)
         return integral
 
-    def calculate_moment(self, combiinstance, k=None, use_combiinstance_solution=True):
+    def calculate_moment(self, combiinstance, k=None, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
-            mom = self._get_combiintegral(combiinstance)
+            mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
             assert len(mom) == self.f.output_length()
             return mom
         self._set_nodes_weights_evals(combiinstance)
@@ -1058,9 +1061,9 @@ class UncertaintyQuantification(Integration):
     def calculate_expectation(self, combiinstance, use_combiinstance_solution=True):
         return self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=use_combiinstance_solution)
 
-    def calculate_expectation_and_variance(self, combiinstance, use_combiinstance_solution=True):
+    def calculate_expectation_and_variance(self, combiinstance, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
-            integral = self._get_combiintegral(combiinstance)
+            integral = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
             output_dim = len(integral) // 2
             expectation = integral[:output_dim]
             expectation_of_squared = integral[output_dim:]
@@ -1075,11 +1078,11 @@ class UncertaintyQuantification(Integration):
                 variance[i] = -v
         return expectation, variance
 
-    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True):
+    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             assert self.pce_polys is not None
             assert not restrict_degrees
-            integral = self._get_combiintegral(combiinstance)
+            integral = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
             num_polys = len(self.pce_polys)
             output_dim = len(integral) // num_polys
             coefficients = integral.reshape((num_polys, output_dim))
@@ -1138,11 +1141,7 @@ class UncertaintyQuantification(Integration):
         f_evals = [self.f(c) for c in zip(*nodes)]
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
-    def get_pdf_Function(self):
-        pdf = self.distributions_joint.pdf
-        return FunctionCustom(lambda coords: float(pdf(coords)))
-
-    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
     def get_moment_Function(self, k):
         if k == 1:
@@ -1156,7 +1155,7 @@ class UncertaintyQuantification(Integration):
     def get_expectation_variance_Function(self):
         return self.get_moments_Function([1, 2])
 
-    # Returns a function which can be passed to performSpatiallyAdaptiv
+    # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
     def get_PCE_Function(self, polynomial_degrees):
         self._set_pce_polys(polynomial_degrees)
@@ -1166,6 +1165,15 @@ class UncertaintyQuantification(Integration):
         # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
         # ~ return FunctionCustom(funcs)
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
+
+    def get_pdf_Function(self):
+        pdf = self.distributions_joint.pdf
+        return FunctionCustom(lambda coords: float(pdf(coords)))
+
+    # Returns a Function which applies the PPF functions before evaluating
+    # the problem function; it can be integrated without weighting
+    def get_inverse_transform_Function(self, func=None):
+        return FunctionInverseTransform(func or self.f, self.distributions)
 
 
 from scipy import integrate

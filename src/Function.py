@@ -443,6 +443,23 @@ class FunctionPolysPCE(Function):
     def output_length(self): return self.output_dimension
 
 
+class FunctionInverseTransform(Function):
+    def __init__(self, function, distributions):
+        super().__init__()
+        self.function = function
+        self.ppfs = [dist.ppf for dist in distributions]
+
+    def eval(self, coords_transformed):
+        assert all([0 <= v <= 1 for v in coords_transformed]), "PPF functions require the points to be in [0,1]"
+        coordinates = [ppf(coords_transformed[d]) for d,ppf in enumerate(self.ppfs)]
+        assert not any([math.isinf(v) for v in coordinates]), "infinite coordinates, maybe boundary needs to be set to true in a Grid"
+        return self.function(coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
+
+    def output_length(self): return self.function.output_length()
+
+
 class FunctionCustom(Function):
     def __init__(self, func, output_dim=None):
         super().__init__()
