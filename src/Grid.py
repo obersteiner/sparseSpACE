@@ -1490,7 +1490,7 @@ class GlobalHighOrderGrid(GlobalGrid):
             return self.get_1D_weights_and_order(grid_1D, a, b)
 
     def get_composite_quad_weights(self, grid_1D, a, b):
-        return super().compute_1D_quad_weights(grid_1D, a, b)
+        return GlobalTrapezoidalGrid.compute_weights(grid_1D, a, b, self.modified_basis)
 
     def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
         #if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
@@ -1501,9 +1501,9 @@ class GlobalHighOrderGrid(GlobalGrid):
         weights_1D_old = np.zeros(len(grid_1D))
         grid_1D_normalized = 2 * (np.array(grid_1D) - a) / (b - a) - 1
         if self.boundary:
-            trapezoidal_weights = super().compute_1D_quad_weights(grid_1D_normalized, a, b)
+            trapezoidal_weights = self.get_composite_quad_weights(grid_1D_normalized, a, b)
         else:
-            trapezoidal_weights = np.array(super().compute_1D_quad_weights(grid_1D, a, b)[1:-1])
+            trapezoidal_weights = np.array(self.get_composite_quad_weights(grid_1D, a, b)[1:-1])
             trapezoidal_weights = trapezoidal_weights * 2 / sum(trapezoidal_weights)
             grid_1D_normalized = grid_1D_normalized[1:-1]
             #print(grid_1D, trapezoidal_weights, grid_1D_normalized)
