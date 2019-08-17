@@ -40,7 +40,7 @@ class StandardCombi(object):
         grid_points = list(get_cross_product(grid_coordinates))
         return self.interpolate_points(grid_points, component_grid)
 
-    def plot(self) -> None:
+    def plot(self, plotdimension: int=0) -> None:
         if self.dim != 2:
             print("Can only plot 2D results")
             return
@@ -59,7 +59,7 @@ class StandardCombi(object):
         for i in range(len(X)):
             for j in range(len(X[i])):
                 # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
-                Z[i, j] = f_values[j + i * len(X)]
+                Z[i, j] = f_values[j + i * len(X)][plotdimension]
         # Z=self.eval((X,Y))
         # print Z
         fig = plt.figure(figsize=(14, 6))
