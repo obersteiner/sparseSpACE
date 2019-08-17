@@ -172,18 +172,26 @@ def run_test(testi, typid, exceed_evals=None):
 
     measure_start = time.time()
     typ = types[typid]
-    if typ != "Gauss" and typ != "Fejer":
+    if typ not in ("Gauss", "Fejer"):
+        do_inverse_transform = typ in ("adaptiveTransBSpline", "adaptiveTransTrapez", "adaptiveTransHO")
+        if do_inverse_transform:
+            a_trans, b_trans = np.zeros(dim), np.ones(dim)
+
         if typ == "adaptiveHO":
             grid = GlobalHighOrderGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ in ("adaptiveTrapez", "Trapez"):
             grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ == "adaptiveTransBSpline":
-            a_trans, b_trans = np.zeros(dim), np.ones(dim)
             grid = GlobalBSplineGrid(a_trans, b_trans, boundary=uniform_distr)
+        elif typ == "adaptiveTransTrapez":
+            grid = GlobalTrapezoidalGrid(a_trans, b_trans, boundary=uniform_distr)
+        elif typ == "adaptiveTransHO":
+            grid = GlobalHighOrderGrid(a_trans, b_trans, boundary=uniform_distr, split_up=False)
 
-        if typ == "adaptiveTransBSpline":
+        if do_inverse_transform:
             # Use Integration operation
             f_refinement = op.get_inverse_transform_Function(op.get_PCE_Function(poly_deg_max))
+            # ~ f_refinement.plot(np.array([0.001]*2), np.array([0.999]*2), filename="trans.pdf")
             op_integration = Integration(f_refinement, grid, dim)
             combiinstance = SpatiallyAdaptiveSingleDimensions2(a_trans, b_trans, operation=op_integration,
                 norm=2, grid=grid)
@@ -207,6 +215,7 @@ def run_test(testi, typid, exceed_evals=None):
                 max_evaluations=np.inf, min_evaluations=exceed_evals+1,
                 print_output=verbose)
 
+        # ~ combiinstance.plot()
         # Calculate the gPCE using the nodes and weights from the refinement
         op.calculate_PCE(None, combiinstance)
     else:
@@ -270,7 +279,9 @@ def run_test(testi, typid, exceed_evals=None):
 evals_end = 400
 
 # For testing
-skip_types = ("adaptiveHO", "Fejer")
+# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveTrapez", "Gauss", "adaptiveHO")
+skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveTrapez")
+assert all([typ in types for typ in skip_types])
 
 for typid,typ in enumerate(types):
     print("")

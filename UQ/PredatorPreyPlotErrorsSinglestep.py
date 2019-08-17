@@ -8,8 +8,6 @@ results_path = tmpdir + "/uqtestSD.npy"
 assert os.path.isfile(results_path)
 solutions_data = list(np.load(results_path, allow_pickle=True))
 
-# ~ typ_descs = ("full grid Gauß", "Trapez", "HighOrder", "full grid Fejer", "nonadapt Trapez")
-# ~ typ_descs = ("full grid Gauß", "Trapez", "HighOrder")
 typ_descs = ("full grid Gauß", "Trapez", "HighOrder", "full grid Fejer", "trans BSpline")
 
 datas = [[] for _ in typ_descs]
