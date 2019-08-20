@@ -148,7 +148,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             indices_level.append(indices_levelDim)
         return indicesList, indices_level, children_indices
 
-    # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure
+    # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure level 1 is never considered to be a child
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
         return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
         #return True
@@ -276,6 +276,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def initialize_refinement(self):
         initial_points = []
         maxv = self.lmax[0]
+        assert maxv > 1
         assert all([l == maxv for l in self.lmax])
         num_points = 2 ** maxv + 1
         levels = [0 for _ in range(num_points)]
@@ -303,6 +304,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def get_areas(self):
         if (self.grid.is_global() == True):
             return [self.refinement]
+        assert False
         # get a list of lists which contains range(refinements[d]) for each dimension d where the refinements[d] are the number of subintervals in this dimension
         indices = [list(range(len(refineDim))) for refineDim in self.refinement.get_new_objects()]
         # this command creates tuples of size this_dim of all combinations of indices (e.g. this_dim = 2 indices = ([0,1],[0,1,2,3]) -> areas = [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3)] )
