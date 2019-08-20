@@ -50,6 +50,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         return combiintegral, num_evaluations
 
     def init_adaptive_combi(self, f: Callable[[Tuple[float, ...]], Sequence[float]], minv: int, maxv: int, refinement_container: RefinementContainer, tol: float) -> None:
+        assert np.isscalar(minv)
+        assert np.isscalar(maxv)
         self.tolerance = tol
         self.f = f
         if self.realIntegral is not None:
