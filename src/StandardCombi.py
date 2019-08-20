@@ -157,7 +157,7 @@ class StandardCombi(object):
 
     # prints every single component grid of the combination and orders them according to levels
     def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20):
-        fontsize = 60
+        fontsize = 22
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
@@ -209,6 +209,8 @@ class StandardCombi(object):
                 y_array_not_null = [[p[1] for p in points_not_null]]
                 grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), (component_grid.levelvector[0] - lmin[0])]
                 grid.axis('on')
+                for axdir in ("x", "y"):
+                    grid.tick_params(axis=axdir, labelcolor='#345040')
                 grid.xaxis.set_ticks_position('none')
                 grid.yaxis.set_ticks_position('none')
                 if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
@@ -294,6 +296,8 @@ class StandardCombi(object):
             if dim == 3:
                 zArray = [p[2] for p in points]
                 plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
+            for axdir in ("x", "y"):
+                ax.tick_params(axis=axdir, labelcolor='#345040')
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)

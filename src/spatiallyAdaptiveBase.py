@@ -207,7 +207,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 print("Combi Scheme:")
                 self.print_resulting_combi_scheme(markersize=5)
                 print("Resulting Sparse Grid:")
-                self.print_resulting_sparsegrid(markersize=3)
+                self.print_resulting_sparsegrid(markersize=10)
         # finished adaptive algorithm
         if self.print_output:
             print("Number of refinements", self.refinements)
