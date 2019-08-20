@@ -2,7 +2,7 @@ from math import log2
 import scipy.integrate as integrate
 import numpy as np
 import abc
-from math import isclose
+from math import isclose, isinf
 from math import log2
 
 
@@ -102,6 +102,7 @@ class LagrangeBasis(BasisFunction):
         self.index = index
         self.factor = 1
         for i, knot in enumerate(self.knots):
+            assert not isinf(self.knots[i])
             if self.index != i:
                 self.factor *= 1 / (self.knots[self.index] - self.knots[i])
         #assert(index <= len(knots) - p - 2)
