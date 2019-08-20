@@ -1298,7 +1298,7 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
         self.modified_basis = modified_basis
         assert p >= 1
         self.p = p
-        self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
+        self.coords_gauss = None
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
 
@@ -1318,7 +1318,7 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
         starting_level = 0 if self.boundary else 1
         parents = {}
         for l in range(starting_level, max_level + 1):
-            h = (self.end - self.start) / 2 ** l
+            #h = (self.end - self.start) / 2 ** l
             # calculate knots for spline construction
             #print(knots, "level", l, "dimension", d)
             #iterate over levels and add hierarchical B-Splines
@@ -1342,6 +1342,9 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
                     parent = self.get_parent(x_basis, grid_1D, grid_levels_1D)
                     knots = list(sorted(parents[parent] + [x_basis]))
                 parents[x_basis] = knots
+                if isinf(knots[0]):
+                    assert isinf(knots[-1]) and not self.boundary
+                    knots = knots[1:-1]
                 if len(knots) > self.p + 1:
                     index_x = knots.index(x_basis)
                     left = index_x
@@ -1361,12 +1364,17 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
                     spline = LagrangeBasisRestricted(self.p, knots.index(x_basis), knots)
                 index = grid_1D.index(x_basis)
                 self.basis[d][index] = spline
-                weights[index] = spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+                weights[index] = self._get_spline_integral(spline, d)
         if not self.boundary:
             self.basis[d] = self.basis[d][1:-1]
         for basis in self.basis[d]:
             assert basis is not None
         return weights
+
+    def _get_spline_integral(self, spline, d=None):
+        if self.coords_gauss is None:
+            self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
+        return spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
 
     def get_parent(self, point_position: float, grid_1D: Sequence[float], grid_levels: Sequence[int]) -> float:
         index_p = grid_1D.index(point_position)
@@ -1383,6 +1391,31 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
             elif grid_levels[i] < level_p - 1:
                 break
         assert False
+
+
+class GlobalLagrangeGridWeighted(GlobalLagrangeGrid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], uq_operation, boundary: bool=True, modified_basis: bool=False, p: int=3):
+        super().__init__(a, b, boundary=boundary, modified_basis=modified_basis, p=p)
+        self.distributions = uq_operation.get_distributions()
+        self.distributions_cp = uq_operation.get_distributions_chaospy()
+
+    def _get_spline_integral(self, spline, d: int):
+        if self.coords_gauss is None:
+            self.coords_gauss = []
+            self.weights_gauss = []
+            for d_cur in range(self.dim):
+                cp_distr = self.distributions_cp[d_cur]
+                distr = self.distributions[d_cur]
+                coords, weights = distr.get_quad_points_weights(max(int(self.p/2) + 1, 5), self.a[d_cur], self.b[d_cur], cp_distr)
+                self.coords_gauss.append(coords)
+                self.weights_gauss.append(weights)
+        weights = self.weights_gauss[d]
+        coords = self.coords_gauss[d]
+        return sum([spline(p) * weights[i] for i,p in enumerate(coords)])
+
+    def get_mid_point(self, a: float, b: float, d: int):
+        distr = self.distributions[d]
+        return GlobalTrapezoidalGridWeighted.get_middle_weighted(a, b, distr.cdf, distr.ppf)
 
 
 class GlobalSimpsonGrid(GlobalGrid):
@@ -1804,8 +1837,8 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
             #print("Trapezoidal weights", trapezoidal_weights)
             #print("Grid points", grid_1D_normalized)
             evaluations, alphas, betas, lambdas = self.get_polynomials_and_evaluations(grid_1D_normalized,d, weights_lower_order)
-            coordsD_normalized, weightsD = self.do_gauss_quad_normalized(int((d+2)/2), a, b)
-            # ~ print("Gauss Points, alphas, betas and lambdas:", coordsD_normalized, alphas, betas, lambdas)
+            # Use at least 5 Gauss points because they can be cached and generating them is slow
+            coordsD_normalized, weightsD = self.do_gauss_quad_normalized(max(int((d+2)/2), 5), a, b)
             evaluations_moments = self.evaluate_polynomials(coordsD_normalized, alphas, betas, lambdas)
             moments = np.array([sum(evaluations_moments[i] * weightsD) for i in range(d+1)])
             #print("Moments for interval", a, b, "are", moments)
@@ -1836,7 +1869,9 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
 
     @staticmethod
     def check_quality_of_quadrature_rule(weights_1D):
-        return not(all([w >= 0.0 for w in weights_1D]))
+        # ~ is_bad = not(all([w >= 0.0 for w in weights_1D])) and sum([abs(w) for w in weights_1D]) > 1.0
+        is_bad = not(all([w >= 0.0 for w in weights_1D]))
+        return is_bad
 
     def do_gauss_quad_normalized(self, num_quad_points: int, a: float, b: float):
         d = self.get_current_dimension()
