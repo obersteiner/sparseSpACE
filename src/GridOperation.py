@@ -398,25 +398,34 @@ class Integration(AreaOperation):
 
 
                 k_old = 0
+                if left_parent < 0:
+                    factor_left = (1 + tol)
+                else:
+                    factor_left = (1 - tol)
                 for i in range(refinement_dim.size() ):
-                    if refinement_dim.get_object(i).start >= left_parent * (1 - tol):
+                    if refinement_dim.get_object(i).start >= left_parent * factor_left:
                         k_old = i
                         break
                 k = k_old
                 refine_obj = refinement_dim.get_object(k)
-                if not (refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)):
+                if right_parent < 0:
+                    factor_right = (1 - tol)
+                else:
+                    factor_right = (1 + tol)
+                if not (refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right):
                     for child_info in children_indices[d]:
                         print(child_info.left_parent, child_info.child, child_info.right_parent)
                 #print(refine_obj.start, refine_obj.end, left_parent, right_parent)
-                assert refine_obj.start >= left_parent * (1 - tol) and refine_obj.end <= right_parent * (1 + tol)
+                assert refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right
                 max_level = 1
                 while k < refinement_dim.size():
                     refine_obj = refinement_dim.get_object(k)
-                    if refine_obj.start >= right_parent * (1 - tol):
+                    factor = 1 - tol if right_parent >= 0 else 1 + tol
+                    if refine_obj.start >= right_parent * factor:
                         break
                     #refine_obj.print()
                     #print("Right parent", right_parent)
-                    assert refine_obj.end <= right_parent * (1 + tol)
+                    assert refine_obj.end <= right_parent * factor_right
                     k += 1
                     max_level = max(max_level, max(refine_obj.levels))
                 for i in range(k_old, k):
