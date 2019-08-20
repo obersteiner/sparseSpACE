@@ -808,6 +808,9 @@ class GlobalGrid(Grid):
         return True
 
     def set_grid(self, grid_points: Sequence[Sequence[float]], grid_levels: Sequence[Sequence[int]]) -> None:
+        assert len(grid_points) == len(grid_levels)
+        for d in range(self.dim):
+            assert len(grid_levels[d]) == len(grid_points[d])
         self.coords = []
         self.weights = []
         self.levels = []
