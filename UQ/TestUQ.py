@@ -11,10 +11,11 @@ from GridOperation import *
 
 calc_E_Var = True
 # ~ calc_E_Var = False
-do_PCE_func = True
-# ~ do_PCE_func = False
+# ~ do_PCE_func = True
+do_PCE_func = False
 # ~ do_HighOrder = True
 do_HighOrder = False
+max_evals = 340
 
 assert calc_E_Var or do_PCE_func
 
@@ -75,6 +76,7 @@ def create_grid(a, b, op, boundary, modified_basis):
 		grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
 	else:
 		grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
+	return grid
 
 
 def plot_function(f, op, a, b, inf_borders):
@@ -122,7 +124,6 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 
 	error_operator = ErrorCalculatorSingleDimVolumeGuided()
 	min_evals = 0
-	max_evals = 240
 	tol = -1
 	poly_deg_max = 3
 
@@ -263,7 +264,7 @@ def test_something():
 	do_test(d, a, b, f, ("Triangle", 0.75), solutions=(0.04237441517058615, 0.01564415095611312))
 
 
-def test_uq_discontinuity2D():
+def test_uq_discontinuity2DTri():
 	print("Testing a discontinuous function")
 	d = 2
 	a = -np.ones(d)
@@ -272,6 +273,15 @@ def test_uq_discontinuity2D():
 	do_test(d, a, b, f, ("Triangle", 0.0), solutions=(3.2412358262581886, 10.356669220098361))
 
 
+def test_uq_discontinuity3DTri():
+	print("Testing a discontinuous function")
+	d = 3
+	a = -np.ones(d)
+	b = np.ones(d)
+	f = FunctionUQ()
+	# Calculating the solutions took long here.
+	do_test(d, a, b, f, ("Triangle", 0.0), lmax=3, boundary=False, solutions=(3.2412358262581886, 10.523335886765029))
+
 def test_uq_discontinuity3D():
 	print("Testing a discontinuous function")
 	d = 3
@@ -279,7 +289,7 @@ def test_uq_discontinuity3D():
 	b = np.ones(d)
 	f = FunctionUQ()
 	# Calculating the solutions took long here.
-	do_test(d, a, b, f, ("Triangle", 0.0), solutions=(3.2412358262581886, 10.523335886765029))
+	do_test(d, a, b, f, "Uniform", lmax=2)
 
 
 def test_cantilever_beam_D():
@@ -303,10 +313,11 @@ def test_G_function():
 	first_order_indices = None
 	# ~ first_order_indices = f.get_first_order_sobol_indices()
 	print(expectation, var, first_order_indices)
-	grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False)
+	# ~ grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False)
 	# ~ grid = GlobalBSplineGrid(a, b)
-	# ~ grid = None
-	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid, lmax=3)
+	grid = None
+	# ~ do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid, lmax=3)
+	do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid, lmax=2)
 	# ~ do_test(d, a, b, f, "Uniform", solutions=(expectation, var), grid=grid,
 		# ~ modified_basis=True, lmax=3, boundary=False)
 
@@ -314,12 +325,12 @@ def test_G_function():
 # ~ test_uq_discontinuity3D()
 # ~ test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
-test_G_function()
+# ~ test_G_function()
 
 # ~ test_normal_inf_border()
 # ~ test_normal_vagebounds()
 
-# ~ test_constant_triangle()
+test_constant_triangle()
 # ~ test_constant()
 # ~ test_linear()
 # ~ test_something()
