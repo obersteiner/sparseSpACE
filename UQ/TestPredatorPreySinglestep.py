@@ -145,7 +145,7 @@ op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 # ~ pa, pb = op.get_boundaries(0.01)
 # ~ problem_function.plot(pa, pb, points_per_dim=5, filename="25.pdf")
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange")
 typids = dict()
 for i,v in enumerate(types):
     typids[v] = i
@@ -181,6 +181,8 @@ def run_test(testi, typid, exceed_evals=None):
             grid = GlobalHighOrderGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ in ("adaptiveTrapez", "Trapez"):
             grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=uniform_distr)
+        elif typ == "adaptiveLagrange":
+            grid = GlobalLagrangeGridWeighted(a, b, op, boundary=uniform_distr)
         elif typ == "adaptiveTransBSpline":
             grid = GlobalBSplineGrid(a_trans, b_trans, boundary=uniform_distr)
         elif typ == "adaptiveTransTrapez":
@@ -276,11 +278,12 @@ def run_test(testi, typid, exceed_evals=None):
 
 
 # ~ evals_end = 900
-evals_end = 400
+evals_end = 200
 
 # For testing
 # ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveTrapez", "Gauss", "adaptiveHO")
-skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveTrapez")
+# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO")
+skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO", "Gauss", "adaptiveTrapez")
 assert all([typ in types for typ in skip_types])
 
 for typid,typ in enumerate(types):

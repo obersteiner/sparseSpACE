@@ -10,7 +10,7 @@ from ErrorCalculator import *
 from GridOperation import *
 
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
 
 d = 2
 a = np.zeros(d)
@@ -32,6 +32,8 @@ def run_test(evals_num, typid, exceed_evals=None):
 			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=True)
 		elif typ == "adaptiveTrapez":
 			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=True)
+		elif typ == "adaptiveLagrange":
+			grid = GlobalLagrangeGridWeighted(a, b, op, boundary=True)
 		elif typ == "BSpline":
 			# ~ grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False, p=3)
 			grid = GlobalBSplineGrid(a, b)
