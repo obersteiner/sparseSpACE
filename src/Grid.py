@@ -1337,14 +1337,14 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
                 if l == 0:
                     knots = list(level_coordinate_array[l])
                 elif l == 1:
-                    knots = list(sorted(level_coordinate_array[0] + level_coordinate_array[1]))
+                    if self.boundary:
+                        knots = list(sorted(level_coordinate_array[0] + level_coordinate_array[1]))
+                    else:
+                        knots = list(sorted(level_coordinate_array[1]))
                 else:
                     parent = self.get_parent(x_basis, grid_1D, grid_levels_1D)
                     knots = list(sorted(parents[parent] + [x_basis]))
                 parents[x_basis] = knots
-                if isinf(knots[0]):
-                    assert isinf(knots[-1]) and not self.boundary
-                    knots = knots[1:-1]
                 if len(knots) > self.p + 1:
                     index_x = knots.index(x_basis)
                     left = index_x
@@ -1406,7 +1406,7 @@ class GlobalLagrangeGridWeighted(GlobalLagrangeGrid):
             for d_cur in range(self.dim):
                 cp_distr = self.distributions_cp[d_cur]
                 distr = self.distributions[d_cur]
-                coords, weights = distr.get_quad_points_weights(max(int(self.p/2) + 1, 5), self.a[d_cur], self.b[d_cur], cp_distr)
+                coords, weights = distr.get_quad_points_weights(max(int(self.p/2) + 1, 5), cp_distr)
                 self.coords_gauss.append(coords)
                 self.weights_gauss.append(weights)
         weights = self.weights_gauss[d]
@@ -1877,7 +1877,7 @@ class GlobalHighOrderGridWeighted(GlobalHighOrderGrid):
         d = self.get_current_dimension()
         cp_distr = self.distributions_cp[d]
         distr = self.distributions[d]
-        coords, weights = distr.get_quad_points_weights(num_quad_points, a, b, cp_distr)
+        coords, weights = distr.get_quad_points_weights(num_quad_points, cp_distr)
         coords = self.normalize_coords(coords, a, b)
         return coords, weights
 

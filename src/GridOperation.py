@@ -1232,7 +1232,7 @@ class UQDistribution:
 
     # Returns single-dimensional quadrature points and weights
     # for the high order grid
-    def get_quad_points_weights(self, num_quad_points: int, a: float, b: float, cp_distribution) -> Tuple[Sequence[float], Sequence[float]]:
+    def get_quad_points_weights(self, num_quad_points: int, cp_distribution) -> Tuple[Sequence[float], Sequence[float]]:
         cache = self.cache_gauss_quad
         if num_quad_points in cache:
             return cache[num_quad_points]
