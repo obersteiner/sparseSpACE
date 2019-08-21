@@ -32,6 +32,12 @@ class GridOperation(object):
     def get_global_error_estimate(self, refinement):
         return None
 
+    def get_grid(self) -> Grid:
+        return self.grid
+
+    def get_reference_solution(self) -> Sequence[float]:
+        return self.reference_solution
+
 class AreaOperation(GridOperation):
     def is_area_operation(self):
         return True

@@ -2,7 +2,7 @@ from spatiallyAdaptiveBase import *
 from GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
+    def __init__(self, a, b, number_of_refinements_before_extend=1, no_initial_splitting=False,
                  version=0, dim_adaptive=False, automatic_extend_split=False, operation=None, norm=np.inf):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
@@ -10,7 +10,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
         assert 3 >= version >= 0
         self.version = version
-        SpatiallyAdaptivBase.__init__(self, a=a, b=b, grid=grid, operation=operation, norm=norm)
+        SpatiallyAdaptivBase.__init__(self, a=a, b=b, operation=operation, norm=norm)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
