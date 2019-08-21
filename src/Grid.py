@@ -69,6 +69,8 @@ class Grid(object):
 
     def get_weights(self) -> Sequence[float]:
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
+        if get_cross_product(self.weights) == []:
+            return []
         return np.asarray(np.prod(get_cross_product(self.weights), axis=1))
 
     def get_mid_point(self, a: float, b: float, d: int) -> float:
@@ -320,6 +322,9 @@ class BasisGrid(Grid):
             results[:,:] += intermediate_result
         return results
 
+    def get_basis(self, d: int, index: int):
+        return self.grids[d].splines[index]
+
 
 class LagrangeGrid(BasisGrid):
     def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
@@ -337,9 +342,6 @@ class LagrangeGrid(BasisGrid):
 
     def is_high_order_grid(self) -> bool:
         return self.p > 1
-
-    def get_basis(self, d: int, index: int):
-        return self.grids[d].splines[index]
 
 
 class LagrangeGrid1D(Grid1d):
@@ -474,9 +476,6 @@ class BSplineGrid(BasisGrid):
 
     def is_high_order_grid(self) -> bool:
         return self.p > 1
-
-    def get_basis(self, d: int, index: int):
-        return self.grids[d].splines[index]
 
 class BSplineGrid1D(Grid1d):
     def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
@@ -787,7 +786,7 @@ class TrapezoidalGrid1D(Grid1d):
                     else:
                         return 0
                 else:
-                    return self.weight_composite_trapezoidal()
+                    return self.weight_composite_trapezoidal(index)
             else:
                 if index == 0 and self.lowerBorder == 1:
                     return 2 * self.spacing
