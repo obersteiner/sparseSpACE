@@ -42,7 +42,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
 
     def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
-        # check if dedicatged interpolation routine is present in grid
+        # check if dedicated interpolation routine is present in grid
         interpolation_op = getattr(self.grid, "interpolate_grid", None)
         if callable(interpolation_op):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
@@ -51,7 +51,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             # call default d-linear interpolation based on points in grid
             # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
-            super().interpolate_grid_component(grid_coordinates, component_grid)
+            return super().interpolate_grid_component(grid_coordinates, component_grid)
 
     def coarsen_grid(self, area, levelvec: Sequence[int]):
         pass
@@ -152,10 +152,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
         return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
         #return True
-        if level_left_point < level_point or level_right_point < level_point:
-            return True
-        else:
-            return False
+        #if level_left_point < level_point or level_right_point < level_point:
+        #    return True
+        #else:
+        #    return False
 
     # This method calculates the left and right parent of a child. It might happen that a child has already a child
     # in one direction but it may not have one in both as it would not be considered to be a child anymore.
@@ -306,9 +306,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return [self.refinement]
         assert False
         # get a list of lists which contains range(refinements[d]) for each dimension d where the refinements[d] are the number of subintervals in this dimension
-        indices = [list(range(len(refineDim))) for refineDim in self.refinement.get_new_objects()]
+        #indices = [list(range(len(refineDim))) for refineDim in self.refinement.get_new_objects()]
         # this command creates tuples of size this_dim of all combinations of indices (e.g. this_dim = 2 indices = ([0,1],[0,1,2,3]) -> areas = [(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,3)] )
-        return list(zip(*[g.ravel() for g in np.meshgrid(*indices)]))
+        #return list(zip(*[g.ravel() for g in np.meshgrid(*indices)]))
 
     def get_new_areas(self):
         return self.get_areas()
@@ -379,8 +379,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-
-            print("Rebalancing!")
+            if self.print_output:
+                print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -407,8 +407,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         new_leaf_reached = True
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-
-            print("Rebalancing!")
+            if self.print_output:
+                print("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
