@@ -59,9 +59,18 @@ class Function(object):
 
     # this returns the analytic solution of the integral in the specified area
     # currently necessary for the error estimator
-    @abc.abstractmethod
     def getAnalyticSolutionIntegral(self, start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
-        pass
+        self.dim = len(start)
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval([x, y, z])
+            return \
+                integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                  lambda x, y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval([x, y])
+            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
+        else:
+            assert False
 
     # this method plots the function in the specified area for 2D
     def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, points_per_dim: int=10 ** 2, plotdimensions: Sequence[int]=None, consistent_axes: bool=False, show_plot: bool=True) -> None:
@@ -240,19 +249,6 @@ class FunctionUQWeighted(Function):
     def eval(self, coordinates):
         return self.function.eval(coordinates) * self.weight_function.eval(coordinates)
 
-    def getAnalyticSolutionIntegral(self, start, end):
-        self.dim = len(start)
-        if self.dim == 3:
-            f = lambda x, y, z: self.eval([x, y, z])
-            return \
-                integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
-                                  lambda x, y: end[0])[0]
-        elif self.dim == 2:
-            f = lambda x, y: self.eval([x, y])
-            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
-        else:
-            assert False
-
 
 # An UQ test function: https://www.sfu.ca/~ssurjano/canti.html
 class FunctionCantileverBeamD(Function):
@@ -304,6 +300,16 @@ class FunctionG(Function):
         assert all([v == 0.0 for v in start])
         assert all([v == 1.0 for v in end])
         return self.get_expectation()
+
+
+class FunctionGShifted(FunctionG):
+    def eval(self, coordinates):
+        assert all([0.0 <= v <= 1.0 for v in coordinates])
+        # Shift the coordinates by 0.2 in every dimension
+        coords = [v + 0.2 for v in coordinates]
+        # Go back to the other side so that expectation and variance do not change
+        coords = [v if v <= 1.0 else v - 1.0 for v in coords]
+        return super().eval(coords)
 
 
 class FunctionUQ(Function):
