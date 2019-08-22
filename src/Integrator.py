@@ -123,11 +123,11 @@ class IntegratorArbitraryGrid(IntegratorBase):
 # each component individually.
 class IntegratorArbitraryGridScalarProduct(IntegratorBase):
     def __init__(self, grid):
-        self.grid = grid
+        self.grid = grid #type: Grid
 
-    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+    def __call__(self, f: Function, numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         points, weights = self.grid.get_points_and_weights()
-        f_values = np.empty((len(f(points[0])), len(points)))
+        f_values = np.empty((f.output_length(), self.grid.get_num_points()))
         for i, point in enumerate(points):
             f_values[:, i] = f(point)
         #print(points, weights, f_values, np.inner(f_values, weights))
@@ -251,7 +251,7 @@ def integrateVariableStartNumpyArbitraryDimAndInterpolate(f, numPoints, start, e
     return gridIntegrals
 
 
-class IntegratorHierarchicalBSpline(IntegratorBase):
+class IntegratorHierarchicalBasisFunctions(IntegratorBase):
     def __init__(self, grid):
         self.grid = grid
         self.hierarchization = HierarchizationLSG(grid)
@@ -259,7 +259,7 @@ class IntegratorHierarchicalBSpline(IntegratorBase):
 
     def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         self.surplus_values = self.hierarchization(f, numPoints, self.grid)
-        points, weights = self.grid.get_points_and_weights()
+        weights = self.grid.get_weights()
         #print(sum(weights), np.prod(np.array(end) - np.array(start)), start,end, weights, self.grid.weights)
         #if not isclose(sum(weights), np.prod(np.array(end) - np.array(start))):
         #    assert False

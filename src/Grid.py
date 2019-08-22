@@ -69,9 +69,12 @@ class Grid(object):
 
     def get_weights(self) -> Sequence[float]:
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
-        if get_cross_product(self.weights) == []:
+        if get_cross_product_list(self.weights) == []:
             return []
-        return np.asarray(np.prod(get_cross_product(self.weights), axis=1))
+        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1))
+
+    def get_num_points(self):
+        return np.prod(self.numPoints)
 
     def get_mid_point(self, a: float, b: float, d: int) -> float:
         #if self.numPoints[d] == 1:
@@ -333,7 +336,7 @@ class LagrangeGrid(BasisGrid):
         self.b = b
         assert len(a) == len(b)
         self.dim = len(a)
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
         self.p = p
         self.modified_basis = modified_basis
@@ -467,7 +470,7 @@ class BSplineGrid(BasisGrid):
         self.b = b
         assert len(a) == len(b)
         self.dim = len(a)
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
         self.p = p
         self.modified_basis = modified_basis
@@ -1095,7 +1098,7 @@ class GlobalBasisGrid(GlobalGrid):
 class GlobalBSplineGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
         self.b = b
         self.dim = len(a)
@@ -1189,7 +1192,7 @@ class GlobalBSplineGrid(GlobalBasisGrid):
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
         self.b = b
         self.dim = len(a)

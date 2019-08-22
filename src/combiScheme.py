@@ -2,7 +2,7 @@ import numpy as np
 import math
 from ComponentGridInfo import ComponentGridInfo
 from typing import List, Set, Tuple
-
+from Utils import *
 
 class CombiScheme:
     def __init__(self, dim: int):
@@ -144,7 +144,7 @@ class CombiScheme:
                     stencils.append([0])
                 else:
                     stencils.append([0, -1])
-            stencil_elements = list(zip(*[g.ravel() for g in np.meshgrid(*stencils)]))
+            stencil_elements = get_cross_product(stencils)
             for s in stencil_elements:
                 levelvec = tuple(map(lambda x, y: x + y, grid_levelvec, s))  # adding tuples
                 update_coefficient = -(abs((sum(s))) % 2) + (abs(((sum(s)) - 1)) % 2)

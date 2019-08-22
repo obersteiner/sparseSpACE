@@ -111,9 +111,9 @@ class Integration(AreaOperation):
                 points, weights = self.grid.get_points_and_weights()
                 integral = 0.0
                 num_points = 0
-                for i, p in enumerate(points):
+                for i, (p, weight) in enumerate(zip(points, weights)):
                     if self.point_in_area(p, additional_info.filter_area):
-                        integral += self.f(p) * weights[i] * self.get_point_factor(p, additional_info.filter_area, area)
+                        integral += self.f(p) * weight * self.get_point_factor(p, additional_info.filter_area, area)
                         num_points += 1
             else:  # use bilinear interpolation to get function values in filter_area
                 integral = 0.0
@@ -134,8 +134,7 @@ class Integration(AreaOperation):
                 # bilinear interpolation
                 interpolated_values = self.interpolate_points(mesh_points_grid, points)
 
-                integral += sum(
-                    [interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
+                integral += np.inner(interpolated_values, weights)
 
                 # calculate all mesh points
                 mesh_points = list(
@@ -370,16 +369,16 @@ class Integration(AreaOperation):
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
         tol = 10**-14
+        if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+            grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
+            points = self.grid.getPoints()
+            for i, point in enumerate(points):
+                grid_values[:, i] = self.f(point)
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
             if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
-                grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
-                points, _ = self.grid.get_points_and_weights()
-                for i, point in enumerate(points):
-                    grid_values[:, i] = self.f(point)
                 hierarchization_operator = HierarchizationLSG(self.grid)
-                points, weights = self.grid.get_points_and_weights()
                 surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values), self.grid.numPoints, self.f, d)
                 surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
                 stride = int(np.prod(self.grid.numPoints[d+1:]))
@@ -600,6 +599,8 @@ class Integration(AreaOperation):
 
         left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
+
+        size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             factor_left_parent = (right_parent - child)/(right_parent - left_parent)
@@ -619,7 +620,7 @@ class Integration(AreaOperation):
         indices = get_cross_product([range(len(self.grid_surplusses.coords[d2])) if d != d2 else [1] for d2 in range(self.dim)])
         #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         #index = indices[i]
-        factors = np.asarray([np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for index in indices]).reshape((len(points_children), 1))
+        factors = np.asarray([np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for index in indices]).reshape((size_slize, 1))
         #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
         exponent = 1# if not self.do_high_order else 2
         #if factor2 != 0:
