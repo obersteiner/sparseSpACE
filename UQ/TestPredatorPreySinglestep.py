@@ -281,12 +281,12 @@ def run_test(testi, typid, exceed_evals=None):
 evals_end = 200
 
 # For testing
-# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveTrapez", "Gauss", "adaptiveHO")
-# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO")
-skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO", "Gauss", "adaptiveTrapez")
+# ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange")
+skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO")
 assert all([typ in types for typ in skip_types])
 
-for typid,typ in enumerate(types):
+for typid in reversed(range(len(types))):
+    typ = types[typid]
     print("")
     if typ in skip_types:
         print("Skipping", typ)
