@@ -22,7 +22,7 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -39,7 +39,7 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(d + 1, 5):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -57,7 +57,7 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -74,7 +74,7 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -92,11 +92,11 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
-                    points = get_cross_product([np.linspace(a, b, 5, endpoint=False) for _ in range(d)])
+                    points = get_cross_product_list([np.linspace(a, b, 5, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)
                     for i, value in enumerate(f_values):
                         factor = abs(f(points[i])[0]) if abs(f(points[i])[0]) != 0 else 1
@@ -112,11 +112,11 @@ class TestSpatiallyAdaptiveExtendSplit(unittest.TestCase):
             for l in range(d+1, 5):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveExtendScheme(a * np.ones(d), b * np.ones(d),
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
-                    points = get_cross_product([np.linspace(a, b, 3, endpoint=False) for _ in range(d)])
+                    points = get_cross_product_list([np.linspace(a, b, 3, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)
                     for i, value in enumerate(f_values):
                         factor = abs(f(points[i])[0]) if abs(f(points[i])[0]) != 0 else 1

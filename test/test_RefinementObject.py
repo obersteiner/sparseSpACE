@@ -67,10 +67,10 @@ class TestRefinementObject(unittest.TestCase):
         for d in range(2, 5):
             grid = TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d)
             refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid)
-            points = get_cross_product([np.linspace(a,b,10) for _ in range(d)])
+            points = get_cross_product_list([np.linspace(a,b,10) for _ in range(d)])
             for p in points:
                 self.assertTrue(refinment_object.contains(p))
-            points2 = get_cross_product([list(np.linspace(b+1,b+3, 10)) + list(np.linspace(a-3, a-1, 10)) for _ in range(d)])
+            points2 = get_cross_product_list([list(np.linspace(b+1,b+3, 10)) + list(np.linspace(a-3, a-1, 10)) for _ in range(d)])
             for p in points2:
                 self.assertTrue(not refinment_object.contains(p))
             self.assertEqual(points, refinment_object.subset_of_contained_points(points+points2))

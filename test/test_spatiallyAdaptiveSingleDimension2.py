@@ -18,12 +18,12 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -35,12 +35,12 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalLagrangeGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False, p=2)
             f = FunctionPolynomial([10 * (i + 1) for i in range(d)], degree=2)
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -53,12 +53,12 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -70,12 +70,12 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
@@ -88,16 +88,16 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
-                    points = get_cross_product([np.linspace(a, b, 5, endpoint=False) for _ in range(d)])
+                    points = get_cross_product_list([np.linspace(a, b, 5, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)
                     for i, value in enumerate(f_values):
                         factor = abs(f(points[i])[0]) if abs(f(points[i])[0]) != 0 else 1
@@ -108,16 +108,16 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalLagrangeGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False, p=2)
             f = FunctionPolynomial([(i + 1) for i in range(d)], degree=2)
-            operation = Integration(f, grid=None, dim=d)
+            operation = Integration(f, grid=grid, dim=d)
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
-                                                                           operation=operation, grid=grid)
+                                                                           operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array = spatiallyAdaptive.performSpatiallyAdaptiv(
                         minv=1, maxv=l, f=f, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
-                    points = get_cross_product([np.linspace(a, b, 3, endpoint=False) for _ in range(d)])
+                    points = get_cross_product_list([np.linspace(a, b, 3, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)
                     for i, value in enumerate(f_values):
                         factor = abs(f(points[i])[0]) if abs(f(points[i])[0]) != 0 else 1

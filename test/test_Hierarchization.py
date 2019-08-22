@@ -28,7 +28,7 @@ class TestHierarchization(unittest.TestCase):
                 grid.set_grid(grid_points, grid_levels)
                 grid.integrate(f, [l + i for i in range(d)], a * np.ones(d), b * np.ones(d))
                 component_grid = ComponentGridInfo([l+i for i in range(d)], 1)
-                grid_points = get_cross_product(grid_points)
+                grid_points = get_cross_product_list(grid_points)
                 f_values = grid.interpolate(grid_points, component_grid)
                 for i, p in enumerate(grid_points):
                     factor = abs(f(p)[0] if f(p)[0] != 0 else 1)
@@ -47,7 +47,7 @@ class TestHierarchization(unittest.TestCase):
                 grid.set_grid(grid_points, grid_levels)
                 grid.integrate(f, [l + i for i in range(d)], a * np.ones(d), b * np.ones(d))
                 component_grid = ComponentGridInfo([l + i for i in range(d)], 1)
-                grid_points = get_cross_product(grid_points)
+                grid_points = get_cross_product_list(grid_points)
                 f_values = grid.interpolate(grid_points, component_grid)
                 for i, p in enumerate(grid_points):
                     factor = abs(f(p)[0] if f(p)[0] != 0 else 1)

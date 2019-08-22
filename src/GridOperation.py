@@ -134,7 +134,7 @@ class Integration(AreaOperation):
                 # bilinear interpolation
                 interpolated_values = self.interpolate_points(mesh_points_grid, points)
 
-                integral += np.inner(interpolated_values, weights)
+                integral += np.inner(interpolated_values.T, weights)
 
                 # calculate all mesh points
                 mesh_points = list(
@@ -842,11 +842,11 @@ class Integration(AreaOperation):
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     @staticmethod
-    def interpolate_points(f, dim, grid, mesh_points_grid, evaluation_points):
+    def interpolate_points(f: Function, dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
         mesh_points = get_cross_product(mesh_points_grid)
 
-        function_value_dim = len(f(np.ones(dim)*0.5))
+        function_value_dim = f.output_length()
 
         # calculate function values at mesh points and transform  correct data structure for scipy
         values = np.array([f(p) if grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])

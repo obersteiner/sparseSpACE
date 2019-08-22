@@ -127,7 +127,7 @@ class Grid(object):
 
     # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
-        return get_cross_product(self.coordinate_array)
+        return get_cross_product_list(self.coordinate_array)
 
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector: Sequence[int]) -> float:
