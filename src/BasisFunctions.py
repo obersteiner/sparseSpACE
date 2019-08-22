@@ -174,8 +174,7 @@ class LagrangeBasisRestricted(LagrangeBasis):
     def get_integral(self, a: float, b: float, coordsD: np.array, weightsD: np.array) -> float:
         result = 0.0
 
-        left_border = self.knots[max(0,self.index - 1)]
-        right_border = self.knots[min(self.index + 1, len(self.knots) - 1)]
+        left_border, right_border = self.get_boundaries()
         coords = np.array(coordsD)
         coords += 1
         coords *= (right_border - left_border) / 2.0
@@ -187,7 +186,11 @@ class LagrangeBasisRestricted(LagrangeBasis):
         return result
 
     def point_in_support(self, x):
-        return self.knots[max(0, self.index - 1)] <= x <= self.knots[min(self.index + 1, len(self.knots) - 1)]
+        start, end = self.get_boundaries()
+        return start <= x <= end
+
+    def get_boundaries(self):
+        return self.knots[max(0, self.index - 1)], self.knots[min(self.index + 1, len(self.knots) - 1)]
 
 
 class LagrangeBasisRestrictedModified(LagrangeBasisRestricted):

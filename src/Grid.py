@@ -1399,19 +1399,15 @@ class GlobalLagrangeGridWeighted(GlobalLagrangeGrid):
         self.distributions = uq_operation.get_distributions()
         self.distributions_cp = uq_operation.get_distributions_chaospy()
 
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        weights = super().compute_1D_quad_weights(grid_1D, a, b, d, grid_levels_1D=grid_levels_1D)
+        # ~ print(weights, grid_1D)
+        return weights
+
     def _get_spline_integral(self, spline, d: int):
-        if self.coords_gauss is None:
-            self.coords_gauss = []
-            self.weights_gauss = []
-            for d_cur in range(self.dim):
-                cp_distr = self.distributions_cp[d_cur]
-                distr = self.distributions[d_cur]
-                coords, weights = distr.get_quad_points_weights(max(int(self.p/2) + 1, 5), cp_distr)
-                self.coords_gauss.append(coords)
-                self.weights_gauss.append(weights)
-        weights = self.weights_gauss[d]
-        coords = self.coords_gauss[d]
-        return sum([spline(p) * weights[i] for i,p in enumerate(coords)])
+        distr = self.distributions[d]
+        a, b = spline.get_boundaries()
+        return distr.calculate_integral(spline, a, b)
 
     def get_mid_point(self, a: float, b: float, d: int):
         distr = self.distributions[d]

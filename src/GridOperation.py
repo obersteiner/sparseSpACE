@@ -1162,6 +1162,29 @@ class UncertaintyQuantification(Integration):
         f_evals = [self.f(c) for c in zip(*nodes)]
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
+    # Another testing function
+    def calculate_expectation_and_variance_reference(self):
+        nodes = self.distributions_joint.sample(2**14, rule="H")
+        num_samples = len(nodes[0])
+        w = 1.0 / num_samples
+        weights = np.array([w for _ in range(num_samples)])
+        # ~ nodes, weights = cp.generate_quadrature(29,
+            # ~ self.distributions_joint, rule="G")
+        return self.calculate_expectation_and_variance_for_weights(nodes, weights)
+
+    def calculate_expectation_and_variance_for_weights(self, nodes, weights):
+        f_evals = np.array([self.f(c) for c in zip(*nodes)])
+        f_evals_squared = np.array([v ** 2 for v in f_evals])
+        expectation = np.inner(f_evals.T, weights)
+        expectation_of_squared = np.inner(f_evals_squared.T, weights)
+        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
+        for i, v in enumerate(variance):
+            if v < 0.0:
+                # When the variance is zero, it can be set to something negative
+                # because of numerical errors
+                variance[i] = -v
+        return expectation, variance
+
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
     def get_moment_Function(self, k):
@@ -1206,6 +1229,7 @@ class UQDistribution:
         self.ppf = ppf
         self.cached_moments = [dict() for _ in range(2)]
         self.cache_gauss_quad = dict()
+        # ~ self.cache_integrals = dict()
 
     @staticmethod
     def from_chaospy(cp_distr):
@@ -1239,3 +1263,15 @@ class UQDistribution:
         (coords,), weights = cp.generate_quadrature(num_quad_points, cp_distribution, rule="G")
         cache[num_quad_points] = (coords, weights)
         return coords, weights
+
+    # Calculates the weighted integral of an arbitrary function
+    # between x1 and x2
+    def calculate_integral(self, func, x1: float, x2: float):
+        # ~ k = (func, x1, x2)
+        # ~ cache = self.cache_integrals
+        # ~ if k in cache:
+            # ~ print("Cache match")
+            # ~ return cache[k]
+        integral = integrate.quad(lambda x: func(x) * self.pdf(x), x1, x2)[0]
+        # ~ cache[k] = integral
+        return integral
