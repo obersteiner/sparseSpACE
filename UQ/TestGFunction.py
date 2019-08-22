@@ -15,13 +15,14 @@ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
 d = 2
 a = np.zeros(d)
 b = np.ones(d)
-f_g = FunctionG(d)
+# ~ f_g = FunctionG(d)
+f_g = FunctionGShifted(d)
 reference_expectation = f_g.get_expectation()
 reference_variance = f_g.get_variance()
 # Create the operation only once
 op = UncertaintyQuantification(None, "Uniform", a, b, dim=d)
 
-def run_test(evals_num, typid, exceed_evals=None):
+def run_test(typi, typid, exceed_evals=None):
 	lmax = 2
 	f = FunctionCustom(lambda x: f_g(x))
 	op.f = f
@@ -43,13 +44,15 @@ def run_test(evals_num, typid, exceed_evals=None):
 
 		error_operator = ErrorCalculatorSingleDimVolumeGuided()
 		expectation_var_func = op.get_expectation_variance_Function()
+		# ~ expectation_var_func.plot(a, b, filename="exp.pdf", plotdimension=0)
+		# ~ expectation_var_func.plot(a, b, filename="mom2.pdf", plotdimension=1)
 		mom2 = reference_variance + reference_expectation * reference_expectation
 		reference_solution = np.array([reference_expectation, mom2])
 		op.set_reference_solution(reference_solution)
 		if exceed_evals is None:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=0,
-				max_evaluations=evals_num,
+				max_evaluations=1,
 				print_output=False)
 		else:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
@@ -61,7 +64,7 @@ def run_test(evals_num, typid, exceed_evals=None):
 	else:
 		joint_distr = op.distributions_joint
 		nodes, weights = cp.generate_quadrature(
-			evals_num, joint_distr, rule="G")
+			typi, joint_distr, rule="G")
 		evals = [f(x)[0] for x in nodes.T]
 		E = sum([v * weights[i] for i,v in enumerate(evals)])
 		mom2 = sum([v * v * weights[i] for i,v in enumerate(evals)])
@@ -90,17 +93,25 @@ def run_test(evals_num, typid, exceed_evals=None):
 	return num_evals
 
 
-for i,typ in enumerate(types[1:]):
-	typid = i+1
-	print("Calculations for", typ)
-	evals_num = run_test(1, typid)
-	while evals_num < 1280:
-		print("last evals:", evals_num)
-		evals_num = run_test(None, typid, exceed_evals=evals_num)
+# ~ evals_end = 900
+evals_end = 1200
 
-print("Calculating convent. errors")
-for i in range(1, 36):
-	print("order: ", i)
-	# Gauss
-	run_test(i, 0)
+# For testing
+# ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
+# ~ skip_types = ("BSpline", "adaptiveLagrange")
+skip_types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "adaptiveLagrange")
+assert all([typ in types for typ in skip_types])
 
+for typid in reversed(range(len(types))):
+    typ = types[typid]
+    print("")
+    if typ in skip_types:
+        print("Skipping", typ)
+        continue
+    print("Calculations for", typ)
+    testi = 0
+    evals_num = run_test(testi, typid)
+    while evals_num < evals_end:
+        testi = testi+1
+        print(f"last evals: {evals_num}, testi {testi}")
+        evals_num = run_test(testi, typid, exceed_evals=evals_num)

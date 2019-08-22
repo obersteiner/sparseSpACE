@@ -28,6 +28,9 @@ figure.canvas.set_window_title('Stocha')
 for i,desc in enumerate(("E", "Var")):
 	plotter.subplot(2, 1, 1 + i)
 	for typid, typdesc in enumerate(typ_descs):
+		if len(datas[typid]) < 1:
+			print("No points for", typdesc)
+			continue
 		plotter.plot(datas[typid][0], datas[typid][i + 1], ".-", label=typdesc)
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f"{desc} relative error")
