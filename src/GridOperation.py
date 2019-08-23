@@ -685,7 +685,7 @@ class Integration(AreaOperation):
         volume = np.sum(factors * abs(values), axis=0) * (right_parent - left_parent)**exponent
         #print("Volume", volume)
         if self.version == 0 or self.version == 2:
-            evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+            evaluations = size_slize #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
             evaluations = 0
         return abs(volume), evaluations

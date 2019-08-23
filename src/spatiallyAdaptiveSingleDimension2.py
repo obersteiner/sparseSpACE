@@ -25,6 +25,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.operation = operation
         self.equidistant = False #True
         self.rebalancing = rebalancing
+        self.subtraction_value_cache = {}
+        self.max_level_dict = {}
+
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -81,7 +84,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         indicesList = []
         children_indices = []
         indices_level = []
+        max_coarsenings = np.zeros(self.dim, dtype=int) #only for dimensions with level > 1
+        for d in range(self.dim):
+            #if levelvec[d] > self.lmin[d]:
+            max_coarsenings[d] = refinement.get_max_coarsening(d)
         for d in range(0, self.dim):
+            max_coarsenings_dim = list(max_coarsenings)
             refineContainer = refinement.get_refinement_container_for_dim(d)
             indicesDim = []
             indices_levelDim = []
@@ -95,38 +103,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     next_refineObj = refineContainer.get_objects()[i + 1]
                 else:
                     next_refineObj = None
-                if self.version == 2 or self.version == 3:
-                    refineObj_temp = refineObj
-                    max_level = refineObj_temp.levels[1]
-                    k = 0
-                    while(i - k > 0):
-                        refineObj_temp = refineContainer.get_objects()[i - k]
-                        max_level = max(max_level, refineObj_temp.levels[0])
-                        if refineObj_temp.levels[0] <= refineObj.levels[1]:
-                            break
-                        k += 1
-                    k = 1
-                    while(i + k < len(refineContainer.get_objects())):
-                        refineObj_temp = refineContainer.get_objects()[i + k]
-                        max_level = max(max_level, refineObj_temp.levels[1])
-                        if refineObj_temp.levels[1] <= refineObj.levels[1]:
-                            break
-                        k += 1
-                    subtraction_value = (self.lmax[d] - max_level)
-                    if False:#self.version == 2 and d != 0:
-                        #if levelvec[d] > self.lmax[d] - subtraction_value:
-                        #    subtraction_value = self.lmax[d]
-                        subtraction_value = 0
-                    if self.version == 3:
-                        subtraction_value /= self.dim
-                        if subtraction_value - int(subtraction_value) > d/self.dim:
-                            subtraction_value = int(math.ceil(subtraction_value))
-                        else:
-                            subtraction_value = int(subtraction_value)
-                    #subtraction_value = max(refineObj.coarsening_level, next_refineObj.coarsening_level) if next_refineObj is not None else refineObj.coarsening_level
 
-                else:
-                    subtraction_value = 0
+                subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
+
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
                     indicesDim.append(refineObj.end)
                     if (next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0])) and not self.use_local_children:
@@ -145,6 +124,140 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             children_indices.append(children_indices_dim)
             indices_level.append(indices_levelDim)
         return indicesList, indices_level, children_indices
+
+    def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
+        if levelvec[d] - subtraction_value == max_level and levelvec[d] < self.lmax[d]:
+            subtraction_value += 1
+        subtraction_value = min(subtraction_value, levelvec[d] - self.lmin[d])
+        return subtraction_value
+
+    def get_subtraction_value(self, refineObj, refineContainer, i, max_coarsenings, d, levelvec):
+        if self.version == 5:
+            if tuple((d, i)) in self.max_level_dict:
+                if tuple((d, self.max_level_dict[tuple((d, i))])) in self.subtraction_value_cache:
+                    subtraction_value = self.subtraction_value_cache[tuple((d, self.max_level_dict[tuple((d, i))]))]
+                    return self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d, i))],
+                                                             levelvec)
+            #if self.combischeme.has_forward_neighbour(levelvec):
+                #subtraction_value = None
+                #for k in range(self.dim):
+                #    if k != d:
+                #        levelvec_temp = list(levelvec)
+                #        levelvec_temp[k] += 1
+                #        if self.combischeme.in_index_set(levelvec_temp):
+                #            subtract_value_temp = self.get_subtraction_value(refineObj, refineContainer, i,
+                #                                              max_coarsenings, d, levelvec_temp)
+                #            #print(subtraction_value, subtract_value_temp, levelvec, d)
+                #            if subtraction_value is not None:
+                #                assert subtract_value_temp == subtraction_value
+                #            else:
+                #                subtraction_value = subtract_value_temp
+                #return self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d,i))], levelvec)
+        if self.version == 4 or self.version == 5:
+            #max_coarsenings_levelvec = [coarsening if levelvec[k] > 1 else 0 for k, coarsening in enumerate(max_coarsenings)]
+            max_coarsenings_levelvec = max_coarsenings
+        if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5:
+            refineObj_temp = refineObj
+            if not tuple((d,i)) in self.max_level_dict:
+                max_level = refineObj_temp.levels[1]
+                k = 0
+                while (i - k > 0):
+                    refineObj_temp = refineContainer.get_objects()[i - k]
+                    max_level = max(max_level, refineObj_temp.levels[0])
+                    if refineObj_temp.levels[0] <= refineObj.levels[1]:
+                        break
+                    k += 1
+                k = 1
+                while (i + k < len(refineContainer.get_objects())):
+                    refineObj_temp = refineContainer.get_objects()[i + k]
+                    max_level = max(max_level, refineObj_temp.levels[1])
+                    if refineObj_temp.levels[1] <= refineObj.levels[1]:
+                        break
+                    k += 1
+            else:
+                max_level = self.max_level_dict[tuple((d,i))]
+            subtraction_value = (self.lmax[d] - max_level)
+            self.max_level_dict[tuple((d,i))] = max_level
+            if (self.version == 4 or self.version == 5) and max_level > 2:
+                # if levelvec[d] > self.lmax[d] - subtraction_value:
+                #    subtraction_value = self.lmax[d]
+                # print(max_coarsenings)
+                max_coarsening_other_dims = max([max_coarsenings_levelvec[i] if i != d else 0 for i in range(self.dim)])
+                if self.version == 5:
+                    max_coarsening_other_dims = min(subtraction_value, max_coarsening_other_dims)
+                if max_coarsening_other_dims != 0 and tuple((d, max_level)) not in self.subtraction_value_cache:
+                    if max_coarsening_other_dims < subtraction_value:
+                        subtraction_value_new = subtraction_value - max_coarsening_other_dims
+                        max_coarsenings_temp = list(max_coarsenings_levelvec)
+                        max_coarsenings_temp[d] = subtraction_value
+                        # if self.version == 5:
+                        #    max_coarsenings_temp = [coarsening if coarsening < subtraction_value else subtraction_value for coarsening in max_coarsenings_temp]
+                        max_coarsenings_temp[d] -= subtraction_value_new
+                        assert subtraction_value >= subtraction_value_new
+                        remainder = subtraction_value - subtraction_value_new
+                    else:
+                        max_coarsenings_temp = [subtraction_value if coarsening > subtraction_value else coarsening for
+                                                coarsening in max_coarsenings_levelvec]
+                        if self.version == 5:
+                            remainder = subtraction_value
+                        else:
+                            remainder = subtraction_value - sum(
+                                np.asarray(max_coarsenings_levelvec) - np.asarray(max_coarsenings_temp)) + max_coarsenings_levelvec[
+                                            d] - subtraction_value
+                        if self.version == 5:
+                            # print(max_coarsenings_temp, max_coarsenings, remainder, sum(np.asarray(max_coarsenings) - np.asarray(max_coarsenings_temp)))
+                            assert remainder == subtraction_value
+                        subtraction_value_new = 0
+                    while (remainder > 0):
+                        print(max_coarsenings_temp, remainder)
+                        max_coarsening = max(max_coarsenings_temp)
+                        second_largest_coarsening = max(
+                            [coarsening if coarsening < max_coarsening else 0 for coarsening in max_coarsenings_temp])
+                        assert max_coarsening > 0
+                        # print(remainder, max_coarsening, second_largest_coarsening, max_coarsenings_temp)
+                        # print(max_coarsening, second_largest_coarsening, max_coarsenings_temp)
+                        max_dimensions = [1 if coarsening == max_coarsening else 0 for coarsening in
+                                          max_coarsenings_temp]
+                        num_max_coarsening = min(sum(max_dimensions), min((max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)])))
+                        print(num_max_coarsening, self.combischeme.lmax_adaptive - max(sum([1 if self.lmax[k] <= 2 else 0 for k in range(self.dim)]), 1), self.combischeme.lmax_adaptive, self.lmax)
+                        my_position = sum(max_dimensions[:d])
+                        if remainder >= (max_coarsening - second_largest_coarsening) * num_max_coarsening:
+                            subtraction_value_new += max_coarsening - second_largest_coarsening
+                            remainder -= (max_coarsening - second_largest_coarsening) * num_max_coarsening
+                        else:
+
+                            added_subtraction_value = int(remainder / num_max_coarsening)
+                            #subtraction_value_new += added_subtraction_value
+                            if added_subtraction_value - int(
+                                    added_subtraction_value) > my_position / num_max_coarsening:
+                                subtraction_value_new += int(math.ceil(added_subtraction_value))
+                            else:
+                                subtraction_value_new += int(added_subtraction_value)
+                            break
+                        max_coarsenings_temp = [coarsening if coarsening < max_coarsening else second_largest_coarsening
+                                                for coarsening in max_coarsenings_temp]
+                        assert subtraction_value >= subtraction_value_new
+                    assert subtraction_value >= subtraction_value_new
+                    subtraction_value = subtraction_value_new
+                    # print(subtraction_value, d, max_level, max_coarsenings)
+                    self.subtraction_value_cache[tuple((d, max_level))] = subtraction_value
+                else:
+                    if tuple((d, max_level)) in self.subtraction_value_cache:
+                        subtraction_value = self.subtraction_value_cache[tuple((d, max_level))]
+                subtraction_value = self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d, i))], levelvec)
+                # print(subtraction_value, d, max_level, max_coarsenings)
+            if self.version == 3 and max_level > 2:
+                subtraction_value /= self.dim
+                if subtraction_value - int(subtraction_value) > d / self.dim:
+                    subtraction_value = int(math.ceil(subtraction_value))
+                else:
+                    subtraction_value = int(subtraction_value)
+            # subtraction_value = max(refineObj.coarsening_level, next_refineObj.coarsening_level) if next_refineObj is not None else refineObj.coarsening_level
+
+        else:
+            subtraction_value = 0
+        return subtraction_value
+
 
     # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure level 1 is never considered to be a child
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
@@ -446,6 +559,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return update_dimension * -1
 
     def refinement_postprocessing(self):
+        self.subtraction_value_cache = {}
+        self.max_level_dict = {}
         self.refinement.apply_remove(sort=True)
         self.refinement.refinement_postprocessing()
         self.refinement.reinit_new_objects()
