@@ -6,7 +6,8 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution):
     errorArrayStandard = []
     pointArray = []
     distinctFEvalArray = []
-    standardCombi = StandardCombi(a, b, grid)
+    operation = Integration(f, grid, dim, reference_solution)
+    standardCombi = StandardCombi(a, b, operation=operation)
     for i in range(lmin + 1, lmin + maxLmax):
         scheme, error, result = standardCombi.perform_combi(lmin, i, f, reference_solution=reference_solution)
         errorArrayStandard.append(error / abs(reference_solution))
@@ -63,7 +64,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new = \
         algorithm[
             0].performSpatiallyAdaptiv(
-            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, reference_solution=reference_solution, max_evaluations=max_evaluations)
+            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, max_evaluations=max_evaluations)
         # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
         errorArrayAlgorithm.extend(error_array_new)
         surplusErrorArrayAlgorithm.extend(surplus_error_array_new)
