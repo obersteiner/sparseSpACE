@@ -2,6 +2,7 @@ import numpy as np
 import abc, logging
 from Integrator import *
 import numpy.polynomial.legendre as legendre
+import numpy.polynomial.hermite as hermite
 import math
 from math import isclose, isinf
 from BasisFunctions import *
@@ -2017,8 +2018,7 @@ class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
                self.length[d] / 2
 
 
-# this class generates a grid according to the Gauss-Legendre quadrature
-class GaussLegendreGrid(Grid):
+class GaussGrid(Grid):
     def __init__(self, a, b, dim, integrator=None):
         self.dim = dim
         self.a = a
@@ -2031,20 +2031,38 @@ class GaussLegendreGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [GaussLegendreGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
+        self._initialize_grids1D()
 
     def is_high_order_grid(self):
         return True
 
+    @abc.abstractmethod
+    def _initialize_grids1D(self): pass
 
-class GaussLegendreGrid1D(Grid1d):
+
+class GaussGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
         return 2 ** level - 1
 
     def is_nested(self):
         return False
 
-    def get_1d_points_and_weights(self):
+    @abc.abstractmethod
+    def get_1d_points_and_weights(self) -> Tuple[Sequence[float], Sequence[float]]:
+            pass
+
+    def is_high_order_grid(self):
+        return True
+
+
+# this class generates a grid according to the Gauss-Legendre quadrature
+class GaussLegendreGrid(GaussGrid):
+    def _initialize_grids1D(self):
+        self.grids = [GaussLegendreGrid1D(a=self.a[d], b=self.b[d], boundary=self.boundary) for d in range(self.dim)]
+
+
+class GaussLegendreGrid1D(GaussGrid1D):
+    def get_1d_points_and_weights(self) -> Tuple[Sequence[float], Sequence[float]]:
         coordsD, weightsD = legendre.leggauss(int(self.num_points))
         coordsD = np.array(coordsD)
         coordsD += np.ones(int(self.num_points))
@@ -2053,8 +2071,34 @@ class GaussLegendreGrid1D(Grid1d):
         weightsD = np.array(weightsD) * self.length / 2
         return coordsD, weightsD
 
-    def is_high_order_grid(self):
-        return True
+
+# Tailored for a normal distribution
+class GaussHermiteGrid(GaussGrid):
+    def __init__(self, expectations, standard_deviations, dim, integrator=None):
+        self.expectations = expectations
+        self.standard_deviations = standard_deviations
+        a = np.array([-np.inf] * dim)
+        b = np.array([np.inf] * dim)
+        super().__init__(a, b, dim, integrator=integrator)
+
+    def _initialize_grids1D(self):
+        self.grids = [GaussHermiteGrid1D(loc=self.expectations[d], scale=self.standard_deviations[d], boundary=self.boundary) for d in range(self.dim)]
+
+
+class GaussHermiteGrid1D(GaussGrid1D):
+    def __init__(self, loc: float=None, scale: float=None, boundary: bool=True):
+        super().__init__(a=-np.inf, b=np.inf, boundary=boundary)
+        self.loc = loc
+        self.scale = scale
+
+    def get_1d_points_and_weights(self) -> Tuple[Sequence[float], Sequence[float]]:
+        coordsD, weightsD = hermite.hermgauss(int(self.num_points))
+        coordsD = np.array(coordsD)
+        coordsD = coordsD * self.scale * math.sqrt(2) + self.loc
+        weightsD = np.array(weightsD)
+        weightsD = weightsD / math.sqrt(math.pi)
+        return coordsD, weightsD
+
 
 from scipy.stats import norm
 from scipy.linalg import cholesky
