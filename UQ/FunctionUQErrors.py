@@ -13,9 +13,15 @@ from Function import *
 from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
+from StandardCombi import *
+
+shifted = False
 
 error_operator = ErrorCalculatorSingleDimVolumeGuided()
-problem_function = FunctionUQ()
+if shifted:
+    problem_function = FunctionUQShifted()
+else:
+    problem_function = FunctionUQ()
 a = np.zeros(3)
 b = np.ones(3)
 # ~ f = FunctionCustom(lambda p: problem_function([p[0], p[1], 0]))
@@ -33,17 +39,32 @@ op = UncertaintyQuantification(None, distris, a, b, dim=3)
 # Reference solutions
 problem_function_wrapped = FunctionCustom(lambda x: problem_function(x), output_dim=problem_function.output_length())
 op.f = problem_function_wrapped
-E_ref, Var_ref = op.calculate_expectation_and_variance_reference()
+# ~ E_ref, Var_ref = op.calculate_expectation_and_variance_reference(mode="StandardcombiGauss")
+
+grid = GaussLegendreGrid(a, b, 3)
+# ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+combiinstance = StandardCombi(a, b, grid=grid)
+combiinstance.perform_combi(1, 10, op.get_expectation_variance_Function())
+nodes, weights = combiinstance.get_points_and_weights()
+# ~ print("nodes", nodes)
+# ~ print(nodes, weights)
+# ~ combiinstance.print_resulting_combi_scheme(markersize=5)
+# ~ combiinstance.print_resulting_sparsegrid(markersize=10)
+E_ref, Var_ref = op.calculate_expectation_and_variance_for_weights(nodes.T, weights)
+
 print(E_ref, Var_ref)
 np.save("function_uq.npy", [E_ref, Var_ref])
 #'''
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "adaptiveLagrange")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "adaptiveLagrange", "sparseGauss")
 typids = dict()
 for i,v in enumerate(types):
     typids[v] = i
 
-E_ref, Var_ref = np.load("function_uq.npy")
+if shifted:
+    E_ref, Var_ref = np.load("function_uq_shifted.npy")
+else:
+    E_ref, Var_ref = np.load("function_uq.npy")
 
 def error_absolute(v, ref): return abs(ref - v)
 def error_relative(v, ref): return error_absolute(v, ref) / abs(ref)
@@ -54,7 +75,7 @@ def run_test(testi, typid, exceed_evals=None):
 
     measure_start = time.time()
     typ = types[typid]
-    if typ not in ("Gauss", "Fejer"):
+    if typ not in ("Gauss", "Fejer", "sparseGauss"):
         do_inverse_transform = typ in ("adaptiveTransBSpline", "adaptiveTransTrapez", "adaptiveTransHO")
         if do_inverse_transform:
             a_trans, b_trans = np.zeros(dim), np.ones(dim)
@@ -110,6 +131,13 @@ def run_test(testi, typid, exceed_evals=None):
         elif typ == "Fejer":
             nodes, weights = cp.generate_quadrature(testi,
                 op.distributions_joint, rule="F", normalize=True)
+        elif typ == "sparseGauss":
+            grid = GaussLegendreGrid(a, b, 3)
+            # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+            combiinstance = StandardCombi(a, b, grid=grid)
+            combiinstance.perform_combi(1, testi+1, op.get_expectation_variance_Function())
+            nodes, weights = combiinstance.get_points_and_weights()
+            nodes = nodes.T
         E, Var = op.calculate_expectation_and_variance_for_weights(nodes, weights)
 
     print("simulation time: " + str(time.time() - measure_start) + " s")
@@ -149,7 +177,8 @@ def run_test(testi, typid, exceed_evals=None):
 evals_end = 1200
 
 # For testing
-skip_types = ("adaptiveLagrange",)
+# ~ skip_types = ("adaptiveLagrange",)
+skip_types = ("sparseGauss",)
 assert all([typ in types for typ in skip_types])
 
 for typid in reversed(range(len(types))):

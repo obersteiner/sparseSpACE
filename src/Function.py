@@ -314,7 +314,7 @@ class FunctionGShifted(FunctionG):
 
 class FunctionUQ(Function):
     def eval(self, coordinates):
-        assert (len(coordinates) == 3)
+        assert (len(coordinates) == 3), len(coordinates)
         parameter1 = coordinates[0]
         parameter2 = coordinates[1]
         parameter3 = coordinates[2]
@@ -329,6 +329,13 @@ class FunctionUQ(Function):
         f = lambda x, y, z: self.eval([x, y, z])
         return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
                                  lambda x, y: end[0])[0]
+
+
+class FunctionUQShifted(FunctionUQ):
+    def eval(self, coordinates):
+        # Move the discontinuity away from the middle
+        coords = np.array([coordinates[0], coordinates[1] + 0.221413, coordinates[2]])
+        return super().eval(coords)
 
 
 from scipy.stats import truncnorm
