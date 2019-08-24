@@ -8,12 +8,13 @@ class StandardCombi(object):
     # initialization
     # a = lower bound of integral; b = upper bound of integral
     # grid = specified grid (e.g. Trapezoidal);
-    def __init__(self, a, b, grid=None, print_output=True, operation=None):
+    def __init__(self, a, b, operation: GridOperation, print_output=True):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
-        self.grid = grid
+        assert operation is not None
+        self.grid = operation.get_grid()
         self.combischeme = CombiScheme(self.dim)
         self.print_output = print_output
         assert (len(a) == len(b))
@@ -124,14 +125,14 @@ class StandardCombi(object):
                 #points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
                 #self.operation.perform_operation(points)
                 #self.compute_evaluations(evaluation_array, points)
-        real_integral = reference_solution
+        reference_solution = self.operation.get_reference_solution()
         if self.print_output:
             print("CombiSolution", combivalue)
         if reference_solution is not None:
             if self.print_output:
-                print("Analytic Solution", real_integral)
-                print("Difference", abs(combivalue - real_integral))
-            return self.scheme, max(abs(combivalue - real_integral)), combivalue
+                print("Analytic Solution", reference_solution)
+                print("Difference", abs(combivalue - reference_solution))
+            return self.scheme, max(abs(combivalue - reference_solution)), combivalue
         else:
             return self.scheme, None, combivalue
 

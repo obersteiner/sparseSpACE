@@ -2,7 +2,7 @@ from spatiallyAdaptiveBase import *
 from GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
-    def __init__(self, a, b, number_of_refinements_before_extend=1, grid=None, no_initial_splitting=False,
+    def __init__(self, a, b, number_of_refinements_before_extend=1, no_initial_splitting=False,
                  version=0, dim_adaptive=False, automatic_extend_split=False, operation=None, norm=np.inf):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
@@ -10,7 +10,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         # version 2 coarsen fewest and adds a bit more points in non refinded regions but very similar to version 1
         assert 3 >= version >= 0
         self.version = version
-        SpatiallyAdaptivBase.__init__(self, a=a, b=b, grid=grid, operation=operation, norm=norm)
+        SpatiallyAdaptivBase.__init__(self, a=a, b=b, operation=operation, norm=norm)
         self.noInitialSplitting = no_initial_splitting
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.refinements_for_recalculate = 100
@@ -21,14 +21,22 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def interpolate_points(self, interpolation_points, component_grid):
         point_assignements = self.get_points_assignement_to_areas(interpolation_points)
         dict_point_interpolation_values = {}
-        f_value_array_length = len(self.f([0.5]*self.dim))
+        f_value_array_length = self.f.output_length()
         for area, contained_points in point_assignements:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
             coarsened_levelvector, do_compute  = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
             if do_compute:
-                #print(coarsened_levelvector, contained_points, area.start, area.end)
-                self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
-                interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid, self.grid.coordinate_array, contained_points)
+                # check if dedicated interpolation routine is present in grid
+                interpolation_op = getattr(self.grid, "interpolate", None)
+                if callable(interpolation_op):
+                    self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
+                    interpolated_values = self.grid.interpolate(contained_points, area.start, area.end, coarsened_levelvector)
+                else:
+                    # call default d-linear interpolation based on points in grid
+                    # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
+                    self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
+                    interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid,
+                                                                           self.grid.coordinate_array, contained_points)
                 for p, value in zip(contained_points, interpolated_values):
                     dict_point_interpolation_values[tuple(p)] = value
             else:
@@ -306,7 +314,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             if self.print_output:
                 print("New scheme")
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0],do_print=self.print_output)
-            return True
+            return False
         return False
 
     def compute_benefits_for_operations(self, area):

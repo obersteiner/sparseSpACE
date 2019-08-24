@@ -16,6 +16,8 @@ class Grid(object):
         self.boundary = boundary
         self.a = a
         self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
 
     # integrates the grid on the specified area for function f
     def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
@@ -68,7 +70,12 @@ class Grid(object):
 
     def get_weights(self) -> Sequence[float]:
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
-        return np.asarray(np.prod(get_cross_product(self.weights), axis=1))
+        if get_cross_product_list(self.weights) == []:
+            return []
+        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1))
+
+    def get_num_points(self):
+        return np.prod(self.numPoints)
 
     def get_mid_point(self, a: float, b: float, d: int) -> float:
         #if self.numPoints[d] == 1:
@@ -121,7 +128,7 @@ class Grid(object):
 
     # this method returns all the coordinate tuples of all points in the grid
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
-        return get_cross_product(self.coordinate_array)
+        return get_cross_product_list(self.coordinate_array)
 
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector: Sequence[int]) -> float:
@@ -244,9 +251,11 @@ class Grid1d(object):
 
 # This grid can be used to define a grid consisting of arbitrary 1D Grids
 class MixedGrid(Grid):
-    def __init__(self, a: Sequence[float], b: Sequence[float], dim: int, grids: Sequence[Grid1d], boundary: bool=None, integrator: IntegratorBase=None):
+    def __init__(self, a: Sequence[float], b: Sequence[float], grids: Sequence[Grid1d], boundary: bool=None, integrator: IntegratorBase=None):
         self.a = a
         self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -254,8 +263,7 @@ class MixedGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.dim = dim
-        assert (len(grids) == dim)
+        assert (len(grids) == self.dim)
         self.grids = grids
         self.boundary = all([grid.boundary for grid in grids])
 
@@ -263,29 +271,87 @@ class MixedGrid(Grid):
         return any([grid.is_high_order_grid() for grid in self.grids])
 
 
-class LagrangeGrid(Grid):
-    def __init__(self, a: float, b: float, dim: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
-        self.boundary = boundary
-        self.a = a
-        self.b = b
-        self.integrator = IntegratorHierarchicalBSpline(self)
-        self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(dim)]
-        self.p = p
-        self.modified_basis = modified_basis
-        assert not boundary or not modified_basis
+class BasisGrid(Grid):
+    # integrates the grid on the specified area for function f
+    def integrate(self, f: Callable[[Tuple[float, ...]], Sequence[float]], levelvec: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+        if not self.is_global():
+            self.setCurrentArea(start, end, levelvec)
+        integral = self.integrator(f, self.levelToNumPoints(levelvec), start, end)
+        self.surplus_values[tuple((tuple(start), tuple(end), tuple(levelvec)))] = self.integrator.get_surplusses()
+        return integral
 
-    def is_high_order_grid(self) -> bool:
-        return self.p > 1
+    def interpolate_grid(self, grid_points_for_dims: Sequence[Sequence[float]], start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        surplusses = self.surplus_values[tuple((tuple(start), tuple(end), tuple(levelvec)))]
+        num_points = np.prod([len(grid_d) for grid_d in grid_points_for_dims])
+        num_points_grid = [len(grid_d) for grid_d in grid_points_for_dims]
+        results = np.zeros((num_points, np.shape(surplusses)[0]))
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = grid_points_for_dims[d]
+            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
+            for i, spline in enumerate(self.grids[d].splines):
+                for j, p in enumerate(points_d):
+                    evaluations1D[j, i] = spline(p)
+            evaluations[d] = evaluations1D
+
+        pointIndexList = get_cross_product_range(num_points_grid)
+        for n, p in enumerate(pointIndexList):
+            indexList = get_cross_product_range(self.numPoints)
+            for i, index in enumerate(indexList):
+                intermediate_result = np.array(surplusses[:,i])
+                for d in range(self.dim):
+                    for j in range(np.shape(surplusses)[0]):
+                        intermediate_result *= evaluations[d][p[d], index[d]]
+                results[n,:] += intermediate_result
+        return results
+
+    def interpolate(self, evaluation_points: Sequence[Tuple[float, ...]], start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        surplusses = self.surplus_values[tuple((tuple(start), tuple(end), tuple(levelvec)))]
+        results = np.zeros((len(evaluation_points), np.shape(surplusses)[0]))
+        evaluations = np.empty(self.dim, dtype=object)
+        for d in range(self.dim):
+            points_d = np.array([evaluation_point[d] for evaluation_point in evaluation_points])
+            evaluations1D = np.zeros((len(evaluation_points), len(self.grids[d].splines)))
+            for i, basis in enumerate(self.grids[d].splines):
+                for j, p in enumerate(points_d):
+                    evaluations1D[j, i] = basis(p)
+            evaluations[d] = evaluations1D
+        indexList = get_cross_product_range(self.numPoints)
+        for i, index in enumerate(indexList):
+            intermediate_result = np.ones((len(evaluation_points), np.shape(surplusses)[0]))
+            intermediate_result *= np.array(surplusses[:,i])
+            for d in range(self.dim):
+                for j in range(np.shape(surplusses)[0]):
+                    intermediate_result[:, j] *= evaluations[d][:, index[d]]
+            results[:,:] += intermediate_result
+        return results
 
     def get_basis(self, d: int, index: int):
         return self.grids[d].splines[index]
 
 
+class LagrangeGrid(BasisGrid):
+    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
+        self.boundary = boundary
+        self.a = a
+        self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
+        self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
+        self.p = p
+        self.modified_basis = modified_basis
+        self.surplus_values = {}
+        assert not boundary or not modified_basis
+
+    def is_high_order_grid(self) -> bool:
+        return self.p > 1
+
+
 class LagrangeGrid1D(Grid1d):
     def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
         super().__init__(a=a, b=b, boundary=boundary)
-        self.p = p  # spline order
-        assert p % 2 == 1
+        self.p = p  # max order of lagrange polynomials
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p / 2) + 1)
         self.modified_basis = modified_basis
         assert not boundary or not modified_basis
@@ -398,22 +464,22 @@ class LagrangeGrid1D(Grid1d):
         assert False
 
 
-class BSplineGrid(Grid):
-    def __init__(self, a: float, b: float, dim: int, boundary: bool=True, p: int=3, modified_basis: bool=False):
+class BSplineGrid(BasisGrid):
+    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
         self.boundary = boundary
         self.a = a
         self.b = b
-        self.integrator = IntegratorHierarchicalBSpline(self)
-        self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(dim)]
+        assert len(a) == len(b)
+        self.dim = len(a)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
+        self.grids = [BSplineGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
         self.p = p
         self.modified_basis = modified_basis
+        self.surplus_values = {}
         assert not boundary or not modified_basis
 
     def is_high_order_grid(self) -> bool:
         return self.p > 1
-
-    def get_basis(self, d: int, index: int):
-        return self.grids[d].splines[index]
 
 class BSplineGrid1D(Grid1d):
     def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
@@ -537,10 +603,12 @@ class BSplineGrid1D(Grid1d):
 # this class generates a Leja grid which constructs 1D Leja grid structures
 # and constructs the tensorized grid according to the levelvector
 class LejaGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, integrator=None):
+    def __init__(self, a, b, boundary=True, integrator=None):
         self.boundary = boundary
         self.a = a
         self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -549,7 +617,7 @@ class LejaGrid(Grid):
             else:
                 assert False
         self.linear_growth_factor = 2
-        self.grids = [LejaGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
+        self.grids = [LejaGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
 
 
 class LejaGrid1D(Grid1d):
@@ -669,9 +737,11 @@ class LejaGrid1D(Grid1d):
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
 class TrapezoidalGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, integrator=None, modified_basis=False):
+    def __init__(self, a, b, boundary=True, integrator=None, modified_basis=False):
         self.a = a
         self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
         self.boundary = boundary
         self.modified_basis = modified_basis
         if integrator is None:
@@ -681,7 +751,7 @@ class TrapezoidalGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [TrapezoidalGrid1D(a=a[d], b=b[d], boundary=self.boundary, modified_basis=modified_basis) for d in range(dim)]
+        self.grids = [TrapezoidalGrid1D(a=a[d], b=b[d], boundary=self.boundary, modified_basis=modified_basis) for d in range(self.dim)]
 
 
 class TrapezoidalGrid1D(Grid1d):
@@ -720,7 +790,7 @@ class TrapezoidalGrid1D(Grid1d):
                     else:
                         return 0
                 else:
-                    return self.weight_composite_trapezoidal()
+                    return self.weight_composite_trapezoidal(index)
             else:
                 if index == 0 and self.lowerBorder == 1:
                     return 2 * self.spacing
@@ -746,10 +816,12 @@ class TrapezoidalGrid1D(Grid1d):
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
 class ClenshawCurtisGrid(Grid):
-    def __init__(self, a, b, dim, boundary=True, integrator=None):
+    def __init__(self, a, b, boundary=True, integrator=None):
         self.a = a
         self.b = b
+        assert len(a) == len(b)
         self.boundary = boundary
+        self.dim = len(a)
         if integrator is None:
             self.integrator = IntegratorArbitraryGridScalarProduct(self)
         else:
@@ -757,7 +829,7 @@ class ClenshawCurtisGrid(Grid):
                 self.integrator = IntegratorArbitraryGrid(self)
             else:
                 assert False
-        self.grids = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(dim)]
+        self.grids = [ClenshawCurtisGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
 
     def is_high_order_grid(self):
         return True
@@ -1125,7 +1197,7 @@ class GlobalBasisGrid(GlobalGrid):
 class GlobalBSplineGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
         self.b = b
         self.dim = len(a)
@@ -1218,7 +1290,7 @@ class GlobalBSplineGrid(GlobalBasisGrid):
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
-        self.integrator = IntegratorHierarchicalBSpline(self)
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
         self.b = b
         self.dim = len(a)

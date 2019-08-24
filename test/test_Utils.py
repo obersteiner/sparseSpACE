@@ -9,15 +9,15 @@ class TestUtils(unittest.TestCase):
         for dim in range(1,6):
             for s in range(1,10):
                 sizes = np.ones(dim, dtype=int) * s
-                cross_product = get_cross_product_range(sizes)
+                cross_product = get_cross_product_range_list(sizes)
                 self.assertEqual(len(cross_product), s**dim)
 
                 sizes = sizes + np.asarray(range(dim))
-                cross_product = get_cross_product_range(sizes)
+                cross_product = get_cross_product_range_list(sizes)
                 self.assertEqual(len(cross_product), np.prod(sizes))
 
                 arrays = [np.linspace(0, 1, sizes[d]) for d in range(dim)]
-                cross_product = get_cross_product(arrays)
+                cross_product = get_cross_product_list(arrays)
                 self.assertEqual(len(cross_product), np.prod(sizes))
 
     def test_valid_entries(self):

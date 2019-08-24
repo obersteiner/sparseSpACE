@@ -10,10 +10,11 @@ class TestStandardCombi(unittest.TestCase):
         a = -3
         b = math.pi
         for d in range(2, 6):
-            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), print_output=False)
+            f = FunctionLinear([10 ** i for i in range(d)])
+            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    f = FunctionLinear([10**i for i in range(d)])
                     #print(l,l2,d)
                     standardCombi.set_combi_parameters(l2, l, f)
                     standardCombi.check_combi_scheme()
@@ -22,26 +23,28 @@ class TestStandardCombi(unittest.TestCase):
         a = -3
         b = 7.3
         for d in range(2, 6):
-            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), print_output=False)
+            f = FunctionLinear([10 ** i for i in range(d)])
+            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    f = FunctionLinear([10**i for i in range(d)])
-                    scheme, error, integral  = standardCombi.perform_combi(l2, l, f, f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+                    scheme, error, integral  = standardCombi.perform_combi(l2, l, f)
                     rel_error = error/f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b)
                     self.assertAlmostEqual(rel_error, 0.0, 13)
 
     def test_interpolation(self):
-        a = -3
+        a = -1
         b = 7
         for d in range(2, 5):
-            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), print_output=False)
+            f = FunctionLinear([10 * (i+1) for i in range(d)])
+            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    f = FunctionLinear([10*i for i in range(d)])
                     standardCombi.set_combi_parameters(l2, l, f)
-                    grid_coordinates = [np.linspace(a, b, 10) for _ in range(d)]
+                    grid_coordinates = [np.linspace(a, b, 3, endpoint=False) for _ in range(d)]
                     interpolated_points = standardCombi.interpolate_grid(grid_coordinates)
-                    grid_points = list(get_cross_product(grid_coordinates))
+                    grid_points = get_cross_product_list(grid_coordinates)
                     for component_grid in standardCombi.scheme:
                         interpolated_points_grid = standardCombi.interpolate_points(grid_points, component_grid)
                         for i, p in enumerate(grid_points):
@@ -59,10 +62,11 @@ class TestStandardCombi(unittest.TestCase):
         a = -3
         b = 7.3
         for d in range(2, 6):
-            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), print_output=False)
+            f = FunctionLinear([10 ** i for i in range(d)])
+            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+            standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    f = FunctionLinear([10**i for i in range(d)])
                     standardCombi.set_combi_parameters(l2, l, f)
                     points, weights = standardCombi.get_points_and_weights()
                     self.assertEqual(len(points), standardCombi.get_total_num_points(distinct_function_evals=False))

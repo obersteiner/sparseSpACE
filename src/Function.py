@@ -37,6 +37,7 @@ class Function(object):
                 self.f_dict[coords] = f_value
         if np.isscalar(f_value):
             f_value = [f_value]
+        assert len(f_value) == self.output_length(), "Wrong output_length()! Adjust the output length in your function!"
         return np.array(f_value)
 
     def deactivate_caching(self) -> None:

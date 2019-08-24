@@ -184,6 +184,12 @@ class RefinementContainer(object):
         else:
             refine_object.benefit = refine_object.error
 
+    def get_max_coarsening(self) -> int:
+        max_coarsening_level = 0
+        for refine_obj in self.refinementObjects:
+            max_coarsening_level = max(max_coarsening_level, refine_obj.coarsening_level)
+        return max_coarsening_level
+
 # this class defines a container of refinement containers for each dimension in the single dimension test case
 # it delegates methods to subcontainers and coordinates everything
 class MetaRefinementContainer(object):
@@ -203,6 +209,9 @@ class MetaRefinementContainer(object):
             if max_benefit < benefit:
                 max_benefit = benefit
         return max_benefit
+
+    def get_max_coarsening(self, d: int) -> int:
+        return self.refinementContainers[d].get_max_coarsening()
 
     def get_object(self, object_position: Tuple[int, int]) -> RefinementObject:
         return self.refinementContainers[object_position[0]].get_object(object_position[1])

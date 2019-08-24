@@ -5,17 +5,16 @@ from RefinementObject import *
 from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
-import GridOperation, Grid
-
+from GridOperation import GridOperation
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a: Sequence[float], b: Sequence[float], grid: Grid=None, operation: GridOperation=None, norm: int=np.inf):
+    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation=None, norm: int=np.inf):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
-        self.grid = grid
+        self.grid = operation.get_grid()
         self.refinements_for_recalculate = 100
         self.operation = operation
         self.norm = norm
@@ -56,8 +55,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.tolerance = tol
         self.f = f
         if self.print_output:
-            if self.realIntegral is not None:
-                print("Reference solution:", self.realIntegral)
+            if self.reference_solution is not None:
+                print("Reference solution:", self.reference_solution)
             else:
                 print("No reference solution present. Working purely on surplus error estimates.")
         if (refinement_container == []):  # initialize refinement
@@ -165,13 +164,13 @@ class SpatiallyAdaptivBase(StandardCombi):
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
     def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionGriebel(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
-                                reevaluate_at_end: bool=False, reference_solution: Sequence[float]=None, max_time: float=None, max_evaluations: int=None,
+                                reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
                                 print_output: bool=True, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
-        self.realIntegral = reference_solution
         self.print_output = print_output
+        self.reference_solution = self.operation.get_reference_solution()
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         self.error_array = []
         self.surplus_error_array = []
@@ -179,10 +178,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.test_scheme = test_scheme
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
-        self.reference_solution = reference_solution
         self.calculated_solution = None
-        return self.continue_adaptive_refinement(tol=tol, max_time=max_time,
-            max_evaluations=max_evaluations, min_evaluations=min_evaluations)
+        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         start_time = time.time()
