@@ -8,13 +8,16 @@ results_path = tmpdir + "/uqtestG.npy"
 assert os.path.isfile(results_path)
 solutions_data = list(np.load(results_path, allow_pickle=True))
 
-typ_descs = ("full grid Gauß", "Trapez", "HighOrder", "BSpline", "Lagrange")
+typ_descs = ("full Gauß", "Trapez", "HighOrder", "BSpline", "Lagrange", "sparse Gauß")
 
 datas = [[] for _ in typ_descs]
 for v in solutions_data:
 	(num_evals, typid, err_E, err_Var) = v
 	typid = int(typid)
 	if typid < 0 or typid >= len(typ_descs):
+		continue
+	if num_evals < 21:
+		# No adaptive sparse grid results
 		continue
 	datas[typid].append((num_evals, err_E, err_Var))
 
@@ -25,6 +28,7 @@ for typid in range(len(typ_descs)):
 figure = plotter.figure(1, figsize=(15,10))
 figure.canvas.set_window_title('Stocha')
 
+legend_shown = False
 for i,desc in enumerate(("E", "Var")):
 	plotter.subplot(2, 1, 1 + i)
 	for typid, typdesc in enumerate(typ_descs):
@@ -35,7 +39,10 @@ for i,desc in enumerate(("E", "Var")):
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f"{desc} relative error")
 	plotter.yscale("log")
-	plotter.legend(loc="lower left")
+	plotter.xscale("log")
+	if not legend_shown:
+		plotter.legend(loc="lower left")
+		legend_shown = True
 	plotter.grid(True)
 
 

@@ -10,7 +10,7 @@ from ErrorCalculator import *
 from GridOperation import *
 
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange", "sparseGauss")
 
 d = 2
 a = np.zeros(d)
@@ -20,15 +20,16 @@ f_g = FunctionGShifted(d)
 reference_expectation = f_g.get_expectation()
 reference_variance = f_g.get_variance()
 # Create the operation only once
-op = UncertaintyQuantification(None, "Uniform", a, b, dim=d)
+op = UncertaintyQuantificationTesting(None, "Uniform", a, b, dim=d)
 
-def run_test(typi, typid, exceed_evals=None):
+def run_test(typi, typid, exceed_evals=None, evals_end=None):
 	lmax = 2
 	f = FunctionCustom(lambda x: f_g(x))
 	op.f = f
 
+	multiple_evals = None
 	typ = types[typid]
-	if typ != "Gauss":
+	if typ not in ("Gauss", "sparseGauss"):
 		if typ == "adaptiveHO":
 			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=True)
 		elif typ == "adaptiveTrapez":
@@ -49,7 +50,12 @@ def run_test(typi, typid, exceed_evals=None):
 		mom2 = reference_variance + reference_expectation * reference_expectation
 		reference_solution = np.array([reference_expectation, mom2])
 		op.set_reference_solution(reference_solution)
-		if exceed_evals is None:
+		if evals_end is not None:
+			multiple_evals = dict()
+			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
+				error_operator, tol=0, max_evaluations=evals_end,
+				print_output=True, solutions_storage=multiple_evals)
+		elif exceed_evals is None:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=0,
 				max_evaluations=1,
@@ -60,46 +66,64 @@ def run_test(typi, typid, exceed_evals=None):
 				max_evaluations=np.inf, min_evaluations=exceed_evals+1,
 				print_output=False)
 
-		(E,), (Var,) = op.calculate_expectation_and_variance(combiinstance)
+		if multiple_evals is None:
+			(E,), (Var,) = op.calculate_expectation_and_variance(combiinstance)
 	else:
-		joint_distr = op.distributions_joint
-		nodes, weights = cp.generate_quadrature(
-			typi, joint_distr, rule="G")
-		evals = [f(x)[0] for x in nodes.T]
-		E = sum([v * weights[i] for i,v in enumerate(evals)])
-		mom2 = sum([v * v * weights[i] for i,v in enumerate(evals)])
-		Var = mom2 - E * E
+		if typ == "Gauss":
+			nodes, weights = cp.generate_quadrature(typi, op.distributions_joint, rule="G")
+		elif typ == "sparseGauss":
+			op.set_grid(GaussLegendreGrid(a, b, dim=d))
+			combiinstance = StandardCombi(a, b, operation=op)
+			combiinstance.perform_combi(1, testi+1, op.get_expectation_variance_Function())
+			nodes, weights = combiinstance.get_points_and_weights()
+			nodes = nodes.T
+		E, Var = op.calculate_expectation_and_variance_for_weights(nodes, weights)
 
 	# ~ print(f"E: {E}, Var: {Var}\n")
 	# ~ print("reference E and Var: ", reference_expectation, reference_variance)
-
-	err_E = abs((E - reference_expectation) / reference_expectation)
-	err_Var = abs((Var - reference_variance) / reference_variance)
-	num_evals = f.get_f_dict_size()
-
-	print("evals, relative errors:", num_evals, err_E, err_Var)
-
-	result_data = (num_evals, typid, err_E, err_Var)
 
 	tmpdir = os.getenv("XDG_RUNTIME_DIR")
 	results_path = tmpdir + "/uqtestG.npy"
 	solutions_data = []
 	if os.path.isfile(results_path):
 		solutions_data = list(np.load(results_path, allow_pickle=True))
-	if all([any([d[i] != result_data[i] for i in range(2)]) for d in solutions_data]):
-		solutions_data.append(result_data)
-		np.save(results_path, solutions_data)
 
-	return num_evals
+	if multiple_evals is None:
+		err_E = abs((E - reference_expectation) / reference_expectation)
+		err_Var = abs((Var - reference_variance) / reference_variance)
+		num_evals = f.get_f_dict_size()
+
+		print("evals, relative errors:", num_evals, err_E, err_Var)
+
+		result_data = (num_evals, typid, err_E, err_Var)
+
+		if all([any([d[i] != result_data[i] for i in range(2)]) for d in solutions_data]):
+			solutions_data.append(result_data)
+			np.save(results_path, solutions_data)
+
+		return num_evals
+	else:
+		solutions = op.calculate_multiple_expectation_and_variance(multiple_evals)
+		for num_evals, E, Var in solutions:
+			err_E = abs((E - reference_expectation) / reference_expectation)
+			err_Var = abs((Var - reference_variance) / reference_variance)
+
+			print("evals, relative errors:", num_evals, err_E, err_Var)
+
+			result_data = (num_evals, typid, err_E, err_Var)
+
+			if all([any([d[i] != result_data[i] for i in range(2)]) for d in solutions_data]):
+				solutions_data.append(result_data)
+		np.save(results_path, solutions_data)
+		return f.get_f_dict_size()
 
 
 # ~ evals_end = 900
-evals_end = 1200
+evals_end = 4000
 
 # For testing
 # ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
-# ~ skip_types = ("BSpline", "adaptiveLagrange")
-skip_types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "adaptiveLagrange")
+skip_types = ("adaptiveLagrange", "BSpline")
 assert all([typ in types for typ in skip_types])
 
 for typid in reversed(range(len(types))):
@@ -110,7 +134,7 @@ for typid in reversed(range(len(types))):
         continue
     print("Calculations for", typ)
     testi = 0
-    evals_num = run_test(testi, typid)
+    evals_num = run_test(testi, typid, evals_end=evals_end)
     while evals_num < evals_end:
         testi = testi+1
         print(f"last evals: {evals_num}, testi {testi}")
