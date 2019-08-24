@@ -36,22 +36,23 @@ def run_test(evals_num, typid, exceed_evals=None):
 			# ~ grid = GlobalBSplineGrid(a, b, modified_basis=True, boundary=False, p=3)
 			grid = GlobalBSplineGrid(a, b)
 			# ~ lmax = 3
-		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-			norm=2, grid=grid)
+		op.set_grid(grid)
+		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2)
 
 		error_operator = ErrorCalculatorSingleDimVolumeGuided()
 		expectation_var_func = op.get_expectation_variance_Function()
 		mom2 = reference_variance + reference_expectation * reference_expectation
 		reference_solution = np.array([reference_expectation, mom2])
+		op.set_reference_solution(reference_solution)
 		if exceed_evals is None:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=0,
-				max_evaluations=evals_num, reference_solution=reference_solution,
+				max_evaluations=evals_num,
 				print_output=False)
 		else:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=np.inf,
-				max_evaluations=np.inf, min_evaluations=exceed_evals+1, reference_solution=reference_solution,
+				max_evaluations=np.inf, min_evaluations=exceed_evals+1,
 				print_output=False)
 
 		(E,), (Var,) = op.calculate_expectation_and_variance(combiinstance)
