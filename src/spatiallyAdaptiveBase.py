@@ -165,7 +165,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionGriebel(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
@@ -179,6 +179,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
         self.calculated_solution = None
+        self.solutions_storage = solutions_storage
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
@@ -191,8 +192,12 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.print_output:
                 print("Current error:", error)
-            # Check if conditions are met to abort refining
             num_evaluations = self.get_total_num_points()
+            if self.solutions_storage is not None:
+                assert not self.reevaluate_at_end, "Solutions are only available in the end"
+                # Remember the solutions for each number of evaluations
+                self.solutions_storage[num_evaluations] = self.refinement.integral
+            # Check if conditions are met to abort refining
             if error <= tol and num_evaluations >= min_evaluations:
                 break
             if max_evaluations is not None and num_evaluations > max_evaluations:

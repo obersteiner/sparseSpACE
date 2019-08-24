@@ -1086,6 +1086,17 @@ class UncertaintyQuantification(Integration):
     def calculate_expectation(self, combiinstance, use_combiinstance_solution=True):
         return self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=use_combiinstance_solution)
 
+    @staticmethod
+    def moments_to_expectation_variance(mom1, mom2):
+        expectation = mom1
+        variance = [mom2[i] - ex * ex for i, ex in enumerate(expectation)]
+        for i, v in enumerate(variance):
+            if v < 0.0:
+                # When the variance is zero, it can be set to something negative
+                # because of numerical errors
+                variance[i] = -v
+        return expectation, variance
+
     def calculate_expectation_and_variance(self, combiinstance, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             integral = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
@@ -1095,13 +1106,7 @@ class UncertaintyQuantification(Integration):
         else:
             expectation = self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=False)
             expectation_of_squared = self.calculate_moment(combiinstance, k=2, use_combiinstance_solution=False)
-        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
-        for i, v in enumerate(variance):
-            if v < 0.0:
-                # When the variance is zero, it can be set to something negative
-                # because of numerical errors
-                variance[i] = -v
-        return expectation, variance
+        return self.moments_to_expectation_variance(expectation, expectation_of_squared)
 
     def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
@@ -1207,13 +1212,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
         f_evals_squared = np.array([v ** 2 for v in f_evals])
         expectation = np.inner(f_evals.T, weights)
         expectation_of_squared = np.inner(f_evals_squared.T, weights)
-        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
-        for i, v in enumerate(variance):
-            if v < 0.0:
-                # When the variance is zero, it can be set to something negative
-                # because of numerical errors
-                variance[i] = -v
-        return expectation, variance
+        return self.moments_to_expectation_variance(expectation, expectation_of_squared)
 
     def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton"):
         if mode == "ChaospyHalton":
@@ -1247,6 +1246,18 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
         else:
             assert False, mode
         return self.calculate_expectation_and_variance_for_weights(nodes, weights)
+
+    def calculate_multiple_expectation_and_variance(self, solutions):
+        evals = sorted(solutions)
+        expectation_variances = []
+        for k in evals:
+            integral = solutions[k]
+            output_dim = len(integral) // 2
+            mom1 = integral[:output_dim]
+            mom2 = integral[output_dim:]
+            expectation, variance = self.moments_to_expectation_variance(mom1, mom2)
+            expectation_variances.append((k, expectation, variance))
+        return expectation_variances
 
 
 from scipy import integrate
