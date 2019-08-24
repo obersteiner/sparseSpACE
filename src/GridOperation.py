@@ -898,6 +898,7 @@ class Interpolation(Integration):
 import chaospy as cp
 import scipy.stats as sps
 from Function import *
+from StandardCombi import *  # For reference solution calculation
 
 class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
@@ -932,6 +933,7 @@ class UncertaintyQuantification(Integration):
     # creates the distributions list which contains Chaospy distributions
     def _prepare_distributions(self, distris, a, b):
         self.distributions = []
+        self.distribution_infos = distris
         chaospy_distributions = []
         known_distributions = dict()
         for d in range(self.dim):
@@ -989,6 +991,8 @@ class UncertaintyQuantification(Integration):
         self.distributions_chaospy = chaospy_distributions
         self.distributions_joint = cp.J(*chaospy_distributions)
         self.all_uniform = all(k[0] == "Uniform" for k in known_distributions)
+        self.a = a
+        self.b = b
 
     # reuse_old_values does not work for multidimensional function output,
     # so this method is overridden here
@@ -1163,13 +1167,37 @@ class UncertaintyQuantification(Integration):
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
     # Another testing function
-    def calculate_expectation_and_variance_reference(self):
-        nodes = self.distributions_joint.sample(2**14, rule="H")
-        num_samples = len(nodes[0])
-        w = 1.0 / num_samples
-        weights = np.array([w for _ in range(num_samples)])
-        # ~ nodes, weights = cp.generate_quadrature(29,
-            # ~ self.distributions_joint, rule="G")
+    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton"):
+        if mode == "ChaospyHalton":
+            nodes = self.distributions_joint.sample(2**14, rule="H")
+            num_samples = len(nodes[0])
+            w = 1.0 / num_samples
+            weights = np.array([w for _ in range(num_samples)])
+        elif mode == "ChaospyGauss":
+            nodes, weights = cp.generate_quadrature(29,
+                self.distributions_joint, rule="G")
+        elif mode == "StandardcombiGauss":
+            if all([distr[0] == "Normal" for distr in self.distribution_infos]):
+                expectations = [distr[1] for distr in self.distribution_infos]
+                standard_deviations = [distr[2] for distr in self.distribution_infos]
+                grid = GaussHermiteGrid(expectations, standard_deviations)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            elif self.all_uniform:
+
+                grid = GaussLegendreGrid(self.a, self.b, self.dim)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            else:
+                assert False, "Not implemented"
+        else:
+            assert False, mode
         return self.calculate_expectation_and_variance_for_weights(nodes, weights)
 
     def calculate_expectation_and_variance_for_weights(self, nodes, weights):
