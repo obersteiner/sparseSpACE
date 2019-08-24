@@ -148,6 +148,30 @@ if use_proxy:
 # Create the Operation
 op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 
+'''
+# Reference solutions
+problem_function_wrapped = FunctionCustom(lambda x: problem_function(x), output_dim=problem_function.output_length())
+op.f = problem_function_wrapped
+# ~ E_ref, Var_ref = op.calculate_expectation_and_variance_reference(mode="StandardcombiGauss")
+
+expectations = [distr[1] for distr in distris]
+standard_deviations = [distr[2] for distr in distris]
+grid = GaussHermiteGrid(expectations, standard_deviations, dim)
+# ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+combiinstance = StandardCombi(a, b, grid=grid)
+combiinstance.perform_combi(1, 5, op.get_expectation_variance_Function())
+nodes, weights = combiinstance.get_points_and_weights()
+# ~ print("nodes", nodes)
+# ~ print(nodes, weights)
+# ~ combiinstance.print_resulting_combi_scheme(markersize=5)
+# ~ combiinstance.print_resulting_sparsegrid(markersize=10)
+E_ref, Var_ref = op.calculate_expectation_and_variance_for_weights(nodes.T, weights)
+
+E_ref = reshape_result_values(E_ref)
+Var_ref = reshape_result_values(Var_ref)
+np.save("sparse_gauss_2D_solutions.npy", [E_ref, Var_ref])
+#'''
+
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Trapez")
 
 def run_test(testi, typid, exceed_evals=None):

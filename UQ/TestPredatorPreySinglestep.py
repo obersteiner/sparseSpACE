@@ -145,7 +145,7 @@ op = UncertaintyQuantification(None, distris, a, b, dim=dim)
 # ~ pa, pb = op.get_boundaries(0.01)
 # ~ problem_function.plot(pa, pb, points_per_dim=5, filename="25.pdf")
 
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange")
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss")
 typids = dict()
 for i,v in enumerate(types):
     typids[v] = i
@@ -155,12 +155,12 @@ if uniform_distr:
     E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_uniform_solutions.npy")
 else:
     # ~ E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("halton_2D_solutions.npy")
-    E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_solutions.npy")
+    E_pX_ref, Var_pX_ref = np.load("sparse_gauss_2D_solutions.npy")
 assert len(Var_pX_ref) == 256
 assert len(Var_pX_ref[0]) == 2
 E_ref = E_pX_ref[timestep_problem][1]
-P10_ref = P10_pX_ref[timestep_problem][1]
-P90_ref = P90_pX_ref[timestep_problem][1]
+# ~ P10_ref = P10_pX_ref[timestep_problem][1]
+# ~ P90_ref = P90_pX_ref[timestep_problem][1]
 Var_ref = Var_pX_ref[timestep_problem][1]
 
 def error_absolute(v, ref): return abs(ref - v)
@@ -172,7 +172,7 @@ def run_test(testi, typid, exceed_evals=None):
 
     measure_start = time.time()
     typ = types[typid]
-    if typ not in ("Gauss", "Fejer"):
+    if typ not in ("Gauss", "Fejer", "sparseGauss"):
         do_inverse_transform = typ in ("adaptiveTransBSpline", "adaptiveTransTrapez", "adaptiveTransHO")
         if do_inverse_transform:
             a_trans, b_trans = np.zeros(dim), np.ones(dim)
@@ -192,7 +192,8 @@ def run_test(testi, typid, exceed_evals=None):
 
         if do_inverse_transform:
             # Use Integration operation
-            f_refinement = op.get_inverse_transform_Function(op.get_PCE_Function(poly_deg_max))
+            # ~ f_refinement = op.get_inverse_transform_Function(op.get_PCE_Function(poly_deg_max))
+            f_refinement = op.get_inverse_transform_Function(op.get_expectation_variance_Function())
             # ~ f_refinement.plot(np.array([0.001]*2), np.array([0.999]*2), filename="trans.pdf")
             op_integration = Integration(f_refinement, grid, dim)
             combiinstance = SpatiallyAdaptiveSingleDimensions2(a_trans, b_trans, operation=op_integration,
@@ -200,8 +201,7 @@ def run_test(testi, typid, exceed_evals=None):
         else:
             combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
                 norm=2, grid=grid)
-            f_refinement = op.get_PCE_Function(poly_deg_max)
-        # ~ f_refinement = op.get_expectation_variance_Function()
+            f_refinement = op.get_expectation_variance_Function()
 
         lmax = 3
         if typ == "Trapez":
@@ -219,7 +219,8 @@ def run_test(testi, typid, exceed_evals=None):
 
         # ~ combiinstance.plot()
         # Calculate the gPCE using the nodes and weights from the refinement
-        op.calculate_PCE(None, combiinstance)
+        # ~ op.calculate_PCE(None, combiinstance)
+        E, Var = op.calculate_expectation_and_variance(combiinstance)
     else:
         polys, polys_norms = cp.orth_ttr(poly_deg_max, op.distributions_joint, retall=True)
         if typ == "Gauss":
@@ -228,8 +229,19 @@ def run_test(testi, typid, exceed_evals=None):
         elif typ == "Fejer":
             nodes, weights = cp.generate_quadrature(testi,
                 op.distributions_joint, rule="F", normalize=True)
-        f_evals = [problem_function_wrapped(c) for c in zip(*nodes)]
-        op.gPCE = cp.fit_quadrature(polys, nodes, weights, np.asarray(f_evals), norms=polys_norms)
+        elif typ == "sparseGauss":
+            expectations = [distr[1] for distr in distris]
+            standard_deviations = [distr[2] for distr in distris]
+            hgrid = GaussHermiteGrid(expectations, standard_deviations, dim)
+            # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+            combiinstance = StandardCombi(a, b, grid=hgrid)
+            combiinstance.perform_combi(1, testi+1, op.get_expectation_variance_Function())
+            nodes, weights = combiinstance.get_points_and_weights()
+            nodes = nodes.T
+
+        # ~ f_evals = [problem_function_wrapped(c) for c in zip(*nodes)]
+        # ~ op.gPCE = cp.fit_quadrature(polys, nodes, weights, np.asarray(f_evals), norms=polys_norms)
+        E, Var = op.calculate_expectation_and_variance_for_weights(nodes, weights)
 
     print("simulation time: " + str(time.time() - measure_start) + " s")
 
@@ -239,16 +251,15 @@ def run_test(testi, typid, exceed_evals=None):
         # ~ Var = reshape_result_values(var)
 
     def reshape_result_values(vals): return vals[0]
-    E = reshape_result_values(op.get_expectation_PCE())
-    P10 = reshape_result_values(op.get_Percentile_PCE(10, 10*5))
-    P90 = reshape_result_values(op.get_Percentile_PCE(90, 10*5))
-    Var = reshape_result_values(op.get_variance_PCE())
+    E = reshape_result_values(E)
+    Var = reshape_result_values(Var)
 
-    err_descs = ("E prey", "P10 prey", "P90 prey", "Var prey")
+    # ~ err_descs = ("E prey", "P10 prey", "P90 prey", "Var prey")
+    err_descs = ("E prey", "Var prey")
     err_data = (
         (E, E_ref),
-        (P10, P10_ref),
-        (P90, P90_ref),
+        # ~ (P10, P10_ref),
+        # ~ (P90, P90_ref),
         (Var, Var_ref)
     )
     errors = []
@@ -263,7 +274,7 @@ def run_test(testi, typid, exceed_evals=None):
     num_evals = problem_function_wrapped.get_f_dict_size()
     result_data = (num_evals, timestep_problem, typid, errors)
     assert len(result_data) == 4
-    assert len(errors) == 8
+    assert len(errors) == 4
 
     tmpdir = os.getenv("XDG_RUNTIME_DIR")
     results_path = tmpdir + "/uqtestSD.npy"
@@ -277,12 +288,13 @@ def run_test(testi, typid, exceed_evals=None):
     return num_evals
 
 
-# ~ evals_end = 900
-evals_end = 200
+evals_end = 900
+# ~ evals_end = 400
 
 # For testing
-# ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange")
-skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveHO")
+# ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss")
+# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveLagrange")
+skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss")
 assert all([typ in types for typ in skip_types])
 
 for typid in reversed(range(len(types))):
