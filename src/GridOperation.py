@@ -1157,62 +1157,6 @@ class UncertaintyQuantification(Integration):
             assert False, "calculatePCE must be invoked before this method"
         return cp.Sens_t(self.gPCE, self.distributions_joint)
 
-    # This function uses the quadrature provided by Chaospy.
-    # It can be used for testing.
-    def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
-        self._set_pce_polys(polynomial_degrees)
-        nodes, weights = cp.generate_quadrature(num_quad_points,
-            self.distributions_joint, rule="G")
-        f_evals = [self.f(c) for c in zip(*nodes)]
-        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
-
-    # Another testing function
-    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton"):
-        if mode == "ChaospyHalton":
-            nodes = self.distributions_joint.sample(2**14, rule="H")
-            num_samples = len(nodes[0])
-            w = 1.0 / num_samples
-            weights = np.array([w for _ in range(num_samples)])
-        elif mode == "ChaospyGauss":
-            nodes, weights = cp.generate_quadrature(29,
-                self.distributions_joint, rule="G")
-        elif mode == "StandardcombiGauss":
-            if all([distr[0] == "Normal" for distr in self.distribution_infos]):
-                expectations = [distr[1] for distr in self.distribution_infos]
-                standard_deviations = [distr[2] for distr in self.distribution_infos]
-                grid = GaussHermiteGrid(expectations, standard_deviations)
-                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
-                combiinstance = StandardCombi(self.a, self.b, grid=grid)
-                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
-                combiinstance.print_resulting_combi_scheme(markersize=5)
-                combiinstance.print_resulting_sparsegrid(markersize=10)
-            elif self.all_uniform:
-
-                grid = GaussLegendreGrid(self.a, self.b, self.dim)
-                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
-                combiinstance = StandardCombi(self.a, self.b, grid=grid)
-                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
-                combiinstance.print_resulting_combi_scheme(markersize=5)
-                combiinstance.print_resulting_sparsegrid(markersize=10)
-            else:
-                assert False, "Not implemented"
-        else:
-            assert False, mode
-        return self.calculate_expectation_and_variance_for_weights(nodes, weights)
-
-    def calculate_expectation_and_variance_for_weights(self, nodes, weights):
-        f_evals = np.array([self.f(c) for c in zip(*nodes)])
-        f_evals_squared = np.array([v ** 2 for v in f_evals])
-        expectation = np.inner(f_evals.T, weights)
-        expectation_of_squared = np.inner(f_evals_squared.T, weights)
-        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
-        for i, v in enumerate(variance):
-            if v < 0.0:
-                # When the variance is zero, it can be set to something negative
-                # because of numerical errors
-                variance[i] = -v
-        return expectation, variance
-
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
     def get_moment_Function(self, k):
@@ -1246,6 +1190,63 @@ class UncertaintyQuantification(Integration):
     # the problem function; it can be integrated without weighting
     def get_inverse_transform_Function(self, func=None):
         return FunctionInverseTransform(func or self.f, self.distributions)
+
+
+# UncertaintyQuantification extended for testing purposes
+class UncertaintyQuantificationTesting(UncertaintyQuantification):
+    # This function uses the quadrature provided by Chaospy.
+    def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
+        self._set_pce_polys(polynomial_degrees)
+        nodes, weights = cp.generate_quadrature(num_quad_points,
+            self.distributions_joint, rule="G")
+        f_evals = [self.f(c) for c in zip(*nodes)]
+        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
+
+    def calculate_expectation_and_variance_for_weights(self, nodes, weights):
+        f_evals = np.array([self.f(c) for c in zip(*nodes)])
+        f_evals_squared = np.array([v ** 2 for v in f_evals])
+        expectation = np.inner(f_evals.T, weights)
+        expectation_of_squared = np.inner(f_evals_squared.T, weights)
+        variance = [expectation_of_squared[i] - ex * ex for i, ex in enumerate(expectation)]
+        for i, v in enumerate(variance):
+            if v < 0.0:
+                # When the variance is zero, it can be set to something negative
+                # because of numerical errors
+                variance[i] = -v
+        return expectation, variance
+
+    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton"):
+        if mode == "ChaospyHalton":
+            nodes = self.distributions_joint.sample(2**14, rule="H")
+            num_samples = len(nodes[0])
+            w = 1.0 / num_samples
+            weights = np.array([w for _ in range(num_samples)])
+        elif mode == "ChaospyGauss":
+            nodes, weights = cp.generate_quadrature(29,
+                self.distributions_joint, rule="G")
+        elif mode == "StandardcombiGauss":
+            if all([distr[0] == "Normal" for distr in self.distribution_infos]):
+                expectations = [distr[1] for distr in self.distribution_infos]
+                standard_deviations = [distr[2] for distr in self.distribution_infos]
+                grid = GaussHermiteGrid(expectations, standard_deviations)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            elif self.all_uniform:
+
+                grid = GaussLegendreGrid(self.a, self.b, self.dim)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            else:
+                assert False, "Not implemented"
+        else:
+            assert False, mode
+        return self.calculate_expectation_and_variance_for_weights(nodes, weights)
 
 
 from scipy import integrate
