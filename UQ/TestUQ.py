@@ -52,17 +52,6 @@ def get_numbers_info(description, value, reference_value=None):
 	return text
 
 
-def get_combiinstance(a, b, op, boundary, grid, modified_basis):
-	if grid is None:
-		if do_HighOrder:
-			grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
-		else:
-			grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
-	combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-		norm=2, grid=grid)
-	return combiinstance
-
-
 def calculate_reference_solutions(f, op, a, b, solutions):
 	print("calculating reference solutions…")
 	assert f.output_length() == 1, "f must have a single dimensional output"
@@ -79,6 +68,13 @@ def calculate_reference_solutions(f, op, a, b, solutions):
 		assert solutions[0] is None or abs(reference_expectation - solutions[0]) < 10 ** -2
 		assert solutions[1] is None or abs(reference_variance - solutions[1]) < 10 ** -2
 	return reference_expectation, reference_variance
+
+
+def create_grid(a, b, op, boundary, modified_basis):
+	if do_HighOrder:
+		grid = GlobalHighOrderGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
+	else:
+		grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=boundary, modified_basis=modified_basis)
 
 
 def plot_function(f, op, a, b, inf_borders):
@@ -98,7 +94,10 @@ def plot_function(f, op, a, b, inf_borders):
 
 # A helper function to reduce duplicate code
 def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, solutions=None, calculate_solutions=False, grid=None):
-	op = UncertaintyQuantification(f, distris, a, b, dim=d)
+	op = UncertaintyQuantification(f, distris, a, b, dim=d, grid=None)
+	if grid is None:
+		grid = create_grid(a, b, op, boundary, modified_basis)
+	op.set_grid(grid)
 
 	reference_expectation = None
 	reference_variance = None
@@ -130,15 +129,15 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 	E, Var = [], []
 	if calc_E_Var:
 		expectation_var_func = op.get_expectation_variance_Function()
-		combiinstance = get_combiinstance(a, b, op, boundary, grid, modified_basis)
+		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2)
 		print("performSpatiallyAdaptiv…")
 		reference_solution = None
 		if reference_expectation is not None and reference_variance is not None:
 			mom2 = [reference_variance[i] + ex * ex for i, ex in enumerate(reference_expectation)]
 			reference_solution = np.concatenate([reference_expectation, mom2])
+			op.set_reference_solution(reference_solution)
 		combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
-			error_operator, tol=tol,
-			max_evaluations=max_evals, reference_solution=reference_solution,
+			error_operator, tol=tol, max_evaluations=max_evals,
 			min_evaluations=min_evals, do_plot=plot_grids)
 		# ~ combiinstance.plot()
 
@@ -148,10 +147,11 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
 
 	print("calculate_PCE…")
 	if do_PCE_func:
-		combiinstance = get_combiinstance(a, b, op, boundary, grid, modified_basis)
+		combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2)
+		op.set_reference_solution(None)
 		f_pce = op.get_PCE_Function(poly_deg_max)
-		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator, tol=tol,
-			max_evaluations=max_evals, reference_solution=None,
+		combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator,
+			tol=tol, max_evaluations=max_evals,
 			min_evaluations=min_evals, do_plot=plot_grids)
 		op.calculate_PCE(poly_deg_max, combiinstance)
 	else:

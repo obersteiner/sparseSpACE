@@ -903,9 +903,9 @@ class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
-    def __init__(self, f, distributions, a, b, dim,
+    def __init__(self, f, distributions, a, b, dim, grid=None,
             reference_solution=None):
-        super().__init__(f, None, dim, reference_solution)
+        super().__init__(f, grid, dim, reference_solution)
 
         # If distributions is not a list, it specifies the same distribution
         # for every dimension
@@ -922,6 +922,11 @@ class UncertaintyQuantification(Integration):
         self.f_evals = None
         self.gPCE = None
         self.pce_polys = None
+
+    def set_grid(self, grid): self.grid = grid
+
+    def set_reference_solution(self, reference_solution):
+        self.reference_solution = reference_solution
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
