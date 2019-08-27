@@ -247,7 +247,9 @@ class FunctionUQWeighted(Function):
         self.weight_function = weight_function
 
     def eval(self, coordinates):
-        return self.function.eval(coordinates) * self.weight_function.eval(coordinates)
+        func_output = self.function(coordinates)[0]
+        weight_output = self.weight_function(coordinates)[0]
+        return func_output * weight_output
 
 
 # An UQ test function: https://www.sfu.ca/~ssurjano/canti.html
@@ -489,8 +491,6 @@ class FunctionCustom(Function):
         else:
             result = self.func(coordinates)
         return result
-
-    def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
 
     def output_length(self): return self.output_dimension
 
