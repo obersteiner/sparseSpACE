@@ -159,8 +159,9 @@ if do_HighOrder:
     grid = GlobalHighOrderGridWeighted(a, b, op, boundary=False, modified_basis=False)
 else:
     grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
+op.set_grid(grid)
 combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-    norm=2, grid=grid)
+    norm=2)
 # ~ combiinstance = StandardCombi(a, b, operation=op, grid=grid)
 tol = 0
 f_refinement = op.get_PCE_Function(poly_deg_max)

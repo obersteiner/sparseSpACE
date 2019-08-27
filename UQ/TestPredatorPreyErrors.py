@@ -125,7 +125,7 @@ def get_solver_values(input_values):
     # y contains the predator solutions and prey solutions for all time values
     y = solver(voracity_sample, [coyote_Px0_sample, sheep_Px0_sample], f, time_points).y
     return np.concatenate(y)
-problem_function = FunctionCustom(get_solver_values)
+problem_function = FunctionCustom(get_solver_values, output_dim=len(time_points)*2)
 
 # This function is later required to bring calculated values into the right shape
 def reshape_result_values(vals):
@@ -146,7 +146,7 @@ if use_proxy:
 
 
 # Create the Operation
-op = UncertaintyQuantification(None, distris, a, b, dim=dim)
+op = UncertaintyQuantificationTesting(None, distris, a, b, dim=dim)
 
 '''
 # Reference solutions
@@ -157,9 +157,10 @@ op.f = problem_function_wrapped
 expectations = [distr[1] for distr in distris]
 standard_deviations = [distr[2] for distr in distris]
 grid = GaussHermiteGrid(expectations, standard_deviations, dim)
-# ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
-combiinstance = StandardCombi(a, b, grid=grid)
-combiinstance.perform_combi(1, 5, op.get_expectation_variance_Function())
+op.set_grid(grid)
+combiinstance = StandardCombi(a, b, operation=op)
+refinement_function = op.get_expectation_variance_Function()
+combiinstance.perform_combi(1, 5, refinement_function)
 nodes, weights = combiinstance.get_points_and_weights()
 # ~ print("nodes", nodes)
 # ~ print(nodes, weights)
@@ -186,8 +187,9 @@ def run_test(testi, typid, exceed_evals=None):
             grid = GlobalHighOrderGridWeighted(a, b, op, boundary=False, modified_basis=False)
         elif typ in ("adaptiveTrapez", "Trapez"):
             grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False)
+        op.set_grid(grid)
         combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-            norm=2, grid=grid)
+            norm=2)
         tol = 10 ** -4
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         # ~ f_pce = op.get_PCE_Function(poly_deg_max)
