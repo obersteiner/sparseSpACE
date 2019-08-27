@@ -16,7 +16,7 @@ import os
 from math import isclose, isinf
 
 # Load spatially adaptive sparse grid related files
-sys.path.append('../src/')
+sys.path.append('../../src/')
 from Function import *
 from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
