@@ -82,16 +82,26 @@ op = UncertaintyQuantificationTesting(None, distris, a, b, dim=dim)
 # ~ problem_function.plot(pa, pb, points_per_dim=5, filename="25.pdf")
 
 '''
-# scipy reference solution; does not work
-pdf_function = op.get_pdf_Function()
+# Reference solution
 op.f = problem_function
-expectation_func = FunctionUQWeighted(problem_function, pdf_function)
-reference_expectation = expectation_func.getAnalyticSolutionIntegral(a, b)
-mom2_func = FunctionUQWeighted(op.get_moment_Function(2), pdf_function)
-mom2 = mom2_func.getAnalyticSolutionIntegral(a, b)
-reference_variance = mom2 - reference_expectation ** 2
+if True:
+    print("Calculating reference values with Chaospy")
+    nodes, weights = cp.generate_quadrature(29, op.distributions_joint, rule="G")
+    reference_expectation, reference_variance = op.calculate_expectation_and_variance_for_weights(nodes, weights)
+else:
+    # scipy reference solution; does not work
+    pdf_function = op.get_pdf_Function()
+    expectation_func = FunctionUQWeighted(problem_function, pdf_function)
+    a, b = op.get_boundaries(0.00001)
+    print("a, b", a, b)
+    print("Calculating reference expectation")
+    reference_expectation = expectation_func.getAnalyticSolutionIntegral(a, b)
+    mom2_func = FunctionUQWeighted(op.get_moment_Function(2), pdf_function)
+    print("Calculating reference second moment")
+    mom2 = mom2_func.getAnalyticSolutionIntegral(a, b)
+    reference_variance = mom2 - reference_expectation ** 2
 np.save("step25_2D_solutions.npy", [reference_expectation, reference_variance])
-print([reference_expectation, reference_variance])
+print("Reference solutions", [reference_expectation, reference_variance])
 #'''
 
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss", "adaptiveTransTrapez")
@@ -99,6 +109,7 @@ typids = dict()
 for i,v in enumerate(types):
     typids[v] = i
 
+'''
 # ~ i_ref = 256 + timestep_problem
 if uniform_distr:
     E_pX_ref, P10_pX_ref, P90_pX_ref, Var_pX_ref = np.load("gauss_2D_uniform_solutions.npy")
@@ -111,6 +122,8 @@ E_ref = E_pX_ref[timestep_problem][1]
 # ~ P10_ref = P10_pX_ref[timestep_problem][1]
 # ~ P90_ref = P90_pX_ref[timestep_problem][1]
 Var_ref = Var_pX_ref[timestep_problem][1]
+'''
+E_ref, Var_ref = np.load("step25_2D_solutions.npy")
 
 def error_absolute(v, ref): return abs(ref - v)
 def error_relative(v, ref): return error_absolute(v, ref) / abs(ref)
@@ -180,6 +193,9 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None):
     else:
         # ~ polys, polys_norms = cp.orth_ttr(poly_deg_max, op.distributions_joint, retall=True)
         if typ == "Gauss":
+            if testi >= 29:
+                # Reference solution or negative points
+                return np.inf
             nodes, weights = cp.generate_quadrature(testi,
                 op.distributions_joint, rule="G")
         elif typ == "Fejer":
