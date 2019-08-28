@@ -222,7 +222,10 @@ class Grid1d(object):
             else:
                 self.upperBorder = self.num_points_with_boundary
         # equidistant spacing; only valid for equidistant grids
-        self.spacing = (end - start) / (self.num_points_with_boundary - 1)
+        if self.num_points_with_boundary == 1:
+            self.spacing = None
+        else:
+            self.spacing = (end - start) / (self.num_points_with_boundary - 1)
         coordsD, weightsD = self.get_1d_points_and_weights()
         self.coords = np.asarray(coordsD)
         self.weights = np.asarray(weightsD)
