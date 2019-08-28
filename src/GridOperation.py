@@ -1259,6 +1259,24 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
             expectation_variances.append((k, expectation, variance))
         return expectation_variances
 
+    @staticmethod
+    def sort_multiple_solutions(solutions):
+        return [(num_evals, solutions[num_evals]) for num_evals in sorted(solutions)]
+
+    def calculate_multiple_expectation_and_variance(self, solutions):
+        expectation_variances = []
+        for num_evals, integral in self.sort_multiple_solutions(solutions):
+            output_dim = len(integral) // 2
+            mom1 = integral[:output_dim]
+            mom2 = integral[output_dim:]
+            expectation, variance = self.moments_to_expectation_variance(mom1, mom2)
+            expectation_variances.append((num_evals, expectation, variance))
+        return expectation_variances
+
+    def calculate_PCE_from_multiple(self, combiinstance, integrals):
+        combiinstance.calculated_solution = integrals
+        return self.calculate_PCE(None, combiinstance)
+
 
 from scipy import integrate
 
