@@ -403,7 +403,6 @@ class Integration(AreaOperation):
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
-                level_child = child_info.level_child
                 if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
                     index_child = grid_points[d].index(child) - int(not(self.grid.boundary))
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
@@ -484,12 +483,14 @@ class Integration(AreaOperation):
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
                 '''
 
+    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
+        return right_parent - left_parent
+
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, child_info, grid_points, d):
         #print(grid_points)
         child = child_info.child
-        level_child = child_info.level_child
         left_parent = child_info.left_parent
         right_parent = child_info.right_parent
         left_parent_of_left_parent = child_info.left_parent_of_left_parent
@@ -591,8 +592,7 @@ class Integration(AreaOperation):
                         #print(points_right_parent[i], self.f.f_dict.keys())
                         assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                         value -= factor_right_parent * self.f(point_right_parent)
-                volume += factor * abs(value) * (2 ** -level_child) ** exponent
-                # ~ volume += factor * abs(value) * (right_parent - left_parent)**exponent
+                volume += factor * abs(value) * (self.get_surplus_width(d, right_parent, left_parent))**exponent
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
@@ -604,7 +604,6 @@ class Integration(AreaOperation):
     def sum_up_volumes_for_point_vectorized(self, child_info, grid_points, d):
         #print(grid_points)
         child = child_info.child
-        level_child = child_info.level_child
         left_parent = child_info.left_parent
         right_parent = child_info.right_parent
         left_parent_of_left_parent = child_info.left_parent_of_left_parent
@@ -712,8 +711,7 @@ class Integration(AreaOperation):
                 #assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                 values -= factor_right_parent * point_values_right_parent
         #print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
-        volume = np.sum(factors * abs(values), axis=0) * (2 ** -level_child)**exponent
-        # ~ volume = np.sum(factors * abs(values), axis=0) * (right_parent - left_parent)**exponent
+        volume = np.sum(factors * abs(values), axis=0) * (self.get_surplus_width(d, right_parent, left_parent))**exponent
         #print("Volume", volume)
         if self.version == 0 or self.version == 2:
             evaluations = size_slize #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
@@ -993,6 +991,11 @@ class UncertaintyQuantification(Integration):
         self.all_uniform = all(k[0] == "Uniform" for k in known_distributions)
         self.a = a
         self.b = b
+
+    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
+        # Approximate the width with the probability
+        cdf = self.distributions[d].cdf
+        return cdf(right_parent) - cdf(left_parent)
 
     # reuse_old_values does not work for multidimensional function output,
     # so this method is overridden here
