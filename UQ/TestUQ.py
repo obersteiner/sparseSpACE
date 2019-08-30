@@ -96,7 +96,7 @@ def plot_function(f, op, a, b, inf_borders):
 
 # A helper function to reduce duplicate code
 def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, solutions=None, calculate_solutions=False, grid=None):
-	op = UncertaintyQuantification(f, distris, a, b, dim=d, grid=None)
+	op = UncertaintyQuantificationTesting(f, distris, a, b, dim=d, grid=None)
 	if grid is None:
 		grid = create_grid(a, b, op, boundary, modified_basis)
 	op.set_grid(grid)
@@ -291,6 +291,16 @@ def test_uq_discontinuity3D():
 	# Calculating the solutions took long here.
 	do_test(d, a, b, f, "Uniform", lmax=2)
 
+def test_uq_discontinuity2D():
+	print("Testing a discontinuous function")
+	d = 2
+	a = -np.ones(d)
+	b = np.ones(d)
+	f = FunctionUQ2()
+	f.plot(a, b, filename="FunctionUQ.svg")
+	# Calculating the solutions took long here.
+	do_test(d, a, b, f, "Uniform", lmax=2)
+
 
 def test_cantilever_beam_D():
 	print("Testing a Cantilever Beam function")
@@ -323,14 +333,14 @@ def test_G_function():
 
 
 # ~ test_uq_discontinuity3D()
-# ~ test_uq_discontinuity2D()
+test_uq_discontinuity2D()
 # ~ test_cantilever_beam_D()
 # ~ test_G_function()
 
 # ~ test_normal_inf_border()
 # ~ test_normal_vagebounds()
 
-test_constant_triangle()
+# ~ test_constant_triangle()
 # ~ test_constant()
 # ~ test_linear()
 # ~ test_something()
