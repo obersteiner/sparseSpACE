@@ -1217,10 +1217,12 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
         expectation_of_squared = np.inner(f_evals_squared.T, weights)
         return self.moments_to_expectation_variance(expectation, expectation_of_squared)
 
-    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton"):
+    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton", modeparams=None):
         if mode == "ChaospyHalton":
-            nodes = self.distributions_joint.sample(2**14, rule="H")
+            num_points = modeparams or 2**14
+            nodes = self.distributions_joint.sample(num_points, rule="H")
             num_samples = len(nodes[0])
+            assert num_points == num_samples
             w = 1.0 / num_samples
             weights = np.array([w for _ in range(num_samples)])
         elif mode == "ChaospyGauss":
