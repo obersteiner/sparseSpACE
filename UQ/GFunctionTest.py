@@ -22,7 +22,7 @@ reference_variance = f_g.get_variance()
 # Create the operation only once
 op = UncertaintyQuantificationTesting(None, "Uniform", a, b, dim=d)
 
-def run_test(typi, typid, exceed_evals=None, evals_end=None):
+def run_test(typi, typid, exceed_evals=None, evals_end=None, max_time=None):
 	lmax = 2
 	f = FunctionCustom(lambda x: f_g(x))
 	op.f = f
@@ -54,7 +54,8 @@ def run_test(typi, typid, exceed_evals=None, evals_end=None):
 			multiple_evals = dict()
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=0, max_evaluations=evals_end,
-				print_output=True, solutions_storage=multiple_evals)
+				print_output=True, solutions_storage=multiple_evals,
+				max_time=max_time)
 		elif exceed_evals is None:
 			combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
 				error_operator, tol=0,
@@ -120,10 +121,13 @@ def run_test(typi, typid, exceed_evals=None, evals_end=None):
 
 # ~ evals_end = 900
 evals_end = 4000
+max_time = 30
 
 # For testing
 # ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
 skip_types = ("adaptiveLagrange", "BSpline")
+# ~ skip_types = ("BSpline",)
+skip_types = ()
 assert all([typ in types for typ in skip_types])
 
 for typid in reversed(range(len(types))):
@@ -134,8 +138,9 @@ for typid in reversed(range(len(types))):
         continue
     print("Calculations for", typ)
     testi = 0
-    evals_num = run_test(testi, typid, evals_end=evals_end)
-    while evals_num < evals_end:
+    start_time = time.time()
+    evals_num = run_test(testi, typid, evals_end=evals_end, max_time=max_time)
+    while evals_num < evals_end and time.time() - start_time < max_time:
         testi = testi+1
         print(f"last evals: {evals_num}, testi {testi}")
         evals_num = run_test(testi, typid, exceed_evals=evals_num)
