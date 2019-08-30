@@ -298,13 +298,12 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None):
     return problem_function_wrapped.get_f_dict_size()
 
 
-# ~ evals_end = 900
-evals_end = 1200
+evals_end = 1999
+max_time = 60 * 5
 
 # For testing
 # ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss", "adaptiveTransTrapez")
-skip_types = ("sparseGauss", "adaptiveLagrange", "adaptiveTransTrapez", "adaptiveTransBSpline", "Fejer")
-# ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss")
+skip_types = ("adaptiveLagrange", "Fejer", "adaptiveTransBSpline")
 assert all([typ in types for typ in skip_types])
 
 for typid in reversed(range(len(types))):

@@ -108,7 +108,7 @@ E_ref, Var_ref = np.load("step25_2D_solutions.npy")
 def error_absolute(v, ref): return abs(ref - v)
 def error_relative(v, ref): return error_absolute(v, ref) / abs(ref)
 
-def run_test(testi, typid, exceed_evals=None, evals_end=None):
+def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
     problem_function_wrapped = FunctionCustom(lambda x: problem_function(x), output_dim=problem_function.output_length())
     op.f = problem_function_wrapped
 
@@ -152,7 +152,8 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None):
             multiple_evals = dict()
             combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
                 error_operator, tol=0, max_evaluations=evals_end,
-                print_output=True, solutions_storage=multiple_evals)
+                print_output=True, solutions_storage=multiple_evals,
+                max_time=max_time)
         elif exceed_evals is None or typ == "Trapez":
             combiinstance.performSpatiallyAdaptiv(1, lmax, f_refinement,
                 error_operator, tol=0,
@@ -253,12 +254,12 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None):
     return problem_function_wrapped.get_f_dict_size()
 
 
-# ~ evals_end = 900
-evals_end = 600
+evals_end = 1999
+max_time = 60 * 5
 
 # For testing
 # ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss", "adaptiveTransTrapez")
-skip_types = ("sparseGauss", "adaptiveLagrange", "adaptiveTransTrapez", "adaptiveTransBSpline", "Fejer")
+skip_types = ("adaptiveLagrange", "Fejer", "adaptiveTransBSpline")
 # ~ skip_types = ("Fejer", "adaptiveTransBSpline", "adaptiveLagrange", "sparseGauss")
 assert all([typ in types for typ in skip_types])
 
@@ -270,10 +271,11 @@ for typid in reversed(range(len(types))):
         continue
     print("Calculations for", typ)
     testi = 0
-    evals_num = run_test(testi, typid, evals_end=evals_end)
-    while evals_num < evals_end:
+    start_time = time.time()
+    evals_num = run_test(testi, typid, evals_end=evals_end, max_time=max_time)
+    while evals_num < evals_end and time.time() - start_time < max_time:
         testi = testi+1
         print(f"last evals: {evals_num}, testi {testi}")
-        evals_num = run_test(testi, typid, exceed_evals=evals_num, evals_end=evals_end)
+        evals_num = run_test(testi, typid, exceed_evals=evals_num)
 
 

@@ -30,14 +30,20 @@ mean_err_descs = ("E prey relative", "E predator relative", "P10 prey", "P10 pre
 figure = plotter.figure(1, figsize=(13,10))
 figure.canvas.set_window_title('Stocha')
 
+legend_shown = False
 for i,desc in enumerate(mean_err_descs):
 	plotter.subplot(4, 2, 1 + i)
 	for typid, typdesc in enumerate(typ_descs):
+		if len(datas[typid]) < 1:
+			print("No points for", typdesc)
+			continue
 		plotter.plot(datas[typid][0], datas[typid][i + 1], ".-", label=typdesc)
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f'{desc} mean error')
 	plotter.yscale("log")
-	plotter.legend(loc="lower left")
+	if not legend_shown:
+		plotter.legend(loc="upper right")
+		legend_shown = True
 	plotter.grid(True)
 
 fileName = os.path.splitext(sys.argv[0])[0] + '.pdf'

@@ -31,7 +31,7 @@ for typid in range(len(typ_descs)):
 err_descs = ("E absolute", "E relative", "Var absolute", "Var relative")
 
 # ~ figure = plotter.figure(1, figsize=(13,10))
-figure = plotter.figure(1, figsize=(13,8))
+figure = plotter.figure(1, figsize=(13,6))
 figure.canvas.set_window_title('Stocha')
 
 legend_shown = False
@@ -48,6 +48,7 @@ for i,desc in enumerate(err_descs):
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f'{desc} error')
 	plotter.yscale("log")
+	plotter.xscale("log")
 	if not legend_shown:
 		plotter.legend(loc="upper right")
 		legend_shown = True
