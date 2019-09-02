@@ -4,7 +4,7 @@ This python projects implements different variants of the spatially adaptive Com
 It was first targeted to solve high dimensional numerical integration with the spatially adaptive Combination Technique but it now supports the implementation of arbitrary grid operations.
 It will for example soon support solving PDEs and UQ problems.
 
-A short introduction in how to use the framework can be found in the tutorials:
+A short introduction in how to use the framework can be found in the tutorials (see ipynb folder):
 - Tutorial.ipynb
 - Grid_Tutorial.ipynb
 - Extend_Split_Strategy_Tutorial.ipynb
