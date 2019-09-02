@@ -397,7 +397,7 @@ class RefinementObjectCell(RefinementObject):
 
 # This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, this_dim, dim, levels, coarsening_level=0, dim_adaptive=False):
+    def __init__(self, start, end, this_dim, dim, levels, a, b, chebyshev=False, coarsening_level=0):
         # start of subarea
         self.start = start
         # end of subarea
@@ -415,8 +415,10 @@ class RefinementObjectSingleDimension(RefinementObject):
         # level at start and end as point levels (as tuple)
         self.levels = levels
         self.error = 0.0
-        self.dim_adaptive = dim_adaptive
         self.benefit = None
+        self.a = a
+        self.b = b
+        self.chebyshev = chebyshev
 
         assert(end > start)
 
@@ -454,8 +456,9 @@ class RefinementObjectSingleDimension(RefinementObject):
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        newObjects.append(RefinementObjectSingleDimension(self.start, self.start + newWidth, self.this_dim, self.dim, list((self.levels[0], newLevel)), coarsening_value, dim_adaptive=self.dim_adaptive))
-        newObjects.append(RefinementObjectSingleDimension(self.start + newWidth, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), coarsening_value, dim_adaptive=self.dim_adaptive))
+        mid_point = self.start + newWidth if not self.chebyshev else self.map_chebyshev(self.start, self.end)
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid_point, self.this_dim, self.dim, list((self.levels[0], newLevel)), coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
+        newObjects.append(RefinementObjectSingleDimension(mid_point, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
         # self.finestWidth = min(newWidth,self.finestWidth)
         return newObjects, lmax_increase, update
 
@@ -488,3 +491,14 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.error = 0.0
         self.integral = 0.0
         self.evaluations = 0
+
+    def map_chebyshev(self, start, end) -> float:
+        coordinate_start = math.acos(1 - 2*(start - self.a) / (self.b - self.a)) / math.pi
+        coordinate_end = math.acos(1 - 2*(end - self.a) / (self.b - self.a)) / math.pi
+        coordinate = (coordinate_start + coordinate_end) / 2
+        print("Start", coordinate)
+        coordinate_normalized = (coordinate - self.a)/(self.b - self.a)
+        coordinate = self.a + (self.b- self.a) * (1 - math.cos(coordinate_normalized * math.pi)) / 2
+        #coordinate = (coordinate + 1 + self.a[d]) / (2 * (self.b[d] - self.a[d]))
+        print("Transformed", coordinate, coordinate_normalized)
+        return coordinate

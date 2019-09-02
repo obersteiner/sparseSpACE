@@ -7,7 +7,7 @@ def sortToRefinePosition(elem):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
         self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
@@ -27,6 +27,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.rebalancing = rebalancing
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
+        self.chebyshev_points = chebyshev_points
 
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -107,6 +108,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
 
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
+
                     indicesDim.append(refineObj.end)
                     if (next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0])) and not self.use_local_children:
                         children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
@@ -124,6 +126,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             children_indices.append(children_indices_dim)
             indices_level.append(indices_levelDim)
         return indicesList, indices_level, children_indices
+
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
         if levelvec[d] - subtraction_value == max_level and levelvec[d] < self.lmax[d]:
@@ -209,7 +212,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                             assert remainder == subtraction_value
                         subtraction_value_new = 0
                     while (remainder > 0):
-                        print(max_coarsenings_temp, remainder)
+                        #print(max_coarsenings_temp, remainder)
                         max_coarsening = max(max_coarsenings_temp)
                         second_largest_coarsening = max(
                             [coarsening if coarsening < max_coarsening else 0 for coarsening in max_coarsenings_temp])
@@ -219,7 +222,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         max_dimensions = [1 if coarsening == max_coarsening else 0 for coarsening in
                                           max_coarsenings_temp]
                         num_max_coarsening = min(sum(max_dimensions), min((max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)])))
-                        print(num_max_coarsening, self.combischeme.lmax_adaptive - max(sum([1 if self.lmax[k] <= 2 else 0 for k in range(self.dim)]), 1), self.combischeme.lmax_adaptive, self.lmax)
+                        #print(num_max_coarsening, self.combischeme.lmax_adaptive - max(sum([1 if self.lmax[k] <= 2 else 0 for k in range(self.dim)]), 1), self.combischeme.lmax_adaptive, self.lmax)
                         my_position = sum(max_dimensions[:d])
                         if remainder >= (max_coarsening - second_largest_coarsening) * num_max_coarsening:
                             subtraction_value_new += max_coarsening - second_largest_coarsening
@@ -397,12 +400,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             points = [None for _ in range(num_points)]
             points[0] = self.a[d]
             points[num_points-1] = self.b[d]
-            self._initialize_points(points, func_mid, d, 0, num_points-1)
+            if self.chebyshev_points:
+                points = np.linspace(0,1, 2**maxv + 1)
+                points = [self.a[d] + (self.b[d]- self.a[d]) * (1 - math.cos(p * math.pi)) / 2 for p in points]
+            else:
+                self._initialize_points(points, func_mid, d, 0, num_points-1)
             initial_points.append(np.array(points))
         self.refinement = MetaRefinementContainer([RefinementContainer
                                                    ([RefinementObjectSingleDimension(initial_points[d][i],
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])),
-                                                                                     coarsening_level=0, dim_adaptive=self.dim_adaptive) for i in
+                                                                                     coarsening_level=0, a=self.a[d], b=self.b[d], chebyshev=self.chebyshev_points) for i in
                                                      range(2 ** maxv)], d, self.errorEstimator) for d in
                                                    range(self.dim)])
         if self.dim_adaptive:

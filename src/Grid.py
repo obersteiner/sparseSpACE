@@ -1096,7 +1096,7 @@ class GlobalBasisGrid(GlobalGrid):
 
 
 class GlobalBSplineGrid(GlobalBasisGrid):
-    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3, chebyshev=False):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
@@ -1109,6 +1109,21 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
+        self.chebyshev = chebyshev
+
+    def get_mid_point(self, start: float, end: float, d: int=0):
+        if self.chebyshev:
+            coordinate_start = math.acos(1 - 2 * (start - self.a[d]) / (self.b[d] - self.a [d])) / math.pi
+            coordinate_end = math.acos(1 - 2 * (end - self.a[d]) / (self.b[d] - self.a[d])) / math.pi
+            coordinate = (coordinate_start + coordinate_end) / 2
+            #print("Start", coordinate)
+            coordinate_normalized = (coordinate - self.a[d]) / (self.b[d] - self.a[d])
+            coordinate = self.a[d] + (self.b[d] - self.a[d]) * (1 - math.cos(coordinate_normalized * math.pi)) / 2
+            # coordinate = (coordinate + 1 + self.a[d]) / (2 * (self.b[d] - self.a[d]))
+            #print("Transformed", coordinate, coordinate_normalized)
+            return coordinate
+        else:
+            return 0.5 * (end+start)
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         max_level = max(grid_levels_1D)
