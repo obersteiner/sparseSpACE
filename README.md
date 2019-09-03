@@ -1,4 +1,4 @@
-# SpACE - The Spatially Adaptive Combination Environment
+# sparseSpACE - The Sparse Grid Spatially Adaptive Combination Environment
 
 This python projects implements different variants of the spatially adaptive Combination Technique. 
 It was first targeted to solve high dimensional numerical integration with the spatially adaptive Combination Technique but it now supports the implementation of arbitrary grid operations.
