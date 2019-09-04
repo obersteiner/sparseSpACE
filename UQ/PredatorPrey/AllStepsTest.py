@@ -77,7 +77,7 @@ op.f = problem_function_wrapped
 
 expectations = [distr[1] for distr in distris]
 standard_deviations = [distr[2] for distr in distris]
-grid = GaussHermiteGrid(expectations, standard_deviations, dim)
+grid = GaussHermiteGrid(expectations, standard_deviations)
 op.set_grid(grid)
 combiinstance = StandardCombi(a, b, operation=op)
 refinement_function = op.get_expectation_variance_Function()

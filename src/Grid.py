@@ -1199,7 +1199,7 @@ class GlobalBasisGrid(GlobalGrid):
 
 
 class GlobalBSplineGrid(GlobalBasisGrid):
-    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3, chebyshev=False):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.a = a
@@ -1212,6 +1212,21 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
         assert not(modified_basis) or not(boundary)
         self.surplus_values = {}
+        self.chebyshev = chebyshev
+
+    def get_mid_point(self, start: float, end: float, d: int=0):
+        if self.chebyshev:
+            coordinate_start = math.acos(1 - 2 * (start - self.a[d]) / (self.b[d] - self.a [d])) / math.pi
+            coordinate_end = math.acos(1 - 2 * (end - self.a[d]) / (self.b[d] - self.a[d])) / math.pi
+            coordinate = (coordinate_start + coordinate_end) / 2
+            #print("Start", coordinate)
+            coordinate_normalized = (coordinate - self.a[d]) / (self.b[d] - self.a[d])
+            coordinate = self.a[d] + (self.b[d] - self.a[d]) * (1 - math.cos(coordinate_normalized * math.pi)) / 2
+            # coordinate = (coordinate + 1 + self.a[d]) / (2 * (self.b[d] - self.a[d]))
+            #print("Transformed", coordinate, coordinate_normalized)
+            return coordinate
+        else:
+            return 0.5 * (end+start)
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         max_level = max(grid_levels_1D)
@@ -1495,6 +1510,7 @@ class GlobalHighOrderGrid(GlobalGrid):
         self.split_up = split_up
         self.modified_basis = modified_basis
         self.current_dimension = -1
+        self.trapezoidal_grid = GlobalTrapezoidalGrid(a,b, boundary, modified_basis)
         assert not(modified_basis) or not(boundary)
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
@@ -1514,12 +1530,12 @@ class GlobalHighOrderGrid(GlobalGrid):
         self.set_current_dimension(d)
         #if self.max_degree == 2:
 
-        weights, degree = self.get_1D_weights_and_order(grid_1D, a, b)
+        weights, degree = self.get_1D_weights_and_order(grid_1D, a, b, grid_levels_1D)
         #print("Degree of quadrature", degree, "Number of points", len(grid_1D))
         if self.split_up:
             #print(grid, degree)
             if len(grid_1D) > 1 and (len(grid_1D) > 3 or self.boundary):
-                weights, degree = self.recursive_splitting3(grid_1D, a, b, degree)
+                weights, degree = self.recursive_splitting3(grid_1D, a, b, degree, grid_levels_1D)
         #print(weights, grid_1D, degree)
         #print("Degree", degree, len(grid_1D))
         #print(weights_1D, sum(abs(weights_1D)), sum(weights_1D), sum(weightsD), d_old)
@@ -1550,15 +1566,15 @@ class GlobalHighOrderGrid(GlobalGrid):
         else:
             return self.get_1D_weights_and_order(grid_1D, a, b)
 
-    def recursive_splitting3(self, grid_1D, a, b, d, factor=1):
-        weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)])
-        weights_2, d_2 = self.get_1D_weights_and_order(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b)
+    def recursive_splitting3(self, grid_1D, a, b, d, grid_levels, factor=1):
+        weights_1, d_1 = self.get_1D_weights_and_order(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)], grid_levels)
+        weights_2, d_2 = self.get_1D_weights_and_order(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b, grid_levels)
         d_self = min(d_1, d_2)
         max_degree = max(d_self,d)
         #print(d_self, max_degree)
         if len(grid_1D) > max(d_1,d) + max(d_2, d)+1:
-            weights_1_rec, d_1 = self.recursive_splitting3(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)],  max(d_1, d)*factor)
-            weights_2_rec, d_2 = self.recursive_splitting3(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b, max(d_2, d)*factor)
+            weights_1_rec, d_1 = self.recursive_splitting3(grid_1D[ : int(len(grid_1D)/2) + 1], a, grid_1D[int(len(grid_1D)/2)],  max(d_1, d)*factor, grid_levels)
+            weights_2_rec, d_2 = self.recursive_splitting3(grid_1D[int(len(grid_1D)/2): ], grid_1D[int(len(grid_1D)/2)], b, max(d_2, d)*factor, grid_levels)
             if d_1 >= max(d_1, d) * factor and d_2 >= max(d_2, d) * factor:
                 weights_1_rec[-1] += weights_2_rec[0]
                 combined_weights = np.append(weights_1_rec, weights_2_rec[1:])
@@ -1573,7 +1589,7 @@ class GlobalHighOrderGrid(GlobalGrid):
             if not bad_approximation:
                 assert len(combined_weights) == len(grid_1D)
                 return combined_weights, min(d_1, d_2)
-        return self.get_1D_weights_and_order(grid_1D, a, b)
+        return self.get_1D_weights_and_order(grid_1D, a, b, grid_levels)
 
     def recursive_splitting(self, grid_1D, a, b, d):
         middle = (b+a)/2
@@ -1600,7 +1616,7 @@ class GlobalHighOrderGrid(GlobalGrid):
     def get_composite_quad_weights(self, grid_1D, a, b):
         return GlobalTrapezoidalGrid.compute_weights(grid_1D, a, b, self.modified_basis)
 
-    def get_1D_weights_and_order(self, grid_1D, a, b, improve_weight=True, reduce_max_order_for_length=False):
+    def get_1D_weights_and_order(self, grid_1D, a, b, grid_levels, improve_weight=True, reduce_max_order_for_length=False):
         #if len(grid_1D) == 3 and grid_1D[1] - grid_1D[0] == grid_1D[2] - grid_1D[1]:
         #    return np.array([1/6, 4/6, 1/6]) * (b-a), 2
         #if len(grid_1D) == 2:
@@ -2022,8 +2038,9 @@ class ClenshawCurtisGridGlobal(EquidistantGridGlobal):
 
 
 class GaussGrid(Grid):
-    def __init__(self, a, b, dim, integrator=None):
-        self.dim = dim
+    def __init__(self, a, b, integrator=None):
+        self.dim = len(a)
+        assert len(a) == len(b)
         self.a = a
         self.b = b
         self.boundary = False  # never points on boundary
@@ -2077,12 +2094,14 @@ class GaussLegendreGrid1D(GaussGrid1D):
 
 # Tailored for a normal distribution
 class GaussHermiteGrid(GaussGrid):
-    def __init__(self, expectations, standard_deviations, dim, integrator=None):
+    def __init__(self, expectations, standard_deviations, integrator=None):
+        assert len(expectations) == len(standard_deviations)
+        dim = len(expectations)
         self.expectations = expectations
         self.standard_deviations = standard_deviations
         a = np.array([-np.inf] * dim)
         b = np.array([np.inf] * dim)
-        super().__init__(a, b, dim, integrator=integrator)
+        super().__init__(a, b, integrator=integrator)
 
     def _initialize_grids1D(self):
         self.grids = [GaussHermiteGrid1D(loc=self.expectations[d], scale=self.standard_deviations[d], boundary=self.boundary) for d in range(self.dim)]
@@ -2117,10 +2136,11 @@ from scipy.stats import truncnorm
 # We basically compute: N * \int_a^b f(x) e^(-(x-mean)^2/(2 stddev)) dx. Where N is a normalization factor.
 # The code is based on the work in "The Truncated Normal Distribution" by John Burkhardt
 class TruncatedNormalDistributionGrid(Grid):
-    def __init__(self, a, b, dim, mean, std_dev, integrator=None):
+    def __init__(self, a, b, mean, std_dev, integrator=None):
         # we assume here mean = 0 and std_dev = 1 for every dimension
         self.boundary = False  # never points on boundary
-        self.dim = dim
+        self.dim = len(a)
+        assert len(a) == len(b)
         self.a = a
         self.b = b
         if integrator is None:

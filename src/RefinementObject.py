@@ -399,7 +399,7 @@ from scipy import optimize
 
 # This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, this_dim, dim, levels, grid, coarsening_level=0, dim_adaptive=False):
+    def __init__(self, start, end, this_dim, dim, levels, grid, a, b, chebyshev=False, coarsening_level=0):
         # start of subarea
         self.start = start
         # end of subarea
@@ -417,8 +417,10 @@ class RefinementObjectSingleDimension(RefinementObject):
         # level at start and end as point levels (as tuple)
         self.levels = levels
         self.error = 0.0
-        self.dim_adaptive = dim_adaptive
         self.benefit = None
+        self.a = a
+        self.b = b
+        self.chebyshev = chebyshev
         # The middle between two nodes can be calculated with the probability if
         # available so that infinite boundaries are possible
         self.grid = grid
@@ -455,14 +457,17 @@ class RefinementObjectSingleDimension(RefinementObject):
         #    # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
         #    # self.newScheme = True
         # add new refined interval to refinement array
-        mid = self.grid.get_mid_point(self.start, self.end, self.this_dim)
+        if not self.chebyshev:
+            mid = self.grid.get_mid_point(self.start, self.end, self.this_dim)
+        else:
+            mid = self.map_chebyshev(self.start, self.end)
         assert self.start < mid < self.end, "{} < {} < {} does not hold.".format(self.start, mid, self.end)
 
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), self.grid, coarsening_level=coarsening_value, dim_adaptive=self.dim_adaptive))
-        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), self.grid, coarsening_level=coarsening_value, dim_adaptive=self.dim_adaptive))
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), grid=self.grid, coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
+        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), grid=self.grid, coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
         # self.finestWidth = min(newWidth,self.finestWidth)
         return newObjects, lmax_increase, update
 
@@ -496,3 +501,14 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.error = 0.0
         self.integral = 0.0
         self.evaluations = 0
+
+    def map_chebyshev(self, start, end) -> float:
+        coordinate_start = math.acos(1 - 2*(start - self.a) / (self.b - self.a)) / math.pi
+        coordinate_end = math.acos(1 - 2*(end - self.a) / (self.b - self.a)) / math.pi
+        coordinate = (coordinate_start + coordinate_end) / 2
+        print("Start", coordinate)
+        coordinate_normalized = (coordinate - self.a)/(self.b - self.a)
+        coordinate = self.a + (self.b- self.a) * (1 - math.cos(coordinate_normalized * math.pi)) / 2
+        #coordinate = (coordinate + 1 + self.a[d]) / (2 * (self.b[d] - self.a[d]))
+        print("Transformed", coordinate, coordinate_normalized)
+        return coordinate

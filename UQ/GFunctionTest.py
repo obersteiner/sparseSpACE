@@ -73,7 +73,7 @@ def run_test(typi, typid, exceed_evals=None, evals_end=None, max_time=None):
 		if typ == "Gauss":
 			nodes, weights = cp.generate_quadrature(typi, op.distributions_joint, rule="G")
 		elif typ == "sparseGauss":
-			op.set_grid(GaussLegendreGrid(a, b, dim=d))
+			op.set_grid(GaussLegendreGrid(a, b))
 			combiinstance = StandardCombi(a, b, operation=op)
 			combiinstance.perform_combi(1, testi+1, op.get_expectation_variance_Function())
 			nodes, weights = combiinstance.get_points_and_weights()

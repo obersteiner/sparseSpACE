@@ -208,7 +208,7 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None):
                 return np.inf
             expectations = [distr[1] for distr in distris]
             standard_deviations = [distr[2] for distr in distris]
-            hgrid = GaussHermiteGrid(expectations, standard_deviations, dim)
+            hgrid = GaussHermiteGrid(expectations, standard_deviations)
             op.set_grid(hgrid)
             combiinstance = StandardCombi(a, b, operation=op)
             combiinstance.perform_combi(1, level, op.get_expectation_variance_Function())

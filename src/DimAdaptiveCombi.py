@@ -54,7 +54,7 @@ class DimAdaptiveCombi(StandardCombi):
             if max(abs(combiintegral - real_integral) / abs(real_integral)) < tolerance:
                 break
             print("Current combi integral:", combiintegral)
-            print("Currentrelative error:", max(abs(combiintegral - real_integral) / abs(real_integral)))
+            print("Current relative error:", max(abs(combiintegral - real_integral) / abs(real_integral)))
             errors.append(max(abs(combiintegral - real_integral) / abs(real_integral)))
             num_points.append(self.get_total_num_points(distinct_function_evals=True))
             while do_refine:

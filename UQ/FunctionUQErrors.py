@@ -48,7 +48,7 @@ op.f = problem_function_wrapped
 # ~ E_ref, Var_ref = op.calculate_expectation_and_variance_reference(mode="StandardcombiGauss")
 
 if False:
-    grid = GaussLegendreGrid(a, b, 3)
+    grid = GaussLegendreGrid(a, b)
     op.set_grid(grid)
     combiinstance = StandardCombi(a, b, operation=op)
     combiinstance.perform_combi(1, 20, op.get_expectation_variance_Function())
@@ -157,14 +157,14 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
         elif typ == "sparseGauss":
             expectations = [distr[1] for distr in distris]
             standard_deviations = [distr[2] for distr in distris]
-            hgrid = GaussHermiteGrid(expectations, standard_deviations, 3)
+            hgrid = GaussHermiteGrid(expectations, standard_deviations)
             op.set_grid(hgrid)
             combiinstance = StandardCombi(a, b, operation=op)
             level = testi+1
             combiinstance.perform_combi(1, level, op.get_expectation_variance_Function())
             nodes, weights = combiinstance.get_points_and_weights()
             nodes = nodes.T
-            # ~ grid = GaussLegendreGrid(a, b, 3)
+            # ~ grid = GaussLegendreGrid(a, b)
             # ~ weights = weights / np.prod(b - a)
         E, Var = op.calculate_expectation_and_variance_for_weights(nodes, weights)
 
