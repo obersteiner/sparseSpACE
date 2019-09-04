@@ -215,7 +215,8 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
 
 
 evals_end = 4000
-max_time = 30
+# ~ max_time = 30
+max_time = 60 * 5
 
 # For testing
 skip_types = ("adaptiveLagrange",)

@@ -25,7 +25,7 @@ for v in solutions_data:
 for typid in range(len(typ_descs)):
 	datas[typid] = np.array(datas[typid]).T
 
-figure = plotter.figure(1, figsize=(15,10))
+figure = plotter.figure(1, figsize=(11,11))
 figure.canvas.set_window_title('Stocha')
 
 legend_shown = False
@@ -38,6 +38,8 @@ for i,desc in enumerate(("E", "Var")):
 		plotter.plot(datas[typid][0], datas[typid][i + 1], ".-", label=typdesc)
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f"{desc} relative error")
+	if desc == "E":
+		plotter.ylim(10**-7, 10**-1)
 	plotter.yscale("log")
 	plotter.xscale("log")
 	if not legend_shown:

@@ -28,7 +28,7 @@ for typid in range(len(typ_descs)):
 	datas[typid] = np.array(datas[typid]).T
 err_descs = ("E absolute", "E relative", "Var absolute", "Var relative")
 
-figure = plotter.figure(1, figsize=(13,7))
+figure = plotter.figure(1, figsize=(11,11))
 figure.canvas.set_window_title('Stocha')
 
 legend_shown = False
