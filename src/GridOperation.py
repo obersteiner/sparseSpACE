@@ -902,8 +902,8 @@ class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
-    def __init__(self, f, distributions, a, b, dim=None, grid=None,
-            reference_solution=None):
+    def __init__(self, f, distributions, a: Sequence[float], b: Sequence[float],
+            dim: int=None, grid=None, reference_solution=None):
         dim = dim or len(a)
         super().__init__(f, grid, dim, reference_solution)
 
@@ -930,7 +930,8 @@ class UncertaintyQuantification(Integration):
 
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
-    def _prepare_distributions(self, distris, a, b):
+    def _prepare_distributions(self, distris, a: Sequence[float],
+            b: Sequence[float]):
         self.distributions = []
         self.distribution_infos = distris
         chaospy_distributions = []
@@ -1023,7 +1024,7 @@ class UncertaintyQuantification(Integration):
 
     # This function returns boundaries for distributions which have an infinite
     # domain, such as normal distribution
-    def get_boundaries(self, tol):
+    def get_boundaries(self, tol: float) -> Tuple[Sequence[float], Sequence[float]]:
         assert 1.0 - tol < 1.0, "Tolerance is too small"
         a = []
         b = []
@@ -1078,7 +1079,8 @@ class UncertaintyQuantification(Integration):
             return self._scale_values(integral)
         return integral
 
-    def calculate_moment(self, combiinstance, k=None, use_combiinstance_solution=True, scale_weights=False):
+    def calculate_moment(self, combiinstance, k: int=None,
+            use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
             assert len(mom) == self.f.output_length()
@@ -1091,7 +1093,8 @@ class UncertaintyQuantification(Integration):
         return self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=use_combiinstance_solution)
 
     @staticmethod
-    def moments_to_expectation_variance(mom1, mom2):
+    def moments_to_expectation_variance(mom1: Sequence[float],
+            mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
         expectation = mom1
         variance = [mom2[i] - ex * ex for i, ex in enumerate(expectation)]
         for i, v in enumerate(variance):
@@ -1151,7 +1154,7 @@ class UncertaintyQuantification(Integration):
     def get_expectation_and_variance_PCE(self):
         return self.get_expectation_PCE(), self.get_variance_PCE()
 
-    def get_Percentile_PCE(self, q, sample=10000):
+    def get_Percentile_PCE(self, q: float, sample: int=10000):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Perc(self.gPCE, q, self.distributions_joint, sample)
@@ -1168,13 +1171,13 @@ class UncertaintyQuantification(Integration):
 
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the k-th moment
-    def get_moment_Function(self, k):
+    def get_moment_Function(self, k: int):
         if k == 1:
             return self.f
         return FunctionPower(self.f, k)
 
     # Optimizes adapting for multiple moments at once
-    def get_moments_Function(self, ks):
+    def get_moments_Function(self, ks: Sequence[int]):
         return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
 
     def get_expectation_variance_Function(self):
