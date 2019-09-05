@@ -902,8 +902,9 @@ class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
-    def __init__(self, f, distributions, a, b, dim, grid=None,
+    def __init__(self, f, distributions, a, b, dim=None, grid=None,
             reference_solution=None):
+        dim = dim or len(a)
         super().__init__(f, grid, dim, reference_solution)
 
         # If distributions is not a list, it specifies the same distribution
