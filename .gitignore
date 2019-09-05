@@ -1,5 +1,3 @@
 __pycache__/
 .ipynb_checkpoints
 Untitled.ipynb
-UQ/*.npy
-UQ/PredatorPrey/*.npy
