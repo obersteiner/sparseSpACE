@@ -18,9 +18,6 @@ class TestIntegrationUQ(unittest.TestCase):
         a = np.array([-bigvalue, -bigvalue])
         b = np.array([bigvalue, bigvalue])
 
-        # Whether to change weights for obtaining a higher order quadrature
-        high_order = True
-
         distr = []
         for _ in range(d):
             distr.append(cp.Normal(0,2))
@@ -29,13 +26,11 @@ class TestIntegrationUQ(unittest.TestCase):
         fw = FunctionCustom(lambda coords: f(coords)[0]
             * float(distr_joint.pdf(coords)))
 
-        # ~ grid = TrapezoidalGrid(a=a, b=b, dim=d)
         grid = GlobalBSplineGrid(a, b)
-        op = Integration(fw, grid="Hund", dim=d)
+        op = Integration(fw, grid=grid, dim=d)
 
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
-        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op,
-            do_high_order=high_order, grid=grid)
+        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
         print("performSpatiallyAdaptiv…")
         v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
             max_evaluations=40, min_evaluations=25, do_plot=False)
