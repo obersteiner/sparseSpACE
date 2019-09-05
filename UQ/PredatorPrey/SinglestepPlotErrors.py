@@ -20,7 +20,7 @@ for v in solutions_data:
 		# Gauss reference solution
 		# ~ continue
 	if num_evals < 17:
-		# min evals with lmax=3
+		# No adaptive refinement points if lmax=3
 		continue
 	if timestep != 25:
 		continue
@@ -32,7 +32,7 @@ err_descs = ("E absolute", "E relative", "Var absolute", "Var relative")
 
 # ~ figure = plotter.figure(1, figsize=(13,10))
 figure = plotter.figure(1, figsize=(13,6))
-figure.canvas.set_window_title('Stocha')
+figure.canvas.set_window_title('Predator Prey Single Step Errors')
 
 legend_shown = False
 for i,desc in enumerate(err_descs):

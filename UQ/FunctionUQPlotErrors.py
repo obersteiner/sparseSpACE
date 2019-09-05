@@ -19,9 +19,6 @@ for v in solutions_data:
 	if num_evals < 7:
 		# No adaptive refinement points
 		continue
-	# ~ if num_evals == 961:
-		# Gauss reference solution
-		# ~ continue
 	datas[typid].append((num_evals, *errs))
 
 for typid in range(len(typ_descs)):
@@ -29,7 +26,7 @@ for typid in range(len(typ_descs)):
 err_descs = ("E absolute", "E relative", "Var absolute", "Var relative")
 
 figure = plotter.figure(1, figsize=(11,11))
-figure.canvas.set_window_title('Stocha')
+figure.canvas.set_window_title('FunctionUQ Errors')
 
 legend_shown = False
 for i,desc in enumerate(err_descs):

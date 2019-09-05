@@ -26,7 +26,7 @@ for typid in range(len(typ_descs)):
 	datas[typid] = np.array(datas[typid]).T
 
 figure = plotter.figure(1, figsize=(11,11))
-figure.canvas.set_window_title('Stocha')
+figure.canvas.set_window_title('G-Function Errors')
 
 legend_shown = False
 for i,desc in enumerate(("E", "Var")):
@@ -39,6 +39,7 @@ for i,desc in enumerate(("E", "Var")):
 	plotter.xlabel('function evaluations')
 	plotter.ylabel(f"{desc} relative error")
 	if desc == "E":
+		# Change the height because perfect solutions sometimes appear
 		plotter.ylim(10**-7, 10**-1)
 	plotter.yscale("log")
 	plotter.xscale("log")

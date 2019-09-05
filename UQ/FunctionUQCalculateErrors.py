@@ -15,15 +15,8 @@ from ErrorCalculator import *
 from GridOperation import *
 from StandardCombi import *
 
-shifted = False
-
 error_operator = ErrorCalculatorSingleDimVolumeGuided()
-if shifted:
-    problem_function = FunctionUQShifted()
-else:
-    problem_function = FunctionUQ()
-# ~ a = -np.ones(3)
-# ~ b = np.ones(3)
+problem_function = FunctionUQ()
 a = np.array([-np.inf] * 3)
 b = np.array([np.inf] * 3)
 # ~ f = FunctionCustom(lambda p: problem_function([p[0], p[1], 0]))
@@ -33,10 +26,6 @@ verbose = False
 lmax = 2
 adaptive_version = None
 
-# ~ distris = [
-    # ~ "Uniform", "Uniform", "Uniform"
-# ~ ]
-assert not shifted
 normaldistr = ("Normal", 0.2, 1.0)
 distris = [normaldistr for _ in range(3)]
 op = UncertaintyQuantificationTesting(None, distris, a, b, dim=3)
@@ -45,24 +34,12 @@ op = UncertaintyQuantificationTesting(None, distris, a, b, dim=3)
 # Reference solutions
 problem_function_wrapped = FunctionCustom(lambda x: problem_function(x), output_dim=problem_function.output_length())
 op.f = problem_function_wrapped
-# ~ E_ref, Var_ref = op.calculate_expectation_and_variance_reference(mode="StandardcombiGauss")
 
-if False:
-    grid = GaussLegendreGrid(a, b)
-    op.set_grid(grid)
-    combiinstance = StandardCombi(a, b, operation=op)
-    combiinstance.perform_combi(1, 20, op.get_expectation_variance_Function())
-    nodes, weights = combiinstance.get_points_and_weights()
-    weights = weights / np.prod(b - a)
-    E_ref, Var_ref = op.calculate_expectation_and_variance_for_weights(nodes.T, weights)
-else:
-    E_ref, Var_ref = op.calculate_expectation_and_variance_reference(modeparams=2**18)
+# MC with Halton Sequence
+E_ref, Var_ref = op.calculate_expectation_and_variance_reference(modeparams=2**18)
 
 print(E_ref, Var_ref)
-if shifted:
-    np.save("function_uq_shifted.npy", [E_ref, Var_ref])
-else:
-    np.save("function_uq.npy", [E_ref, Var_ref])
+np.save("function_uq_solutions.npy", [E_ref, Var_ref])
 #'''
 
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "adaptiveLagrange", "sparseGauss", "adaptiveTransTrapez", "Halton")
@@ -70,10 +47,7 @@ typids = dict()
 for i,v in enumerate(types):
     typids[v] = i
 
-if shifted:
-    E_ref, Var_ref = np.load("function_uq_shifted.npy")
-else:
-    E_ref, Var_ref = np.load("function_uq.npy")
+E_ref, Var_ref = np.load("function_uq_solutions.npy")
 
 def error_absolute(v, ref): return abs(ref - v)
 def error_relative(v, ref): return error_absolute(v, ref) / abs(ref)
@@ -113,7 +87,6 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
             combiinstance = SpatiallyAdaptiveSingleDimensions2(a_trans, b_trans, operation=op_integration, norm=2, version=adaptive_version)
         else:
             combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2, version=adaptive_version)
-            # ~ f_refinement = op.get_PCE_Function(poly_deg_max)
 
         if typ == "Trapez":
             assert False
@@ -135,8 +108,6 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
                 print_output=verbose)
 
         # ~ combiinstance.plot()
-        # Calculate the gPCE using the nodes and weights from the refinement
-        # ~ op.calculate_PCE(None, combiinstance)
         if multiple_evals is None:
             E, Var = op.calculate_expectation_and_variance(combiinstance)
     else:
@@ -164,8 +135,6 @@ def run_test(testi, typid, exceed_evals=None, evals_end=None, max_time=None):
             combiinstance.perform_combi(1, level, op.get_expectation_variance_Function())
             nodes, weights = combiinstance.get_points_and_weights()
             nodes = nodes.T
-            # ~ grid = GaussLegendreGrid(a, b)
-            # ~ weights = weights / np.prod(b - a)
         E, Var = op.calculate_expectation_and_variance_for_weights(nodes, weights)
 
     print("simulation time: " + str(time.time() - measure_start) + " s")

@@ -28,7 +28,7 @@ mean_err_descs = ("E prey relative", "E predator relative", "P10 prey", "P10 pre
 	"P90 prey", "P90 predator", "Var prey", "Var predator")
 
 figure = plotter.figure(1, figsize=(13,10))
-figure.canvas.set_window_title('Stocha')
+figure.canvas.set_window_title('Predator Prey All Steps Errors')
 
 legend_shown = False
 for i,desc in enumerate(mean_err_descs):

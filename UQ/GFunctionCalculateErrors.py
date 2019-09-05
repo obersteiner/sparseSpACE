@@ -10,13 +10,17 @@ from ErrorCalculator import *
 from GridOperation import *
 
 
+shifted = True
+
 types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange", "sparseGauss")
 
 d = 2
 a = np.zeros(d)
 b = np.ones(d)
-# ~ f_g = FunctionG(d)
-f_g = FunctionGShifted(d)
+if shifted:
+	f_g = FunctionGShifted(d)
+else:
+	f_g = FunctionG(d)
 reference_expectation = f_g.get_expectation()
 reference_variance = f_g.get_variance()
 # Create the operation only once
