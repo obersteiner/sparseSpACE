@@ -308,29 +308,110 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =10):  # update with meta container
-        plt.rcParams.update({'font.size': 32})
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=25):  # update with meta container
+        plt.rcParams.update({'font.size': 30})
         refinement = self.refinement
         dim = self.dim
-        fig, ax = plt.subplots(ncols=1, nrows=dim, figsize=(20, 10))
+        fig, ax = plt.subplots(ncols=1, nrows=dim, figsize=(20, 5*dim))
         for d in range(dim):
             starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].get_objects()]
+            starts_levels = [refinementObject.levels[0] for refinementObject in refinement.refinementContainers[d].get_objects()]
             ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].get_objects()]
+            ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d].get_objects()]
+
             for i in range(len(starts)):
                 ax[d].add_patch(
                     patches.Rectangle(
                         (starts[i], -0.1),
                         ends[i] - starts[i],
-                        0.2,
+                        0.2, linestyle='-',
                         fill=False  # remove background
                     )
                 )
+                ax[d].text(starts[i]+0.01, 0.01, str(starts_levels[i]),
+                          fontsize=fontsize, ha='center', color="blue")
+            ax[d].text(ends[-1] - 0.01, 0.01, str(ends_levels[-1]),
+                    fontsize=fontsize, ha='center', color="blue")
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
             ax[d].plot(xValues, yValues, 'bo', markersize=markersize, color="black")
-            ax[d].set_xlim([self.a[d], self.b[d]])
-            ax[d].set_ylim([-0.1, 0.1])
+            ax[d].set_xlim([self.a[d]-0.005, self.b[d]+0.005])
+            ax[d].set_ylim([-0.05, 0.05])
             ax[d].set_yticks([])
+
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        plt.show()
+        return fig
+
+    # this method draws the 1D refinement of each dimension individually
+    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):  # update with meta container
+        plt.rcParams.update({'font.size': 32})
+        refinement = self.refinement
+        dim = self.dim if single_dim is None else 1
+        height = 5*sum(self.lmax) if single_dim is None else 5 * self.lmax[single_dim]
+        fig, ax = plt.subplots(ncols=1, nrows=dim if single_dim is None else 1, figsize=(20, height))
+        for d in range(dim):
+            offset = 0 if single_dim is None else single_dim
+            axis = ax[d] if single_dim is None else ax
+            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            starts_levels = [refinementObject.levels[0] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            max_level = max(starts_levels)
+            yvalues = np.zeros(len(starts) + 1)
+            for i in range(len(starts)):
+                x_position = starts[i]
+                y_position = starts_levels[i]
+                yvalues[i] = y_position
+                if i !=0:
+                    for j in reversed(range(i)):
+                        if starts_levels[j] == starts_levels[i] + 1:
+                            target_x_position = starts[j]
+                            target_y_position = starts_levels[j]
+                            axis.arrow(x_position, y_position, target_x_position - x_position + 0.001,
+                                        target_y_position - y_position - 0.04,
+                                        head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True, overhang=0, capstyle="butt")
+                            break
+                        if starts_levels[j] <= starts_levels[i]:
+                            break
+
+                for j in range(i+1, len(starts)):
+                    if starts_levels[j] == starts_levels[i] + 1:
+                        target_x_position = starts[j]
+                        target_y_position = starts_levels[j]
+                        axis.arrow(x_position, y_position, target_x_position - x_position - 0.001,
+                                    target_y_position - y_position - 0.04,
+                                    head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True)
+                        break
+                    if starts_levels[j] <= starts_levels[i]:
+                        break
+
+
+            x_position = ends[-1]
+            y_position = ends_levels[-1]
+            yvalues[-1] = y_position
+            for j in reversed(range(len(starts))):
+                if ends_levels[-1] + 1 == starts_levels[j]:
+                    target_x_position = starts[j]
+                    target_y_position = starts_levels[j]
+                    axis.arrow(x_position, y_position, target_x_position - x_position + 0.001,
+                                target_y_position - y_position - 0.04,
+                                head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True)
+                    break
+                if ends_levels[-1] >= starts_levels[j]:
+                    break
+
+
+
+            xValues = starts + ends[-1:]
+            axis.plot(xValues, yvalues, 'bo', markersize=markersize, color="black")
+            axis.set_xlim([self.a[d + offset]-0.01, self.b[d + offset]+0.01])
+            axis.set_ylim([-0.04, max_level+0.04])
+            axis.set_ylim(axis.get_ylim()[::-1])
+            axis.set_yticks(list(list(range(max_level+1))))
+            axis.set_ylabel("level")
+            axis.set_xlabel("$x_" + str(d + 1 + offset) + "$")
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         plt.show()
@@ -362,7 +443,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     # refinement step is finished. This method is executed before the refinement process.
     def finalize_evaluation_operation(self, areas, evaluation_array):
         super().finalize_evaluation_operation(areas, evaluation_array)
-
+        #self.refinement.print_containers_only()
         #if self.version == 1:
         #    for d in range(self.dim):
         #        container_d = self.refinement.get_refinement_container_for_dim(d)
