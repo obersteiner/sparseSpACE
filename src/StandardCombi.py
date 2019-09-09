@@ -156,17 +156,17 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20):
-        fontsize = 22
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=False, linewidth=2.0, show_levelvec=True):
+        fontsize = 30
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
-        lmax = [self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
+        lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=lmax[0] - lmin[0] + 1, nrows=lmax[1] - lmin[1] + 1, figsize=(20, 20))
+        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(10*self.lmax[0], 10*self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -189,15 +189,32 @@ class StandardCombi(object):
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
+            if show_levelvec:
+                ax.set_title(str(tuple(self.lmax)))
+            if show_border:
+                startx = self.a[0]
+                starty = self.a[1]
+                endx = self.b[0]
+                endy = self.b[1]
+                ax.add_patch(
+                    patches.Rectangle(
+                        (startx, starty),
+                        endx - startx,
+                        endy - starty,
+                        fill=False,  # remove background,
+                        alpha=1,
+                        linewidth=linewidth, visible=True
+                    )
+                )
             if not ticks:
                 ax.axis('off')
             if add_refinement:
-                self.add_refinment_to_figure_axe(ax, linewidth=2.0)
+                self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
         else:
 
             for i in range(lmax[0] - lmin[0] + 1):
                 for j in range(lmax[1] - lmin[1] + 1):
-                    ax[i, j].axis('off')
+                    ax[j, i].axis('off')
 
             for component_grid in scheme:
                 num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
@@ -225,10 +242,27 @@ class StandardCombi(object):
                 grid.spines['right'].set_visible(False)
                 grid.spines['bottom'].set_visible(False)
                 grid.spines['left'].set_visible(False)
+                if show_levelvec:
+                    grid.set_title(str(tuple(component_grid.levelvector)))
+                if show_border:
+                    startx = self.a[0]
+                    starty = self.a[1]
+                    endx = self.b[0]
+                    endy = self.b[1]
+                    grid.add_patch(
+                        patches.Rectangle(
+                            (startx, starty),
+                            endx - startx,
+                            endy - starty,
+                            fill=False,  # remove background,
+                            alpha=1,
+                            linewidth=linewidth, visible=True
+                        )
+                    )
                 if not ticks:
                     grid.axis('off')
                 if add_refinement:
-                    self.add_refinment_to_figure_axe(grid, linewidth=2.0)
+                    self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
 
                 coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
                 grid.text(0.55, 0.55, coefficient,
@@ -246,7 +280,7 @@ class StandardCombi(object):
 
     # prints the sparse grid which results from the combination
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black"):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False):
         plt.rcParams.update({'font.size': 60})
         scheme = self.scheme
         dim = self.dim
@@ -302,6 +336,21 @@ class StandardCombi(object):
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
+            if show_border:
+                startx = self.a[0]
+                starty = self.a[1]
+                endx = self.b[0]
+                endy = self.b[1]
+                ax.add_patch(
+                    patches.Rectangle(
+                        (startx, starty),
+                        endx - startx,
+                        endy - starty,
+                        fill=False,  # remove background,
+                        alpha=1,
+                        linewidth=linewidth, visible=True
+                    )
+                )
         if not ticks:
             ax.axis('off')
         if add_refinement and dim == 2:
