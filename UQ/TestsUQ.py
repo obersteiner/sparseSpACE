@@ -9,13 +9,13 @@ from spatiallyAdaptiveSingleDimension2 import *
 from ErrorCalculator import *
 from GridOperation import *
 
-calc_E_Var = True
-# ~ calc_E_Var = False
-# ~ do_PCE_func = True
-do_PCE_func = False
+# ~ calc_E_Var = True
+calc_E_Var = False
+do_PCE_func = True
+# ~ do_PCE_func = False
 # ~ do_HighOrder = True
 do_HighOrder = False
-max_evals = 340
+max_evals = 64
 
 assert calc_E_Var or do_PCE_func
 
@@ -85,7 +85,7 @@ def plot_function(f, op, a, b, inf_borders):
         # Set plot boundaries to include the place with high probability
         pa, pb = op.get_boundaries(0.01)
     print("Showing function", f)
-    f.plot(pa, pb)
+    f.plot(pa, pb, points_per_dim=11)
     print("Showing pdf")
     pdf = op.get_pdf_Function()
     pdf.plot(pa, pb, points_per_dim=11)
@@ -141,6 +141,9 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
             error_operator, tol=tol, max_evaluations=max_evals,
             min_evaluations=min_evals, do_plot=plot_grids)
         # ~ combiinstance.plot()
+        # ~ combiinstance.print_resulting_combi_scheme(filename="tmp_scheme.pdf", markersize=10, show_border=True)
+        # ~ combiinstance.print_resulting_sparsegrid(filename="tmp_sparsegrid.pdf", markersize=20, show_border=True)
+        # ~ combiinstance.draw_refinement(filename="tmp_refinement.pdf")
 
         print("calculate_expectation_and_variance…")
         E, Var = op.calculate_expectation_and_variance(combiinstance)
@@ -154,6 +157,9 @@ def do_test(d, a, b, f, distris, boundary=True, modified_basis=False, lmax=2, so
         combiinstance.performSpatiallyAdaptiv(1, lmax, f_pce, error_operator,
             tol=tol, max_evaluations=max_evals,
             min_evaluations=min_evals, do_plot=plot_grids)
+        # ~ combiinstance.print_resulting_combi_scheme(filename="tmp_scheme.pdf", markersize=10, show_border=True)
+        # ~ combiinstance.print_resulting_sparsegrid(filename="tmp_sparsegrid.pdf", markersize=20, show_border=True)
+        # ~ combiinstance.draw_refinement(filename="tmp_refinement.pdf")
         op.calculate_PCE(poly_deg_max, combiinstance)
     else:
         op.calculate_PCE(poly_deg_max, combiinstance, use_combiinstance_solution=False)
@@ -333,9 +339,10 @@ def test_G_function():
 
 
 # ~ test_uq_discontinuity3D()
-test_uq_discontinuity2D()
+# ~ test_uq_discontinuity2D()
+# ~ test_uq_discontinuity2DTri()
 # ~ test_cantilever_beam_D()
-# ~ test_G_function()
+test_G_function()
 
 # ~ test_normal_inf_border()
 # ~ test_normal_vagebounds()
