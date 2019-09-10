@@ -3,12 +3,16 @@ import matplotlib.pyplot as plotter
 import sys
 import os
 
+# ~ expectation_ylim = [10**-7, 10**-1]
+# ~ expectation_ylim = [10**-4, 1]
+expectation_ylim = None
+
 tmpdir = os.getenv("XDG_RUNTIME_DIR")
 results_path = tmpdir + "/uqtestG.npy"
 assert os.path.isfile(results_path)
 solutions_data = list(np.load(results_path, allow_pickle=True))
 
-typ_descs = ("full Gauß", "Trapez", "HighOrder", "BSpline", "Lagrange", "sparse Gauß")
+typ_descs = ("full Gauß", "Trapez", "HighOrder", "BSpline", "Lagrange", "sparse Gauß", "modified_basis Trapez")
 
 datas = [[] for _ in typ_descs]
 for v in solutions_data:
@@ -26,6 +30,7 @@ for typid in range(len(typ_descs)):
     datas[typid] = np.array(datas[typid]).T
 
 figure = plotter.figure(1, figsize=(11,11))
+# ~ figure = plotter.figure(1, figsize=(11,5))
 figure.canvas.set_window_title('G-Function Errors')
 
 legend_shown = False
@@ -38,13 +43,14 @@ for i,desc in enumerate(("E", "Var")):
         plotter.plot(datas[typid][0], datas[typid][i + 1], ".-", label=typdesc)
     plotter.xlabel('function evaluations')
     plotter.ylabel(f"{desc} relative error")
-    if desc == "E":
+    if desc == "E" and expectation_ylim is not None:
         # Change the height because perfect solutions sometimes appear
-        plotter.ylim(10**-7, 10**-1)
+        plotter.ylim(*expectation_ylim)
     plotter.yscale("log")
     plotter.xscale("log")
     if not legend_shown:
-        plotter.legend(loc="lower left")
+        # ~ plotter.legend(loc="lower left")
+        plotter.legend(loc="best")
         legend_shown = True
     plotter.grid(True)
 

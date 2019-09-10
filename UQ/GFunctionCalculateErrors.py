@@ -10,11 +10,12 @@ from ErrorCalculator import *
 from GridOperation import *
 
 
-shifted = True
-
-types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange", "sparseGauss")
-
 d = 2
+shifted = True
+verbose = False
+
+types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange", "sparseGauss", "adaptiveTrapezMB")
+
 a = np.zeros(d)
 b = np.ones(d)
 if shifted:
@@ -27,17 +28,27 @@ reference_variance = f_g.get_variance()
 op = UncertaintyQuantificationTesting(None, "Uniform", a, b, dim=d)
 
 def run_test(typi, typid, exceed_evals=None, evals_end=None, max_time=None):
-    lmax = 2
+
     f = FunctionCustom(lambda x: f_g(x))
     op.f = f
 
     multiple_evals = None
     typ = types[typid]
+    lmax = 3 if typ == "adaptiveTrapezMB" else 2
     if typ not in ("Gauss", "sparseGauss"):
         if typ == "adaptiveHO":
-            grid = GlobalHighOrderGridWeighted(a, b, op, boundary=True)
+            if False:
+                # A non-weighted grid can be used due to the uniform distribution
+                # This currently does not work.
+                assert all([v == 0 for v in a])
+                assert all([v == 1 for v in b])
+                grid = GlobalHighOrderGrid(a, b, boundary=boundary, modified_basis=modified_basis, split_up=False)
+            else:
+                grid = GlobalHighOrderGridWeighted(a, b, op, boundary=True)
         elif typ == "adaptiveTrapez":
             grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=True)
+        elif typ == "adaptiveTrapezMB":
+            grid = GlobalTrapezoidalGridWeighted(a, b, op, boundary=False, modified_basis=True)
         elif typ == "adaptiveLagrange":
             grid = GlobalLagrangeGridWeighted(a, b, op, boundary=True)
         elif typ == "BSpline":
@@ -64,12 +75,12 @@ def run_test(typi, typid, exceed_evals=None, evals_end=None, max_time=None):
             combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
                 error_operator, tol=0,
                 max_evaluations=1,
-                print_output=False)
+                print_output=verbose)
         else:
             combiinstance.performSpatiallyAdaptiv(1, lmax, expectation_var_func,
                 error_operator, tol=np.inf,
                 max_evaluations=np.inf, min_evaluations=exceed_evals+1,
-                print_output=False)
+                print_output=verbose)
 
         if multiple_evals is None:
             (E,), (Var,) = op.calculate_expectation_and_variance(combiinstance)
@@ -123,14 +134,13 @@ def run_test(typi, typid, exceed_evals=None, evals_end=None, max_time=None):
         return f.get_f_dict_size()
 
 
-# ~ evals_end = 900
 evals_end = 4000
+# ~ evals_end = 25000
 max_time = 30
+# ~ max_time = 560
 
 # For testing
-# ~ types = ("Gauss", "adaptiveTrapez", "adaptiveHO", "BSpline", "adaptiveLagrange")
-skip_types = ("adaptiveLagrange", "BSpline")
-# ~ skip_types = ("BSpline",)
+# ~ skip_types = ("sparseGauss", "adaptiveLagrange", "BSpline", "adaptiveHO")
 skip_types = ()
 assert all([typ in types for typ in skip_types])
 
