@@ -202,7 +202,7 @@ class StandardCombi(object):
                         endx - startx,
                         endy - starty,
                         fill=False,  # remove background,
-                        alpha=1,
+                        alpha=0.3,
                         linewidth=linewidth, visible=True
                     )
                 )
@@ -255,7 +255,7 @@ class StandardCombi(object):
                             endx - startx,
                             endy - starty,
                             fill=False,  # remove background,
-                            alpha=1,
+                            alpha=0.3,
                             linewidth=linewidth, visible=True
                         )
                     )
@@ -336,21 +336,21 @@ class StandardCombi(object):
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
-            if show_border:
-                startx = self.a[0]
-                starty = self.a[1]
-                endx = self.b[0]
-                endy = self.b[1]
-                ax.add_patch(
-                    patches.Rectangle(
-                        (startx, starty),
-                        endx - startx,
-                        endy - starty,
-                        fill=False,  # remove background,
-                        alpha=1,
-                        linewidth=linewidth, visible=True
-                    )
+        if show_border:
+            startx = self.a[0]
+            starty = self.a[1]
+            endx = self.b[0]
+            endy = self.b[1]
+            ax.add_patch(
+                patches.Rectangle(
+                    (startx, starty),
+                    endx - startx,
+                    endy - starty,
+                    fill=False,  # remove background,
+                    alpha=0.3,
+                    linewidth=linewidth, visible=True
                 )
+            )
         if not ticks:
             ax.axis('off')
         if add_refinement and dim == 2:
