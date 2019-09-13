@@ -17,6 +17,7 @@ from GridOperation import *
 
 # Settings
 timestep_problem = 25
+# ~ timestep_problem = 210
 uniform_distr = False
 verbose = False
 
@@ -71,6 +72,9 @@ def get_solver_value(input_values):
 '''
 def get_solver_value(input_values):
     assert not uniform_distr
+    if any([v <= 0 for v in input_values]):
+        print("negative input values", input_values)
+        return 0.0
     y = pp.get_solver_value2D(input_values)
     return y[1][timestep_problem]
 problem_function = FunctionCustom(get_solver_value, output_dim=1)
@@ -86,8 +90,9 @@ op = UncertaintyQuantificationTesting(None, distris, a, b, dim=dim)
 op.f = problem_function
 if True:
     print("Calculating reference values with Chaospy")
-    nodes, weights = cp.generate_quadrature(29, op.distributions_joint, rule="G")
-    reference_expectation, reference_variance = op.calculate_expectation_and_variance_for_weights(nodes, weights)
+    # ~ nodes, weights = cp.generate_quadrature(29, op.distributions_joint, rule="G")
+    # ~ reference_expectation, reference_variance = op.calculate_expectation_and_variance_for_weights(nodes, weights)
+    reference_expectation, reference_variance = op.calculate_expectation_and_variance_reference(modeparams=2**10)
 else:
     # scipy reference solution; does not work
     pdf_function = op.get_pdf_Function()
@@ -100,7 +105,7 @@ else:
     print("Calculating reference second moment")
     mom2 = mom2_func.getAnalyticSolutionIntegral(a, b)
     reference_variance = mom2 - reference_expectation ** 2
-np.save("step25_2D_solutions.npy", [reference_expectation, reference_variance])
+np.save(f"step{timestep_problem}_2D_solutions.npy", [reference_expectation, reference_variance])
 print("Reference solutions", [reference_expectation, reference_variance])
 #'''
 
@@ -123,7 +128,7 @@ E_ref = E_pX_ref[timestep_problem][1]
 # ~ P90_ref = P90_pX_ref[timestep_problem][1]
 Var_ref = Var_pX_ref[timestep_problem][1]
 '''
-E_ref, Var_ref = np.load("step25_2D_solutions.npy")
+E_ref, Var_ref = np.load(f"step{timestep_problem}_2D_solutions.npy")
 
 def error_absolute(v, ref): return abs(ref - v)
 def error_relative(v, ref): return error_absolute(v, ref) / abs(ref)

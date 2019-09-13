@@ -22,8 +22,6 @@ for v in solutions_data:
     if num_evals < 17:
         # No adaptive refinement points if lmax=3
         continue
-    if timestep != 25:
-        continue
     datas[typid].append((num_evals, *errs))
 
 for typid in range(len(typ_descs)):
@@ -31,7 +29,8 @@ for typid in range(len(typ_descs)):
 err_descs = ("E absolute", "E relative", "Var absolute", "Var relative")
 
 # ~ figure = plotter.figure(1, figsize=(13,10))
-figure = plotter.figure(1, figsize=(13,6))
+# ~ figure = plotter.figure(1, figsize=(13,6))
+figure = plotter.figure(1, figsize=(11,11))
 figure.canvas.set_window_title('Predator Prey Single Step Errors')
 
 legend_shown = False
