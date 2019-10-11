@@ -34,6 +34,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             print("Refinement can only be printed in 2D")
             return
         fig = plt.figure(figsize=(20,20))
+        plt.tight_layout()
         ax2 = fig.add_subplot(111, aspect='equal')
         # print refinement
         for i in self.refinement.get_objects():

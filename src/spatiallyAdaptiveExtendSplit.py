@@ -65,8 +65,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         else:
             return [(area, points)]
 
-
-
     # draw a visual representation of refinement tree
     def draw_refinement(self, filename=None):
         plt.rcParams.update({'font.size': 32})
@@ -83,7 +81,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    def add_refinment_to_figure_axe(self, ax, linewidth=1):
+    def add_refinment_to_figure_axe(self, ax, linewidth=1, fontsize=35):
         for i in self.refinement.get_objects():
             startx = i.start[0]
             starty = i.start[1]
@@ -99,6 +97,9 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     linewidth=linewidth, visible=True
                 )
             )
+            midpoint = 0.5*(np.asarray(i.start) + np.asarray(i.end))
+            ax.text(midpoint[0] - 0.015, midpoint[1], str(self.lmax[0] - i.coarseningValue),
+                fontsize=fontsize, ha='center', color="blue")
 
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec, numSubDiagonal):
@@ -222,13 +223,13 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if self.noInitialSplitting:
             assert False
             new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
-                                                                self.numberOfRefinementsBeforeExtend, 0, 0,
+                                                                self.numberOfRefinementsBeforeExtend,
                                                                 automatic_extend_split=self.automatic_extend_split)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             self.root_cell = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
-                                                 self.numberOfRefinementsBeforeExtend, None, 0,
-                                                 0, automatic_extend_split=self.automatic_extend_split)
+                                                         self.numberOfRefinementsBeforeExtend,
+                                                         automatic_extend_split=self.automatic_extend_split)
             new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
             if self.operation is not None:

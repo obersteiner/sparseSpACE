@@ -31,7 +31,7 @@ class HierarchizationLSG(object):
     # numPoints (array) many points for each dimension
     def hierarchize_poles_for_dim(self, grid_values: Sequence[Sequence[float]], numPoints: Sequence[int], f: Function, d: int) -> Sequence[Sequence[float]]:
         if numPoints[d] == 1:
-            assert self.grid.get_basis(d, 0)(self.grid.get_coordinates_dim(d)[0]) == 1
+            assert math.isclose(self.grid.get_basis(d, 0)(self.grid.get_coordinates_dim(d)[0]), 1.0)
             return grid_values
         self.dim = len(numPoints)
         offsets = np.array([int(np.prod(numPoints[d+1:])) for d in range(self.dim)])

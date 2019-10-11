@@ -156,8 +156,8 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=False, linewidth=2.0, show_levelvec=True):
-        fontsize = 30
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False):
+        fontsize = 60
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
@@ -174,6 +174,8 @@ class StandardCombi(object):
         if lmax == lmin:
             ax.xaxis.set_ticks_position('none')
             ax.yaxis.set_ticks_position('none')
+            ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
+            ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
             num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(lmax)
             points = self.get_points_component_grid(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
@@ -196,14 +198,15 @@ class StandardCombi(object):
                 starty = self.a[1]
                 endx = self.b[0]
                 endy = self.b[1]
+                facecolor = "green"
                 ax.add_patch(
                     patches.Rectangle(
                         (startx, starty),
                         endx - startx,
                         endy - starty,
-                        fill=False,  # remove background,
-                        alpha=0.3,
-                        linewidth=linewidth, visible=True
+                        fill=True,  # remove background,
+                        alpha=0.5,
+                        linewidth=linewidth, visible=True, facecolor=facecolor,edgecolor='black'
                     )
                 )
             if not ticks:
@@ -249,32 +252,34 @@ class StandardCombi(object):
                     starty = self.a[1]
                     endx = self.b[0]
                     endy = self.b[1]
+                    facecolor = 'green' if component_grid.coefficient == 1 else 'orange'
                     grid.add_patch(
                         patches.Rectangle(
                             (startx, starty),
                             endx - startx,
                             endy - starty,
-                            fill=False,  # remove background,
-                            alpha=0.3,
-                            linewidth=linewidth, visible=True
+                            fill=True,  # remove background,
+                            #alpha=0.5,
+                            linewidth=linewidth, visible=True, facecolor=facecolor, edgecolor='black'
                         )
                     )
                 if not ticks:
                     grid.axis('off')
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
-
-                coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
-                grid.text(0.55, 0.55, coefficient,
+                if show_coefficient:
+                    coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
+                    grid.text(0.55, 0.55, coefficient,
                           fontsize=fontsize * 2, ha='center', color="blue")
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
         # ax1 = fig.add_subplot(111, alpha=0)
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
-
+        #plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
+
         plt.show()
         return fig
 
@@ -315,7 +320,9 @@ class StandardCombi(object):
                 ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
+
         if dim == 3:
+            ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
             ax.zaxis.set_ticks_position('none')
             markersize /= 2
 
@@ -336,21 +343,23 @@ class StandardCombi(object):
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
-        if show_border:
-            startx = self.a[0]
-            starty = self.a[1]
-            endx = self.b[0]
-            endy = self.b[1]
-            ax.add_patch(
-                patches.Rectangle(
-                    (startx, starty),
-                    endx - startx,
-                    endy - starty,
-                    fill=False,  # remove background,
-                    alpha=0.3,
-                    linewidth=linewidth, visible=True
+            ax.set_xlabel("$x_1$")
+            ax.set_ylabel("$x_2$")
+            if show_border:
+                startx = self.a[0]
+                starty = self.a[1]
+                endx = self.b[0]
+                endy = self.b[1]
+                ax.add_patch(
+                    patches.Rectangle(
+                        (startx, starty),
+                        endx - startx,
+                        endy - starty,
+                        fill=False,  # remove background,
+                        alpha=1,
+                        linewidth=linewidth, visible=True
+                    )
                 )
-            )
         if not ticks:
             ax.axis('off')
         if add_refinement and dim == 2:

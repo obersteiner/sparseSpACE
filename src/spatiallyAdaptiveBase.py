@@ -161,7 +161,9 @@ class SpatiallyAdaptivBase(StandardCombi):
             if self.print_output:
                 print("recalculating errors")
 
-    # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
+    # main method for the spatially adaptive refinement strategy
+    # In addition to a tolerance, the maximum number of function evaluations and the maximum computing time can be
+    # specified as a termination criterion.
     def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionGriebel(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
@@ -290,6 +292,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_evaluations(i, evaluation_array[k])
+
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.calc_error(i, self.f)
