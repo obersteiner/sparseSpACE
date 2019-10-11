@@ -491,7 +491,8 @@ class GenzC0(Function):
 
 
 # This function is the test case function 2 of the paper from Jakeman and Roberts: https://arxiv.org/pdf/1110.0010.pdf
-class Function2Jakeman(Function):
+# It is also know as the Gaussian family of the Genz functions
+class GenzGaussian(Function):
     def __init__(self, midpoint, coefficients):
         super().__init__()
         self.midpoint = midpoint
@@ -520,7 +521,7 @@ class Function2Jakeman(Function):
 
 # This function is the first test function of the paper from Gerstner and Griebel:
 # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
-class FunctionGriebel(Function):
+class FunctionExpVar(Function):
     def eval(self, coordinates):
         dim = len(coordinates)
         prod = 1.0
