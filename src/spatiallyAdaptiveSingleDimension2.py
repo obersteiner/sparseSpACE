@@ -308,19 +308,21 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=25):  # update with meta container
-        plt.rcParams.update({'font.size': 30})
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None):  # update with meta container
+        plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
-        dim = self.dim
+        dim = self.dim if single_dim is None else 1
         fig, ax = plt.subplots(ncols=1, nrows=dim, figsize=(20, 5*dim))
+        offset = 0 if single_dim is None else single_dim
         for d in range(dim):
-            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d].get_objects()]
-            starts_levels = [refinementObject.levels[0] for refinementObject in refinement.refinementContainers[d].get_objects()]
-            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d].get_objects()]
-            ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d].get_objects()]
+            axis = ax[d] if single_dim is None else ax
+            starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            starts_levels = [refinementObject.levels[0] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
+            ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
 
             for i in range(len(starts)):
-                ax[d].add_patch(
+                axis.add_patch(
                     patches.Rectangle(
                         (starts[i], -0.1),
                         ends[i] - starts[i],
@@ -328,17 +330,19 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         fill=False  # remove background
                     )
                 )
-                ax[d].text(starts[i]+0.01, 0.01, str(starts_levels[i]),
-                          fontsize=fontsize, ha='center', color="blue")
-            ax[d].text(ends[-1] - 0.01, 0.01, str(ends_levels[-1]),
-                    fontsize=fontsize, ha='center', color="blue")
+                axis.text(starts[i]+0.015, 0.01, str(starts_levels[i]),
+                          fontsize=fontsize-10, ha='center', color="blue")
+            axis.text(ends[-1] - 0.015, 0.01, str(ends_levels[-1]),
+                fontsize=fontsize-10, ha='center', color="blue")
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
-            ax[d].plot(xValues, yValues, 'bo', markersize=markersize, color="black")
-            ax[d].set_xlim([self.a[d]-0.005, self.b[d]+0.005])
-            ax[d].set_ylim([-0.05, 0.05])
-            ax[d].set_yticks([])
+            axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            axis.set_xlim([self.a[d]-0.005, self.b[d]+0.005])
+            axis.set_ylim([-0.05, 0.05])
+            axis.set_yticks([])
+            axis.set_title("$x_" + str(d + 1 + offset) + "$")
 
+        plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         plt.show()
@@ -346,13 +350,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
     # this method draws the 1D refinement of each dimension individually
     def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):  # update with meta container
-        plt.rcParams.update({'font.size': 32})
+        plt.rcParams.update({'font.size': 60})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
         height = 5*sum(self.lmax) if single_dim is None else 5 * self.lmax[single_dim]
         fig, ax = plt.subplots(ncols=1, nrows=dim if single_dim is None else 1, figsize=(20, height))
+        offset = 0 if single_dim is None else single_dim
         for d in range(dim):
-            offset = 0 if single_dim is None else single_dim
             axis = ax[d] if single_dim is None else ax
             starts = [refinementObject.start for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
             starts_levels = [refinementObject.levels[0] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
@@ -371,7 +375,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                             target_y_position = starts_levels[j]
                             axis.arrow(x_position, y_position, target_x_position - x_position + 0.001,
                                         target_y_position - y_position - 0.04,
-                                        head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True, overhang=0, capstyle="butt")
+                                        head_width=0.04, head_length=0.04, fc='k', ec='k', length_includes_head=True, overhang=0, capstyle="butt")
                             break
                         if starts_levels[j] <= starts_levels[i]:
                             break
@@ -382,7 +386,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         target_y_position = starts_levels[j]
                         axis.arrow(x_position, y_position, target_x_position - x_position - 0.001,
                                     target_y_position - y_position - 0.04,
-                                    head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True)
+                                    head_width=0.04, head_length=0.04, fc='k', ec='k', length_includes_head=True)
                         break
                     if starts_levels[j] <= starts_levels[i]:
                         break
@@ -397,7 +401,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     target_y_position = starts_levels[j]
                     axis.arrow(x_position, y_position, target_x_position - x_position + 0.001,
                                 target_y_position - y_position - 0.04,
-                                head_width=0.02, head_length=0.02, fc='k', ec='k', length_includes_head=True)
+                                head_width=0.04, head_length=0.04, fc='k', ec='k', length_includes_head=True)
                     break
                 if ends_levels[-1] >= starts_levels[j]:
                     break
@@ -411,7 +415,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             axis.set_ylim(axis.get_ylim()[::-1])
             axis.set_yticks(list(list(range(max_level+1))))
             axis.set_ylabel("level")
-            axis.set_xlabel("$x_" + str(d + 1 + offset) + "$")
+            axis.set_title("$x_" + str(d + 1 + offset) + "$")
+        plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         plt.show()
