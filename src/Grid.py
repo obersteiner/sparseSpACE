@@ -1773,7 +1773,7 @@ class GaussLegendreGrid(Grid):
 
 class GaussLegendreGrid1D(Grid1d):
     def level_to_num_points_1d(self, level):
-        return 2 ** level - 1
+        return 2 ** level + 1
 
     def is_nested(self):
         return False
