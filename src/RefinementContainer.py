@@ -124,7 +124,6 @@ class RefinementContainer(object):
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id, f, norm, volume_weights=None) -> None:
         refine_object = self.refinementObjects[object_id]
-        assert refine_object.volume is not None
         refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm, volume_weights=volume_weights))
 
     # returns all RefinementObjects in the container
