@@ -59,9 +59,18 @@ class Function(object):
 
     # this returns the analytic solution of the integral in the specified area
     # currently necessary for the error estimator
-    @abc.abstractmethod
     def getAnalyticSolutionIntegral(self, start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
-        pass
+        self.dim = len(start)
+        if self.dim == 3:
+            f = lambda x, y, z: self.eval([x, y, z])
+            return \
+                integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
+                                  lambda x, y: end[0])[0]
+        elif self.dim == 2:
+            f = lambda x, y: self.eval([x, y])
+            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
+        else:
+            assert False
 
     # this method plots the function in the specified area for 2D
     def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, dpi: int=100, width: float=14, height: float=6) -> None:
@@ -69,29 +78,49 @@ class Function(object):
         if dim > 2:
             print("Cannot plot function with dim > 2")
             return
-        xArray = np.linspace(start[0], end[0], 10 ** 2)
-        yArray = np.linspace(start[1], end[1], 10 ** 2)
+        xArray = np.linspace(start[0], end[0], points_per_dim)
+        yArray = np.linspace(start[1], end[1], points_per_dim)
         X = [x for x in xArray]
         Y = [y for y in yArray]
         X, Y = np.meshgrid(X, Y)
-        Z = np.zeros(np.shape(X))
+        evals = np.zeros(np.shape(X) + (self.output_length(),))
         for i in range(len(X)):
             for j in range(len(X[i])):
-                # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
-                Z[i, j] = self.__call__((X[i, j], Y[i, j]))[plotdimension]
-        # Z=self.eval((X,Y))
-        # print Z
-        fig = plt.figure(dpi=dpi, figsize=(width, height))
+                evals[i, j] = self.__call__((X[i, j], Y[i, j]))
+        if plotdimensions is None:
+            plotdimensions = [plotdimension]
+        single_dim = len(plotdimensions) == 1
+        if consistent_axes:
+            assert not single_dim
+            # Find the minimum and maximum output value to be able to set a
+            # consistent z axis
+            minz = evals[0,0,plotdimensions[0]]
+            maxz = minz
+            for output_dim in plotdimensions:
+                minz = min(minz, evals.T[output_dim].min())
+                maxz = max(maxz, evals.T[output_dim].max())
+        for output_dim in plotdimensions:
+            Z = np.zeros(np.shape(X))
+            for i in range(len(X)):
+                for j in range(len(X[i])):
+                    Z[i, j] = self.__call__((X[i, j], Y[i, j]))[output_dim]
+            # ~ fig = plt.figure(figsize=(14, 6))
+            fig = plt.figure(figsize=(21, 9))
 
-        # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
-        ax = fig.add_subplot(1, 2, 1, projection='3d')
+            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+            ax = fig.add_subplot(1, 2, 1, projection='3d')
+            if consistent_axes:
+                ax.set_zlim(minz, maxz)
 
-        # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False)
-        # plt.show()
-        if filename is not None:
-            fig.savefig(filename, bbox_inches='tight')
-        plt.show()
+            # ~ p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False, vmin=100)
+            if filename is not None:
+                if single_dim:
+                    fig.savefig(filename, bbox_inches='tight')
+                else:
+                    fig.savefig(f"{filename}_{output_dim}", bbox_inches='tight')
+            if show_plot:
+                plt.show()
 
     def output_length(self) -> int:
         return 1
@@ -99,6 +128,23 @@ class Function(object):
 
 from scipy import integrate
 from scipy.stats import norm
+
+
+# This simple function can be used for test purposes
+class ConstantValue(Function):
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
+
+    def eval(self, coordinates):
+        return self.value
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        dim = len(start)
+        integral = 1.0
+        for d in range(dim):
+            integral *= end[d] - start[d]
+        integral *= self.value
 
 
 class FunctionShift(Function):
@@ -193,6 +239,7 @@ class FunctionUQNormal2(Function):
             assert False
 
 
+# This function works only with single-dimensional output functions
 class FunctionUQWeighted(Function):
     def __init__(self, function, weight_function):
         super().__init__()
@@ -200,25 +247,76 @@ class FunctionUQWeighted(Function):
         self.weight_function = weight_function
 
     def eval(self, coordinates):
-        return self.function.eval(coordinates)
+        func_output = self.function(coordinates)[0]
+        weight_output = self.weight_function(coordinates)[0]
+        return func_output * weight_output
+
+
+# An UQ test function: https://www.sfu.ca/~ssurjano/canti.html
+class FunctionCantileverBeamD(Function):
+    def __init__(self, width=20.0, thickness=2.0):
+        super().__init__()
+        self.w = width
+        self.t = thickness
+
+    def eval(self, coordinates):
+        assert len(coordinates) == 3
+        w = self.w
+        t = self.t
+        L = 100.0
+        E, Y, X = coordinates
+        D = 4.0 * L ** 3 / (E * w * t) * math.sqrt((Y / t ** 2) ** 2 + (X / w ** 2) ** 2)
+        return [D, 1.0]
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "not implemented"
+
+
+# g-function of Sobol: https://www.sfu.ca/~ssurjano/gfunc.html
+class FunctionG(Function):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+        self.a = 0.5 * np.array(range(dim))
+
+    def eval(self, coordinates):
+        assert len(coordinates) == self.dim
+        a = self.a
+        return np.prod([(abs(4.0 * coordinates[d] - 2.0) + a[d]) / (1.0 + a[d]) for d in range(self.dim)])
+
+    # Uniform distributions in [0, 1] are required for this Function.
+    def get_expectation(self): return 1.0
+
+    def get_variance(self):
+        mom2 = np.prod([1.0 + 1.0 / (3.0 * (1.0 + a_d) ** 2) for a_d in self.a])
+        return mom2 - 1.0
+
+    # ~ def get_first_order_sobol_indices(self):
+        # This seems to be wrong
+        # ~ fac = 1.0 / np.prod([1.0 / (3.0 * (1.0 + a_d) ** 2) for a_d in self.a])
+        # ~ return [fac * 1.0 / (3.0 * (1.0 + self.a[d]) ** 2) for d in range(self.dim)]
+
+        # ~ ivar = 1.0 / self.get_variance()
+        # ~ return [ivar * (1.0 + 1.0 / (3 * (1.0 + self.a[i]) ** 2)) for i in range(self.dim)]
 
     def getAnalyticSolutionIntegral(self, start, end):
-        self.dim = len(start)
-        if self.dim == 3:
-            f = lambda x, y, z: self.eval([x, y, z]) * self.weight_function([x, y, z])
-            return \
-                integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
-                                  lambda x, y: end[0])[0]
-        elif self.dim == 2:
-            f = lambda x, y: self.eval([x, y]) * self.weight_function([x, y])
-            return integrate.dblquad(f, start[1], end[1], lambda x: start[0], lambda x: end[0])[0]
-        else:
-            assert False
+        assert all([v == 0.0 for v in start])
+        assert all([v == 1.0 for v in end])
+        return self.get_expectation()
+
+
+class FunctionGShifted(FunctionG):
+    def eval(self, coordinates):
+        assert all([0.0 <= v <= 1.0 for v in coordinates])
+        # Shift the coordinates by 0.2 in every dimension
+        coords = [v + 0.2 for v in coordinates]
+        # Go back to the other side so that expectation and variance do not change
+        coords = [v if v <= 1.0 else v - 1.0 for v in coords]
+        return super().eval(coords)
 
 
 class FunctionUQ(Function):
     def eval(self, coordinates):
-        assert (len(coordinates) == 3)
+        assert (len(coordinates) == 3), len(coordinates)
         parameter1 = coordinates[0]
         parameter2 = coordinates[1]
         parameter3 = coordinates[2]
@@ -233,6 +331,13 @@ class FunctionUQ(Function):
         f = lambda x, y, z: self.eval([x, y, z])
         return integrate.tplquad(f, start[2], end[2], lambda x: start[1], lambda x: end[1], lambda x, y: start[0],
                                  lambda x, y: end[0])[0]
+
+
+class FunctionUQShifted(FunctionUQ):
+    def eval(self, coordinates):
+        # Move the discontinuity away from the middle
+        coords = np.array([coordinates[0], coordinates[1] + 0.221413, coordinates[2]])
+        return super().eval(coords)
 
 
 from scipy.stats import truncnorm
@@ -294,6 +399,114 @@ class FunctionLinear(Function):
         for d in range(self.dim):
             result *= self.coeffs[d] * (end[d]**2/2 - start[d]**2/2)
         return result
+
+
+class FunctionMultilinear(Function):
+    def __init__(self, coeffs):
+        super().__init__()
+        self.coeffs = np.array(coeffs)
+        self.dim = len(coeffs)
+
+    def eval(self, coordinates):
+        result = 0.0
+        for d in range(self.dim):
+            result += self.coeffs[d] * coordinates[d]
+        return result
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        result = 0.0
+        for d in range(self.dim):
+            result += self.coeffs[d] * (end[d]**2/2 - start[d]**2/2)
+        return result
+
+
+# This can be used when calculating the variance
+class FunctionPower(Function):
+    def __init__(self, function, exponent):
+        super().__init__()
+        self.function = function
+        self.exponent = exponent
+
+    def eval(self, coordinates):
+        val_f = self.function(coordinates)
+        return [v ** self.exponent for v in val_f]
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
+
+    def output_length(self): return self.function.output_length()
+
+
+# This can be used when calculating the PCE
+class FunctionPolysPCE(Function):
+    def __init__(self, function, polys, norms):
+        super().__init__()
+        self.function = function
+        self.polys = polys
+        self.norms = norms
+        self.output_dimension = function.output_length() * len(polys)
+
+    def eval(self, coordinates):
+        values = []
+        val_f = self.function(coordinates)
+        for i in range(len(self.polys)):
+            val_poly = self.polys[i](*coordinates) / self.norms[i]
+            # Concatenation required for functions with multidimensional output
+            values += [v * val_poly for v in val_f]
+        return values
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
+
+    def output_length(self): return self.output_dimension
+
+
+class FunctionInverseTransform(Function):
+    def __init__(self, function, distributions):
+        super().__init__()
+        self.function = function
+        self.ppfs = [dist.ppf for dist in distributions]
+
+    def eval(self, coords_transformed):
+        assert all([0 <= v <= 1 for v in coords_transformed]), "PPF functions require the points to be in [0,1]"
+        coordinates = [ppf(coords_transformed[d]) for d,ppf in enumerate(self.ppfs)]
+        assert not any([math.isinf(v) for v in coordinates]), "infinite coordinates, maybe boundary needs to be set to true in a Grid"
+        return self.function(coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
+
+    def output_length(self): return self.function.output_length()
+
+
+class FunctionCustom(Function):
+    def __init__(self, func, output_dim=None):
+        super().__init__()
+        self.func = func
+        self.has_multiple_functions = hasattr(self.func, "__iter__")
+        self.output_dimension = output_dim
+        if self.output_dimension is None:
+            self.output_dimension = len(self.func) if self.has_multiple_functions else 1
+
+    def eval(self, coordinates):
+        if self.has_multiple_functions:
+            result = [float(f(coordinates)) for f in self.func]
+        else:
+            result = self.func(coordinates)
+        return result
+
+    def output_length(self): return self.output_dimension
+
+
+class FunctionConcatenate(Function):
+    def __init__(self, funcs):
+        super().__init__()
+        self.funcs = funcs
+        self.output_dimension = sum([f.output_length() for f in funcs])
+
+    def eval(self, coordinates):
+        return np.concatenate([f(coordinates) for f in self.funcs])
+
+    def getAnalyticSolutionIntegral(self, start, end): assert "Not available"
+
+    def output_length(self): return self.output_dimension
 
 
 class FunctionPolynomial(Function):

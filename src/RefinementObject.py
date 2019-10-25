@@ -484,9 +484,11 @@ class RefinementObjectCell(RefinementObject):
         self.sub_integrals = []
 
 
+from scipy import optimize
+
 # This is the special class for the RefinementObject defined in the single dimension refinement scheme
 class RefinementObjectSingleDimension(RefinementObject):
-    def __init__(self, start, end, this_dim, dim, levels, a, b, chebyshev=False, coarsening_level=0):
+    def __init__(self, start, end, this_dim, dim, levels, grid, a, b, chebyshev=False, coarsening_level=0):
         # start of subarea
         self.start = start
         # end of subarea
@@ -508,6 +510,9 @@ class RefinementObjectSingleDimension(RefinementObject):
         self.a = a
         self.b = b
         self.chebyshev = chebyshev
+        # The middle between two nodes can be calculated with the probability if
+        # available so that infinite boundaries are possible
+        self.grid = grid
 
         assert(end > start)
 
@@ -540,14 +545,18 @@ class RefinementObjectSingleDimension(RefinementObject):
         #    # print("New scheme")
         #    # self.scheme = getCombiScheme(self.lmin[0],self.lmax[0],self.this_dim)
         #    # self.newScheme = True
-        # add new refined interval to refinement array (it has half of the width)
-        newWidth = (self.end - self.start) / 2.0
+        # add new refined interval to refinement array
+        if not self.chebyshev:
+            mid = self.grid.get_mid_point(self.start, self.end, self.this_dim)
+        else:
+            mid = self.map_chebyshev(self.start, self.end)
+        assert self.start < mid < self.end, "{} < {} < {} does not hold.".format(self.start, mid, self.end)
+
         newObjects = []
         newLevel = max(self.levels) + 1
         # print("newLevel", newLevel)
-        mid_point = self.start + newWidth if not self.chebyshev else self.map_chebyshev(self.start, self.end)
-        newObjects.append(RefinementObjectSingleDimension(self.start, mid_point, self.this_dim, self.dim, list((self.levels[0], newLevel)), coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
-        newObjects.append(RefinementObjectSingleDimension(mid_point, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
+        newObjects.append(RefinementObjectSingleDimension(self.start, mid, self.this_dim, self.dim, list((self.levels[0], newLevel)), grid=self.grid, coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
+        newObjects.append(RefinementObjectSingleDimension(mid, self.end, self.this_dim, self.dim, list((newLevel, self.levels[1])), grid=self.grid, coarsening_level=coarsening_value, a=self.a, b=self.b, chebyshev=self.chebyshev))
         # self.finestWidth = min(newWidth,self.finestWidth)
         return newObjects, lmax_increase, update
 
@@ -570,6 +579,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         # self.error = abs(volume)
 
     def add_volume(self, volume):
+        assert isinstance(volume, np.ndarray)
         if self.volume is None:
             self.volume = volume
         else:

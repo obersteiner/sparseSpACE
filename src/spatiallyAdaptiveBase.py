@@ -19,6 +19,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.operation = operation
         self.norm = norm
         self.margin = 0.9
+        self.calculated_solution = None
         assert (len(a) == len(b))
 
     # returns the number of points in a single component grid with refinement
@@ -63,7 +64,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.lmax = [maxv for i in range(self.dim)]
             # calculate the combination scheme
             self.combischeme = CombiScheme(self.dim)
-            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], self.print_output)
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=self.print_output)
             self.initialize_refinement()
             self.f.reset_dictionary()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
@@ -166,7 +167,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionGriebel(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
@@ -179,40 +180,41 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.test_scheme = test_scheme
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
-        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations)
+        self.calculated_solution = None
+        self.solutions_storage = solutions_storage
+        return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
-    def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+    def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         start_time = time.time()
+        # ~ self.operation.set_function(self.f)
         while True:
             error, surplus_error = self.evaluate_operation()
             self.error_array.append(error)
-            if self.reference_solution is not None:
-                self.surplus_error_array.append(surplus_error / abs(self.reference_solution))
-            else:
-                self.surplus_error_array.append(surplus_error)
+            self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.print_output:
                 print("Current error:", error)
-            # check if tolerance is already fullfilled with current refinement
-            if error > tol:
-                if max_evaluations is not None:
-                    if self.get_total_num_points() > max_evaluations:
-                        break
-                if max_time is not None:
-                    current_time = time.time()
-                    if current_time - start_time > max_time:
-                        break
-                # refine further
-                self.refine()
-                if self.do_plot:
-                    print("Refinement Graph:")
-                    self.draw_refinement()
-                    print("Combi Scheme:")
-                    self.print_resulting_combi_scheme(markersize=5)
-                    print("Resulting Sparse Grid:")
-                    self.print_resulting_sparsegrid(markersize=3)
-            else:  # refinement finished
+            num_evaluations = self.get_total_num_points()
+            if self.solutions_storage is not None:
+                assert not self.reevaluate_at_end, "Solutions are only available in the end"
+                # Remember the solutions for each number of evaluations
+                self.solutions_storage[num_evaluations] = self.refinement.integral
+            # Check if conditions are met to abort refining
+            if error <= tol and num_evaluations >= min_evaluations:
                 break
+            if max_evaluations is not None and num_evaluations > max_evaluations:
+                break
+            if max_time is not None and time.time() - start_time > max_time:
+                break
+            # refine further
+            self.refine()
+            if self.do_plot:
+                print("Refinement Graph:")
+                self.draw_refinement()
+                print("Combi Scheme:")
+                self.print_resulting_combi_scheme(markersize=5)
+                print("Resulting Sparse Grid:")
+                self.print_resulting_sparsegrid(markersize=10)
         # finished adaptive algorithm
         if self.print_output:
             print("Number of refinements", self.refinements)
@@ -227,6 +229,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         else:
             combiintegral = self.refinement.integral
             number_of_evaluations = self.refinement.evaluationstotal
+        self.operation.set_function(None)
+        self.calculated_solution = combiintegral
         return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
 
     @abc.abstractmethod
@@ -294,4 +298,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.calc_error(i, self.f)
             self.refinement.set_benefit(i)
 
+    def get_calculated_solution(self): return self.calculated_solution
 
+    def has_basis_grid(self): return isinstance(self.grid, GlobalBasisGrid)
