@@ -160,7 +160,6 @@ class RefinementObjectExtendSplit(RefinementObject):
         elif (self.automatic_extend_split and benefit_extend >= benefit_split) or (
                 not self.automatic_extend_split and self.needExtendScheme >= 0):  # split the array
             # add to integralArray
-            self.needExtendScheme += 1
             # print("Splitting", self.start, self.end)
             if self.splitSingleDim:
                 '''
@@ -242,7 +241,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
                                                                 coarseningValue=self.coarseningValue,
-                                                                needExtendScheme=self.needExtendScheme,
+                                                                needExtendScheme=self.needExtendScheme + 1,
                                                                 automatic_extend_split=self.automatic_extend_split,
                                                                 splitSingleDim=self.splitSingleDim)
             self.children.append(new_refinement_object)
@@ -263,7 +262,7 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
                                                                 coarseningValue=self.coarseningValue,
-                                                                needExtendScheme=self.needExtendScheme,
+                                                                needExtendScheme=self.needExtendScheme + 1,
                                                                 automatic_extend_split=self.automatic_extend_split,
                                                                 splitSingleDim=self.splitSingleDim)
             new_refinement_object.twins = list(self.twins)
