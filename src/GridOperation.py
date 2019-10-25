@@ -1,4 +1,5 @@
 from numpy import linalg as LA
+from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
 
@@ -55,6 +56,7 @@ from scipy.interpolate import interpn
 class Integration(AreaOperation):
     def __init__(self, f, grid, dim,  reference_solution=None):
         self.f = f
+        self.f_actual = None
         self.grid = grid
         self.reference_solution = reference_solution
         self.dim = dim
@@ -217,6 +219,8 @@ class Integration(AreaOperation):
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
             return None
+        elif LA.norm(self.reference_solution) == 0.0:
+            return LA.norm(abs(refinement_container.integral), norm)
         else:
             return LA.norm(abs((self.reference_solution - refinement_container.integral)/self.reference_solution), norm)
 
@@ -334,8 +338,12 @@ class Integration(AreaOperation):
                                                         previous_points)
                 integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
             if modification_points is not None:
-                integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                # ~ integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
+                                                        # ~ gridPointCoordsAsStripes)
+                v = self.subtract_contributions(modification_points, previous_points_coarsened,
                                                         gridPointCoordsAsStripes)
+                assert len(v) == len(integral)
+                integral -= v
                 integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
@@ -351,10 +359,13 @@ class Integration(AreaOperation):
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
+    def set_function(self, f=None):
+        assert f is None or f == self.f, "Integration and the refinement should use the same function"
+
     def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
-        self.f = f
+        self.set_function(f)
         self.refinement_container = refinement_container
         self.version = version
         self.lmin = lmin
@@ -368,7 +379,7 @@ class Integration(AreaOperation):
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
-        tol = 10**-14
+        tol = 10**-84
         if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
             grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
             points = self.grid.getPoints()
@@ -436,9 +447,9 @@ class Integration(AreaOperation):
                 for i in range(k_old, k):
                     refine_obj = refinement_dim.get_object(i)
                     num_area_in_support = (k-k_old)
-                    fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    # ~ fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
                     modified_volume = volume/num_area_in_support ** 2 #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
-                    assert fraction_of_support <= 1
+                    # ~ assert fraction_of_support <= 1
                     #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
                     #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
                     #print(volume)
@@ -472,6 +483,9 @@ class Integration(AreaOperation):
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
                 '''
 
+    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
+        return right_parent - left_parent
+
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, child_info, grid_points, d):
@@ -486,23 +500,32 @@ class Integration(AreaOperation):
 
         #npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
 
-        for p in grid_points[d]:
-            if isclose(p, left_parent):
-                left_parent = p
-            if isclose(p, right_parent):
-                right_parent = p
-        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
+        # Searching close points does not work right when points have
+        # low distance to each other.
+        # ~ for p in grid_points[d]:
+            # ~ if isclose(p, left_parent):
+                # ~ left_parent = p
+            # ~ if isclose(p, right_parent):
+                # ~ right_parent = p
         index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
+        index_child = grid_points[d].index(child) - 1 * int(not self.grid.boundary)
+        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
 
         left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
-            factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
             #points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
             #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
-            factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
             #points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
             #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         points_children = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])
@@ -569,7 +592,7 @@ class Integration(AreaOperation):
                         #print(points_right_parent[i], self.f.f_dict.keys())
                         assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                         value -= factor_right_parent * self.f(point_right_parent)
-                volume += factor * abs(value) * (right_parent - left_parent)**exponent
+                volume += factor * abs(value) * (self.get_surplus_width(d, right_parent, left_parent))**exponent
         if self.version == 0 or self.version == 2:
             evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
@@ -603,11 +626,17 @@ class Integration(AreaOperation):
         size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
-            factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
             points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
             #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
-            factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
             points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
             #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         if self.grid_surplusses.modified_basis and not right_parent_in_grid:
@@ -682,7 +711,7 @@ class Integration(AreaOperation):
                 #assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
                 values -= factor_right_parent * point_values_right_parent
         #print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
-        volume = np.sum(factors * abs(values), axis=0) * (right_parent - left_parent)**exponent
+        volume = np.sum(factors * abs(values), axis=0) * (self.get_surplus_width(d, right_parent, left_parent))**exponent
         #print("Volume", volume)
         if self.version == 0 or self.version == 2:
             evaluations = size_slize #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
@@ -862,3 +891,454 @@ class Interpolation(Integration):
             interpolated_values = np.asarray([[value] for value in interpolated_values])
             interpolated_values_array.append(interpolated_values)
         return np.hstack(interpolated_values_array)
+
+
+import chaospy as cp
+import scipy.stats as sps
+from Function import *
+from StandardCombi import *  # For reference solution calculation
+
+class UncertaintyQuantification(Integration):
+    # The constructor resembles Integration's constructor;
+    # it has an additional parameter:
+    # distributions can be a list, tuple or string
+    def __init__(self, f, distributions, a: Sequence[float], b: Sequence[float],
+            dim: int=None, grid=None, reference_solution=None):
+        dim = dim or len(a)
+        super().__init__(f, grid, dim, reference_solution)
+
+        # If distributions is not a list, it specifies the same distribution
+        # for every dimension
+        if not isinstance(distributions, list):
+            distributions = [distributions for _ in range(dim)]
+
+        # Setting the distribution to a string is a short form when
+        # no parameters are given
+        for d in range(dim):
+            if isinstance(distributions[d], str):
+                distributions[d] = (distributions[d],)
+
+        self._prepare_distributions(distributions, a, b)
+        self.f_evals = None
+        self.gPCE = None
+        self.pce_polys = None
+
+    def set_grid(self, grid): self.grid = grid
+
+    def set_reference_solution(self, reference_solution):
+        self.reference_solution = reference_solution
+
+    # From the user provided information about distributions, this function
+    # creates the distributions list which contains Chaospy distributions
+    def _prepare_distributions(self, distris, a: Sequence[float],
+            b: Sequence[float]):
+        self.distributions = []
+        self.distribution_infos = distris
+        chaospy_distributions = []
+        known_distributions = dict()
+        for d in range(self.dim):
+            distr_info = distris[d]
+            distr_known = distr_info in known_distributions
+            if distr_known:
+                # Reuse the same distribution objects for multiple dimensions
+                d_prev = known_distributions[distr_info]
+                self.distributions.append(self.distributions[d_prev])
+            else:
+                known_distributions[distr_info] = d
+
+            distr_type = distr_info[0]
+            if distr_type == "Uniform":
+                distr = cp.Uniform(a[d], b[d])
+                chaospy_distributions.append(distr)
+                if not distr_known:
+                    self.distributions.append(UQDistribution.from_chaospy(distr))
+            elif distr_type == "Triangle":
+                midpoint = distr_info[1]
+                assert isinstance(midpoint, float), "invalid midpoint"
+                distr = cp.Triangle(a[d], midpoint, b[d])
+                chaospy_distributions.append(distr)
+                if not distr_known:
+                    self.distributions.append(UQDistribution.from_chaospy(distr))
+            elif distr_type == "Normal":
+                mu = distr_info[1]
+                sigma = distr_info[2]
+                cp_distr = cp.Normal(mu=mu, sigma=sigma)
+                chaospy_distributions.append(cp_distr)
+                if not distr_known:
+                    # The chaospy normal distribution does not work with big values
+                    def pdf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.pdf(x, loc=_mu, scale=_sigma)
+                    def cdf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.cdf(x, loc=_mu, scale=_sigma)
+                    def ppf(x, _mu=mu, _sigma=sigma):
+                        return sps.norm.ppf(x, loc=_mu, scale=_sigma)
+                    self.distributions.append(UQDistribution(pdf, cdf, ppf))
+            elif distr_type == "Laplace":
+                mu = distr_info[1]
+                scale = distr_info[2]
+                cp_distr = cp.Laplace(mu=mu, scale=scale)
+                chaospy_distributions.append(cp_distr)
+                if not distr_known:
+                    def pdf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.pdf(x, loc=_mu, scale=_scale)
+                    def cdf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.cdf(x, loc=_mu, scale=_scale)
+                    def ppf(x, _mu=mu, _scale=scale):
+                        return sps.laplace.ppf(x, loc=_mu, scale=_scale)
+                    self.distributions.append(UQDistribution(pdf, cdf, ppf))
+            else:
+                assert False, "Distribution not implemented: " + distr_type
+        self.distributions_chaospy = chaospy_distributions
+        self.distributions_joint = cp.J(*chaospy_distributions)
+        self.all_uniform = all(k[0] == "Uniform" for k in known_distributions)
+        self.a = a
+        self.b = b
+
+    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
+        # Approximate the width with the probability
+        cdf = self.distributions[d].cdf
+        return cdf(right_parent) - cdf(left_parent)
+
+    # reuse_old_values does not work for multidimensional function output,
+    # so this method is overridden here
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, _reuse_old_values=False):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
+        self.refinement_container.integral += integral * component_grid.coefficient
+        return integral
+
+    # This function exchanges the operation's function so that the adaptive
+    # refinement can use a different function than the operation's function
+    def set_function(self, f=None):
+        if f is None:
+            self.f = self.f_actual
+            self.f_actual = None
+        else:
+            assert self.f_actual is None
+            self.f_actual = self.f
+            self.f = f
+
+    def get_distributions(self): return self.distributions
+    def get_distributions_chaospy(self): return self.distributions_chaospy
+
+    # This function returns boundaries for distributions which have an infinite
+    # domain, such as normal distribution
+    def get_boundaries(self, tol: float) -> Tuple[Sequence[float], Sequence[float]]:
+        assert 1.0 - tol < 1.0, "Tolerance is too small"
+        a = []
+        b = []
+        for d in range(self.dim):
+            dist = self.distributions[d]
+            a.append(dist.ppf(tol))
+            b.append(dist.ppf(1.0 - tol))
+        return a, b
+
+    def _set_pce_polys(self, polynomial_degrees):
+        if self.pce_polys is not None and self.polynomial_degrees == polynomial_degrees:
+            return
+        self.polynomial_degrees = polynomial_degrees
+        if not hasattr(polynomial_degrees, "__iter__"):
+            self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
+            return
+
+        # Chaospy does not support different degrees for each dimension, so
+        # the higher degree polynomials are removed afterwards
+        polys, norms = cp.orth_ttr(max(polynomial_degrees), self.distributions_joint, retall=True)
+        polys_filtered, norms_filtered = [], []
+        for i,poly in enumerate(polys):
+            max_exponents = [max(exps) for exps in poly.exponents.T]
+            if any([max_exponents[d] > deg_max for d, deg_max in enumerate(polynomial_degrees)]):
+                continue
+            polys_filtered.append(poly)
+            norms_filtered.append(norms[i])
+        self.pce_polys = cp.Poly(polys_filtered)
+        self.pce_polys_norms = norms_filtered
+
+    def _scale_values(self, values):
+        assert self.all_uniform, "Division by the domain volume should be used for uniform distributions only"
+        div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
+        return values * div
+
+    def _set_nodes_weights_evals(self, combiinstance, scale_weights=False):
+        self.nodes, self.weights = combiinstance.get_points_and_weights()
+        assert len(self.nodes) == len(self.weights)
+        if scale_weights:
+            assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
+            self.weights = self._scale_values(self.weights)
+            # ~ self.f_evals = combiinstance.get_surplusses()
+            # Surpluses are required here..
+            self.f_evals = [self.f(coord) for coord in self.nodes]
+        else:
+            self.f_evals = [self.f(coord) for coord in self.nodes]
+
+    def _get_combiintegral(self, combiinstance, scale_weights=False):
+        integral = combiinstance.get_calculated_solution()
+        if scale_weights:
+            assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
+            return self._scale_values(integral)
+        return integral
+
+    def calculate_moment(self, combiinstance, k: int=None,
+            use_combiinstance_solution=True, scale_weights=False):
+        if use_combiinstance_solution:
+            mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
+            assert len(mom) == self.f.output_length()
+            return mom
+        self._set_nodes_weights_evals(combiinstance)
+        vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
+        return sum(vals)
+
+    def calculate_expectation(self, combiinstance, use_combiinstance_solution=True):
+        return self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=use_combiinstance_solution)
+
+    @staticmethod
+    def moments_to_expectation_variance(mom1: Sequence[float],
+            mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
+        expectation = mom1
+        variance = [mom2[i] - ex * ex for i, ex in enumerate(expectation)]
+        for i, v in enumerate(variance):
+            if v < 0.0:
+                # When the variance is zero, it can be set to something negative
+                # because of numerical errors
+                variance[i] = -v
+        return expectation, variance
+
+    def calculate_expectation_and_variance(self, combiinstance, use_combiinstance_solution=True, scale_weights=False):
+        if use_combiinstance_solution:
+            integral = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
+            output_dim = len(integral) // 2
+            expectation = integral[:output_dim]
+            expectation_of_squared = integral[output_dim:]
+        else:
+            expectation = self.calculate_moment(combiinstance, k=1, use_combiinstance_solution=False)
+            expectation_of_squared = self.calculate_moment(combiinstance, k=2, use_combiinstance_solution=False)
+        return self.moments_to_expectation_variance(expectation, expectation_of_squared)
+
+    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True, scale_weights=False):
+        if use_combiinstance_solution:
+            assert self.pce_polys is not None
+            assert not restrict_degrees
+            integral = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
+            num_polys = len(self.pce_polys)
+            output_dim = len(integral) // num_polys
+            coefficients = integral.reshape((num_polys, output_dim))
+            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            return
+
+        self._set_nodes_weights_evals(combiinstance)
+
+        if restrict_degrees:
+            # Restrict the polynomial degrees if in some dimension not enough points
+            # are available
+            # For degree deg, deg+(deg-1)+1 points should be available
+            num_points = combiinstance.get_num_points_each_dim()
+            polynomial_degrees = [min(polynomial_degrees, num_points[d] // 2) for d in range(self.dim)]
+
+        self._set_pce_polys(polynomial_degrees)
+        self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
+            self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
+
+    def get_gPCE(self): return self.gPCE
+
+    def get_expectation_PCE(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.E(self.gPCE, self.distributions_joint)
+
+    def get_variance_PCE(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Var(self.gPCE, self.distributions_joint)
+
+    def get_expectation_and_variance_PCE(self):
+        return self.get_expectation_PCE(), self.get_variance_PCE()
+
+    def get_Percentile_PCE(self, q: float, sample: int=10000):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Perc(self.gPCE, q, self.distributions_joint, sample)
+
+    def get_first_order_sobol_indices(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Sens_m(self.gPCE, self.distributions_joint)
+
+    def get_total_order_sobol_indices(self):
+        if self.gPCE is None:
+            assert False, "calculatePCE must be invoked before this method"
+        return cp.Sens_t(self.gPCE, self.distributions_joint)
+
+    # Returns a Function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the k-th moment
+    def get_moment_Function(self, k: int):
+        if k == 1:
+            return self.f
+        return FunctionPower(self.f, k)
+
+    # Optimizes adapting for multiple moments at once
+    def get_moments_Function(self, ks: Sequence[int]):
+        return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
+
+    def get_expectation_variance_Function(self):
+        return self.get_moments_Function([1, 2])
+
+    # Returns a Function which can be passed to performSpatiallyAdaptiv
+    # so that adapting is optimized for the PCE
+    def get_PCE_Function(self, polynomial_degrees):
+        self._set_pce_polys(polynomial_degrees)
+        # self.f can change, so putting it to a local variable is important
+        # ~ f = self.f
+        # ~ polys = self.pce_polys
+        # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
+        # ~ return FunctionCustom(funcs)
+        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
+
+    def get_pdf_Function(self):
+        pdf = self.distributions_joint.pdf
+        return FunctionCustom(lambda coords: float(pdf(coords)))
+
+    # Returns a Function which applies the PPF functions before evaluating
+    # the problem function; it can be integrated without weighting
+    def get_inverse_transform_Function(self, func=None):
+        return FunctionInverseTransform(func or self.f, self.distributions)
+
+
+# UncertaintyQuantification extended for testing purposes
+class UncertaintyQuantificationTesting(UncertaintyQuantification):
+    # This function uses the quadrature provided by Chaospy.
+    def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
+        self._set_pce_polys(polynomial_degrees)
+        nodes, weights = cp.generate_quadrature(num_quad_points,
+            self.distributions_joint, rule="G")
+        f_evals = [self.f(c) for c in zip(*nodes)]
+        self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
+
+    def calculate_expectation_and_variance_for_weights(self, nodes, weights):
+        f_evals = np.array([self.f(c) for c in zip(*nodes)])
+        f_evals_squared = np.array([v ** 2 for v in f_evals])
+        expectation = np.inner(f_evals.T, weights)
+        expectation_of_squared = np.inner(f_evals_squared.T, weights)
+        return self.moments_to_expectation_variance(expectation, expectation_of_squared)
+
+    def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton", modeparams=None):
+        if mode == "ChaospyHalton":
+            num_points = modeparams or 2**14
+            nodes = self.distributions_joint.sample(num_points, rule="H")
+            num_samples = len(nodes[0])
+            assert num_points == num_samples
+            w = 1.0 / num_samples
+            weights = np.array([w for _ in range(num_samples)])
+        elif mode == "ChaospyGauss":
+            nodes, weights = cp.generate_quadrature(29,
+                self.distributions_joint, rule="G")
+        elif mode == "StandardcombiGauss":
+            if all([distr[0] == "Normal" for distr in self.distribution_infos]):
+                expectations = [distr[1] for distr in self.distribution_infos]
+                standard_deviations = [distr[2] for distr in self.distribution_infos]
+                grid = GaussHermiteGrid(expectations, standard_deviations)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            elif self.all_uniform:
+
+                grid = GaussLegendreGrid(self.a, self.b, self.dim)
+                # ~ combiinstance = StandardCombi(self.a, self.b, grid=grid, operation=self)
+                combiinstance = StandardCombi(self.a, self.b, grid=grid)
+                combiinstance.perform_combi(1, 4, self.get_expectation_variance_Function())
+                combiinstance.print_resulting_combi_scheme(markersize=5)
+                combiinstance.print_resulting_sparsegrid(markersize=10)
+            else:
+                assert False, "Not implemented"
+        else:
+            assert False, mode
+        return self.calculate_expectation_and_variance_for_weights(nodes, weights)
+
+    def calculate_multiple_expectation_and_variance(self, solutions):
+        evals = sorted(solutions)
+        expectation_variances = []
+        for k in evals:
+            integral = solutions[k]
+            output_dim = len(integral) // 2
+            mom1 = integral[:output_dim]
+            mom2 = integral[output_dim:]
+            expectation, variance = self.moments_to_expectation_variance(mom1, mom2)
+            expectation_variances.append((k, expectation, variance))
+        return expectation_variances
+
+    @staticmethod
+    def sort_multiple_solutions(solutions):
+        return [(num_evals, solutions[num_evals]) for num_evals in sorted(solutions)]
+
+    def calculate_multiple_expectation_and_variance(self, solutions):
+        expectation_variances = []
+        for num_evals, integral in self.sort_multiple_solutions(solutions):
+            output_dim = len(integral) // 2
+            mom1 = integral[:output_dim]
+            mom2 = integral[output_dim:]
+            expectation, variance = self.moments_to_expectation_variance(mom1, mom2)
+            expectation_variances.append((num_evals, expectation, variance))
+        return expectation_variances
+
+    def calculate_PCE_from_multiple(self, combiinstance, integrals):
+        combiinstance.calculated_solution = integrals
+        return self.calculate_PCE(None, combiinstance)
+
+
+from scipy import integrate
+
+class UQDistribution:
+    def __init__(self, pdf, cdf, ppf):
+        self.pdf = pdf
+        self.cdf = cdf
+        self.ppf = ppf
+        self.cached_moments = [dict() for _ in range(2)]
+        self.cache_gauss_quad = dict()
+        # ~ self.cache_integrals = dict()
+
+    @staticmethod
+    def from_chaospy(cp_distr):
+        # The inverse Rosenblatt transformation is the inverse cdf here
+        return UQDistribution(cp_distr.pdf, cp_distr.cdf,
+            lambda x: float(cp_distr.inv(x)))
+
+    def get_zeroth_moment(self, x1: float, x2: float):
+        cache = self.cached_moments[0]
+        if (x1, x2) in cache:
+            return cache[(x1, x2)]
+        moment_0 = self.cdf(x2) - self.cdf(x1)
+        cache[(x1, x2)] = moment_0
+        return moment_0
+
+    def get_first_moment(self, x1: float, x2: float):
+        cache = self.cached_moments[1]
+        if (x1, x2) in cache:
+            return cache[(x1, x2)]
+        moment_1 = integrate.quad(lambda x: x * self.pdf(x), x1, x2,
+            epsrel=10 ** -2, epsabs=np.inf)[0]
+        cache[(x1, x2)] = moment_1
+        return moment_1
+
+    # Returns single-dimensional quadrature points and weights
+    # for the high order grid
+    def get_quad_points_weights(self, num_quad_points: int, cp_distribution) -> Tuple[Sequence[float], Sequence[float]]:
+        cache = self.cache_gauss_quad
+        if num_quad_points in cache:
+            return cache[num_quad_points]
+        (coords,), weights = cp.generate_quadrature(num_quad_points, cp_distribution, rule="G")
+        cache[num_quad_points] = (coords, weights)
+        return coords, weights
+
+    # Calculates the weighted integral of an arbitrary function
+    # between x1 and x2
+    def calculate_integral(self, func, x1: float, x2: float):
+        # ~ k = (func, x1, x2)
+        # ~ cache = self.cache_integrals
+        # ~ if k in cache:
+            # ~ print("Cache match")
+            # ~ return cache[k]
+        integral = integrate.quad(lambda x: func(x) * self.pdf(x), x1, x2)[0]
+        # ~ cache[k] = integral
+        return integral

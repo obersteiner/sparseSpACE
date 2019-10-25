@@ -13,10 +13,13 @@ class HierarchizationLSG(object):
         self.grid = grid
         self.dim = len(numPoints)
         #grid values to be filled with hierarchical surplusses
-        grid_values = np.empty((f.output_length(), np.prod(numPoints)))
+        output_dim = f.output_length()
+        grid_values = np.empty((output_dim, np.prod(numPoints)))
         points = self.grid.getPoints()
         for i, point in enumerate(points):
-            grid_values[:, i] = f(point)
+            v = f(point)
+            assert len(v) == output_dim, "The Function returned a wrong output length"
+            grid_values[:, i] = v
         for d in range(self.dim):
             #print(numPoints[d], self.grid.get_coordinates_dim(d))
             assert numPoints[d] == len(self.grid.get_coordinates_dim(d))

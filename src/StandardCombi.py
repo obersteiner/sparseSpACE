@@ -41,7 +41,7 @@ class StandardCombi(object):
         grid_points = list(get_cross_product(grid_coordinates))
         return self.interpolate_points(grid_points, component_grid)
 
-    def plot(self) -> None:
+    def plot(self, plotdimension: int=0) -> None:
         if self.dim != 2:
             print("Can only plot 2D results")
             return
@@ -60,7 +60,7 @@ class StandardCombi(object):
         for i in range(len(X)):
             for j in range(len(X[i])):
                 # print(X[i,j],Y[i,j],self.eval((X[i,j],Y[i,j])))
-                Z[i, j] = f_values[j + i * len(X)]
+                Z[i, j] = f_values[j + i * len(X)][plotdimension]
         # Z=self.eval((X,Y))
         # print Z
         fig = plt.figure(figsize=(14, 6))
@@ -180,6 +180,12 @@ class StandardCombi(object):
             points = self.get_points_component_grid(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
+            if any([math.isinf(x) for x in np.concatenate(a, b)]):
+                ax.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
+                ax.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
+            else:
+                ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
+                ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
             ax.plot(x_array, y_array, 'o', markersize=markersize, color="black")
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -223,10 +229,16 @@ class StandardCombi(object):
                 y_array_not_null = [[p[1] for p in points_not_null]]
                 grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), (component_grid.levelvector[0] - lmin[0])]
                 grid.axis('on')
+                for axdir in ("x", "y"):
+                    grid.tick_params(axis=axdir, labelcolor='#345040')
                 grid.xaxis.set_ticks_position('none')
                 grid.yaxis.set_ticks_position('none')
-                grid.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-                grid.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+                if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
+                    grid.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
+                    grid.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
+                else:
+                    grid.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
+                    grid.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
                 grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
                 grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color="black")
                 grid.spines['top'].set_visible(False)
@@ -286,8 +298,26 @@ class StandardCombi(object):
             fig = plt.figure(figsize=(20, 20))
             ax = fig.add_subplot(111, projection='3d')
 
-        ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-        ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+        inf_bounds = any([math.isinf(x) for x in np.concatenate([self.a, self.b])])
+        if inf_bounds:
+            start = None
+            end = None
+            for component_grid in scheme:
+                numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
+                points = self.get_points_component_grid(component_grid.levelvector, numSubDiagonal)
+                min_point = [min([point[d] for point in points]) for d in range(dim)]
+                max_point = [max([point[d] for point in points]) for d in range(dim)]
+                start = min_point if start is None else [min(start[d], v) for d,v in enumerate(min_point)]
+                end = max_point if end is None else [max(end[d], v) for d,v in enumerate(max_point)]
+            ax.set_xlim([start[0] - 0.05, end[0] + 0.05])
+            ax.set_ylim([start[1] - 0.05, end[1] + 0.05])
+            if dim == 3:
+                ax.set_zlim([start[2] - 0.05, end[2] + 0.05])
+        else:
+            ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
+            ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+            if dim == 3:
+                ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
 
@@ -307,6 +337,8 @@ class StandardCombi(object):
             if dim == 3:
                 zArray = [p[2] for p in points]
                 plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
+            for axdir in ("x", "y"):
+                ax.tick_params(axis=axdir, labelcolor='#345040')
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
