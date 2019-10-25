@@ -1,33 +1,39 @@
-#%matplotlib inline
-import matplotlib.pyplot as plt
 from sys import path
+path.append('src/')
 import numpy as np
-
-#from numpy import *
-import scipy as sp
-from spatiallyAdaptiveExtendSplit import *
-from spatiallyAdaptiveSplit import *
-from spatiallyAdaptiveSingleDimension import *
-from spatiallyAdaptiveCell import *
-
-from PerformTestCase import *
+from spatiallyAdaptiveSingleDimension2 import *
 from Function import *
 from ErrorCalculator import *
-import math
+from GridOperation import *
+
+# dimension of the problem
 dim = 2
+
+# define integration domain boundaries
 a = np.zeros(dim)
 b = np.ones(dim)
+
+# define function to be integrated
 midpoint = np.ones(dim) * 0.5
 coefficients = np.array([ 10**0 * (d+1) for d in range(dim)])
 f = GenzDiscontinious(border=midpoint,coeffs=coefficients)
+# plot function
 f.plot(np.ones(dim)*a,np.ones(dim)*b)
-errorOperator=ErrorCalculatorSurplusCell()
-errorOperator2=ErrorCalculatorAnalytic()
 
-grid=TrapezoidalGrid(a, b)
-adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions(a, b,grid)
-adaptiveCombiInstanceFixed = SpatiallyAdaptiveFixedScheme(a, b,grid)
-adaptiveCombiInstanceExtend = SpatiallyAdaptiveExtendScheme(a, b,2,grid,version=0)
-adaptiveCombiInstanceCell = SpatiallyAdaptiveCellScheme(a, b,grid)
+# reference integral solution for calculating errors
+reference_solution = f.getAnalyticSolutionIntegral(a,b)
 
-adaptiveCombiInstanceExtend.performSpatiallyAdaptiv(1,2,f,errorOperator2,10**-2, do_plot=True)
+# define error estimator for refinement
+errorOperator = ErrorCalculatorSingleDimVolumeGuided()
+
+# define equidistant grid
+grid=GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=True)
+
+# NEW! define operation which shall be performed in the combination technique
+operation = Integration(f=f, grid=grid, dim=dim, reference_solution=reference_solution)
+
+# define SingleDim refinement strategy for Spatially Adaptive Combination Technique
+adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions2(np.ones(dim) * a, np.ones(dim) * b, operation=operation)
+
+# performing the spatially adaptive refinement with the SingleDim method
+adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1,2,f,errorOperator,10**-2, do_plot=False)
