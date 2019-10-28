@@ -260,7 +260,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                             area.set_twin(d, twin)
                             #if area.twinErrors[d] is None:
                             #    area.set_twin_error(d, abs(area.integral - twin.integral))
-                            print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                            #print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
                     #if area.twinErrors[self.dim-1] is None:
                     #    area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
                     area.parent_info.parent = self.root_cell
