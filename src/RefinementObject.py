@@ -72,7 +72,8 @@ class RefinementObjectExtendSplit(RefinementObject):
                  parent_info: ErrorInfo =None,
                  coarseningValue: int=0,
                  needExtendScheme: int=0,
-                 automatic_extend_split: bool=False):
+                 automatic_extend_split: bool=False,
+                 splitSingleDim: bool=True):
         # start of subarea
         self.start = start
         # end of subarea
@@ -91,10 +92,13 @@ class RefinementObjectExtendSplit(RefinementObject):
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
         self.grid = grid
+        self.twins = [None] * self.dim
 
         # initialize errors
         self.error = None
+        self.twinErrors = [None] * self.dim
 
+        self.splitSingleDim = splitSingleDim
         self.automatic_extend_split = automatic_extend_split
         self.parent_info = parent_info if parent_info is not None else ErrorInfo()
         self.switch_to_parent_estimation = self.grid.is_high_order_grid()
@@ -146,19 +150,53 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                               parent_info=parent_info,
                                                               coarseningValue=coarseningValue,
                                                               needExtendScheme=self.needExtendScheme,
-                                                              automatic_extend_split=self.automatic_extend_split)
-
+                                                              automatic_extend_split=self.automatic_extend_split,
+                                                              splitSingleDim=self.splitSingleDim)
+            newRefinementObject.twins = self.twins
+            newRefinementObject.twinErrors = self.twinErrors
             self.children.append(newRefinementObject)
             return [newRefinementObject], lmaxIncrease, update_other_coarsenings
 
         elif (self.automatic_extend_split and benefit_extend >= benefit_split) or (
                 not self.automatic_extend_split and self.needExtendScheme >= 0):  # split the array
             # add to integralArray
-            self.needExtendScheme += 1
             # print("Splitting", self.start, self.end)
-            #print("Performing split for", self.start, self.end, benefit_extend, benefit_split, self.parent_info.num_points_split_parent, self.parent_info.num_points_extend_parent, self.parent_info.split_parent_integral, self.parent_info.extend_parent_integral, self.integral, self.sum_siblings)
-            newRefinementObjects = self.split_area_arbitrary_dim()
-            return newRefinementObjects, None, None
+            if self.splitSingleDim:
+                '''
+                d = self.get_split_dim()
+                print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d]) #TODO
+                newRefinementObjects = self.split_area_single_dim(d)
+                return newRefinementObjects, None, None
+                '''
+                dims = self.get_split_dims()
+                #dims = [self.get_split_dim()]
+                newRefinementObjects = [self]
+                for d in dims:
+                    newObjects = []
+                    print("Split in dimension", d, ", maxTwinError =", self.twinErrors[d], self.twinErrors) #TODO
+                    for area in newRefinementObjects:
+                        newObjects.extend(area.split_area_single_dim(d))
+                    newRefinementObjects = newObjects
+                for area in newRefinementObjects:
+                    for d in dims[:-1]:
+                        area.twins[d] = None
+                for i in range(len(newRefinementObjects)):
+                    area = newRefinementObjects[i]
+                    for d in range(len(dims)-1):
+                        if area.twins[dims[d]] is None:
+                            twin_distance = 2**(len(dims) - d - 1)
+                            twin = newRefinementObjects[i + twin_distance]
+                            assert twin is not None
+                            area.set_twin(dims[d], twin)
+                            #print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", dims[d])
+                    for d in range(self.dim):
+                        assert area.twins[d] is not None
+                        
+                return newRefinementObjects, None, None
+
+            else:
+                newRefinementObjects = self.split_area_arbitrary_dim()
+                return newRefinementObjects, None, None
         else:
             print("Error!!!! Invalid value")
             assert False
@@ -203,10 +241,36 @@ class RefinementObjectExtendSplit(RefinementObject):
                                                                 number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
                                                                 parent_info=parent_info,
                                                                 coarseningValue=self.coarseningValue,
-                                                                needExtendScheme=self.needExtendScheme,
-                                                                automatic_extend_split=self.automatic_extend_split)
+                                                                needExtendScheme=self.needExtendScheme + 1,
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.splitSingleDim)
             self.children.append(new_refinement_object)
             sub_area_array.append(new_refinement_object)
+        return sub_area_array
+    
+    # splits the current area in the d-th dimension and returns the pair of twins
+    def split_area_single_dim(self, d):
+        midpoint = self.grid.get_mid_point(self.start[d], self.end[d], d)
+        sub_area_array = []
+        for i in range(2):
+            start_sub_area = list(self.start)
+            end_sub_area = list(self.end)
+            start_sub_area[d] = start_sub_area[d] if i == 0 else midpoint
+            end_sub_area[d] = midpoint if i == 0 else end_sub_area[d]
+            parent_info = ErrorInfo(parent=self, last_refinement_split=True)
+            new_refinement_object = RefinementObjectExtendSplit(start=start_sub_area, end=end_sub_area, grid=self.grid,
+                                                                number_of_refinements_before_extend=self.numberOfRefinementsBeforeExtend,
+                                                                parent_info=parent_info,
+                                                                coarseningValue=self.coarseningValue,
+                                                                needExtendScheme=self.needExtendScheme + 1,
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.splitSingleDim)
+            new_refinement_object.twins = list(self.twins)
+            new_refinement_object.twinErrors = list([t * 0.5 if t is not None else t for t in self.twinErrors])
+            new_refinement_object.twinErrors[d] = None
+            self.children.append(new_refinement_object)
+            sub_area_array.append(new_refinement_object)
+        sub_area_array[0].set_twin(d, sub_area_array[1])       
         return sub_area_array
 
     # set the local error associated with RefinementObject
@@ -215,6 +279,31 @@ class RefinementObjectExtendSplit(RefinementObject):
             error /= 2 ** self.dim
             # print("Reduced error")
         self.error = error
+
+    # define two area objects to be twins of each other in the d-th dimension
+    def set_twin(self, d, twin):
+        self.twins[d] = twin
+        twin.twins[d] = self
+
+    # set the twin error in dimension d of the given area object to the given value and update the dimension in which the twin error is maximum
+    def set_twin_error(self, d, twinError):
+        twinError += 10**-14
+        twin = self.twins[d]
+        twin.twinErrors[d] = self.twinErrors[d] = twinError
+
+    # returns the dimension in which the split shall be performed
+    def get_split_dim(self):
+        return np.argmax(self.twinErrors)
+
+    def get_split_dims(self, threshold=0.9):
+        print("Twin errors for", self.start, self.end, "are", self.twinErrors, "twins are", self.twins[0].start, self.twins[0].end, self.twins[1].start, self.twins[1].end,)
+        assert 0 <= threshold <= 1
+        max_error = max(self.twinErrors)        
+        dims_for_refinement = []        
+        for d in range(self.dim):
+            if self.twinErrors[d] >= max_error * threshold:
+                dims_for_refinement.append(d)
+        return dims_for_refinement
 
     def contains(self, point):
         contained = True

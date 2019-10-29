@@ -109,13 +109,14 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
                    label='standardCombination distinct f evals lmin=' + str(i + minLmin))
     if doDimAdaptive:
-        print(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
+        print("numPoints =", numFEvalIdealDimAdaptive)
+        print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
         plt.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
     for i in range(len(adaptiveAlgorithmVector)):
         # print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
         # print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
         print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
-        print(numFEvalIdeal[i], surplusErrorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        print(numFEvalIdeal[i], surplusErrorArray[i], adaptiveAlgorithmVector[i][4] + ' surplus error distinct f evals')
 
         # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')

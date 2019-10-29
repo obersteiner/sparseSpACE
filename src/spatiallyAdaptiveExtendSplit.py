@@ -3,7 +3,7 @@ from GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, no_initial_splitting=False,
-                 version=0, dim_adaptive=False, automatic_extend_split=False, operation=None, norm=np.inf):
+                 version=0, dim_adaptive=False, automatic_extend_split=False, split_single_dim=True, operation=None, norm=np.inf):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
@@ -16,6 +16,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         self.refinements_for_recalculate = 100
         self.dim_adaptive = dim_adaptive
         self.automatic_extend_split = automatic_extend_split
+        self.split_single_dim = split_single_dim
         self.margin = 0.9
 
     def interpolate_points(self, interpolation_points, component_grid):
@@ -224,13 +225,51 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             assert False
             new_refinement_object = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
                                                                 self.numberOfRefinementsBeforeExtend,
-                                                                automatic_extend_split=self.automatic_extend_split)
+                                                                automatic_extend_split=self.automatic_extend_split,
+                                                                splitSingleDim=self.split_single_dim)
             self.refinement = RefinementContainer([new_refinement_object], self.dim, self.errorEstimator)
         else:
             self.root_cell = RefinementObjectExtendSplit(np.array(self.a), np.array(self.b), self.grid,
-                                                         self.numberOfRefinementsBeforeExtend,
-                                                         automatic_extend_split=self.automatic_extend_split)
-            new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
+                                                 self.numberOfRefinementsBeforeExtend, None, 0,
+                                                 0, automatic_extend_split=self.automatic_extend_split,
+                                                 splitSingleDim=self.split_single_dim)
+            if self.split_single_dim:
+                new_refinement_objects = [self.root_cell]
+                for d in range(self.dim):
+                    temp = []
+                    for area in new_refinement_objects:
+                        temp.extend(area.split_area_single_dim(d))
+                    new_refinement_objects = temp
+                                 
+                for area in new_refinement_objects:
+                    for d in range(self.dim - 1):
+                        area.twins[d] = None
+                for i in range(2**self.dim):
+                    area = new_refinement_objects[i]
+                    for d in range(self.dim-1):
+                        '''
+                        twin = new_refinement_objects[(i+2**(self.dim-1)) % 2**(self.dim-d)]
+                        area.set_twin(d, twin)
+                        if area.twinErrors[d] is None:
+                            area.set_twin_error(d, abs(area.integral - twin.integral))
+                        print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                        '''
+                        if area.twins[d] is None:
+                            twin_distance = 2**(self.dim - d - 1)
+                            twin = new_refinement_objects[i + twin_distance]
+                            area.set_twin(d, twin)
+                            #if area.twinErrors[d] is None:
+                            #    area.set_twin_error(d, abs(area.integral - twin.integral))
+                            #print("Area", area.start, area.end, "has twin", twin.start, twin.end, "in dimension", d)
+                    #if area.twinErrors[self.dim-1] is None:
+                    #    area.set_twin_error(self.dim-1, abs(area.integral - area.twins[self.dim-1].integral))
+                    area.parent_info.parent = self.root_cell
+                self.calculate_new_twin_errors(new_refinement_objects)
+                for area in new_refinement_objects:
+                    area.parent_info.parent = self.root_cell
+                self.root_cell.children = new_refinement_objects
+            else:
+                new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
             if self.operation is not None:
                 #self.operation.area_preprocessing(parent)
@@ -246,6 +285,40 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 self.refinement.integral = 0.0
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
+
+    def calculate_new_twin_errors(self, new_refinement_objects):
+        for area in new_refinement_objects:
+            for component_grid in self.scheme:
+                num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+                modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+                if do_compute:
+                    evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, None, None)
+
+        for area in new_refinement_objects:
+            #print("area", area.start,area.end, area.integral)
+            for d in range(self.dim):
+                ##print("Current dim:", d)
+                if area.twinErrors[d] is None:
+                    assert area.twins[d] is not None
+                    parent_region_a = np.array(area.start)
+                    parent_region_b = np.array(area.end)
+                    parent_region_a[d] = min(area.start[d], area.twins[d].start[d])
+                    parent_region_b[d] = max(area.end[d], area.twins[d].end[d])
+                    parent_integral = 0.0
+                    parent_area = RefinementObjectExtendSplit(parent_region_a, parent_region_b, self.grid,
+                                                        self.numberOfRefinementsBeforeExtend, None, area.coarseningValue, area.needExtendScheme,
+                                                        automatic_extend_split=self.automatic_extend_split,
+                                                        splitSingleDim=self.split_single_dim)
+                    area.parent_info.parent = parent_area
+                    for component_grid in self.scheme:
+                        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
+                        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, parent_area, num_sub_diagonal)
+                        if do_compute:
+                            evaluations = self.operation.evaluate_area(parent_area, modified_levelvec, component_grid, None, None)
+                    #print("Areas", area.start, area.end, area.twins[d].start, area.twins[d].end)
+                    #print("Integrals", area.integral, area.twins[d].integral, area.parent_info.parent.integral)
+                    twin_error = self.operation.get_twin_error(d, area, self.norm)
+                    area.set_twin_error(d, twin_error)
 
     def evaluate_area(self, f, area, component_grid, filter_area=None, interpolate=False):
         num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
@@ -308,14 +381,20 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def do_refinement(self, area, position):
         if self.automatic_extend_split:
             self.compute_benefits_for_operations(area)
-
-        lmax_change = self.refinement.refine(position)
+        if self.split_single_dim:
+            for d in range(self.dim):
+                if area.twinErrors[d] is None:
+                    twinError = self.operation.get_twin_error(d, area,self.norm)
+                    area.set_twin_error(d, twinError)
+        lmax_change, new_objects = self.refinement.refine(position)
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
             if self.print_output:
                 print("New scheme")
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0],do_print=self.print_output)
             return False
+        elif self.split_single_dim:
+            self.calculate_new_twin_errors(new_objects)
         return False
 
     def compute_benefits_for_operations(self, area):
@@ -392,7 +471,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                         if child.integral is not None:
                             area.sum_siblings += child.integral
                             i += 1
-                    assert i == 2 ** self.dim  # we always have 2**dim children
+                    assert i == 2 ** self.dim or (i == 2 and self.split_single_dim)  # we always have 2**dim children
             else:
                 self.operation.initialize_error_estimates(area)
                 self.get_parent_split_operation(area, True)

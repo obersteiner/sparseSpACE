@@ -68,7 +68,12 @@ class Integration(AreaOperation):
 
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
-        area.integral += partial_integral
+        if area.integral is None:
+            area.integral = partial_integral
+        else:
+            area.integral += partial_integral
+        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
+
         evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
             refinement_container.integral += partial_integral
@@ -215,6 +220,9 @@ class Integration(AreaOperation):
 
     def area_preprocessing(self, area):
         area.set_integral(0.0)
+        #area.evaluations = 0
+        #area.levelvec_dict = {}
+        #area.error = None
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
@@ -234,7 +242,7 @@ class Integration(AreaOperation):
             if child.integral is not None:
                 area.sum_siblings += child.integral
                 i += 1
-        assert i == 2 ** self.dim  # we always have 2**dim children
+        assert i == 2 ** self.dim or i == 2  # we always have 2**dim children
 
     def set_extend_benefit(self, area, norm):
         if area.parent_info.benefit_extend is not None:
@@ -320,6 +328,10 @@ class Integration(AreaOperation):
             combi_integral = combi_integral[0]
         print("combiintegral:", combi_integral)
 
+    def get_twin_error(self, d, area, norm):
+        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))        
+        #return LA.norm(abs(area.integral - area.twins[d].integral), norm)
+
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, reuse_old_values):
         reuse_old_values = False
         if reuse_old_values:
@@ -380,7 +392,7 @@ class Integration(AreaOperation):
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
         tol = 10**-84
-        if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+        if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
             grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
             points = self.grid.getPoints()
             for i, point in enumerate(points):
@@ -388,7 +400,7 @@ class Integration(AreaOperation):
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
-            if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+            if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
                 hierarchization_operator = HierarchizationLSG(self.grid)
                 surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values), self.grid.numPoints, self.f, d)
                 surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
@@ -403,7 +415,7 @@ class Integration(AreaOperation):
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
-                if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+                if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
                     index_child = grid_points[d].index(child) - int(not(self.grid.boundary))
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]

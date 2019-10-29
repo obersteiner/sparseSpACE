@@ -73,7 +73,7 @@ class Function(object):
             assert False
 
     # this method plots the function in the specified area for 2D
-    def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, points_per_dim: int=10 ** 2, plotdimensions: Sequence[int]=None, consistent_axes: bool=False, show_plot: bool=True) -> None:
+    def plot(self, start: Sequence[float], end: Sequence[float], filename: str=None, plotdimension: int=0, dpi: int=100, width: float=14, height: float=6) -> None:
         dim = len(start)
         if dim > 2:
             print("Cannot plot function with dim > 2")
