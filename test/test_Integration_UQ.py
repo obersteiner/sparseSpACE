@@ -12,7 +12,7 @@ from GridOperation import *
 
 class TestIntegrationUQ(unittest.TestCase):
     def test_normal_integration(self):
-        print("Calculating an expectation with an Integration Operation")
+        #print("Calculating an expectation with an Integration Operation")
         d = 2
         bigvalue = 7.0
         a = np.array([-bigvalue, -bigvalue])
@@ -31,11 +31,11 @@ class TestIntegrationUQ(unittest.TestCase):
 
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
-        print("performSpatiallyAdaptiv…")
+        #print("performSpatiallyAdaptiv…")
         v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
-            max_evaluations=40, min_evaluations=25, do_plot=False)
+            max_evaluations=40, min_evaluations=25, do_plot=False, print_output=False)
         integral = v[3][0]
-        print("expectation", integral)
+        #print("expectation", integral)
 
 
 if __name__ == '__main__':
