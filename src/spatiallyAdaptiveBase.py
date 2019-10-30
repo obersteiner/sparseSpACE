@@ -164,7 +164,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     # main method for the spatially adaptive refinement strategy
     # In addition to a tolerance, the maximum number of function evaluations and the maximum computing time can be
     # specified as a termination criterion.
-    def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionGriebel(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
+    def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionExpVar(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
                                 print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:

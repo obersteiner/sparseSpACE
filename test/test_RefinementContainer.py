@@ -14,7 +14,7 @@ class TestRefinementContainer(unittest.TestCase):
         # initialize container
         ref_objects = []
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1))
+            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), 0, 1)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
             ref_object.evaluations = int(d/10 + 1)
@@ -37,7 +37,7 @@ class TestRefinementContainer(unittest.TestCase):
         # initialize container
         ref_objects = []
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1), coarsening_level=d)
+            ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1, coarsening_level=d)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
         container = RefinementContainer(ref_objects, 1, error_estimator=ErrorCalculatorSingleDimVolumeGuided())
@@ -107,7 +107,7 @@ class TestRefinementContainer(unittest.TestCase):
         # initialize container
         ref_objects = []
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), coarsening_level=d)
+            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), 0, 1, coarsening_level=d)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
             ref_object.evaluations = int(d/10 + 1)
@@ -124,7 +124,7 @@ class TestRefinementContainer(unittest.TestCase):
         for d in range(5):
             ref_objects = []
             for n in range(100):
-                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1))
+                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1)
                 ref_object.volume = np.array([n+d])
                 ref_objects.append(ref_object)
                 ref_object.evaluations = int((n+d) / 10 + 1)
@@ -149,7 +149,7 @@ class TestRefinementContainer(unittest.TestCase):
         for d in range(5):
             ref_objects = []
             for n in range(100):
-                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1))
+                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1)
                 ref_object.volume = np.array([n + d])
                 ref_objects.append(ref_object)
                 ref_object.evaluations = int((n + d) / 10 + 1)
