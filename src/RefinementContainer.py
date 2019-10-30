@@ -41,7 +41,7 @@ class RefinementContainer(object):
         self.prepare_remove(object_id)
         # add new RefinementObjects
         self.add(new_objects)
-        return lmax_update
+        return lmax_update, new_objects
 
     def update_values(self, update_info) -> None:
         for r in self.refinementObjects:
@@ -122,9 +122,9 @@ class RefinementContainer(object):
         self.refinementObjects.extend(new_refinement_objects)
 
     # calculate the error according to the error estimator for specified RefinementObjects
-    def calc_error(self, object_id, f, norm) -> None:
+    def calc_error(self, object_id, f, norm, volume_weights=None) -> None:
         refine_object = self.refinementObjects[object_id]
-        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm))
+        refine_object.set_error(self.errorEstimator.calc_error(f, refine_object, norm, volume_weights=volume_weights))
 
     # returns all RefinementObjects in the container
     def get_objects(self) -> List[RefinementObject]:
@@ -279,19 +279,20 @@ class MetaRefinementContainer(object):
     def refine(self, position: Tuple[int, int]) -> Sequence[int]:
         # position[0]: which container(=dimension), position[1]: which object(=area)
         # self.updateGridSpecificRefinementInfo(position)
-        new_lmax_change = self.refinementContainers[position[0]].refine(position[1])
+        new_lmax_change, new_objects = self.refinementContainers[position[0]].refine(position[1])
         #if new_lmax_change is not None:
         #    for d, c in enumerate(self.refinementContainers):
         #        if d != position[0]:
         #            c.update_objects(new_lmax_change[d])
         # self.print()
-        return new_lmax_change
+        return new_lmax_change, new_objects
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id: int, f: Function, norm: int) -> None:
+        volume_weights = np.array([1.0 / v if abs(v) > 10 ** -10 else 1.0 for v in self.integral])
         for cont in self.refinementContainers:
             for obj in range(0, cont.size()):
-                cont.calc_error(obj, f, norm)
+                cont.calc_error(obj, f, norm, volume_weights=volume_weights)
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def set_benefit(self, object_id: int) -> None:

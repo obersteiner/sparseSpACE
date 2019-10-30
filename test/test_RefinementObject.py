@@ -31,32 +31,32 @@ class TestRefinementObject(unittest.TestCase):
         b = 6
         for d in range(2, 5):
             grid = TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, splitSingleDim=False)
             refinment_object.update(5)
             self.assertEqual(refinment_object.coarseningValue, 5)
             refinment_object.update(5)
             self.assertEqual(refinment_object.coarseningValue, 10)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=3)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=3, splitSingleDim=False)
             refinment_object.update(3)
             self.assertEqual(refinment_object.coarseningValue, 6)
             refinment_objects, _, _ = refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 6)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=1)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=1, splitSingleDim=False)
             refinment_objects, _, _ = refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 6)
                 refinment_objects2, _, _ = ref_obj.refine()
                 for ref_obj2 in refinment_objects2:
                     self.assertEqual(ref_obj2.coarseningValue, 5)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=0)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=0, splitSingleDim=False)
             refinment_objects, _, _ = refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 5)
                 refinment_objects2, _, _ = ref_obj.refine()
                 for ref_obj2 in refinment_objects2:
                     self.assertEqual(ref_obj2.coarseningValue, 4)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=0)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=0, splitSingleDim=False)
             refinment_objects, _, _= refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 0)
@@ -80,7 +80,7 @@ class TestRefinementObject(unittest.TestCase):
         b = 6
         for d in range(2, 5):
             grid = TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=1)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=1, splitSingleDim=False)
             refinment_objects, increase, update = refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 6)
@@ -94,7 +94,7 @@ class TestRefinementObject(unittest.TestCase):
             self.assertEqual(len(refinment_objects), 2**d)
             self.assertEqual(increase, None)
             self.assertEqual(update, None)
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=0)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=6, number_of_refinements_before_extend=0, splitSingleDim=False)
             refinment_objects, increase, update = refinment_object.refine()
             for ref_obj in refinment_objects:
                 self.assertEqual(ref_obj.coarseningValue, 5)
@@ -104,34 +104,35 @@ class TestRefinementObject(unittest.TestCase):
             self.assertEqual(increase, None)
             self.assertEqual(update, None)
             # test return when coarseningValue == 0
-            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=0, number_of_refinements_before_extend=0)
+            refinment_object = RefinementObjectExtendSplit(a * np.ones(d), b * np.ones(d), grid, coarseningValue=0, number_of_refinements_before_extend=0, splitSingleDim=False)
             refinment_objects, increase, update = refinment_object.refine()
             self.assertEqual(increase, [1 for _ in range(d)])
             self.assertEqual(update, 1)
 
     def test_single_dim_refine(self):
-        def test_extend_split_refine(self):
-            a = -3
-            b = 6
-            refinment_object = RefinementObjectSingleDimension(a, b, 0, 2, (0,1), coarsening_level=2)
-            refinment_objects, increase, update = refinment_object.refine()
-            self.assertEqual(len(refinment_objects), 2)
-            for ref_obj in refinment_objects:
-                self.assertEqual(ref_obj.coarseningValue, 1)
-            self.assertEqual(increase, None)
-            self.assertEqual(update, None)
-            self.assertEqual(refinment_objects[0].start, refinment_object.start)
-            self.assertEqual(refinment_objects[1].start, 0.5*(refinment_object.end + refinment_object.start))
-            self.assertEqual(refinment_objects[0].end, 0.5*(refinment_object.end + refinment_object.start))
-            self.assertEqual(refinment_objects[1].end, refinment_object.end)
+        a = -3
+        b = 6
+        dim = 2
+        grid = GlobalTrapezoidalGrid(np.ones(dim)*a, np.ones(dim)*b, dim)
+        refinment_object = RefinementObjectSingleDimension(a, b, 0, dim, (0,1), grid, a, b, coarsening_level=2)
+        refinment_objects, increase, update = refinment_object.refine()
+        self.assertEqual(len(refinment_objects), 2)
+        for ref_obj in refinment_objects:
+            self.assertEqual(ref_obj.coarsening_level, 1)
+        self.assertEqual(increase, None)
+        self.assertEqual(update, None)
+        self.assertEqual(refinment_objects[0].start, refinment_object.start)
+        self.assertEqual(refinment_objects[1].start, 0.5*(refinment_object.end + refinment_object.start))
+        self.assertEqual(refinment_objects[0].end, 0.5*(refinment_object.end + refinment_object.start))
+        self.assertEqual(refinment_objects[1].end, refinment_object.end)
 
-            refinment_object = RefinementObjectSingleDimension(a, b, 0, 2, (0,1))
-            refinment_objects, increase, update = refinment_object.refine()
-            self.assertEqual(len(refinment_objects), 2)
-            for ref_obj in refinment_objects:
-                self.assertEqual(ref_obj.coarseningValue, 0)
-            self.assertEqual(increase, None)
-            self.assertEqual(update, None)
+        refinment_object = RefinementObjectSingleDimension(a, b, 0, 2, (0,1), grid, a, b)
+        refinment_objects, increase, update = refinment_object.refine()
+        self.assertEqual(len(refinment_objects), 2)
+        for ref_obj in refinment_objects:
+            self.assertEqual(ref_obj.coarsening_level, 0)
+        self.assertEqual(increase, None)
+        self.assertEqual(update, None)
 
 
 if __name__ == '__main__':
