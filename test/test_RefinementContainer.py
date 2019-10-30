@@ -13,8 +13,9 @@ class TestRefinementContainer(unittest.TestCase):
     def test_error_setting(self):
         # initialize container
         ref_objects = []
+        grid = TrapezoidalGrid(np.zeros(2), np.ones(2))
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), 0, 1)
+            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), grid, 0, 1)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
             ref_object.evaluations = int(d/10 + 1)
@@ -36,8 +37,9 @@ class TestRefinementContainer(unittest.TestCase):
     def test_refine(self):
         # initialize container
         ref_objects = []
+        grid = TrapezoidalGrid(np.zeros(2), np.ones(2))
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1, coarsening_level=d)
+            ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1), grid, 0, 1, coarsening_level=d)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
         container = RefinementContainer(ref_objects, 1, error_estimator=ErrorCalculatorSingleDimVolumeGuided())
@@ -106,8 +108,10 @@ class TestRefinementContainer(unittest.TestCase):
     def test_update(self):
         # initialize container
         ref_objects = []
+        grid = GlobalTrapezoidalGrid(np.zeros(2), np.ones(2))
+
         for d in range(100):
-            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), 0, 1, coarsening_level=d)
+            ref_object = RefinementObjectSingleDimension(0,1,0,1,(0,1), grid, 0, 1, coarsening_level=d)
             ref_object.volume = np.array([d])
             ref_objects.append(ref_object)
             ref_object.evaluations = int(d/10 + 1)
@@ -123,8 +127,9 @@ class TestRefinementContainer(unittest.TestCase):
         containers = []
         for d in range(5):
             ref_objects = []
+            grid = GlobalTrapezoidalGrid(np.zeros(d), np.ones(d))
             for n in range(100):
-                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1)
+                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1), grid, 0, 1)
                 ref_object.volume = np.array([n+d])
                 ref_objects.append(ref_object)
                 ref_object.evaluations = int((n+d) / 10 + 1)
@@ -148,8 +153,9 @@ class TestRefinementContainer(unittest.TestCase):
         containers = []
         for d in range(5):
             ref_objects = []
+            grid = GlobalTrapezoidalGrid(np.zeros(d), np.ones(d))
             for n in range(100):
-                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  0, 1)
+                ref_object = RefinementObjectSingleDimension(0, 1, 0, 1, (0, 1),  grid, 0, 1)
                 ref_object.volume = np.array([n + d])
                 ref_objects.append(ref_object)
                 ref_object.evaluations = int((n + d) / 10 + 1)
