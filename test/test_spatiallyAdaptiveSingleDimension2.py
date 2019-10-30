@@ -18,7 +18,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
@@ -35,7 +35,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalLagrangeGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False, p=2)
             f = FunctionPolynomial([10 * (i + 1) for i in range(d)], degree=2)
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
@@ -53,7 +53,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
@@ -70,7 +70,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 4):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 3):
                 for num_points in np.linspace(100, 1000, 5):
@@ -88,7 +88,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalTrapezoidalGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False)
             f = FunctionLinear([10 * (i + 1) for i in range(d)])
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
@@ -108,7 +108,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
         for d in range(2, 5):
             grid = GlobalLagrangeGrid(a * np.ones(d), b * np.ones(d), boundary=True, modified_basis=False, p=2)
             f = FunctionPolynomial([(i + 1) for i in range(d)], degree=2)
-            operation = Integration(f, grid=grid, dim=d)
+            operation = Integration(f, grid=grid, dim=d, reference_solution=f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
             errorOperator = ErrorCalculatorSingleDimVolumeGuided()
             for l in range(2, 4):
                 for num_points in np.linspace(100, 1000, 5):
@@ -121,7 +121,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     f_values = spatiallyAdaptive(points)
                     for i, value in enumerate(f_values):
                         factor = abs(f(points[i])[0]) if abs(f(points[i])[0]) != 0 else 1
-                        self.assertAlmostEqual((value[0] - f(points[i])[0]) / factor, 0.0, places=11)
+                        self.assertAlmostEqual((value[0] - f(points[i])[0]) / factor, 0.0, places=10)
 
 if __name__ == '__main__':
     unittest.main()
