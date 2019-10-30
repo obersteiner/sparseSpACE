@@ -369,7 +369,7 @@ class Integration(AreaOperation):
     # on this slice.
     def calculate_surplusses(self, grid_points, children_indices, component_grid):
         tol = 10**-14
-        if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+        if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
             grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
             points = self.grid.getPoints()
             for i, point in enumerate(points):
@@ -377,7 +377,7 @@ class Integration(AreaOperation):
         for d in range(0, self.dim):
             k=0
             refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
-            if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+            if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
                 hierarchization_operator = HierarchizationLSG(self.grid)
                 surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values), self.grid.numPoints, self.f, d)
                 surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
@@ -392,7 +392,7 @@ class Integration(AreaOperation):
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
-                if isinstance(self.grid, GlobalBSplineGrid) or isinstance(self.grid, GlobalLagrangeGrid):
+                if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
                     index_child = grid_points[d].index(child) - int(not(self.grid.boundary))
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
