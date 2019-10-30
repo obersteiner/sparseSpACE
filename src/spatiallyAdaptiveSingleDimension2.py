@@ -10,7 +10,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
-        self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=self.grid.boundary, modified_basis=self.grid.modified_basis) #self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+        self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
         self.version = version
