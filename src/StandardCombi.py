@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from combiScheme import *
 from GridOperation import *
 import importlib
+import multiprocessing as mp
+
 
 # T his class implements the standard combination technique
 class StandardCombi(object):
@@ -19,16 +21,36 @@ class StandardCombi(object):
         self.print_output = print_output
         assert (len(a) == len(b))
         self.operation = operation
+        self.do_parallel = True
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
-        for component_grid in self.scheme:
-            interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+        self.do_parallel = False
+        if self.do_parallel:
+            pool = mp.Pool(4)
+            interpolation_results = pool.starmap_async(self.get_multiplied_interpolation, [(interpolation_points, component_grid) for component_grid in self.scheme]).get()
+            pool.close()
+            pool.join()
+            for result in interpolation_results:
+                interpolation += result
+        else:
+            for component_grid in self.scheme:
+                interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+        #print(interpolation)
         return interpolation
+
+    def get_multiplied_interpolation(self, interpolation_points, component_grid):
+        return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+
+    #def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
+    #    interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
+    #    for component_grid in self.scheme:
+    #        interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+    #    return interpolation
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         self.grid.setCurrentArea(start=self.a, end=self.b, levelvec=component_grid.levelvector)
-        return Interpolation.interpolate_points(f=self.f, dim=self.dim, grid=self.grid, mesh_points_grid=self.grid.coordinate_array, evaluation_points=interpolation_points)
+        return Interpolation.interpolate_points(f=self.f, dim=self.dim, grid=self.grid, mesh_points_grid=self.grid.coordinate_array_with_boundary, evaluation_points=interpolation_points)
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
         num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
