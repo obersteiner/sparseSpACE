@@ -98,14 +98,17 @@ class Grid(object):
         self.numPoints = self.levelToNumPoints(levelvec)
         self.numPointsWithBoundary = self.levelToNumPointsWithBoundary(levelvec)
         self.coordinate_array = []
+        self.coordinate_array_with_boundary = []
         self.weights = []
         self.length = np.array(end) - np.array(start)
         # prepare coordinates and weights
         for d in range(self.dim):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
             coordsD = self.grids[d].coords
+            coordsD_with_boundary = self.grids[d].coords_with_boundary
             weightsD = self.grids[d].weights
             self.coordinate_array.append(np.asarray(coordsD))
+            self.coordinate_array_with_boundary.append(np.asarray(coordsD_with_boundary))
             self.weights.append(np.asarray(weightsD))
         # print(coords)
 
@@ -229,7 +232,10 @@ class Grid1d(object):
         coordsD, weightsD = self.get_1d_points_and_weights()
         self.coords = np.asarray(coordsD)
         self.weights = np.asarray(weightsD)
-
+        if self.boundary == False:
+            self.coords_with_boundary = np.array([self.a] + list(coordsD) + [self.b])
+        else:
+            self.coords_with_boundary = np.array(self.coords)
 
     @abc.abstractmethod
     def get_1d_points_and_weights(self) -> Sequence[float]:
