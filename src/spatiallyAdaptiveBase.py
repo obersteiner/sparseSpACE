@@ -167,7 +167,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionExpVar(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
@@ -176,12 +176,15 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
         self.error_array = []
         self.surplus_error_array = []
+        self.interpolation_error_arrayL2 = []
+        self.interpolation_error_arrayMax = []
         self.num_point_array = []
         self.test_scheme = test_scheme
         self.reevaluate_at_end = reevaluate_at_end
         self.do_plot = do_plot
         self.calculated_solution = None
         self.solutions_storage = solutions_storage
+        self.evaluation_points = evaluation_points
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
@@ -192,6 +195,14 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.error_array.append(error)
             self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
+            if self.evaluation_points is not None:
+                interpolated_values = np.asarray(self.__call__(self.evaluation_points))
+                real_values = np.asarray([self.f.eval(point) for point in self.evaluation_points])
+                diff = [real_values[i]-interpolated_values[i] for i in range(len(self.evaluation_points))]
+                #print(interpolated_values, diff)
+                self.interpolation_error_arrayL2.append(scipy.linalg.norm(diff, 2))
+                self.interpolation_error_arrayMax.append(scipy.linalg.norm(diff, np.inf))
+
             if self.print_output:
                 print("Current error:", error)
             num_evaluations = self.get_total_num_points()
@@ -231,7 +242,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             number_of_evaluations = self.refinement.evaluationstotal
         self.operation.set_function(None)
         self.calculated_solution = combiintegral
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array
+        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax
 
     @abc.abstractmethod
     def initialize_refinement(self):
