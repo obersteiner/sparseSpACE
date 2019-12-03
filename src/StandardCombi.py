@@ -202,7 +202,7 @@ class StandardCombi(object):
             points = self.get_points_component_grid(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
-            if any([math.isinf(x) for x in np.concatenate(a, b)]):
+            if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
                 ax.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
                 ax.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
             else:
