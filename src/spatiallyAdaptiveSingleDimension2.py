@@ -369,7 +369,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             else:
                 start, end = self.a[d], self.b[d]
                 offset = (end - start) * 0.005
-            axis.set_xlim([start-0.005, en+0.005])
+            axis.set_xlim([start-0.005, end+0.005])
             axis.set_ylim([-0.05, 0.05])
             axis.set_yticks([])
             axis.set_title("$x_" + str(d + 1 + offset) + "$")
