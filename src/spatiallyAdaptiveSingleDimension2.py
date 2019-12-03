@@ -365,10 +365,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
             if infinite_bounds:
                 start, end = objs[0].start, objs[-1].end
-                offset = (end - start) * 0.1
+                # offset_bound = (end - start) * 0.1
             else:
                 start, end = self.a[d], self.b[d]
-                offset = (end - start) * 0.005
+                # offset_bound = (end - start) * 0.005
             axis.set_xlim([start-0.005, end+0.005])
             axis.set_ylim([-0.05, 0.05])
             axis.set_yticks([])
