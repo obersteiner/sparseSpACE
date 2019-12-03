@@ -65,6 +65,10 @@ class DimAdaptiveCombi(StandardCombi):
                 refined_dims = self.combischeme.update_adaptive_combi(self.scheme[grid_id].levelvector)
                 do_refine = refined_dims == []
                 error_array[grid_id] = 0.0
+            self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
+            for component_grid in self.scheme:
+                for d in range(self.dim):
+                    self.lmax[d] = max(self.lmax[d], component_grid.levelvector[d])
         print("Final scheme:")
         self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=True)
         print("CombiSolution", combiintegral)
