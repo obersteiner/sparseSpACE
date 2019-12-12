@@ -144,8 +144,8 @@ class StandardCombi(object):
                     combivalue = self.operation.add_value(combivalue, value, component_grid)
             else:
                 assert (False)  # not implemented yet
-                #points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
-                #self.operation.perform_operation(points)
+                points = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
+                self.operation.perform_operation(points)
                 #self.compute_evaluations(evaluation_array, points)
         reference_solution = self.operation.get_reference_solution()
         if self.print_output:
@@ -430,10 +430,15 @@ class StandardCombi(object):
     def get_points_component_grid_not_null(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
         return self.get_points_component_grid(levelvec, numSubDiagonal)
 
-    def get_points_component_grid(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
+    def get_points_component_grid(self, levelvec, numSubDiagonal=None) -> Sequence[Tuple[float, ...]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.getPoints()
         return points
+
+    def get_points_component_grid_1D_arrays(self, levelvec, numSubDiagonal=None) -> Sequence[Sequence[float]]:
+        self.grid.setCurrentArea(self.a, self.b, levelvec)
+        points = self.grid.coordinate_array
+        return [points]
 
     def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
