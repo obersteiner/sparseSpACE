@@ -1,9 +1,34 @@
+# Modules specific to the combination technique, from our Git repository
+from combinationScheme import combinationSchemeArbitrary
+from combiGrid import combiGrid, DummyGridArbitraryDim
+from combineGrids import combineGrids
+from HelperFunctions import *
+from HelperFunctionsCombination import *
+import ActiveSetFactory
+
+
+# All other necessary python modules
+from collections import OrderedDict
+from fenics import *
+from time import clock
+import matplotlib.pyplot as plt
+import sympy as sym
+import os.path
+from mpl_toolkits.mplot3d import Axes3D
+
+def boundary(x, on_boundary):
+    return on_boundary
+
+def q(u):
+    "Return nonlinear coefficient"
+    return 1 + u**2
+
 def poisson_model(x):
 '''
     x: a vector of
     bc: string
 '''
-    
+
     mesh = UnitSquareMesh(x[1],x[0])
     V = FunctionSpace(mesh, 'P', 1)
     # Creating boundary
@@ -38,7 +63,7 @@ def operation()
         ## FEniCS code
         # calculating number of grid points
         s = 2**np.array(key)
-        u = poisson_model()
+        u = poisson_model(s[1],s[0])
             
         ## combination technique
         # creating grid
@@ -51,17 +76,5 @@ def operation()
         combiGrid.addGrid(grid)
     # combining grids        
     erg_combi = real(combiGrid.getCombination())
-
-    ## plot
-    sz = 12,12
-    fig = figure(figsize=sz)
-    title('Combi solution',fontsize=24)
-    cmap = 'YlGnBu'
-    list_x = np.linspace(0,1,erg_combi.shape[1])
-    list_y = np.linspace(0,1,erg_combi.shape[0])
-    plt.pcolor(list_x, list_y, erg_combi, cmap=cmap)
-    plt.axis([list_x.min(), list_x.max(), list_y.min(), list_y.max()])
-    plt.colorbar()
-    display(fig)
 
     return list_x, list_y, erg_combi
