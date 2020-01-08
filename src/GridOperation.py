@@ -1354,3 +1354,25 @@ class UQDistribution:
         integral = integrate.quad(lambda x: func(x) * self.pdf(x), x1, x2)[0]
         # ~ cache[k] = integral
         return integral
+
+class PDE_Solve(GridOperation):
+    """
+    takes PDE to be solved: Function
+    takes grid: Grid
+    calls PDE_Solver
+    takwe reference solution?
+    """
+
+    def __init__(self, solver, grid, dim):
+        self.solver = solver
+        self.grid = grid
+        self.dim = dim
+        self.dict_integral = {}
+        self.dict_points = {}
+
+    def is_PDE(self):
+        return True
+        
+    def evaluate_grid(self):
+        #calls PDESOlver.solvePDE
+        raise NotImplementedError

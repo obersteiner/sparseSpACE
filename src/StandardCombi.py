@@ -142,6 +142,14 @@ class StandardCombi(object):
                     combivalue = value
                 else:
                     combivalue = self.operation.add_value(combivalue, value, component_grid)
+            if self.operation.is_PDE():
+                #call PDE_solve from GridOperation
+                response = self.operation.evaluate_response(component_grid)
+                # Combine the results
+                if combivalue is None:
+                    combivalue = response
+                else:
+                    combivalue = self.operation.add_value(combivalue, response, component_grid)
             else:
                 assert (False)  # not implemented yet
                 points = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
