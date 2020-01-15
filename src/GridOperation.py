@@ -1,9 +1,11 @@
 from numpy import linalg as LA
+import numpy as np
 from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
 from RefinementContainer import RefinementContainer
 from RefinementObject import RefinementObject
+from PDE_Solver import *
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
@@ -1139,22 +1141,29 @@ class UQDistribution:
 
 class PDE_Solve(GridOperation):
     """
-    takes PDE to be solved: Function
-    takes grid: Grid
-    calls PDE_Solver
-    takwe reference solution?
+    Fills component grid with data at vertives evaluated by PDE_Solver and provides functionalities
+    for combining them together by means of either interpolation or directly by combination 
+    of hierarhical bases
+    Inputs: 
+        - solver: PDE_Solver (currently only FEniCS supported)
+        - dim: 
+        - **kwargs:
+            - grid: Grid? - global grid, everything is combined to with interpolation technique
     """
-
-    def __init__(self, solver, grid, dim):
+    def __init__(self, solver, dim: int, **kwargs):
         self.solver = solver
-        self.grid = grid
         self.dim = dim
-        self.dict_integral = {}
-        self.dict_points = {}
-
-    def is_PDE(self):
-        return True
+        self.grid = kwargs.get(grid, None)
         
-    def evaluate_grid(self):
-        #calls PDESOlver.solvePDE
-        raise NotImplementedError
+    def evaluate_response(self, component_grid):
+        u = self.solver.solvePDE(*(component_grid.getNodeCount()-np.ones(self.dim)))
+        component_grid.fillData(u.getVertexValues[0])
+
+
+    def combine_response(self, target, source):
+        #add grid and combine it with the rest
+        if self.grid != None
+            # combination by interpolation 
+        else:
+            # direct combination
+
