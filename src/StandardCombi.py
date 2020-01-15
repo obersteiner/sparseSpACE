@@ -135,6 +135,7 @@ class StandardCombi(object):
         self.set_combi_parameters(minv, maxv, f)
         self.f.reset_dictionary()
         combivalue = None
+        combiGrid = None 
         for component_grid in self.scheme:  # iterate over component grids
             if self.operation.is_area_operation():
                 value, evaluations = self.operation.evaluate_levelvec(start, end, component_grid.levelvector)
@@ -142,14 +143,12 @@ class StandardCombi(object):
                     combivalue = value
                 else:
                     combivalue = self.operation.add_value(combivalue, value, component_grid)
-            if self.operation.is_PDE():
-                #call PDE_solve from GridOperation
-                response = self.operation.evaluate_response(component_grid)
-                # Combine the results
-                if combivalue is None:
-                    combivalue = response
+            if isinstance(self.operation, PDE_Solve):
+                self.operation.evaluate_response(component_grid) # PDE_Solver is called from there, stores data in component_grid
+                if combiGrid is None:
+                    combiGrid = component_grid #combineGrids(scheme) # create combiGrid with first response
                 else:
-                    combivalue = self.operation.add_value(combivalue, response, component_grid)
+                    combiGrid = self.operation.combine_response(combiGrid, component_grid) # combine component_grid filled with new data with the existing ones
             else:
                 assert (False)  # not implemented yet
                 points = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
