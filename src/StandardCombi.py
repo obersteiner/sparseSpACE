@@ -23,6 +23,7 @@ class StandardCombi(object):
         self.operation = operation
         self.do_parallel = True
 
+    # This method evaluates the
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         interpolation = np.zeros((len(interpolation_points), self.operation.point_output_length()))
         self.do_parallel = False
@@ -37,19 +38,10 @@ class StandardCombi(object):
             for component_grid in self.scheme:
                 self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
                 interpolation += self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary, evaluation_points=interpolation_points) * component_grid.coefficient
-        #print(interpolation)
         return interpolation
 
     def get_multiplied_interpolation(self, interpolation_points, component_grid):
         return self.operation.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-
-    #def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
-    #    interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
-    #    for component_grid in self.scheme:
-    #        interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-    #    return interpolation
-
-
 
     def plot(self, plotdimension: int=0) -> None:
         if self.dim != 2:
@@ -60,7 +52,7 @@ class StandardCombi(object):
         X = [x for x in xArray]
         Y = [y for y in yArray]
         points = list(get_cross_product([X, Y]))
-        # print(points)
+
         #f_values = np.asarray(self.interpolate_grid([X,Y]))
 
         X, Y = np.meshgrid(X, Y, indexing="ij")
@@ -90,46 +82,33 @@ class StandardCombi(object):
         # get combi scheme
         self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.print_output)
 
-    # standard combination scheme for quadrature
+    # perform standard combination scheme for chosen operation
     # lmin = minimum level; lmax = target level
-    # f = function to integrate;
-    def perform_combi(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]], reference_solution: Sequence[float]=None) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
-        if self.operation is not None:
-            return self.perform_operation(minv, maxv, f, reference_solution)
-        start = self.a
-        end = self.b
-        self.set_combi_parameters(minv, maxv)
-        self.f = f
-        self.f.reset_dictionary()
-        combiintegral = 0
-        for component_grid in self.scheme:
-            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end) * component_grid.coefficient
-            combiintegral += integral
-        real_integral = reference_solution
-        if self.print_output:
-            print("CombiSolution", combiintegral)
-        if reference_solution is not None:
-            if self.print_output:
-                print("Analytic Solution", real_integral)
-                print("Difference", abs(combiintegral - real_integral))
-            return self.scheme, max(abs(combiintegral - real_integral)), combiintegral
-        else:
-            return self.scheme, None, combiintegral
-
     def perform_operation(self, minv: int, maxv: int) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
         assert self.operation is not None
-        start = self.a
-        end = self.b
+
+        # initializtation
         self.set_combi_parameters(minv, maxv)
         self.operation.initialize()
+
+        # iterate over all component_grids and perform operation
         for component_grid in self.scheme:  # iterate over component grids
-            if self.operation.is_area_operation():
-                self.operation.evaluate_levelvec(start, end, component_grid)
-        reference_solution = self.operation.get_reference_solution()
+            self.operation.evaluate_levelvec(component_grid)
+
+        # potential post processing after processing all component grids
         self.operation.post_processing()
+
+        # get result of combination
         combi_result = self.operation.get_result()
+
+        # obtain reference solution if available
+        reference_solution = self.operation.get_reference_solution()
+
+        # output combi_result
         if self.print_output:
             print("CombiSolution", combi_result)
+
+        # return results
         if reference_solution is not None:
             if self.print_output:
                 print("Analytic Solution", reference_solution)

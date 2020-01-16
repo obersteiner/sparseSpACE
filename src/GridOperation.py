@@ -120,9 +120,9 @@ class Integration(AreaOperation):
             refinement_container.integral += partial_integral
         return evaluations
 
-    def evaluate_levelvec(self, start, end, component_grid):
+    def evaluate_levelvec(self, component_grid):
         levelvector = component_grid.levelvector
-        partial_integral = self.grid.integrate(self.f, levelvector, start, end)
+        partial_integral = self.grid.integrate(self.f, levelvector, self.grid.a, self.grid.b)
         self.integral += partial_integral * component_grid.coefficient
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
