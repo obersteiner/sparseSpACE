@@ -59,17 +59,6 @@ class GridOperation(object):
     def interpolate_points(self, mesh_points_grid, evaluation_points):
         return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
-    def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
-        num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
-        interpolation = np.zeros((num_points, self.point_output_length()))
-        for component_grid in self.scheme:
-            interpolation += self.interpolate_grid_component(grid_coordinates, component_grid) * component_grid.coefficient
-        return interpolation
-
-    def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
-        grid_points = list(get_cross_product(grid_coordinates))
-        return self.interpolate_points(grid_points, component_grid)
-
 class AreaOperation(GridOperation):
     def is_area_operation(self):
         return True
@@ -103,6 +92,8 @@ class Integration(AreaOperation):
 
     def initialize(self):
         self.f.reset_dictionary()
+        self.integral = np.zeros(self.f.output_length())
+
 
     def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution

@@ -36,9 +36,24 @@ class StandardCombi(object):
                 interpolation += result
         else:
             for component_grid in self.scheme:
-                self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
-                interpolation += self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary, evaluation_points=interpolation_points) * component_grid.coefficient
+                interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
         return interpolation
+
+    def interpolate_points(self, grid_points, component_grid):
+        self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
+        return self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary,
+                                          evaluation_points=grid_points)
+
+    def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
+        num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
+        interpolation = np.zeros((num_points, self.operation.point_output_length()))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_grid_component(grid_coordinates, component_grid) * component_grid.coefficient
+        return interpolation
+
+    def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        grid_points = list(get_cross_product(grid_coordinates))
+        return self.interpolate_points(grid_points, component_grid)
 
     def get_multiplied_interpolation(self, interpolation_points, component_grid):
         return self.operation.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
