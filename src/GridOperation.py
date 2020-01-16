@@ -39,6 +39,37 @@ class GridOperation(object):
     def get_reference_solution(self) -> Sequence[float]:
         return self.reference_solution
 
+    def initialize(self):
+        pass
+
+    # This method calculates the error between the combi result and the reference solution. Can be changed by Operation.
+    def get_error(self, combivalue, reference_solution):
+        return max(abs(combivalue - reference_solution))
+
+    # This method is called after the combination and should return the combination result
+    def get_result(self):
+        pass
+
+    # Returns the size of the model evaluations of each point; in case of scalar values
+    # (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output
+    def point_output_length(self):
+        return 1
+
+    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
+    def interpolate_points(self, mesh_points_grid, evaluation_points):
+        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
+
+    def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
+        num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
+        interpolation = np.zeros((num_points, self.point_output_length()))
+        for component_grid in self.scheme:
+            interpolation += self.interpolate_grid_component(grid_coordinates, component_grid) * component_grid.coefficient
+        return interpolation
+
+    def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
+        grid_points = list(get_cross_product(grid_coordinates))
+        return self.interpolate_points(grid_points, component_grid)
+
 class AreaOperation(GridOperation):
     def is_area_operation(self):
         return True
@@ -62,6 +93,16 @@ class Integration(AreaOperation):
         self.dim = dim
         self.dict_integral = {}
         self.dict_points = {}
+        self.integral = np.zeros(f.output_length())
+
+    def get_result(self):
+        return self.integral
+
+    def point_output_length(self):
+        return self.f.output_length()
+
+    def initialize(self):
+        self.f.reset_dictionary()
 
     def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution
@@ -79,10 +120,10 @@ class Integration(AreaOperation):
             refinement_container.integral += partial_integral
         return evaluations
 
-    def evaluate_levelvec(self, start, end, levelvector):
+    def evaluate_levelvec(self, start, end, component_grid):
+        levelvector = component_grid.levelvector
         partial_integral = self.grid.integrate(self.f, levelvector, start, end)
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
-        return partial_integral, evaluations
+        self.integral += partial_integral * component_grid.coefficient
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         if additional_info.error_name == "extend_parent":
@@ -317,10 +358,6 @@ class Integration(AreaOperation):
         subcell.integral += integral * coefficient
         if refinement_container is not None:
             refinement_container.integral += integral * coefficient
-
-    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
-    def interpolate_points(self, mesh_points_grid, evaluation_points):
-        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     def print_evaluation_output(self, refinement):
         combi_integral = refinement.integral
@@ -886,9 +923,7 @@ class Interpolation(Integration):
     def interpolate_points(f: Function, dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
         mesh_points = get_cross_product(mesh_points_grid)
-
         function_value_dim = f.output_length()
-
         # calculate function values at mesh points and transform  correct data structure for scipy
         values = np.array([f(p) if grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         interpolated_values_array = []
