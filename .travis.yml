@@ -1,0 +1,11 @@
+language: python
+addons:
+  apt:
+    packages:
+    - python3.5
+    - numpy
+    - scipy 
+    - matplotlib
+script:
+  - cd test/
+  - ./run_tests.sh
