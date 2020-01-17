@@ -5,5 +5,7 @@ before_script:
   - pip3 install matplotlib
   - pip3 install nose
   - pip3 install chaospy
-script:
-  - python3 -m nose
+test:
+  stage: test
+  script:
+    - python3 -m nose
