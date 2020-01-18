@@ -51,6 +51,176 @@ class AreaOperation(GridOperation):
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container):
         pass
 
+from numpy.linalg import solve
+from scipy.integrate import nquad
+from sklearn import datasets, preprocessing
+from matplotlib import cm
+
+class DensityEstimation(AreaOperation):
+    def __init__(self, grid, data, dim, level):
+        self.data = data
+        self.dim = dim
+        self.grid = grid
+        self.level = level
+
+    def perform_operation(self, level):
+        self.calcAlphas(level, self.data)
+
+    def getIndexList(self, levelvec):
+        lengths = [2 ** l - 1 for l in levelvec]
+        dim_lists = [range(1, n + 1) for n in lengths]
+        return get_cross_product_list(dim_lists)
+
+    def checkIfAdjacent(self, ivec, jvec):
+        for i in range(len(ivec)):
+            if abs(ivec[i] - jvec[i]) > 1:
+                return False
+        return True
+
+    def getL2ScalarProduct(self, ivec, jvec, lvec):
+        if self.checkIfAdjacent(ivec, jvec):
+            dim = len(ivec)
+            f = lambda x, y: (self.basisFunction(ivec, lvec, [x, y]) * self.basisFunction(jvec, lvec, [x, y]))
+            print("-------------")
+            print("calc")
+            start = [(min(ivec[d], jvec[d]) - 1) * 2 ** (-lvec[d]) for d in range(dim)]
+            end = [(max(ivec[d], jvec[d]) + 1) * 2 ** (-lvec[d]) for d in range(dim)]
+            print(ivec, jvec)
+            print(start, end)
+            return nquad(f, [[start[d], end[d]] for d in range(dim)], opts={"epsabs": 10 ** (-15),
+                                                                            "epsrel": 1 ** (
+                                                                                -15)})
+        else:
+            print("-------------")
+            print("skipped")
+            return (0, 0)
+
+    def calcDensityEstimation(self, levelvec, data, lambd=0):
+        R = self.constructR(levelvec)
+        R[np.diag_indices_from(R)] += lambd
+        b = self.calcB(data, levelvec)
+        return solve(R, b)
+
+    def calcB(self, data, levelvec):
+        M = len(data)
+        N = np.prod(self.grid.levelToNumPoints(levelvec))
+        b = np.empty(N)
+
+        indexList = self.getIndexList(levelvec)
+        for i in range(N):
+            sum = 0
+            for j in range(M):
+                sum += self.basisFunction(indexList[i], levelvec, data[j])
+            b[i] = ((1 / M) * sum)
+            print((1 / M) * sum)
+        return b
+
+    def constructR(self, levelvec, lumping=False):
+        numberPoints = np.prod(self.grid.levelToNumPoints(levelvec))
+        R = np.zeros((numberPoints, numberPoints))
+        indexList = self.getIndexList(levelvec)
+        print(indexList, levelvec)
+        diagVal, err = self.getL2ScalarProduct(indexList[0], indexList[0], levelvec)
+        R[np.diag_indices_from(R)] += diagVal
+        if lumping == False:
+            for i in range(0, len(indexList) - 1):
+                for j in range(i + 1, len(indexList)):
+                    temp, err = self.getL2ScalarProduct(indexList[i], indexList[j], levelvec)
+                    print(i, j)
+                    print(temp)
+
+                    if temp != 0:
+                        R[i, j] = temp
+                        R[j, i] = temp
+        return R
+
+    def calcAlphas(self, level, data, lambd=0):
+        alphas = {}
+        for i in range(level, 0, -1):
+            for j in range(1, level + 1, 1):
+                if i + j == level + 1:
+                    print("Calculating grid add", (i, j), sep=" ")
+                    alphas.update({(i, j): self.calcDensityEstimation((i, j), data, lambd)})
+        for k in range(level - 1, 0, -1):
+            for l in range(1, level, 1):
+                if k + l == level:
+                    print("Calculating grid sub", (k, l), sep=" ")
+                    alphas.update({(k, l): self.calcDensityEstimation((k, l), data, lambd)})
+        return alphas
+
+    def preCalcAlphas(self, upToLevel, data, lambd=0):
+        alphas = {}
+        # alphas.update({1: {(1, 1): calcDensityEstimation((1, 1), data, lambd)}})
+        for i in range(2, upToLevel + 1):
+            alphas.update({i: self.calcAlphas(i, data, lambd)})
+        return alphas
+
+    def combiDensityEstimation(self, level, alphas, x):
+        ret = 0
+        for i in range(level, 0, -1):
+            for j in range(1, level + 1, 1):
+                if i + j == level + 1:
+                    ret += self.weightedBasisFunction((i, j), alphas.get((i, j)), x)
+        for k in range(level - 1, 0, -1):
+            for l in range(1, level, 1):
+                if k + l == level:
+                    ret -= self.weightedBasisFunction((k, l), alphas.get((k, l)), x)
+        return ret
+
+    def basisFunction(self, ivec, lvec, x):
+        dim = len(ivec)
+        result = 1
+        for d in range(dim):
+            result *= max((1 - abs(2 ** lvec[d] * x[d] - ivec[d])), 0)
+        return result
+
+    def weightedBasisFunction(self, levelvec, alphas, x):
+        indices = self.getIndexList(levelvec)
+        sum = 0
+        for i, index in enumerate(indices):
+            # TODO test if i is in support of x, if not --> dont calculate
+            sum += self.basisFunction(index, levelvec, x) * alphas[i]
+        return sum
+
+    def plot(self, pointsPerDim=100):
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        scaler.fit(self.data[0])
+        dataTrans = scaler.transform(self.data[0])
+        alphas = self.calcAlphas(self.level, dataTrans, 0)
+
+        X = np.linspace(0.0, 1.0, pointsPerDim)
+        Y = np.linspace(0.0, 1.0, pointsPerDim)
+        X, Y = np.meshgrid(X, Y)
+
+        Z = np.zeros_like(X)
+        for i in range(pointsPerDim):
+            for j in range(pointsPerDim):
+                Z[i][j] = self.combiDensityEstimation(self.level, alphas, [X[i, j], Y[i, j]])
+
+        surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+        ax.set_xlim(0.0, 1.0)
+        ax.set_ylim(0.0, 1.0)
+        ax.set_zlim(bottom=0.0)
+
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        plt.show()
+        plt.close(fig)
+
+    def plotData(self):
+        points = self.data[0]
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        scaler.fit(points)
+        dataTrans = scaler.transform(points)
+        x, y = zip(*dataTrans)
+        plt.scatter(x, y)
+        plt.title("#points = %d" % len(points))
+        plt.show()
+
 from scipy.interpolate import interpn
 
 class Integration(AreaOperation):
@@ -329,7 +499,7 @@ class Integration(AreaOperation):
         print("combiintegral:", combi_integral)
 
     def get_twin_error(self, d, area, norm):
-        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))        
+        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))
         #return LA.norm(abs(area.integral - area.twins[d].integral), norm)
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, reuse_old_values):
