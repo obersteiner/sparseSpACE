@@ -275,10 +275,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     def coarsen_grid(self, levelvector: Sequence[int], area, num_sub_diagonal: int):
         return levelvector, True
 
-    @abc.abstractmethod
-    def finalize_evaluation(self):
-        pass
-
     def finalize_evaluation_operation(self, areas, evaluation_array: Sequence[int]) -> None:
         if self.print_output:
             print("Curent number of function evaluations", self.get_total_num_points())
