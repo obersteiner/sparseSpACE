@@ -9,8 +9,7 @@ from PDE_Solver import Poisson
 class testPDE(unittest.TestCase):
 
     def test_FEniCS(self):
-        "Test solver by reproducing u = 1 + x^2 + 2y^2"
-
+        "Test vanilla FEniCS solver by reproducing analytic solution u_exact = 1 + x^2 + 2y^2"
         tol = 1E-10
         poisson2D = Poisson('-6.0', 1, '1 + x[0]*x[0] + 2*x[1]*x[1]', 2, '1 + x[0]*x[0] + 2*x[1]*x[1]', 2)
 

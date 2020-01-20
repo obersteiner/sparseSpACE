@@ -1,3 +1,7 @@
+''' better name would be ComponentGrid or Grid in general a ComponentGrid would be a child of ?'''
+import numpy as np
+from abc import abstractmethod
+
 class ComponentGridInfo(object):
     '''
     Holds basic information of a grid used for Combination Technique
@@ -43,7 +47,12 @@ class ComponentGridInfo(object):
 
     def getNodeCount(self):
         return self.N
-    
+
+    def getCoefficient(self):
+        assert self.coefficient != None, "No coefficient specified for this grid"
+        return self.coefficient
+
+
     @abstractmethod
     def fillData(self,*args):
         pass
@@ -53,16 +62,16 @@ class ComponentGridInfo(object):
         pass 
     
     @abstractmethod
-    def extrapolateData(self,level,*args,**kwargs):
+    def interpolateData(self,level,*args,**kwargs):
         pass
 
-    class DummyGridArbitraryDim(ComponentGridInfo):
-    ''' Dummy grid with boundaries in unit domain of arbitrary dimension'''
+class DummyGridArbitraryDim(ComponentGridInfo):
+    ''' Dummy grid with boundaries, defined in unit domain of arbitrary dimension '''
     def __init__(self, levelvector, **kwargs):
         ComponentGridInfo.__init__(self,levelvector, **kwargs)
         
     def fillData(self, f=None, sdcFactor=0):
-        ''' Fill data with:
+        ''' Fill data with either:
             a) values evaluated on gridpoints or
             b) specified numpy array of appropriate size 
         '''
@@ -70,19 +79,19 @@ class ComponentGridInfo(object):
             if callable(f):
                 # Fill data with values evaluated on grid points
                 self.data = f(*self.coord)
-                if sdcFactor != 0:
-                    self.addSDC(sdcFactor)
+                # if sdcFactor != 0:
+                #     self.addSDC(sdcFactor)
             else:
-                assert np.shape(f), "Invalid shape of provided grid data array"
+                assert np.shape(f) == np.shape(self.data), "Invalid shape of provided grid data array"
                 self.data = f
     
     def getData(self):
         return self.data
 
-    def extrapolateData(self, levelvector):
+    def interpolateData(self, levelvector) -> np.array:
         # get level for interpolating
         new = tuple(map(float,[(2**i+1) for i in level]))
         # get factor for interpolation
-        fac = divide(self.data, self.N)
+        fac = np.divide(self.data, self.N)
         # interpolate grid
-        return zoom(self.data, fac,order=1)
+        return np.zoom(self.data, fac, order=1)

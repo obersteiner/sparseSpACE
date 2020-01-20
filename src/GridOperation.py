@@ -1141,29 +1141,44 @@ class UQDistribution:
 
 class PDE_Solve(GridOperation):
     """
-    Fills component grid with data at vertives evaluated by PDE_Solver and provides functionalities
-    for combining them together by means of either interpolation or directly by combination 
-    of hierarhical bases
+    Fills component grid with data at vertices evaluated by PDE_Solver and provides functionalities
+    for combining them to the full grid (self.grid) by means of interpolation (hierarchization still to come)
     Inputs: 
         - solver: PDE_Solver (currently only FEniCS supported)
-        - dim: 
-        - **kwargs:
-            - grid: Grid? - global grid, everything is combined to with interpolation technique
+        - grid: ComponenGridInfo - full grid every component grid is combined to and reference solution computed on
     """
-    def __init__(self, solver, dim: int, **kwargs):
+    def __init__(self, solver, maxlv: tuple, reference_solution=None):
         self.solver = solver
-        self.dim = dim
-        self.grid = kwargs.get(grid, None)
+        self.maxlv = maxlv
+        self.dim = len(maxlv)
+        self.gridsDict = {}
+        self.reference_solution = reference_solution
         
-    def evaluate_response(self, component_grid):
-        u = self.solver.solvePDE(*(component_grid.getNodeCount()-np.ones(self.dim)))
-        component_grid.fillData(u.getVertexValues[0])
+    def evaluate_levelvec(self, component_grid):
+        # Evaluate PDE on component_grid
+        self.solver.solve(*(component_grid.getNodeCount()-np.ones(self.dim)))
+        component_grid.fillData(self.solver.getVertexValues())
+
+        # Store filled component_grid locally in dictionary
+        levelvec = tuple(component_grid.getLevelvector())
+        self.gridsDict[levelvec] = component_grid
+
+    def get_result(self):
+        # Extrapolate all component_grids to adequate size and combine them
+        for grid in self.gridsDict.values():
+            data = grid.interpolateData(self.maxlv)
+            combi_result += grid.getCoefficient()*data
+
+        return combi_result
+
+    def get_reference_solution(self):
+        return self.reference_solution
+    
+    def plot_error(self):
+        pass
+
+    def plot_combi_solution(self):
+        pass
 
 
-    def combine_response(self, target, source):
-        #add grid and combine it with the rest
-        if self.grid != None
-            # combination by interpolation 
-        else:
-            # direct combination
 
