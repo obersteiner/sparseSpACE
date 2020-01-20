@@ -24,7 +24,7 @@ class TestRefinementContainer(unittest.TestCase):
 
         # calc errors and benefits
         for d in range(100):
-            container.calc_error(d, None, np.inf)
+            container.calc_error(d, np.inf)
             container.set_benefit(d)
 
         # check error and benefit values
@@ -45,7 +45,7 @@ class TestRefinementContainer(unittest.TestCase):
         container = RefinementContainer(ref_objects, 1, error_estimator=ErrorCalculatorSingleDimVolumeGuided())
         # calculate errors and benefits
         for d in range(100):
-            container.calc_error(d, None, np.inf)
+            container.calc_error(d, np.inf)
             container.set_benefit(d)
         # check sizes
         self.assertEqual(container.size(), 100)
@@ -138,7 +138,7 @@ class TestRefinementContainer(unittest.TestCase):
         meta_container = MetaRefinementContainer(containers)
 
         # calc errors and benefits
-        meta_container.calc_error(None, None, np.inf)
+        meta_container.calc_error(None, np.inf)
         meta_container.set_benefit(None)
 
         # check errors and benefits
@@ -164,7 +164,7 @@ class TestRefinementContainer(unittest.TestCase):
         meta_container = MetaRefinementContainer(containers)
 
         # calculate error and benefits
-        meta_container.calc_error(None, None, np.inf)
+        meta_container.calc_error(None, np.inf)
         meta_container.set_benefit(None)
         # check sizes
         for d in range(5):

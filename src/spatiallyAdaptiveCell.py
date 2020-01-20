@@ -20,7 +20,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
 
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec, numSubDiagonal):
-        return self.f.get_f_dict_points()
+        return self.operation.f.get_f_dict_points()
 
     def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
         print("Not yet implemented!")
@@ -251,7 +251,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         start = cell[0]
         end = cell[1]
         corner_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start[d], end[d]] for d in range(self.dim)])]))
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
+        values = np.array([self.operation.f(p) if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
         values = values.reshape(*[2 for d in range(self.dim)])
         values = np.transpose(values)
         corner_points_grid = [[start[d], end[d]] for d in range(self.dim)]
