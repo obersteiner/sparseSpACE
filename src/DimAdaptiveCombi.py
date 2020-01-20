@@ -8,28 +8,28 @@ class DimAdaptiveCombi(StandardCombi):
     # initialization
     # a = lower bound of integral; b = upper bound of integral
     # grid = specified grid (e.g. Trapezoidal);
-    def __init__(self, a, b, grid=None):
+    def __init__(self, a, b, operation):
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
         self.b = b
-        self.grid = grid
+        self.operation = operation
         self.combischeme = CombiScheme(self.dim)
+        self.grid = self.operation.get_grid()
         assert (len(a) == len(b))
 
-    # standard combination scheme for quadrature
+    # standard dimension-adaptive combination scheme for quadrature
     # lmin = minimum level; lmax = target level
     # f = function to integrate; dim=dimension of problem
-    def perform_combi(self, minv, maxv, f, tolerance, reference_solution=None):
+    def perform_combi(self, minv, maxv, tolerance):
         start = self.a
         end = self.b
-        self.f = f
-        self.f.reset_dictionary()
+        self.operation.initialize()
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
-        real_integral = reference_solution
-        assert(reference_solution is not None)
+        real_integral = self.operation.get_reference_solution()
+        assert(real_integral is not None)
         self.combischeme.init_adaptive_combi_scheme(maxv, minv)
         combiintegral = 0
         self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0])
@@ -42,13 +42,13 @@ class DimAdaptiveCombi(StandardCombi):
             error_array = np.zeros(len(self.scheme))
             for i, component_grid in enumerate(self.scheme):
                 if tuple(component_grid.levelvector) not in integral_dict:
-                    integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
+                    integral = self.operation.grid.integrate(self.operation.f, component_grid.levelvector, start, end)
                     integral_dict[tuple(component_grid.levelvector)] = integral
                 else:
                     integral = integral_dict[tuple(tuple(component_grid.levelvector))]
                 # as error estimator we compare to the analytic solution and divide by the cost=number of points in grid
                 error_array[i] = abs(integral - real_integral) / abs(real_integral) / np.prod(
-                    self.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
+                    self.operation.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
                 combiintegral += integral * component_grid.coefficient
             do_refine = True
             if max(abs(combiintegral - real_integral) / abs(real_integral)) < tolerance:
