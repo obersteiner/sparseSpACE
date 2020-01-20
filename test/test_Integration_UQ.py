@@ -32,7 +32,7 @@ class TestIntegrationUQ(unittest.TestCase):
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op)
         #print("performSpatiallyAdaptiv…")
-        v = combiinstance.performSpatiallyAdaptiv(1, 2, fw, error_operator, tol=10**-3,
+        v = combiinstance.performSpatiallyAdaptiv(1, 2, error_operator, tol=10**-3,
             max_evaluations=40, min_evaluations=25, do_plot=False, print_output=False)
         integral = v[3][0]
         #print("expectation", integral)

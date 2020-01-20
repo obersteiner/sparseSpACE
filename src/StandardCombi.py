@@ -139,7 +139,7 @@ class StandardCombi(object):
     def get_total_num_points(self, doNaive: bool=False,
                              distinct_function_evals: bool=True) -> int:  # we assume here that all lmax entries are equal
         if distinct_function_evals:
-            return self.f.get_f_dict_size()
+            return self.operation.get_distinct_points()
         numpoints = 0
         for component_grid in self.scheme:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
