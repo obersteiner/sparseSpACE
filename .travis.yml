@@ -1,0 +1,9 @@
+language: python
+install:
+  - pip3 install numpy
+  - pip3 install scipy 
+  - pip3 install matplotlib
+  - pip3 install nose
+  - pip3 install chaospy
+script:
+  - python3 -m nose

@@ -39,6 +39,35 @@ class GridOperation(object):
     def get_reference_solution(self) -> Sequence[float]:
         return self.reference_solution
 
+    def initialize(self):
+        pass
+
+    # This method calculates the error between the combi result and the reference solution. Can be changed by Operation.
+    def get_error(self, combivalue, reference_solution):
+        return max(abs(combivalue - reference_solution))
+
+    # This method is called after the combination and should return the combination result
+    def get_result(self):
+        pass
+
+    # Returns the size of the model evaluations of each point; in case of scalar values
+    # (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output
+    def point_output_length(self):
+        return 1
+
+    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
+    def interpolate_points(self, mesh_points_grid, evaluation_points):
+        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
+
+    @abc.abstractmethod
+    def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
+        pass
+
+    @abc.abstractmethod
+    def get_distinct_points(self):
+        pass
+        f.get_f_dict_size()
+
 class AreaOperation(GridOperation):
     def is_area_operation(self):
         return True
@@ -224,7 +253,7 @@ class DensityEstimation(AreaOperation):
 from scipy.interpolate import interpn
 
 class Integration(AreaOperation):
-    def __init__(self, f, grid, dim,  reference_solution=None):
+    def __init__(self, f: Function, grid: Grid, dim: int,  reference_solution: Sequence[float]=None):
         self.f = f
         self.f_actual = None
         self.grid = grid
@@ -232,6 +261,23 @@ class Integration(AreaOperation):
         self.dim = dim
         self.dict_integral = {}
         self.dict_points = {}
+        self.integral = np.zeros(f.output_length())
+
+    def get_distinct_points(self):
+        return self.f.get_f_dict_size()
+
+    def get_result(self):
+        return self.integral
+
+    def point_output_length(self):
+        return self.f.output_length()
+
+    def initialize(self):
+        self.f.reset_dictionary()
+        self.integral = np.zeros(self.f.output_length())
+
+    def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
+        return self.f.eval(coordinate)
 
     def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution
@@ -249,10 +295,10 @@ class Integration(AreaOperation):
             refinement_container.integral += partial_integral
         return evaluations
 
-    def evaluate_levelvec(self, start, end, levelvector):
-        partial_integral = self.grid.integrate(self.f, levelvector, start, end)
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
-        return partial_integral, evaluations
+    def evaluate_levelvec(self, component_grid):
+        levelvector = component_grid.levelvector
+        partial_integral = self.grid.integrate(self.f, levelvector, self.grid.a, self.grid.b)
+        self.integral += partial_integral * component_grid.coefficient
 
     def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         if additional_info.error_name == "extend_parent":
@@ -488,10 +534,6 @@ class Integration(AreaOperation):
         if refinement_container is not None:
             refinement_container.integral += integral * coefficient
 
-    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
-    def interpolate_points(self, mesh_points_grid, evaluation_points):
-        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
-
     def print_evaluation_output(self, refinement):
         combi_integral = refinement.integral
         if len(combi_integral) == 1:
@@ -544,10 +586,9 @@ class Integration(AreaOperation):
     def set_function(self, f=None):
         assert f is None or f == self.f, "Integration and the refinement should use the same function"
 
-    def init_dimension_wise(self, grid, grid_surplusses, f, refinement_container, lmin, lmax, a, b, version = 2):
+    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
-        self.set_function(f)
         self.refinement_container = refinement_container
         self.version = version
         self.lmin = lmin
@@ -1056,9 +1097,7 @@ class Interpolation(Integration):
     def interpolate_points(f: Function, dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
         mesh_points = get_cross_product(mesh_points_grid)
-
         function_value_dim = f.output_length()
-
         # calculate function values at mesh points and transform  correct data structure for scipy
         values = np.array([f(p) if grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         interpolated_values_array = []
@@ -1088,7 +1127,7 @@ class UncertaintyQuantification(Integration):
             dim: int=None, grid=None, reference_solution=None):
         dim = dim or len(a)
         super().__init__(f, grid, dim, reference_solution)
-
+        self.f_model = f
         # If distributions is not a list, it specifies the same distribution
         # for every dimension
         if not isinstance(distributions, list):
@@ -1305,7 +1344,7 @@ class UncertaintyQuantification(Integration):
             num_polys = len(self.pce_polys)
             output_dim = len(integral) // num_polys
             coefficients = integral.reshape((num_polys, output_dim))
-            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            self.gPCE = np.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
             return
 
         self._set_nodes_weights_evals(combiinstance)
@@ -1358,12 +1397,21 @@ class UncertaintyQuantification(Integration):
             return self.f
         return FunctionPower(self.f, k)
 
+    def set_moment_Function(self, k: int):
+        self.f = self.get_moment_Function(k)
+
     # Optimizes adapting for multiple moments at once
     def get_moments_Function(self, ks: Sequence[int]):
         return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
 
+    def set_moments_Function(self, ks: Sequence[int]):
+        self.f = self.get_moments_Function(ks)
+
     def get_expectation_variance_Function(self):
         return self.get_moments_Function([1, 2])
+
+    def set_expectation_variance_Function(self):
+        self.f = self.get_expectation_variance_Function()
 
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
@@ -1376,15 +1424,23 @@ class UncertaintyQuantification(Integration):
         # ~ return FunctionCustom(funcs)
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
+    def set_PCE_Function(self, polynomial_degrees):
+        self.f = self.get_PCE_Function(polynomial_degrees)
+
     def get_pdf_Function(self):
         pdf = self.distributions_joint.pdf
         return FunctionCustom(lambda coords: float(pdf(coords)))
+
+    def set_pdf_Function(self):
+        self.f = self.get_pdf_Function()
 
     # Returns a Function which applies the PPF functions before evaluating
     # the problem function; it can be integrated without weighting
     def get_inverse_transform_Function(self, func=None):
         return FunctionInverseTransform(func or self.f, self.distributions)
 
+    def set_inverse_transform_Function(self, func=None):
+        self.f = self.get_inverse_transform_Function(func or self.f, self.distributions)
 
 # UncertaintyQuantification extended for testing purposes
 class UncertaintyQuantificationTesting(UncertaintyQuantification):

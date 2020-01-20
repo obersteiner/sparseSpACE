@@ -23,8 +23,9 @@ class StandardCombi(object):
         self.operation = operation
         self.do_parallel = True
 
+    # This method evaluates the
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
-        interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
+        interpolation = np.zeros((len(interpolation_points), self.operation.point_output_length()))
         self.do_parallel = False
         if self.do_parallel:
             pool = mp.Pool(4)
@@ -36,25 +37,16 @@ class StandardCombi(object):
         else:
             for component_grid in self.scheme:
                 interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-        #print(interpolation)
         return interpolation
 
-    def get_multiplied_interpolation(self, interpolation_points, component_grid):
-        return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-
-    #def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
-    #    interpolation = np.zeros((len(interpolation_points), self.f.output_length()))
-    #    for component_grid in self.scheme:
-    #        interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
-    #    return interpolation
-
-    def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
-        self.grid.setCurrentArea(start=self.a, end=self.b, levelvec=component_grid.levelvector)
-        return Interpolation.interpolate_points(f=self.f, dim=self.dim, grid=self.grid, mesh_points_grid=self.grid.coordinate_array_with_boundary, evaluation_points=interpolation_points)
+    def interpolate_points(self, grid_points, component_grid):
+        self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
+        return self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary,
+                                          evaluation_points=grid_points)
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
         num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
-        interpolation = np.zeros((num_points, self.f.output_length()))
+        interpolation = np.zeros((num_points, self.operation.point_output_length()))
         for component_grid in self.scheme:
             interpolation += self.interpolate_grid_component(grid_coordinates, component_grid) * component_grid.coefficient
         return interpolation
@@ -62,6 +54,9 @@ class StandardCombi(object):
     def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         grid_points = list(get_cross_product(grid_coordinates))
         return self.interpolate_points(grid_points, component_grid)
+
+    def get_multiplied_interpolation(self, interpolation_points, component_grid):
+        return self.operation.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
 
     def plot(self, plotdimension: int=0) -> None:
         if self.dim != 2:
@@ -72,7 +67,7 @@ class StandardCombi(object):
         X = [x for x in xArray]
         Y = [y for y in yArray]
         points = list(get_cross_product([X, Y]))
-        # print(points)
+
         #f_values = np.asarray(self.interpolate_grid([X,Y]))
 
         X, Y = np.meshgrid(X, Y, indexing="ij")
@@ -95,68 +90,47 @@ class StandardCombi(object):
         # plt.show()
         plt.show()
 
-    def set_combi_parameters(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]]) -> None:
+    def set_combi_parameters(self, minv: int, maxv: int) -> None:
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
         # get combi scheme
         self.scheme = self.combischeme.getCombiScheme(minv, maxv, self.print_output)
-        self.f = f
 
-    # standard combination scheme for quadrature
+    # perform standard combination scheme for chosen operation
     # lmin = minimum level; lmax = target level
-    # f = function to integrate;
-    def perform_combi(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]], reference_solution: Sequence[float]=None) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
-        if self.operation is not None:
-            return self.perform_operation(minv, maxv, f, reference_solution)
-        start = self.a
-        end = self.b
-        self.set_combi_parameters(minv, maxv, f)
-        self.f.reset_dictionary()
-        combiintegral = 0
-        for component_grid in self.scheme:
-            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end) * component_grid.coefficient
-            combiintegral += integral
-        real_integral = reference_solution
-        if self.print_output:
-            print("CombiSolution", combiintegral)
-        if reference_solution is not None:
-            if self.print_output:
-                print("Analytic Solution", real_integral)
-                print("Difference", abs(combiintegral - real_integral))
-            return self.scheme, max(abs(combiintegral - real_integral)), combiintegral
-        else:
-            return self.scheme, None, combiintegral
-
-    def perform_operation(self, minv: int, maxv: int, f: Callable[[Tuple[float, ...]], Sequence[float]], reference_solution: Sequence[float]=None) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
+    def perform_operation(self, minv: int, maxv: int) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
         assert self.operation is not None
-        start = self.a
-        end = self.b
-        self.set_combi_parameters(minv, maxv, f)
-        self.f.reset_dictionary()
-        combivalue = None
+
+        # initializtation
+        self.set_combi_parameters(minv, maxv)
+        self.operation.initialize()
+
+        # iterate over all component_grids and perform operation
         for component_grid in self.scheme:  # iterate over component grids
-            if self.operation.is_area_operation():
-                value, evaluations = self.operation.evaluate_levelvec(start, end, component_grid.levelvector)
-                if combivalue is None:
-                    combivalue = value
-                else:
-                    combivalue = self.operation.add_value(combivalue, value, component_grid)
-            else:
-                assert (False)  # not implemented yet
-                #points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
-                #self.operation.perform_operation(points)
-                #self.compute_evaluations(evaluation_array, points)
+            self.operation.evaluate_levelvec(component_grid)
+
+        # potential post processing after processing all component grids
+        self.operation.post_processing()
+
+        # get result of combination
+        combi_result = self.operation.get_result()
+
+        # obtain reference solution if available
         reference_solution = self.operation.get_reference_solution()
+
+        # output combi_result
         if self.print_output:
-            print("CombiSolution", combivalue)
+            print("CombiSolution", combi_result)
+
+        # return results
         if reference_solution is not None:
             if self.print_output:
                 print("Analytic Solution", reference_solution)
-                print("Difference", abs(combivalue - reference_solution))
-            return self.scheme, max(abs(combivalue - reference_solution)), combivalue
+                print("Difference", self.operation.get_error(combi_result, reference_solution))
+            return self.scheme, self.operation.get_error(combi_result, reference_solution), combi_result
         else:
-            return self.scheme, None, combivalue
+            return self.scheme, None, combi_result
 
     def get_num_points_component_grid(self, levelvector: Sequence[int], doNaive: bool, num_sub_diagonal: int):
         return np.prod(self.grid.levelToNumPoints(levelvector))
@@ -165,7 +139,7 @@ class StandardCombi(object):
     def get_total_num_points(self, doNaive: bool=False,
                              distinct_function_evals: bool=True) -> int:  # we assume here that all lmax entries are equal
         if distinct_function_evals:
-            return self.f.get_f_dict_size()
+            return self.operation.get_distinct_points()
         numpoints = 0
         for component_grid in self.scheme:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
@@ -202,7 +176,7 @@ class StandardCombi(object):
             points = self.get_points_component_grid(lmax, num_sub_diagonal)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
-            if any([math.isinf(x) for x in np.concatenate(a, b)]):
+            if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
                 ax.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
                 ax.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
             else:
@@ -430,10 +404,15 @@ class StandardCombi(object):
     def get_points_component_grid_not_null(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
         return self.get_points_component_grid(levelvec, numSubDiagonal)
 
-    def get_points_component_grid(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
+    def get_points_component_grid(self, levelvec, numSubDiagonal=None) -> Sequence[Tuple[float, ...]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.getPoints()
         return points
+
+    def get_points_component_grid_1D_arrays(self, levelvec, numSubDiagonal=None) -> Sequence[Sequence[float]]:
+        self.grid.setCurrentArea(self.a, self.b, levelvec)
+        points = self.grid.coordinate_array
+        return [points]
 
     def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
