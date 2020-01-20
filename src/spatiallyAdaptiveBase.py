@@ -37,7 +37,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         areas = self.get_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
         self.compute_solutions(areas, evaluation_array)
-        num_evaluations = np.prod(evaluation_array)
+        num_evaluations = np.sum(evaluation_array)
         combi_solution = self.operation.get_result()
         return combi_solution, num_evaluations
 
