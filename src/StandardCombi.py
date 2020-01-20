@@ -145,15 +145,14 @@ class StandardCombi(object):
                     combivalue = self.operation.add_value(combivalue, value, component_grid)
             if isinstance(self.operation, PDE_Solve):
                 self.operation.evaluate_response(component_grid) # PDE_Solver is called from there, stores data in component_grid
-                if combiGrid is None:
-                    combiGrid = component_grid #combineGrids(scheme) # create combiGrid with first response
-                else:
-                    combiGrid = self.operation.combine_response(combiGrid, component_grid) # combine component_grid filled with new data with the existing ones
+                self.operation.combine_grids(component_grid) # combine component_grid filled with new data with the existing ones
+                combiGrid = self.operation.get_combination()
             else:
                 assert (False)  # not implemented yet
                 points = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
                 self.operation.perform_operation(points)
                 #self.compute_evaluations(evaluation_array, points)
+            
         reference_solution = self.operation.get_reference_solution()
         if self.print_output:
             print("CombiSolution", combivalue)
@@ -164,6 +163,8 @@ class StandardCombi(object):
             return self.scheme, max(abs(combivalue - reference_solution)), combivalue
         else:
             return self.scheme, None, combivalue
+
+        
 
     def get_num_points_component_grid(self, levelvector: Sequence[int], doNaive: bool, num_sub_diagonal: int):
         return np.prod(self.grid.levelToNumPoints(levelvector))
