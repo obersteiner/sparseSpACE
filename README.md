@@ -14,7 +14,7 @@ Software requirements:
 - scipy (1.1.0 or higher)
 - numpy
 - matplotlib
-- ipyton3 (for Tutorials)
+- ipython3 (for Tutorials)
 - ipython3 notebooks or jupyter notebook (for Tutorials)
 - chaospy (for UQ)
 - dill (for saving/loading the current state of the refinement to/from a file)
