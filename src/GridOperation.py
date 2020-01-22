@@ -1363,19 +1363,22 @@ class PDE_Solve(GridOperation):
     for combining them to the full grid (self.grid) by means of interpolation (hierarchization still to come)
     Inputs: 
         - solver: PDE_Solver (currently only FEniCS supported)
-        - grid: ComponenGridInfo - full grid every component grid is combined to and reference solution computed on
     """
-    def __init__(self, solver, maxlv: tuple, reference_solution=None):
+    def __init__(self, solver, maxlv: tuple, grid: Grid, reference_solution=None):
         self.solver = solver
         self.maxlv = maxlv
+        self.grid = grid
         self.dim = len(maxlv)
         self.gridsDict = {}
         self.reference_solution = reference_solution
         
+    def initialize(self):
+        pass
+
     def evaluate_levelvec(self, component_grid):
         # Evaluate PDE on component_grid
-        self.solver.solve(*(component_grid.getNodeCount()-np.ones(self.dim)))
-        component_grid.fillData(self.solver.getVertexValues())
+        self.solver.solve(component_grid.getNodeCount()-np.ones(self.dim, dtype=int))
+        component_grid.fillData(self.solver.get_vertex_values())
 
         # Store filled component_grid locally in dictionary
         levelvec = tuple(component_grid.getLevelvector())
@@ -1383,6 +1386,7 @@ class PDE_Solve(GridOperation):
 
     def get_result(self):
         # Extrapolate all component_grids to adequate size and combine them
+        combi_result = np.zeros([(2**i+1) for i in self.maxlv])
         for grid in self.gridsDict.values():
             data = grid.interpolateData(self.maxlv)
             combi_result += grid.getCoefficient()*data
@@ -1391,6 +1395,13 @@ class PDE_Solve(GridOperation):
 
     def get_reference_solution(self):
         return self.reference_solution
+
+    def get_grid(self):
+        return self.grid
+
+    def get_error(self, exact, approx):
+        # Dummy Max Error
+        return np.max(np.abs(exact-approx))
     
     def plot_error(self):
         pass
