@@ -6,7 +6,7 @@ class PDE_Solver(object):
     ''' Interface class'''
     
     @abstractmethod
-    def solvePDE(self):
+    def solve(self):
         pass
 
 
@@ -22,7 +22,7 @@ class FEniCS_Solver(PDE_Solver):
         self.f= Expression(f, degree=f_degree)
         self.u_D = Expression(u_D, degree=u_D_degree)
 
-    def solvePDE(self):
+    def solve(self):
         pass
 
     def computeL2Error(self, exact, approx):
@@ -47,12 +47,12 @@ class Poisson(FEniCS_Solver):
             - degree: int - degree of Lagrange elements
         '''
         # Create mesh and define function space
-        def createUnitMesh(N: list):
+        def createUnitMesh(N):
             mesh_classes = [UnitIntervalMesh, UnitSquareMesh, UnitCubeMesh]
-            d = len(N)
+            d = np.size(N)
             mesh = mesh_classes[d - 1](*N)
             return mesh
-
+        
         self.mesh = createUnitMesh(N)
         V = FunctionSpace(self.mesh, 'P', degree)
 
@@ -72,20 +72,22 @@ class Poisson(FEniCS_Solver):
         solve(a == L, self.u, bc)
 
         # Compute vertex values
-        self.u_vertex_values = self.u.compute_vertex_values(self.mesh)
-        self.u_e_vertex_values = self.reference_solution.compute_vertex_values(self.mesh)
+        self.u_vertex_values = self.u.compute_vertex_values(self.mesh).reshape(*N+1)
+        self.u_e_vertex_values = self.reference_solution.compute_vertex_values(self.mesh).reshape(*N+1)
 
-    def getVertexValues(self):
+    def get_vertex_values(self):
+        # Returns vertex values in order
         return self.u_vertex_values
 
-    def plotMesh(self):
+    def plot_mesh(self):
         plot(self.mesh, title='Finite element mesh')
     
-    def plotSolution(self):
+    def plot_solution(self):
         plot(self.u, title='Finite element solution')
 
     # Possible only in the simple case of Poisson:
-    def getReferenceVertexValues(self):
+    # Not really necessary though because vertex values are computed with machine precision accuracy
+    def get_reference_vertex_values(self):
         return self.u_e_vertex_values
 
     def computeL2Error(self):

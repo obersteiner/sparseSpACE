@@ -1,5 +1,6 @@
 ''' better name would be ComponentGrid or Grid in general a ComponentGrid would be a child of ?'''
 import numpy as np
+from scipy.ndimage.interpolation import zoom
 from abc import abstractmethod
 
 class ComponentGridInfo(object):
@@ -13,22 +14,24 @@ class ComponentGridInfo(object):
         - data: np.array of gridpoint data
 
     Inputs:
-        - levelvec: list of length dim determining node count in each dimension of the grid
+        - levelvector: list of length dim determining node count in each dimension of the grid
         - **kwargs:
             - boundaries: bool list, if True, a dimension has boundary
-            - coefficient
 
     '''
-    def __init__(self, levelvector, **kwargs):
-        self.levelvec = levelvector
-        self.dim = len(self.levelvec)
-        self.coefficient = kwargs.get(coefficient, None)
-        self.boundaries = kwargs.get(boundaries, list([True for __ in range(self.dim)]))
+    def __init__(self, levelvector, coefficient, boundaries=None):
+        self.levelvector = levelvector
+        self.dim = len(self.levelvector)
+        self.coefficient = coefficient
+        if boundaries == None: 
+            self.boundaries = list([True for __ in range(self.dim)])
+        else:
+            self.boundaries=boundaries
         self.N = []
 
         coord = []
         for i in range(self.dim):
-            n = 2**self.levelvec[i] + 1
+            n = 2**self.levelvector[i] + 1
             if self.boundaries[i]==True:
                 coord.append(np.linspace(0,1.0,n))
                 self.N.append(n)
@@ -39,59 +42,45 @@ class ComponentGridInfo(object):
         self.coord = np.meshgrid(*coord, indexing='ij') # Corerct for 3D or 4D case ?
         self.data = np.zeros(self.N)
         
+    def fillData(self, f):
+        ''' Fill data with either:
+            a) values evaluated on gridpoints or
+            b) specified numpy array of appropriate size 
+        '''
+        if callable(f):
+            # Fill data with dummy coord values
+            self.data = f(*self.coord)
+        else:
+            assert np.shape(f) == np.shape(self.data), "Invalid shape of provided grid data array"
+            self.data = f
+    
+    def interpolateData(self, levelvector) -> np.array:
+        # get level for interpolating
+        new = tuple(map(float,[(2**i+1) for i in levelvector]))
+        # get factor for interpolation
+        fac = np.divide(new, self.N)
+        # interpolate grid
+        return zoom(self.data, fac, order=1)
+
     def getDim(self):
         return self.dim
 
     def getLevelvector(self):
-        return self.levelvec
+        return self.levelvector
 
     def getNodeCount(self):
         return self.N
 
     def getCoefficient(self):
-        assert self.coefficient != None, "No coefficient specified for this grid"
         return self.coefficient
-
-
-    @abstractmethod
-    def fillData(self,*args):
-        pass
-    
-    @abstractmethod
-    def getData(self):
-        pass 
-    
-    @abstractmethod
-    def interpolateData(self,level,*args,**kwargs):
-        pass
-
-class DummyGridArbitraryDim(ComponentGridInfo):
-    ''' Dummy grid with boundaries, defined in unit domain of arbitrary dimension '''
-    def __init__(self, levelvector, **kwargs):
-        ComponentGridInfo.__init__(self,levelvector, **kwargs)
-        
-    def fillData(self, f=None, sdcFactor=0):
-        ''' Fill data with either:
-            a) values evaluated on gridpoints or
-            b) specified numpy array of appropriate size 
-        '''
-        if f != None:
-            if callable(f):
-                # Fill data with values evaluated on grid points
-                self.data = f(*self.coord)
-                # if sdcFactor != 0:
-                #     self.addSDC(sdcFactor)
-            else:
-                assert np.shape(f) == np.shape(self.data), "Invalid shape of provided grid data array"
-                self.data = f
     
     def getData(self):
         return self.data
 
-    def interpolateData(self, levelvector) -> np.array:
-        # get level for interpolating
-        new = tuple(map(float,[(2**i+1) for i in level]))
-        # get factor for interpolation
-        fac = np.divide(self.data, self.N)
-        # interpolate grid
-        return np.zoom(self.data, fac, order=1)
+
+if __name__=="__main__":
+    component_grid = ComponentGridInfo((1,2),[-1,1])
+    print("Levelvector: {}".format(component_grid.getLevelvector()))
+    print("Node count: {}".format(component_grid.getNodeCount()))
+    for item in component_grid.getNodeCount() - np.ones(2):
+        print(item)

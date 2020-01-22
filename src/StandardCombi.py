@@ -31,6 +31,7 @@ class StandardCombi(object):
         self.do_parallel = True
         self.norm = norm
 
+    # This method evaluates the
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation points using the Combination Technique.
 
