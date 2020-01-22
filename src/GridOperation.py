@@ -56,8 +56,8 @@ class GridOperation(object):
         return 1
 
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
-    def interpolate_points(self, mesh_points_grid, evaluation_points):
-        return Interpolation.interpolate_points(self.f, self.dim, self.grid, mesh_points_grid, evaluation_points)
+    def interpolate_points(self, values, mesh_points_grid, evaluation_points):
+        return Interpolation.interpolate_points(values, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
@@ -66,7 +66,10 @@ class GridOperation(object):
     @abc.abstractmethod
     def get_distinct_points(self):
         pass
-        f.get_f_dict_size()
+
+    @abc.abstractmethod
+    def get_component_grid_values(self, component_grid, mesh_points_grid):
+        pass
 
 class AreaOperation(GridOperation):
     def is_area_operation(self):
@@ -95,6 +98,20 @@ class Integration(AreaOperation):
 
     def get_distinct_points(self):
         return self.f.get_f_dict_size()
+
+    def get_component_grid_values(self, component_grid, mesh_points_grid):
+        mesh_points = get_cross_product(mesh_points_grid)
+        function_value_dim = self.f.output_length()
+        # calculate function values at mesh points and transform  correct data structure for scipy
+        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        return values
+
+    def get_mesh_values(self, mesh_points_grid):
+        mesh_points = get_cross_product(mesh_points_grid)
+        function_value_dim = self.f.output_length()
+        # calculate function values at mesh points and transform  correct data structure for scipy
+        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        return values
 
     def get_result(self):
         return self.integral
@@ -185,7 +202,7 @@ class Integration(AreaOperation):
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = self.interpolate_points(mesh_points_grid, points)
+                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
 
                 integral += np.inner(interpolated_values.T, weights)
 
@@ -353,7 +370,7 @@ class Integration(AreaOperation):
         end_cell = cell.end
         subcell_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
-        interpolated_values = self.interpolate_points(corner_points_grid, subcell_points)
+        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
         width = np.prod(np.array(end_subcell) - np.array(start_subcell))
         factor = 0.5**self.dim * width
         integral = 0.0
@@ -924,12 +941,10 @@ class Integration(AreaOperation):
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     @staticmethod
-    def interpolate_points(f: Function, dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
+    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
         mesh_points = get_cross_product(mesh_points_grid)
-        function_value_dim = f.output_length()
-        # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([f(p) if grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        function_value_dim = len(values[0])
         interpolated_values_array = []
         for d in range(function_value_dim):
             values_1D = np.asarray([value[d] for value in values])
