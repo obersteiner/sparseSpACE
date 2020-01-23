@@ -41,8 +41,11 @@ class StandardCombi(object):
 
     def interpolate_points(self, grid_points, component_grid):
         self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
-        return self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary,
-                                          evaluation_points=grid_points)
+        if type(self.operation) is DensityEstimation:
+            return self.operation.interpolate_points(levelvector=component_grid.levelvector, evaluation_points=grid_points)
+        else:
+            return self.operation.interpolate_points(mesh_points_grid=self.grid.coordinate_array_with_boundary,
+                                              evaluation_points=grid_points)
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
         num_points = np.prod([len(grid_d) for grid_d in grid_coordinates])
