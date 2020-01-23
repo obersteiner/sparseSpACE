@@ -221,7 +221,12 @@ def plotData(data):
     plt.show()
 
 
-moons = datasets.make_moons(noise=0.05)
+
+moons = datasets.make_moons()
+scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+scaler.fit(moons[0])
+dataTrans = scaler.transform(moons[0])
+alphas = calcAlphas(4, dataTrans, 0)
 circle = datasets.make_circles(noise=0.05)
 # alphas = preCalcAlphas(3, moons, 0)
 
@@ -498,9 +503,9 @@ oldFaithfulDataset = ([[3.600, 79],
                        [1.817, 46],
                        [4.467, 74]], 0)
 
-plotData(oldFaithfulDataset)
+#plotData(oldFaithfulDataset)
 plotData(moons)
 plotData(circle)
-plot(4, oldFaithfulDataset)
+#plot(4, oldFaithfulDataset)
 plot(4, moons)
 plot(4, circle)
