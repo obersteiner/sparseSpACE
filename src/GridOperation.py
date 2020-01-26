@@ -90,26 +90,44 @@ class AreaOperation(GridOperation):
 from numpy.linalg import solve
 from scipy.integrate import nquad
 from sklearn import datasets, preprocessing
+import csv
 
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, lambd=0):
+    def __init__(self, data, dim, masslumping=False, lambd=0):
         # TODO make possible to use csv files for data
         self.data = data
         self.dim = dim
         self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
         self.lambd = lambd
+        self.masslumping = masslumping
         self.alphas = {}
+        self.initialized = False
 
     def initialize(self):
         scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-        if (len(self.data) == 1):
-            scaler.fit(self.data)
-            self.data = scaler.transform(self.data)
-        else:
+        if (isinstance(self.data, str)):
+            dataCSV = []
+            with open(self.data, "r", newline="") as file:
+                has_header = csv.Sniffer().has_header(file.read(1024))
+                file.seek(0)
+                reader = csv.reader(file)
+                if has_header:
+                    next(reader)
+                for row in reader:
+                    dataCSV.append([float(i) for i in row])
+                scaler.fit(dataCSV)
+                self.data = scaler.transform(dataCSV)
+                self.initialized = True
+        elif (isinstance(self.data, tuple)):
             scaler.fit(self.data[0])
             self.data = scaler.transform(self.data[0])
+            self.initialized = True
+        else:
+            scaler.fit(self.data)
+            self.data = scaler.transform(self.data)
+            self.initialized = True
 
     def post_processing(self):
         pass
@@ -128,11 +146,14 @@ class DensityEstimation(AreaOperation):
         #     self.alphas = [x + grid.coefficient * y for x, y in
         #                    zip(self.alphas, self.calcDensityEstimation(grid.levelvector))]
 
-    def interpolate_points(self, levelvector, evaluation_points):
+    def get_component_grid_values(self, component_grid, mesh_points_grid):
+        return component_grid.levelvector
+
+    def interpolate_points(self, values, mesh_points_grid, evaluation_points):
         interpolated_values = []
         for i in range(len(evaluation_points)):
-            interpolated_values.append(self.weighted_basis_function(levelvector,
-                                                                    self.alphas.get(tuple(levelvector)),
+            interpolated_values.append(self.weighted_basis_function(values,
+                                                                    self.alphas.get(tuple(values)),
                                                                     evaluation_points[i]))
 
         interpolated_values = np.asarray([[value] for value in interpolated_values])
@@ -152,13 +173,14 @@ class DensityEstimation(AreaOperation):
     def calculate_L2_scalarproduct(self, ivec, jvec, lvec):
         if self.check_adjacency(ivec, jvec):
             dim = len(ivec)
-            f = lambda x, y: (self.hat_function(ivec, lvec, [x, y]) * self.hat_function(jvec, lvec, [x, y]))
+            f = lambda *x: (self.hat_function(ivec, lvec, [*x]) * self.hat_function(jvec, lvec, [*x]))
             print("-" * 100)
             print("Calculating")
             start = [(min(ivec[d], jvec[d]) - 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
             end = [(max(ivec[d], jvec[d]) + 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
             print("Gridpoints: ", ivec, jvec)
             print("Domain: ", start, end)
+            temp = [[start[d], end[d]] for d in range(dim)]
             return nquad(f, [[start[d], end[d]] for d in range(dim)], opts={"epsabs": 10 ** (-15),
                                                                             "epsrel": 1 ** (
                                                                                 -15)})
@@ -192,7 +214,7 @@ class DensityEstimation(AreaOperation):
         print("B vector: ", b)
         return b
 
-    def construct_R(self, levelvec, lumping=False):
+    def construct_R(self, levelvec):
         self.grid.setCurrentArea(start=np.zeros(self.dim), end=np.ones(self.dim), levelvec=levelvec)
         numberPoints = np.prod(self.grid.levelToNumPoints(levelvec))
         R = np.zeros((numberPoints, numberPoints))
@@ -200,8 +222,9 @@ class DensityEstimation(AreaOperation):
         print("Indexlist: ", indexList)
         print("Levelvector: ", levelvec)
         diagVal, err = self.calculate_L2_scalarproduct(indexList[0], indexList[0], levelvec)
+        print("Diagonal value: ", diagVal)
         R[np.diag_indices_from(R)] += diagVal
-        if lumping == False:
+        if self.masslumping == False:
             for i in range(0, len(indexList) - 1):
                 for j in range(i + 1, len(indexList)):
                     temp, err = self.calculate_L2_scalarproduct(indexList[i], indexList[j], levelvec)
@@ -229,6 +252,36 @@ class DensityEstimation(AreaOperation):
             sum += self.hat_function(index, levelvec, x) * alphas[i]
         return sum
 
+    def plot_dataset(self):
+        if self.initialized == False:
+            self.initialize()
+        fontsize = 60
+        plt.rcParams.update({'font.size': fontsize})
+        fig = plt.figure(figsize=(20, 20))
+        if self.dim == 2:
+            ax = fig.add_subplot(1, 1, 1)
+            x, y = zip(*self.data)
+            ax.scatter(x, y, s=250)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title("#points = %d" % len(self.data))
+
+        elif self.dim == 3:
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            x, y, z = zip(*self.data)
+            ax.scatter(x, y, z, s=250)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+            ax.set_title("#points = %d" % len(self.data))
+
+        else:
+            print("Cannot print data of dimension > 2")
+
+        plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+
 
 from scipy.interpolate import interpn
 
@@ -251,14 +304,16 @@ class Integration(AreaOperation):
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = self.f.output_length()
         # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        values = np.array(
+            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         return values
 
     def get_mesh_values(self, mesh_points_grid):
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = self.f.output_length()
         # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        values = np.array(
+            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         return values
 
     def get_result(self):
@@ -354,7 +409,8 @@ class Integration(AreaOperation):
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
+                interpolated_values = self.interpolate_points(
+                    self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
 
                 integral += np.inner(interpolated_values.T, weights)
 
@@ -529,7 +585,8 @@ class Integration(AreaOperation):
         subcell_points = list(
             zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
-        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
+        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid,
+                                                      subcell_points)
         width = np.prod(np.array(end_subcell) - np.array(start_subcell))
         factor = 0.5 ** self.dim * width
         integral = 0.0
@@ -1130,7 +1187,8 @@ class Integration(AreaOperation):
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     @staticmethod
-    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
+    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid,
+                           mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float, ...]]):
         # constructing all points from mesh definition
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = len(values[0])
