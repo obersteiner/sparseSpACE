@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from combiScheme import *
 from GridOperation import *
 import importlib
@@ -62,6 +63,8 @@ class StandardCombi(object):
         if self.dim != 2:
             print("Can only plot 2D results")
             return
+        fontsize = 60
+        plt.rcParams.update({'font.size': fontsize})
         xArray = np.linspace(self.a[0], self.b[0], 10 ** 2)
         yArray = np.linspace(self.a[1], self.b[1], 10 ** 2)
         X = [x for x in xArray]
@@ -80,15 +83,18 @@ class StandardCombi(object):
                 Z[i, j] = f_values[j + i * len(X)][plotdimension]
         # Z=self.eval((X,Y))
         # print Z
-        fig = plt.figure(figsize=(14, 6))
+        fig = plt.figure(figsize=(20, 20))
 
         # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
-        ax = fig.add_subplot(1, 2, 1, projection='3d')
+        ax = fig.add_subplot(1, 1, 1, projection='3d')
 
         # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False)
+        p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        fig.colorbar(p, shrink=0.5, aspect=5)
         # plt.show()
         plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
 
     def set_combi_parameters(self, minv: int, maxv: int) -> None:
         # compute minimum and target level vector
@@ -277,12 +283,15 @@ class StandardCombi(object):
             plt.savefig(filename, bbox_inches='tight')
 
         plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     # prints the sparse grid which results from the combination
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
                                    linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False):
-        plt.rcParams.update({'font.size': 60})
+        fontsize = 60
+        plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
@@ -364,6 +373,8 @@ class StandardCombi(object):
             plt.savefig(filename, bbox_inches='tight')
         if show_fig:
             plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     # check if combischeme is right; assertion is thrown if not
