@@ -3,7 +3,7 @@ from GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, no_initial_splitting=False,
-                 version=0, dim_adaptive=False, automatic_extend_split=False, split_single_dim=True, operation=None, norm=np.inf):
+                 version=0, dim_adaptive=False, automatic_extend_split=False, split_single_dim=False, operation=None, norm=np.inf):
         # there are three different version that coarsen grids slightly different
         # version 0 coarsen as much as possible while extending and adding only new points in regions where it is supposed to
         # version 1 coarsens less and also adds moderately many points in non refined regions which might result in a more balanced configuration
@@ -22,7 +22,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def interpolate_points(self, interpolation_points, component_grid):
         point_assignements = self.get_points_assignement_to_areas(interpolation_points)
         dict_point_interpolation_values = {}
-        f_value_array_length = self.f.output_length()
+        f_value_array_length = self.operation.point_output_length()
         for area, contained_points in point_assignements:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
             coarsened_levelvector, do_compute  = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
@@ -36,8 +36,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     # call default d-linear interpolation based on points in grid
                     # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
                     self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
-                    interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid,
-                                                                           self.grid.coordinate_array, contained_points)
+                    interpolated_values = self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, self.grid.coordinate_array), self.grid.coordinate_array, contained_points)
                 for p, value in zip(contained_points, interpolated_values):
                     dict_point_interpolation_values[tuple(p)] = value
             else:
@@ -271,18 +270,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             else:
                 new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
-            if self.operation is not None:
-                #self.operation.area_preprocessing(parent)
-                #self.compute_solutions([parent],[0])
-                #self.operation.initialize_global_value(self.refinement)
-                pass
-                #self.operation.area_preprocessing(parent)
-                #self.operation.evaluate_area(parent, np.zeros(self.dim, dtype=int), ComponentGridInfo(np.zeros(self.dim, dtype=int), 1), None, None)
-                #self.operation.area_postprocessing(parent)
-            else:
-                parent_integral = self.grid.integrate(self.f, np.zeros(self.dim, dtype=int), self.a, self.b)
-                self.root_cell.set_integral(parent_integral)
-                self.refinement.integral = 0.0
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorExtendSplit()
 
@@ -319,64 +306,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     #print("Integrals", area.integral, area.twins[d].integral, area.parent_info.parent.integral)
                     twin_error = self.operation.get_twin_error(d, area, self.norm)
                     area.set_twin_error(d, twin_error)
-
-    def evaluate_area(self, f, area, component_grid, filter_area=None, interpolate=False):
-        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-        level_for_evaluation, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
-        # print(level_for_evaluation, area.coarseningValue)
-        if not do_compute:
-            return None, None, 0
-        else:
-            if filter_area is None:
-                return self.grid.integrate(f, level_for_evaluation, area.start, area.end), None, np.prod(
-                    self.grid.levelToNumPoints(level_for_evaluation))
-            else:
-                if not interpolate:  # use filtering approach
-                    self.grid.setCurrentArea(area.start, area.end, level_for_evaluation)
-                    points, weights = self.grid.get_points_and_weights()
-                    integral = 0.0
-                    num_points = 0
-                    for i, p in enumerate(points):
-                        if self.point_in_area(p, filter_area):
-                            integral += self.f(p) * weights[i] * self.get_point_factor(p, filter_area, area)
-                            num_points += 1
-                    return integral, None, num_points
-                else:  # use bilinear interpolation to get function values in filter_area
-                    integral = 0.0
-                    num_points = 0
-                    # create grid with boundaries; if 0 boudnary condition we will fill boundary points with 0's
-                    boundary_save = self.grid.get_boundaries()
-                    self.grid.set_boundaries([True] * self.dim)
-                    self.grid.setCurrentArea(area.start, area.end, level_for_evaluation)
-                    self.grid.set_boundaries(boundary_save)
-
-                    # build grid consisting of corner points of area
-                    corner_points = list(
-                        zip(*[g.ravel() for g in
-                              np.meshgrid(*[self.grid.coordinate_array[d] for d in range(self.dim)])]))
-
-                    # calculate function values at corner points and transform  correct data structure for scipy
-                    values = np.array([self.f(p) if self.grid.point_not_zero(p) else 0.0 for p in corner_points])
-                    values = values.reshape(*[self.grid.numPointsWithBoundary[d] for d in reversed(range(self.dim))])
-                    values = np.transpose(values)
-
-                    # get corner grid in scipy data structure
-                    corner_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
-
-                    # get points of filter area for which we want interpolated values
-                    self.grid.setCurrentArea(filter_area.start, filter_area.end, level_for_evaluation)
-                    points, weights = self.grid.get_points_and_weights()
-
-                    # bilinear interpolation
-                    interpolated_values = Interpolation.interpolate_points(self.f, self.dim, self.grid, corner_points_grid, points)
-
-                    integral += sum(
-                        [interpolated_values[i] * weights[i] for i in range(len(interpolated_values))])
-                    # print(corner_points)
-                    for p in corner_points:
-                        if self.point_in_area(p, filter_area) and self.grid.point_not_zero(p):
-                            num_points += 1  # * self.get_point_factor(p,area,area_parent)
-                    return integral, None, num_points
 
     def do_refinement(self, area, position):
         if self.automatic_extend_split:
@@ -421,129 +350,19 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             self.operation.set_split_benefit(area, self.norm)
             self.operation.set_extend_error_correction(area, self.norm)
 
-    def set_extend_benefit(self, area):
-        if area.parent_info.benefit_extend is not None:
-            return
-        if area.switch_to_parent_estimation:
-            comparison = area.sum_siblings
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            comparison = area.integral
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_extend_parent
-        error_extend = LA.norm(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)), self.norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_extend = error_extend * area.parent_info.num_points_split_parent
-
-    def set_split_benefit(self, area):
-        if area.parent_info.benefit_split is not None:
-            return
-        if area.switch_to_parent_estimation:
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
-        if self.grid.boundary:
-            assert area.parent_info.num_points_split_parent > 0
-        error_split = LA.norm(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)), self.norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
-
-    def set_extend_error_correction(self, area):
-        if area.switch_to_parent_estimation:
-            area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, self.norm) * area.parent_info.num_points_split_parent
-
-    def calc_error(self, objectID, f):
+    def calc_error(self, objectID):
         area = self.refinement.get_object(objectID)
         if area.parent_info.previous_value is None:
-            if self.operation is None:
-                integral2 = self.get_parent_split_integral(area, True)
-                area.parent_info.previous_value = integral2
-                area.parent_info.level_parent = self.lmax[0] - area.coarseningValue
-                if area.switch_to_parent_estimation:
-                    area.sum_siblings = 0.0
-                    i = 0
-                    for child in area.parent_info.parent.children:
-                        if child.integral is not None:
-                            area.sum_siblings += child.integral
-                            i += 1
-                    assert i == 2 ** self.dim or (i == 2 and self.split_single_dim)  # we always have 2**dim children
-            else:
-                self.operation.initialize_error_estimates(area)
-                self.get_parent_split_operation(area, True)
-                self.operation.get_previous_value_from_split_parent(area)
-                assert area.parent_info.previous_value is not None
-                area.parent_info.level_parent = self.lmax[0] - area.coarseningValue
-                if area.switch_to_parent_estimation:
-                    self.operation.get_sum_sibling_value(area)
+            self.operation.initialize_error_estimates(area)
+            self.get_parent_split_operation(area, True)
+            self.operation.get_previous_value_from_split_parent(area)
+            assert area.parent_info.previous_value is not None
+            area.parent_info.level_parent = self.lmax[0] - area.coarseningValue
+            if area.switch_to_parent_estimation:
+                self.operation.get_sum_sibling_value(area)
         else:
             area.sum_siblings = area.value if self.operation is not None else area.integral
-        self.refinement.calc_error(objectID, f, self.norm)
-
-    def get_parent_split_integral2(self, area, only_one_extend=False):
-        area_parent = area.parent_info.parent
-
-        if not area.switch_to_parent_estimation:
-
-            coarsening = area.coarseningValue
-            while True:
-
-                parent_integral, num_points_split = self.evaluate_area_complete_flexibel(area_parent, coarsening,
-                                                                                         filter_area=area,
-                                                                                         filter_integral=True,
-                                                                                         filter_points=True,
-                                                                                         interpolate=False)
-                area.parent_info.num_points_split_parent = num_points_split
-                if only_one_extend or 3 * area.parent_info.num_points_split_parent > area.parent_info.num_points_extend_parent:
-                    break
-                else:
-                    coarsening -= 1
-        else:
-            coarsening = area.coarseningValue
-
-            while True:
-
-                parent_integral, num_points_split = self.evaluate_area_complete_flexibel(area_parent, coarsening,
-                                                                                         filter_area=area,
-                                                                                         filter_integral=False,
-                                                                                         filter_points=True,
-                                                                                         interpolate=False)
-                area.parent_info.num_points_split_parent = num_points_split
-                if only_one_extend or 2 * area.parent_info.num_points_split_parent > area.parent_info.num_points_extend_parent:
-                    break
-                else:
-                    coarsening -= 1
-
-        return parent_integral
-
-    def get_parent_split_integral(self, area, only_one_extend=False):
-        area_parent = area.parent_info.parent
-        if area.switch_to_parent_estimation:
-            return self.get_parent_split_integral2(area, only_one_extend)
-        else:
-            coarsening = area.coarseningValue
-            while True:
-                parent_integral, num_points_split = self.evaluate_area_complete_flexibel(area_parent, coarsening,
-                                                                                         filter_area=area,
-                                                                                         filter_integral=True,
-                                                                                         filter_points=True,
-                                                                                         interpolate=True)
-
-                area.parent_info.num_points_split_parent = num_points_split
-                if only_one_extend or 3 * area.parent_info.num_points_split_parent > area.parent_info.num_points_extend_parent:
-                    break
-                else:
-                    coarsening -= 1
-
-        parent_integral2 = self.get_parent_split_integral2(area, only_one_extend)
-        if abs(area.integral - parent_integral) < abs(area.integral - parent_integral2):
-            return parent_integral
-        else:
-            return parent_integral2
+        self.refinement.calc_error(objectID, self.norm)
 
     def get_parent_split_operation(self, area, only_one_extend=False):
         area_parent = area.parent_info.parent
@@ -601,26 +420,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     coarsening -= 1
         self.operation.get_best_fit(area, self.norm)
 
-    def get_reference_integral(self, area):
-        area_parent = area.parent_info.parent
-        if area.switch_to_parent_estimation:
-            reference_integral, num_points_reference = self.evaluate_area_complete_flexibel(area_parent,
-                                                                                            area.coarseningValue + 1,
-                                                                                            filter_area=area,
-                                                                                            filter_integral=False,
-                                                                                            filter_points=True,
-                                                                                            interpolate=False)
-
-        else:
-            reference_integral, num_points_reference = self.evaluate_area_complete_flexibel(area_parent,
-                                                                                            area.coarseningValue + 1,
-                                                                                            filter_area=area,
-                                                                                            filter_integral=True,
-                                                                                            filter_points=True,
-                                                                                            interpolate=False)
-        area.parent_info.num_points_reference = num_points_reference
-        return reference_integral
-
     def get_reference_operation(self, area):
         area_parent = area.parent_info.parent
         if area.switch_to_parent_estimation:
@@ -656,22 +455,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 factor /= 2.0
         return factor
 
-    def get_parent_extend_integral(self, area):
-
-        if area.switch_to_parent_estimation:
-            coarsening = self.lmax[0] - area.parent_info.level_parent if area.parent_info.level_parent != -1 else area.coarseningValue
-            integral, num_points = self.evaluate_area_complete_flexibel(area, coarsening)
-            area.parent_info.extend_error_correction = abs(area.integral - integral)
-
-            extend_parent_integral, extend_num_points = self.evaluate_area_complete_flexibel(area, coarsening + 1)
-            area.parent_info.num_points_extend_parent = extend_num_points
-
-        else:
-            extend_parent_integral, extend_num_points = self.evaluate_area_complete_flexibel(area,
-                                                                                             area.coarseningValue + 1)
-            area.parent_info.num_points_extend_parent = extend_num_points
-        return extend_parent_integral
-
     def get_parent_extend_operation(self, area):
 
         if area.switch_to_parent_estimation:
@@ -685,98 +468,6 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         else:
             extend_num_points = self.evaluate_operation_area_complete_flexibel(area, area.coarseningValue + 1, error_name="extend_parent")
             area.parent_info.num_points_extend_parent = extend_num_points
-
-    '''
-    def get_parent_extend_integral2(self, area):
-        lmax = self.lmax[0] - 1
-        area.num_points_extend_parent = 0
-        print(area.num_points_split_parent, area.split_parent_integral)
-        while area.num_points_extend_parent <= area.num_points_split_parent:
-            lmax += 1
-            scheme = self.combischeme.getCombiScheme(self.lmin[0], lmax, do_print=False)
-            if False: #area.switch_to_parent_estimation:
-                area.num_points_extend_parent = 0.0
-                extend_parent_integral = 0.0
-                i = 0
-                for area_eval in area.parent.children:
-                    area_eval.levelvec_dict = {}
-                    area_eval.coarseningValue += 1
-                    i += 1
-                    for ss in scheme:
-                        if self.grid.isNested():
-                            factor = ss[1]
-                        else:
-                            factor = 1
-                        area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area_eval, ss[0])
-                        #print(area_integral, partial_integrals, evaluations, area_eval.start, area_eval.end, ss[0])
-                        area.num_points_extend_parent += evaluations * factor
-                        extend_parent_integral += area_integral * ss[1]
-                    area_eval.coarseningValue -= 1
-                assert i == 2**self.dim
-            else:
-                area_eval = area
-                extend_parent_integral = 0.0
-                area_eval.levelvec_dict = {}
-                area_eval.coarseningValue += 1
-                area_eval.num_points_extend_parent = 0.0
-                for ss in scheme:
-                    if self.grid.isNested():
-                        factor = ss[1]
-                    else:
-                        factor = 1
-                    area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area_eval, ss[0])
-                    #print(area_integral, partial_integrals, evaluations, area_eval.start, area_eval.end, ss[0])
-                    area.num_points_extend_parent += evaluations * factor
-                    extend_parent_integral += area_integral * ss[1]
-                area_eval.coarseningValue -= 1
-                print("Extend integral:", extend_parent_integral)
-        return extend_parent_integral
-    '''
-
-    # This method computes the integral value for the combination technique with a specified coarsening
-    # The level is calculated by lmax - coarsening.
-    # It is possible to specify a filter area which defines a region for which we want an integral approximation based on the integral
-    # for the area (the filtering area is smaller than the area)
-    # In case we wilter we can specify
-    def evaluate_area_complete_flexibel(self, area, coarsening, filter_area=None, filter_integral=False,
-                                        filter_points=False, interpolate=False):
-        integral = 0.0
-        area.levelvec_dict = {}
-        coarsening_save = area.coarseningValue
-        area.coarseningValue = max(coarsening, 0)
-        num_points = 0.0
-        assert filter_integral == False or filter_points == True
-
-        if coarsening >= 0:
-            scheme = self.scheme
-        else:
-            lmax = self.lmax[0] + abs(coarsening)
-            lmin = self.lmin[0]
-            scheme = self.combischeme.getCombiScheme(lmin, lmax, do_print=False)
-
-        for component_grid in scheme:
-            if self.grid.isNested():
-                factor = component_grid.coefficient
-            else:
-                factor = 1
-
-            area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, filter_area,
-                                                                               interpolate)
-            if area_integral is not None:
-                num_points += evaluations * factor
-                integral += area_integral * component_grid.coefficient
-
-        if not filter_integral and filter_points:
-            integral = 0.0
-            area.levelvec_dict = {}
-            for component_grid in scheme:
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area, component_grid, None, None)
-                if area_integral is not None:
-                    integral += area_integral * component_grid.coefficient
-
-        area.coarseningValue = coarsening_save
-        return integral, num_points
-
 
     # This method computes the integral value for the combination technique with a specified coarsening
     # The level is calculated by lmax - coarsening.

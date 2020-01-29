@@ -1,0 +1,13 @@
+python3 test_BasisFunctions.py
+python3 test_combiScheme.py
+python3 test_Hierarchization.py
+python3 test_Integration_UQ.py
+python3 test_Integrator.py
+python3 test_RefinementContainer.py
+python3 test_RefinementObject.py
+python3 test_spatiallyAdaptiveExtendSplit.py
+python3 test_spatiallyAdaptiveSingleDimension2.py
+python3 test_StandardCombi.py
+python3 test_UncertaintyQuantification.py
+python3 test_Utils.py
+

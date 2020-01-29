@@ -41,7 +41,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             # call default d-linear interpolation based on points in grid
             # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
-            return Interpolation.interpolate_points(self.f, self.dim, self.grid, gridPointCoordsAsStripes, interpolation_points)
+            return self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, gridPointCoordsAsStripes), gridPointCoordsAsStripes, interpolation_points)
 
     def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -534,7 +534,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
         if self.operation is not None:
-            self.operation.init_dimension_wise(self.grid, self.grid_surplusses, self.f, self.refinement, self.lmin, self.lmax, self.a, self.b, self.version)
+            self.operation.init_dimension_wise(self.grid, self.grid_surplusses, self.refinement, self.lmin, self.lmax, self.a, self.b, self.version)
 
 
     def get_areas(self):

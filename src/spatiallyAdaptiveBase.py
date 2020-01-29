@@ -9,7 +9,8 @@ from GridOperation import GridOperation
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation=None, norm: int=np.inf):
+    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int=np.inf):
+        assert operation is not None
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
         self.a = a
@@ -33,27 +34,17 @@ class SpatiallyAdaptivBase(StandardCombi):
         return len(array2new)
 
     def evaluate_final_combi(self) -> Tuple[Sequence[float], int]:
-        combiintegral = 0
-        dim = self.dim
-        # print "Dim:",dim
-        num_evaluations = 0
-        for component_grid in self.scheme:
-            integral = 0
-            for area in self.get_areas():
-                area_integral, partial_integrals, evaluations = self.evaluate_area(self.f, area,
-                                                                                   component_grid.levelvector)
-                if area_integral != -2 ** 30:
-                    num_evaluations += evaluations
-                    integral += area_integral
-            integral *= component_grid.coefficient
-            combiintegral += integral
-        return combiintegral, num_evaluations
+        areas = self.get_areas()
+        evaluation_array = np.zeros(len(areas), dtype=int)
+        self.compute_solutions(areas, evaluation_array)
+        num_evaluations = np.sum(evaluation_array)
+        combi_solution = self.operation.get_result()
+        return combi_solution, num_evaluations
 
-    def init_adaptive_combi(self, f: Callable[[Tuple[float, ...]], Sequence[float]], minv: int, maxv: int, refinement_container: RefinementContainer, tol: float) -> None:
+    def init_adaptive_combi(self, minv: int, maxv: int, refinement_container: RefinementContainer, tol: float) -> None:
         assert np.isscalar(minv)
         assert np.isscalar(maxv)
         self.tolerance = tol
-        self.f = f
         if self.print_output:
             if self.reference_solution is not None:
                 print("Reference solution:", self.reference_solution)
@@ -66,7 +57,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.combischeme = CombiScheme(self.dim)
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=self.print_output)
             self.initialize_refinement()
-            self.f.reset_dictionary()
+            self.operation.initialize()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
             self.refinement.reinit_new_objects()
@@ -164,7 +155,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     # main method for the spatially adaptive refinement strategy
     # In addition to a tolerance, the maximum number of function evaluations and the maximum computing time can be
     # specified as a termination criterion.
-    def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, f: Callable[[Tuple[float, ...]], Sequence[float]]=FunctionExpVar(), errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
+    def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
                                 refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
                                 print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
@@ -173,7 +164,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.recalculate_frequently = recalculate_frequently
         self.print_output = print_output
         self.reference_solution = self.operation.get_reference_solution()
-        self.init_adaptive_combi(f, minv, maxv, refinement_container, tol)
+        self.init_adaptive_combi(minv, maxv, refinement_container, tol)
         self.error_array = []
         self.surplus_error_array = []
         self.interpolation_error_arrayL2 = []
@@ -189,7 +180,6 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         start_time = time.time()
-        # ~ self.operation.set_function(self.f)
         while True:
             error, surplus_error = self.evaluate_operation()
             self.error_array.append(error)
@@ -197,7 +187,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.evaluation_points is not None:
                 interpolated_values = np.asarray(self.__call__(self.evaluation_points))
-                real_values = np.asarray([self.f.eval(point) for point in self.evaluation_points])
+                real_values = np.asarray([self.operation.eval_analytic(point) for point in self.evaluation_points])
                 diff = [real_values[i]-interpolated_values[i] for i in range(len(self.evaluation_points))]
                 #print(interpolated_values, diff)
                 self.interpolation_error_arrayL2.append(scipy.linalg.norm(diff, 2))
@@ -253,10 +243,6 @@ class SpatiallyAdaptivBase(StandardCombi):
         return
 
     @abc.abstractmethod
-    def evaluate_area(self, f: Callable[[Tuple[float, ...]], Sequence[float]], area, component_grid: ComponentGridInfo):
-        pass
-
-    @abc.abstractmethod
     def do_refinement(self, area, position):
         pass
 
@@ -270,8 +256,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.refinement.refinement_postprocessing()
 
     # this is a default implementation that should be overritten if necessary
-    def calc_error(self, objectID, f: Callable[[Tuple[float, ...]], Sequence[float]]) -> None:
-        self.refinement.calc_error(objectID, f, self.norm)
+    def calc_error(self, objectID) -> None:
+        self.refinement.calc_error(objectID, self.norm)
 
     # this is a default implementation that should be overritten if necessary
     def get_new_areas(self):
@@ -289,10 +275,6 @@ class SpatiallyAdaptivBase(StandardCombi):
     def coarsen_grid(self, levelvector: Sequence[int], area, num_sub_diagonal: int):
         return levelvector, True
 
-    @abc.abstractmethod
-    def finalize_evaluation(self):
-        pass
-
     def finalize_evaluation_operation(self, areas, evaluation_array: Sequence[int]) -> None:
         if self.print_output:
             print("Curent number of function evaluations", self.get_total_num_points())
@@ -306,7 +288,7 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
-            self.calc_error(i, self.f)
+            self.calc_error(i)
             self.refinement.set_benefit(i)
 
     def get_calculated_solution(self): return self.calculated_solution

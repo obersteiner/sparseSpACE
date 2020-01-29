@@ -16,7 +16,7 @@ class TestStandardCombi(unittest.TestCase):
             for l in range(8 - d):
                 for l2 in range(l+1):
                     #print(l,l2,d)
-                    standardCombi.set_combi_parameters(l2, l, f)
+                    standardCombi.set_combi_parameters(l2, l)
                     standardCombi.check_combi_scheme()
 
     def test_integration(self):
@@ -28,7 +28,7 @@ class TestStandardCombi(unittest.TestCase):
             standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    scheme, error, integral  = standardCombi.perform_combi(l2, l, f)
+                    scheme, error, integral  = standardCombi.perform_operation(l2, l)
                     rel_error = error/f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b)
                     self.assertAlmostEqual(rel_error, 0.0, 13)
 
@@ -41,7 +41,7 @@ class TestStandardCombi(unittest.TestCase):
             standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    standardCombi.set_combi_parameters(l2, l, f)
+                    standardCombi.set_combi_parameters(l2, l)
                     grid_coordinates = [np.linspace(a, b, 3, endpoint=False) for _ in range(d)]
                     interpolated_points = standardCombi.interpolate_grid(grid_coordinates)
                     grid_points = get_cross_product_list(grid_coordinates)
@@ -67,7 +67,7 @@ class TestStandardCombi(unittest.TestCase):
             standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):
-                    standardCombi.set_combi_parameters(l2, l, f)
+                    standardCombi.set_combi_parameters(l2, l)
                     points, weights = standardCombi.get_points_and_weights()
                     self.assertEqual(len(points), standardCombi.get_total_num_points(distinct_function_evals=False))
                     self.assertEqual(len(points), len(weights))
