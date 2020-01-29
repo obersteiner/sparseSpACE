@@ -128,6 +128,8 @@ class StandardCombi(object):
             if self.print_output:
                 print("Analytic Solution", reference_solution)
                 print("Difference", self.operation.get_error(combi_result, reference_solution))
+                if isinstance(self.operation, PDE_Solve):
+                    pass
             return self.scheme, self.operation.get_error(combi_result, reference_solution), combi_result
         else:
             return self.scheme, None, combi_result

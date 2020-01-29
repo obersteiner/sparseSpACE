@@ -1364,41 +1364,48 @@ class PDE_Solve(GridOperation):
     Inputs: 
         - solver: PDE_Solver (currently only FEniCS supported)
     """
-    def __init__(self, solver, maxlv: tuple, grid: Grid, reference_solution=None):
+    def __init__(self, solver, grid: Grid, reference_solution=None):
         self.solver = solver
-        self.maxlv = maxlv
         self.grid = grid
-        self.dim = len(maxlv)
-        self.gridsDict = {}
+        self.grids_dict = {}
         self.reference_solution = reference_solution
         
     def initialize(self):
         pass
 
     def evaluate_levelvec(self, component_grid):
-        # Evaluate PDE on component_grid
-        self.solver.solve(component_grid.getNodeCount()-np.ones(self.dim, dtype=int))
-        component_grid.fillData(self.solver.get_vertex_values())
+        # First define mesh from provided component_grid
+        N_x, N_y = component_grid.get_points()
+        self.solver.define_rectangle_mesh(self.grid.a, self.grid.b, N_x, N_y)
+        # self.solver.define_unit_hypercube_mesh(component_grid.get_points())
+        nodal_values = self.solver.solve()
+        component_grid.fill_data(nodal_values)
 
         # Store filled component_grid locally in dictionary
-        levelvec = tuple(component_grid.getLevelvector())
-        self.gridsDict[levelvec] = component_grid
+        levelvec = tuple(component_grid.get_levelvector())
+        self.grids_dict[levelvec] = component_grid
 
     def get_result(self):
         # Extrapolate all component_grids to adequate size and combine them
-        combi_result = np.zeros([(2**i+1) for i in self.maxlv])
-        for grid in self.gridsDict.values():
-            data = grid.interpolateData(self.maxlv)
-            combi_result += grid.getCoefficient()*data
+        combi_result = []
+        for grid in self.grids_dict.values():
+            data = grid.interpolate_data(self.grid.levelvec)
+            if combi_result==[]:
+                combi_result = np.zeros(np.shape(data))
+                print("combi_result shape: {}".format(np.shape(combi_result)))
+            combi_result += grid.get_coefficient()*data
 
         return combi_result
+
+    def get_component_grid_values(self, levelvec):
+        return self.grids_dict[levelvec].get_data()
 
     def get_reference_solution(self):
         return self.reference_solution
 
-    def get_grid(self):
-        return self.grid
-
+    def get_component_grid(self, levelvec: Sequence[int]):
+        return self.grids_dict[levelvec]
+    
     def get_error(self, exact, approx):
         # Dummy Max Error
         return np.max(np.abs(exact-approx))
