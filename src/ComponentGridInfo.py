@@ -6,8 +6,6 @@ from abc import abstractmethod
 class ComponentGridInfo(object):
     '''
     Holds basic information of a grid used for Combination Technique
-    like levelvector and data and provides basic methods amongst other extrapolation
-    used for combining grids.
     Atributes:
         - coord: array of arrays coordinates
         - N: list with numbers of nodes in each dimension
@@ -19,7 +17,7 @@ class ComponentGridInfo(object):
             - boundaries: bool list, if True, a dimension has boundary
 
     '''
-    def __init__(self, levelvector, coefficient, boundaries=None):
+    def __init__(self, levelvector: tuple, coefficient, boundaries=None):
         self.levelvector = levelvector
         self.dim = len(self.levelvector)
         self.coefficient = coefficient
@@ -27,22 +25,22 @@ class ComponentGridInfo(object):
             self.boundaries = list([True for __ in range(self.dim)])
         else:
             self.boundaries=boundaries
-        self.N = []
+        N = []
 
         coord = []
         for i in range(self.dim):
             n = 2**self.levelvector[i] + 1
             if self.boundaries[i]==True:
                 coord.append(np.linspace(0,1.0,n))
-                self.N.append(n)
+                N.append(n)
             else:
                 coord.append(np.linspace(0,1.0,n)[1:-1])
-                self.N.append(n-1)
+                N.append(n-1)
 
         self.coord = np.meshgrid(*coord, indexing='ij') # Corerct for 3D or 4D case ?
-        self.data = np.zeros(self.N)
-        
-    def fillData(self, f):
+        self.N = tuple(N)
+
+    def fill_data(self, f):
         ''' Fill data with either:
             a) values evaluated on gridpoints or
             b) specified numpy array of appropriate size 
@@ -51,36 +49,42 @@ class ComponentGridInfo(object):
             # Fill data with dummy coord values
             self.data = f(*self.coord)
         else:
-            assert np.shape(f) == np.shape(self.data), "Invalid shape of provided grid data array"
+            print("ComponentGrid data shape: {}".format(np.shape(f)))
+            assert np.shape(f) == self.N or np.shape(f[0]) == self.N, "Invalid shape of provided grid data array"
             self.data = f
     
-    def interpolateData(self, levelvector) -> np.array:
+    def interpolate_data(self, levelvector) -> np.array:
         # get level for interpolating
         new = tuple(map(float,[(2**i+1) for i in levelvector]))
         # get factor for interpolation
         fac = np.divide(new, self.N)
-        # interpolate grid
-        return zoom(self.data, fac, order=1)
+        if np.shape(self.data) == self.N:
+            return zoom(self.data, fac, order=1)
+        else:
+            interpolated_results = []
+            for result in self.data:
+                interpolated_results.append(zoom(result, fac, order=1))
+            return np.array(interpolated_results)
 
-    def getDim(self):
+    def get_dim(self):
         return self.dim
 
-    def getLevelvector(self):
+    def get_levelvector(self):
         return self.levelvector
 
-    def getNodeCount(self):
+    def get_points(self):
         return self.N
 
-    def getCoefficient(self):
+    def get_coefficient(self):
         return self.coefficient
     
-    def getData(self):
+    def get_data(self):
         return self.data
 
 
 if __name__=="__main__":
     component_grid = ComponentGridInfo((1,2),[-1,1])
-    print("Levelvector: {}".format(component_grid.getLevelvector()))
-    print("Node count: {}".format(component_grid.getNodeCount()))
-    for item in component_grid.getNodeCount() - np.ones(2):
-        print(item)
+    N_x, N_y = component_grid.get_points()
+    print("Levelvector: {}".format(component_grid.get_levelvector()))
+    print("# of points: {}".format(component_grid.get_points()))
+    print("# of points: {}, {}".format(N_x, N_y))
