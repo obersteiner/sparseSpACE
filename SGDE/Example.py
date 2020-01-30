@@ -28,13 +28,16 @@ b = np.ones(dim)
 # data = np.random.standard_normal((size, dim))
 
 # multivariate normal distribution
-mean = [0, 0]
-cov = [[1, 0], [0, 100]]
-data = np.random.multivariate_normal(mean, cov, size)
+# mean = [0, 0]
+# cov = [[1, 0], [0, 100]]
+# data = np.random.multivariate_normal(mean, cov, size)
 
 # scikit learn datasets
 # data = datasets.make_moons(size)
 # data = datasets.make_circles(size)
+
+# csv file
+data = "Circles500.csv"
 
 # define operation to be performed
 operation = DensityEstimation(data, dim)
