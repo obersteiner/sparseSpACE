@@ -223,6 +223,8 @@ def plotData(data):
 
 
 moons = datasets.make_moons()
+circle = datasets.make_circles()
+
 scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
 scaler.fit(moons[0])
 dataTrans = scaler.transform(moons[0])
