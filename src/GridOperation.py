@@ -191,7 +191,6 @@ class DensityEstimation(AreaOperation):
             return (0, 0)
 
     def calculate_density_estimation(self, levelvec):
-        # TODO write tests
         R = self.construct_R(levelvec)
         R[np.diag_indices_from(R)] += self.lambd
         b = self.calculate_B(self.data, levelvec)
