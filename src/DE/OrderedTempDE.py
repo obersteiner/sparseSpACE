@@ -227,8 +227,7 @@ scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
 scaler.fit(moons[0])
 dataTrans = scaler.transform(moons[0])
 alphas = calcAlphas(4, dataTrans, 0)
-circle = datasets.make_circles(noise=0.05)
-# alphas = preCalcAlphas(3, moons, 0)
+
 
 oldFaithfulDataset = (
     [[3.600, 79], [1.800, 54], [3.333, 74], [2.283, 62], [4.533, 85], [2.883, 55], [4.700, 88], [3.600, 85],
