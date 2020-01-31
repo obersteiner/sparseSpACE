@@ -8,5 +8,6 @@ install:
   - cd chaospy
   - git checkout development
   - pip3 install .
+  - cd ..
 script:
-  - python3 -m nose -w sparseSpace/
+  - python3 -m nose -w obersteiner/sparseSpACE
