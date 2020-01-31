@@ -4,6 +4,9 @@ install:
   - pip3 install scipy 
   - pip3 install matplotlib
   - pip3 install nose
-  - pip3 install chaospy
+  - git clone https://github.com/jonathf/chaospy.git
+  - cd chaospy
+  - git checkout development
+  - pip3 install .
 script:
   - python3 -m nose
