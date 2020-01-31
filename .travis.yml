@@ -9,4 +9,4 @@ install:
   - git checkout development
   - pip3 install .
 script:
-  - python3 -m nose -w test/
+  - python3 -m nose -w sparseSpace/
