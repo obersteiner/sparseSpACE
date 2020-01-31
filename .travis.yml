@@ -8,5 +8,7 @@ install:
   - cd chaospy
   - git checkout development
   - pip3 install .
+  - cd ..
 script:
-  - python3 -m nose
+  - ls
+  - python3 -m nose -w test/
