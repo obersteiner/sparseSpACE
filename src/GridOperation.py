@@ -943,7 +943,6 @@ class Interpolation(Integration):
     @staticmethod
     def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
-        mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = len(values[0])
         interpolated_values_array = []
         for d in range(function_value_dim):
@@ -1085,6 +1084,9 @@ class UncertaintyQuantification(Integration):
             self.f_actual = self.f
             self.f = f
 
+    def update_function(self, f):
+        self.f = f
+
     def get_distributions(self): return self.distributions
     def get_distributions_chaospy(self): return self.distributions_chaospy
 
@@ -1134,9 +1136,9 @@ class UncertaintyQuantification(Integration):
             self.weights = self._scale_values(self.weights)
             # ~ self.f_evals = combiinstance.get_surplusses()
             # Surpluses are required here..
-            self.f_evals = [self.f(coord) for coord in self.nodes]
+            self.f_evals = [self.f_model(coord) for coord in self.nodes]
         else:
-            self.f_evals = [self.f(coord) for coord in self.nodes]
+            self.f_evals = [self.f_model(coord) for coord in self.nodes]
 
     def _get_combiintegral(self, combiinstance, scale_weights=False):
         integral = combiinstance.get_calculated_solution()
@@ -1149,7 +1151,7 @@ class UncertaintyQuantification(Integration):
             use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
-            assert len(mom) == self.f.output_length()
+            assert len(mom) == self.f_model.output_length()
             return mom
         self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
@@ -1189,7 +1191,7 @@ class UncertaintyQuantification(Integration):
             num_polys = len(self.pce_polys)
             output_dim = len(integral) // num_polys
             coefficients = integral.reshape((num_polys, output_dim))
-            self.gPCE = np.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
             return
 
         self._set_nodes_weights_evals(combiinstance)
@@ -1243,20 +1245,20 @@ class UncertaintyQuantification(Integration):
         return FunctionPower(self.f, k)
 
     def set_moment_Function(self, k: int):
-        self.f = self.get_moment_Function(k)
+        self.update_function(self.get_moment_Function(k))
 
     # Optimizes adapting for multiple moments at once
     def get_moments_Function(self, ks: Sequence[int]):
         return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
 
     def set_moments_Function(self, ks: Sequence[int]):
-        self.f = self.get_moments_Function(ks)
+        self.update_function(self.get_moments_Function(ks))
 
     def get_expectation_variance_Function(self):
         return self.get_moments_Function([1, 2])
 
     def set_expectation_variance_Function(self):
-        self.f = self.get_expectation_variance_Function()
+        self.update_function(self.get_expectation_variance_Function())
 
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
@@ -1270,14 +1272,14 @@ class UncertaintyQuantification(Integration):
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
     def set_PCE_Function(self, polynomial_degrees):
-        self.f = self.get_PCE_Function(polynomial_degrees)
+        self.update_function(self.get_PCE_Function(polynomial_degrees))
 
     def get_pdf_Function(self):
         pdf = self.distributions_joint.pdf
         return FunctionCustom(lambda coords: float(pdf(coords)))
 
     def set_pdf_Function(self):
-        self.f = self.get_pdf_Function()
+        self.update_function(self.get_pdf_Function())
 
     # Returns a Function which applies the PPF functions before evaluating
     # the problem function; it can be integrated without weighting
@@ -1285,7 +1287,7 @@ class UncertaintyQuantification(Integration):
         return FunctionInverseTransform(func or self.f, self.distributions)
 
     def set_inverse_transform_Function(self, func=None):
-        self.f = self.get_inverse_transform_Function(func or self.f, self.distributions)
+        self.update_function(self.get_inverse_transform_Function(func or self.f, self.distributions))
 
 # UncertaintyQuantification extended for testing purposes
 class UncertaintyQuantificationTesting(UncertaintyQuantification):
