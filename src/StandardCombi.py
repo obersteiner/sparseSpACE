@@ -318,7 +318,6 @@ class StandardCombi(object):
         ax.yaxis.set_ticks_position('none')
 
         if dim == 3:
-            ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
             ax.zaxis.set_ticks_position('none')
             markersize /= 2
 
