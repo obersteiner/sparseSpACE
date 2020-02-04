@@ -133,7 +133,13 @@ class StandardCombi(object):
         else:
             return self.scheme, None, combi_result
 
-    def get_num_points_component_grid(self, levelvector: Sequence[int], doNaive: bool, num_sub_diagonal: int):
+    def get_num_points_component_grid(self, levelvector: Sequence[int], count_multiple_occurrences: bool):
+        """This method returns the number of points contained in the specified component grid.
+
+        :param levelvector: Level vector of the compoenent grid.
+        :param count_multiple_occurrences: Indicates whether points that appear multiple times should be counted again.
+        :return: Number of points in component grid.
+        """
         return np.prod(self.grid.levelToNumPoints(levelvector))
 
     # calculate the total number of points used in the complete combination scheme
@@ -143,8 +149,7 @@ class StandardCombi(object):
             return self.operation.get_distinct_points()
         numpoints = 0
         for component_grid in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-            pointsgrid = self.get_num_points_component_grid(component_grid.levelvector, doNaive, num_sub_diagonal)
+            pointsgrid = self.get_num_points_component_grid(component_grid.levelvector, doNaive)
             if distinct_function_evals and self.grid.isNested():
                 numpoints += pointsgrid * int(component_grid.coefficient)
             else:
@@ -173,8 +178,7 @@ class StandardCombi(object):
             ax.yaxis.set_ticks_position('none')
             ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
             ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
-            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(lmax)
-            points = self.get_points_component_grid(lmax, num_sub_diagonal)
+            points = self.get_points_component_grid(lmax)
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
             if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
@@ -217,9 +221,8 @@ class StandardCombi(object):
                     ax[j, i].axis('off')
 
             for component_grid in scheme:
-                num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
-                points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
-                points_not_null = self.get_points_component_grid_not_null(component_grid.levelvector, num_sub_diagonal)
+                points = self.get_points_component_grid(component_grid.levelvector)
+                points_not_null = self.get_points_component_grid_not_null(component_grid.levelvector)
                 x_array = [p[0] for p in points]
                 y_array = [p[1] for p in points]
                 x_array_not_null = [[p[0] for p in points_not_null]]
@@ -249,7 +252,7 @@ class StandardCombi(object):
                     starty = self.a[1]
                     endx = self.b[0]
                     endy = self.b[1]
-                    facecolor = 'green' if component_grid.coefficient == 1 else 'orange'
+                    facecolor = 'limegreen' if component_grid.coefficient == 1 else 'orange'
                     grid.add_patch(
                         patches.Rectangle(
                             (startx, starty),
@@ -300,8 +303,7 @@ class StandardCombi(object):
             start = None
             end = None
             for component_grid in scheme:
-                numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
-                points = self.get_points_component_grid(component_grid.levelvector, numSubDiagonal)
+                points = self.get_points_component_grid(component_grid.levelvector)
                 min_point = [min([point[d] for point in points]) for d in range(dim)]
                 max_point = [max([point[d] for point in points]) for d in range(dim)]
                 start = min_point if start is None else [min(start[d], v) for d,v in enumerate(min_point)]
@@ -319,14 +321,12 @@ class StandardCombi(object):
         ax.yaxis.set_ticks_position('none')
 
         if dim == 3:
-            ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
             ax.zaxis.set_ticks_position('none')
             markersize /= 2
 
         # get points of each component grid and plot them in one plot
         for component_grid in scheme:
-            numSubDiagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
-            points = self.get_points_component_grid(component_grid.levelvector, numSubDiagonal)
+            points = self.get_points_component_grid(component_grid.levelvector)
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
             if dim == 2:
@@ -374,9 +374,8 @@ class StandardCombi(object):
         dim = self.dim
         dictionary = {}
         for component_grid in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid.levelvector)
-            # print num_sub_diagonal , ii ,component_grid
-            points = self.get_points_component_grid_not_null(component_grid.levelvector, num_sub_diagonal)
+            # print ii ,component_grid
+            points = self.get_points_component_grid_not_null(component_grid.levelvector)
             points = set(points)
             for p in points:
                 if p in dictionary:
@@ -391,31 +390,22 @@ class StandardCombi(object):
                 print("Failed for:", key, " with value: ", value)
                 for area in self.refinement.get_objects():
                     print("area dict", area.levelvec_dict)
-                '''
-                for area in self.refinement.getObjects():
-                    print("new area:",area)
-                    for component_grid in self.scheme:
-                        num_sub_diagonal = (self.lmax[0] + dim - 1) - np.sum(component_grid[0])
-                        self.coarsenGrid(component_grid[0],area, num_sub_diagonal,key)
-                #print(self.refinement)
-                #print(dictionary.items())
-                '''
             assert (value == 1)
 
-    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal) -> Sequence[Tuple[float, ...]]:
-        return self.get_points_component_grid(levelvec, numSubDiagonal)
+    def get_points_component_grid_not_null(self, levelvec) -> Sequence[Tuple[float, ...]]:
+        return self.get_points_component_grid(levelvec)
 
-    def get_points_component_grid(self, levelvec, numSubDiagonal=None) -> Sequence[Tuple[float, ...]]:
+    def get_points_component_grid(self, levelvec) -> Sequence[Tuple[float, ...]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.getPoints()
         return points
 
-    def get_points_component_grid_1D_arrays(self, levelvec, numSubDiagonal=None) -> Sequence[Sequence[float]]:
+    def get_points_component_grid_1D_arrays(self, levelvec) -> Sequence[Sequence[float]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         points = self.grid.coordinate_array
         return [points]
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
+    def get_points_and_weights_component_grid(self, levelvec) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         self.grid.setCurrentArea(self.a, self.b, levelvec)
         return self.grid.get_points_and_weights()
 
@@ -423,8 +413,7 @@ class StandardCombi(object):
         total_points = []
         total_weights = []
         for component_grid in self.scheme:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-            points, weights = self.get_points_and_weights_component_grid(component_grid.levelvector, num_sub_diagonal)
+            points, weights = self.get_points_and_weights_component_grid(component_grid.levelvector)
             total_points.extend(points)
             # adjust weights for combination -> multiply with combi coefficient
             weights = [w * component_grid.coefficient for w in weights]

@@ -19,10 +19,10 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         #print("full interaction size:", self.full_interaction_size)
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec):
         return self.operation.f.get_f_dict_points()
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec):
         print("Not yet implemented!")
         assert(False)
 

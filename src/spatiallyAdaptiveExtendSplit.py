@@ -24,8 +24,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         dict_point_interpolation_values = {}
         f_value_array_length = self.operation.point_output_length()
         for area, contained_points in point_assignements:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-            coarsened_levelvector, do_compute  = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+            coarsened_levelvector, do_compute  = self.coarsen_grid(component_grid.levelvector, area)
             if do_compute:
                 # check if dedicated interpolation routine is present in grid
                 interpolation_op = getattr(self.grid, "interpolate", None)
@@ -102,26 +101,24 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 fontsize=fontsize, ha='center', color="blue")
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec, numSubDiagonal):
-        assert (numSubDiagonal < self.dim)
+    def get_points_component_grid(self, levelvec):
         points_array = []
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, do_compute = self.coarsen_grid(levelvec, area)
             self.grid.setCurrentArea(start, end, level_interval)
             points = self.grid.getPoints()
             points_array.extend(points)
         return points_array
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
-        assert (numSubDiagonal < self.dim)
+    def get_points_and_weights_component_grid(self, levelvec):
         points_array = []
         weights_array = []
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, do_compute = self.coarsen_grid(levelvec, area)
             self.grid.setCurrentArea(start, end, level_interval)
             points, weights = self.grid.get_points_and_weights()
             points_array.extend(points)
@@ -129,13 +126,12 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         return points_array, weights_array
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid_not_null(self, levelvec, numSubDiagonal):
-        assert (numSubDiagonal < self.dim)
+    def get_points_component_grid_not_null(self, levelvec):
         array2 = []
         for area in self.refinement.get_objects():
             start = area.start
             end = area.end
-            level_interval, do_compute = self.coarsen_grid(levelvec, area, numSubDiagonal)
+            level_interval, do_compute = self.coarsen_grid(levelvec, area)
             if do_compute:
                 self.grid.setCurrentArea(start, end, level_interval)
                 points = self.grid.getPoints()
@@ -146,7 +142,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         return array2
 
     # optimized adaptive refinement refine multiple cells in close range around max variance (here set to 10%)
-    def coarsen_grid(self, levelvector, area, num_sub_diagonal):
+    def coarsen_grid(self, levelvector, area):
         start = area.start
         end = area.end
         coarsening = area.coarseningValue
@@ -178,6 +174,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 else:
                     area.add_level(tuple(temp), tuple(levelvector))
         elif self.version == 3:
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvector)
+            assert (num_sub_diagonal < self.dim)
             currentDirection = 0
             num_sub_diagonal_save = num_sub_diagonal
             while coarsening > 0:
@@ -190,6 +188,8 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                         num_sub_diagonal_save -= 1
                 currentDirection = (currentDirection + 1) % self.dim
         else:
+            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvector)
+            assert (num_sub_diagonal < self.dim)
             while coarsening > 0:
                 maxLevel = max(temp)
                 if maxLevel == self.lmin[0]:  # we assume here that lmin is equal everywhere
@@ -276,8 +276,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def calculate_new_twin_errors(self, new_refinement_objects):
         for area in new_refinement_objects:
             for component_grid in self.scheme:
-                num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-                modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+                modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area)
                 if do_compute:
                     evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, None, None)
 
@@ -298,8 +297,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                         splitSingleDim=self.split_single_dim)
                     area.parent_info.parent = parent_area
                     for component_grid in self.scheme:
-                        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-                        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, parent_area, num_sub_diagonal)
+                        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, parent_area)
                         if do_compute:
                             evaluations = self.operation.evaluate_area(parent_area, modified_levelvec, component_grid, None, None)
                     #print("Areas", area.start, area.end, area.twins[d].start, area.twins[d].end)
@@ -515,8 +513,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if additional_info is None:
             return super().evaluate_operation_area(component_grid, area)
         else:
-            num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-            modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+            modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area)
             if do_compute:
                 evaluations = self.operation.evaluate_area_for_error_estimates(area, modified_levelvec, component_grid, self.refinement, additional_info)
                 return evaluations

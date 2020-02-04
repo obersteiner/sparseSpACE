@@ -4,7 +4,16 @@ install:
   - pip3 install scipy 
   - pip3 install matplotlib
   - pip3 install nose
+<<<<<<< HEAD
   - pip3 install chaospy
   - pip3 install fenics
+=======
+  - git clone https://github.com/jonathf/chaospy.git
+  - cd chaospy
+  - git checkout development
+  - pip3 install .
+  - cd ..
+>>>>>>> a089ff6157d0f77a0a35e225ebe36199341a4488
 script:
-  - python3 -m nose
+  - ls
+  - python3 -m nose -w test/
