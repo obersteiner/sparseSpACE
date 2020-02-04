@@ -59,7 +59,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         pass
 
     # returns the points coordinates of a single component grid with refinement
-    def get_points_all_dim(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
+    def get_points_all_dim(self, levelvec: Sequence[int]) -> List[Tuple[float, ...]]:
         indicesList, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(levelvec)
         if not self.grid.boundary:
             indicesList = [indices[1:-1] for indices in indicesList]
@@ -68,10 +68,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return allPoints
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
-        return self.get_points_all_dim(levelvec, numSubDiagonal)
+    def get_points_component_grid(self, levelvec: Sequence[int]) -> List[Tuple[float, ...]]:
+        return self.get_points_all_dim(levelvec)
 
-    def get_points_and_weights_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
+    def get_points_and_weights_component_grid(self, levelvec: Sequence[int]) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         point_coords, point_levels, _ =self.get_point_coord_for_each_dim(levelvec)
         self.grid.set_grid(point_coords, point_levels)
         points, weights = self.grid.get_points_and_weights()

@@ -23,9 +23,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.calculated_solution = None
         assert (len(a) == len(b))
 
-    # returns the number of points in a single component grid with refinement
-    def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool, num_sub_diagonal: int) -> int:
-        array2 = self.get_points_component_grid(levelvec, num_sub_diagonal)
+    def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool) -> int:
+        array2 = self.get_points_component_grid(levelvec)
         if count_multiple_occurrences:
             array2new = array2
         else:  # remove points that appear in the list multiple times
@@ -34,6 +33,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         return len(array2new)
 
     def evaluate_final_combi(self) -> Tuple[Sequence[float], int]:
+        """Evaluates the combination from scratch using the current refinement structures.
+
+        :return: Combisulation and number of evaluations/points
+        """
         areas = self.get_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
         self.compute_solutions(areas, evaluation_array)
@@ -41,18 +44,26 @@ class SpatiallyAdaptivBase(StandardCombi):
         combi_solution = self.operation.get_result()
         return combi_solution, num_evaluations
 
-    def init_adaptive_combi(self, minv: int, maxv: int, refinement_container: RefinementContainer, tol: float) -> None:
-        assert np.isscalar(minv)
-        assert np.isscalar(maxv)
+    def init_adaptive_combi(self, lmin: int, lmax: int, refinement_container: RefinementContainer, tol: float) -> None:
+        """This method initializes the basic parameteres of the adaptive refinement
+
+        :param lmin: minimum level of combination for truncated combination technique (equal for all dimensions)
+        :param lmax: maximum target level (equal for all dimensions)
+        :param refinement_container: refinement container object to store refinement data
+        :param tol: tolerance for refinement
+        :return: None
+        """
+        assert np.isscalar(lmin)
+        assert np.isscalar(lmax)
         self.tolerance = tol
         if self.print_output:
             if self.reference_solution is not None:
                 print("Reference solution:", self.reference_solution)
             else:
                 print("No reference solution present. Working purely on surplus error estimates.")
-        if (refinement_container == []):  # initialize refinement
-            self.lmin = [minv for i in range(self.dim)]
-            self.lmax = [maxv for i in range(self.dim)]
+        if refinement_container is None:  # initialize refinement
+            self.lmin = [lmin for i in range(self.dim)]
+            self.lmax = [lmax for i in range(self.dim)]
             # calculate the combination scheme
             self.combischeme = CombiScheme(self.dim)
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=self.print_output)
@@ -70,6 +81,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         # self.evaluationPerArea = [] #number of evaluations per area
 
     def evaluate_operation(self) -> Tuple[float, float]:
+        """This method evaluates the gridoperation on all component grids including initialization and finalization
+
+        :return: global error estimate and total error (sum of all individual errors in refinement container)
+        """
         # get tuples of all the combinations of refinement to access each subarea (this is the same for each component grid)
         areas = self.get_new_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
@@ -90,10 +105,21 @@ class SpatiallyAdaptivBase(StandardCombi):
             return self.total_error, self.total_error
 
     def init_evaluation_operation(self, areas) -> None:
+        """This method performs initializations which are necessary before the actual computation of the operation
+
+        :param areas: The list of all subareas in the refinement (can be RefinementContainer if only one subares)
+        :return: None
+        """
         for area in areas:
             self.operation.area_preprocessing(area)
 
     def compute_solutions(self, areas, evaluation_array: Sequence[int]) -> None:
+        """This method computes the gridoperation on all component grids
+
+        :param areas: The list of all subareas in the refinement (can be RefinementContainer if only one subares)
+        :param evaluation_array: Numpy array in which the number of evaluations per area are stored
+        :return: None
+        """
         # calculate integrals
         for component_grid in self.scheme:  # iterate over component grids
             if self.operation.is_area_operation():
@@ -104,13 +130,19 @@ class SpatiallyAdaptivBase(StandardCombi):
                     evaluation_array[k] += evaluations
             else:
                 assert (False)  # not implemented yet
-                points = self.get_points_component_grid(component_grid.levelvector, num_sub_diagonal)
+                points = self.get_points_component_grid(component_grid.levelvector)
                 self.operation.perform_operation(points)
                 self.compute_evaluations(evaluation_array, points)
 
     def evaluate_operation_area(self, component_grid: ComponentGridInfo, area, additional_info=None) -> int:
-        num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(component_grid.levelvector)
-        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area, num_sub_diagonal)
+        """Computes the GridOperation on a subarea of the domain
+
+        :param component_grid: ComponentGridInfo that defines the component grid
+        :param area: Definition of the subarea. Usually a RefinementObject or the complete RefinementContainer
+        :param additional_info: Additional info that might be passed to the operation
+        :return: number of evaluations performed on subarea
+        """
+        modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area)
         if do_compute:
             evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, self.refinement,
                                                        additional_info)
@@ -119,13 +151,17 @@ class SpatiallyAdaptivBase(StandardCombi):
             return 0
 
     def refine(self) -> None:
+        """This method performs one refinement step, which might refine multiple RefinementObjects
+
+        :return: None
+        """
         # split all cells that have an error close to the max error
         self.prepare_refinement()
         self.refinement.clear_new_objects()
         margin = self.margin
         quit_refinement = False
         num_refinements = 0
-        while True:  # refine all areas for which area is within margin
+        while True:  # refine all areas for which error is within margin
             # get next area that should be refined
             found_object, position, refine_object = self.refinement.get_next_object_for_refinement(
                 tolerance=self.benefit_max * margin)
@@ -152,19 +188,37 @@ class SpatiallyAdaptivBase(StandardCombi):
             if self.print_output:
                 print("recalculating errors")
 
-    # main method for the spatially adaptive refinement strategy
-    # In addition to a tolerance, the maximum number of function evaluations and the maximum computing time can be
-    # specified as a termination criterion.
-    def performSpatiallyAdaptiv(self, minv: int=1, maxv: int=2, errorOperator: ErrorCalculator=None, tol: float=10 ** -2,
-                                refinement_container: RefinementContainer=[], do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
+    def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
+                                refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
                                 print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+        """This is the main method for the spatially adaptive refinement strategy
+
+        :param lmin: Minimum level for truncated combination technique (equal for all dimensions)
+        :param lmax: Maximum level for combination technique (referred to as target level)
+        :param errorOperator: ErrorCalculator object that calculates the errors within the RefinementContainer
+        :param tol: Tolerance at which refinement is stopped
+        :param refinement_container: Refinement from old refinement which should be continued
+        :param do_plot: Boolean to indicate whether plots should be created during refinement
+        :param recalculate_frequently: Boolean to indicate whether we should frequently restart computation from scratch
+                                       This can be helpful to avoid the accumulation of rounding errors.
+        :param test_scheme: Test the validity of the combination scheme at the end of refinement (for debugging)
+        :param reevaluate_at_end: Boolean to indicate if we should reevaluate the whole combination after refinement
+        :param max_time: Maximum compute time. The refinement will stop when it exceeds this time.
+        :param max_evaluations: Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param print_output: Indicates whether output should be written during combination.
+        :param min_evaluations: Minimum number of points. The refinement will not stop until it exceeds this limit.
+        :param solutions_storage: #toDo
+        :param evaluation_points: Number of points at which we want to interpolate the approximated model. This will
+                                  generate the values at the points for each refinement step to analyze convergence.
+        :return: #toDo
+        """
         assert self.operation is not None
         self.errorEstimator = errorOperator
         self.recalculate_frequently = recalculate_frequently
         self.print_output = print_output
         self.reference_solution = self.operation.get_reference_solution()
-        self.init_adaptive_combi(minv, maxv, refinement_container, tol)
+        self.init_adaptive_combi(lmin, lmax, refinement_container, tol)
         self.error_array = []
         self.surplus_error_array = []
         self.interpolation_error_arrayL2 = []
@@ -179,6 +233,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+        """Continues the adaptive refinement with potentially new limits.
+
+        :param tol: Tolerance at which refinement is stopped
+        :param max_time: Maximum compute time. The refinement will stop when it exceeds this time.
+        :param max_evaluations: Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param min_evaluations: Minimum number of points. The refinement will not stop until it exceeds this limit.
+        :return:
+        """
         start_time = time.time()
         while True:
             error, surplus_error = self.evaluate_operation()
@@ -236,46 +298,95 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     @abc.abstractmethod
     def initialize_refinement(self):
+        """This method initializes the refinement container. This is specific to the indivudal strategy.
+
+        :return: None
+        """
         pass
 
     @abc.abstractmethod
-    def get_points_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int):
+    def get_points_component_grid(self, levelvec: Sequence[int]) -> Sequence[Tuple[float, ...]]:
+        """This method returns the points that are contained in the component grid.
+
+        :param levelvec: Level vector of the componenet grid
+        :return: List of all points.
+        """
         return
 
     @abc.abstractmethod
-    def do_refinement(self, area, position):
+    def do_refinement(self, area, position) -> bool:
+        """This method refines a specific area which is located at the specified position in the container.
+
+        :param area: Area to refine. This is only relevant to ExtendSplit and Cell scheme.
+        :param position: Position of element in refinement container. Used in SingleDimension method.
+        :return: Boolean that indicates whether refinement should be stopped after this.
+        """
         pass
 
-    # this is a default implementation that should be overritten if necessary
-    def prepare_refinement(self):
+    def prepare_refinement(self) -> None:
+        """Method that initializes necessary data at beginning of refinement procedure. Can be overwritten if needed.
+
+        :return: None
+        """
         pass
 
-    # this is a default implementation that should be overritten if necessary
     def refinement_postprocessing(self) -> None:
+        """This method performs postprocessing steps that are performed at the end of refinement procedure.
+
+        :return: None
+        """
         self.refinement.apply_remove()
         self.refinement.refinement_postprocessing()
 
-    # this is a default implementation that should be overritten if necessary
     def calc_error(self, objectID) -> None:
+        """This method calculates the error of the specified object in the refinement container.
+
+        :param objectID: Position of the object in the RefinementContainer. This is an int or Tuple[Int,...] (MetaCont.)
+        :return: None
+        """
         self.refinement.calc_error(objectID, self.norm)
 
-    # this is a default implementation that should be overritten if necessary
     def get_new_areas(self):
+        """This method returns all the areas that were created during refinement -> used for computing only new delta
+
+        :return: List of areas. Might contain only one element if no subareas exist.
+        """
         return self.refinement.get_new_objects()
 
-    # this is a default implementation that should be overritten if necessary
     def get_areas(self):
+        """This method returns all the areas that are contained in RefinementContainer.
+
+        :return: List of areas. Might contain only one element if no subareas exist.
+        """
         return self.refinement.get_objects()
 
-    # this method can be overwritten if for the method a graphical refinement visualization exists
     def draw_refinement(self, filename: str=None, markersize: int=10):
+        """This method plots the refinement structures of the method. Can be implemented by the indivudal strategy.
+
+        :param filename:
+        :param markersize:
+        :return:
+        """
         pass
 
-    # this method modifies the level if necessary and indicates if the area should be computed (second boolean return value)
-    def coarsen_grid(self, levelvector: Sequence[int], area, num_sub_diagonal: int):
+    def coarsen_grid(self, levelvector: Sequence[int], area):
+        """This method can be used to modify the levelvector according to the refinement scheme. Overwrite if needed.
+
+        :param levelvector: Level vector of component grid.
+        :param area: Subarea of the domain that we are currently computing for.
+        :return: Modified level vector and boolean that indicates if we should compute this area at all.
+        """
         return levelvector, True
 
     def finalize_evaluation_operation(self, areas, evaluation_array: Sequence[int]) -> None:
+        """This method finalizes the computation of the GridOperation after all component grids have been processed.
+
+        :param areas: List of subareas
+        :param evaluation_array: List with number of evaluations/points for each subarea.
+        :return: None
+        """
+        assert len(areas) == len(evaluation_array)
+
         if self.print_output:
             print("Curent number of function evaluations", self.get_total_num_points())
 
@@ -293,4 +404,9 @@ class SpatiallyAdaptivBase(StandardCombi):
 
     def get_calculated_solution(self): return self.calculated_solution
 
-    def has_basis_grid(self): return isinstance(self.grid, GlobalBasisGrid)
+    def has_basis_grid(self):
+        """This method indicates whether the grid defines basis functions.
+
+        :return: Boolean if has basis function or not.
+        """
+        return isinstance(self.grid, GlobalBasisGrid)
