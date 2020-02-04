@@ -49,6 +49,13 @@ class FEniCS_Solver(PDE_Solver):
         self.mesh = RectangleMesh(Point(*a), Point(*b), N_x-1, N_y-1) #takes number of intervals (N-1) as an argument
         self.V = FunctionSpace(self.mesh, el_type, degree)
 
+    # return data in order of the array dof
+    def convert_dof(self, data, dof):
+        ret = np.zeros(np.array(data).shape)
+        for i in range(len(data)):
+            ret[dof[i]]=data[i]
+        return ret
+        
     def solve(self):
         pass
 
@@ -86,7 +93,8 @@ class Poisson(FEniCS_Solver):
         self.u = Function(self.V)
         solve(a == L, self.u, bc)
 
-        return self.u.compute_vertex_values(self.mesh).reshape(*self.N)
+        return self.u.compute_vertex_values(self.mesh).reshape(*self.N).T
+
     
     def plot_solution(self):
         plot(self.u, title='Finite element solution')

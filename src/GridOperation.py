@@ -4,6 +4,7 @@ from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
 from PDE_Solver import *
+import matplotlib.pyplot as plt
 
 class GridOperation(object):
     def is_area_operation(self):
@@ -1459,17 +1460,51 @@ class PDE_Solve(GridOperation):
     def get_result(self):
         # Extrapolate all component_grids to adequate size and combine them
         combi_result = []
-        for grid in self.grids_dict.values():
+        for i,grid in enumerate(self.grids_dict.values()):
+            X,Y = np.meshgrid(*[np.linspace(0,2,n) for n in grid.get_points()],sparse=True)
+            plt.pcolor(X, Y, grid.data, cmap='YlGnBu')
+            plt.colorbar()
+            plt.title("{}, coeff: {}".format(grid.get_points(),grid.get_coefficient()))
+            plt.show()
             data = grid.interpolate_data(self.grid.levelvec)
             if combi_result==[]:
                 combi_result = np.zeros(np.shape(data))
-                print("combi_result shape: {}".format(np.shape(combi_result)))
+                # print("combi_result shape: {}".format(np.shape(combi_result)))
             combi_result += grid.get_coefficient()*data
+            X,Y = np.meshgrid(np.linspace(0,2,17),np.linspace(0,2,17))
+            plt.pcolor(X, Y, data , cmap='YlGnBu')
+            plt.title("Combi_result: %d" %(i))
+            plt.colorbar()
+            plt.show()
 
         return combi_result
 
-    def get_component_grid_values(self, levelvec):
-        return self.grids_dict[levelvec].get_data()
+    def get_component_grid_values(self, component_grid, mesh_points_grid):
+    #     mesh_points = get_cross_product(mesh_points_grid)
+    #     function_value_dim = self.f.output_length()
+    #     # calculate function values at mesh points and transform  correct data structure for scipy
+    #     values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+    #     return values
+        return self.component_grid.get_data()
+
+
+    # def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
+    #     # constructing all points from mesh definition
+    #     mesh_points = get_cross_product(mesh_points_grid)
+    #     function_value_dim = len(values[0])
+    #     interpolated_values_array = []
+    #     for d in range(function_value_dim):
+    #         values_1D = np.asarray([value[d] for value in values])
+
+    #         values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in (range(dim))])
+
+    #         # interpolate evaluation points from mesh points with bilinear interpolation
+    #         interpolated_values = interpn(mesh_points_grid, values_1D, evaluation_points, method='linear')
+
+    #         interpolated_values = np.asarray([[value] for value in interpolated_values])
+    #         interpolated_values_array.append(interpolated_values)
+    #     return np.hstack(interpolated_values_array)
+
 
     def get_reference_solution(self):
         return self.reference_solution

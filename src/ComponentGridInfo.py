@@ -25,46 +25,34 @@ class ComponentGridInfo(object):
             self.boundaries = list([True for __ in range(self.dim)])
         else:
             self.boundaries=boundaries
+                
         N = []
-
-        coord = []
         for i in range(self.dim):
             n = 2**self.levelvector[i] + 1
             if self.boundaries[i]==True:
-                coord.append(np.linspace(0,1.0,n))
                 N.append(n)
             else:
-                coord.append(np.linspace(0,1.0,n)[1:-1])
-                N.append(n-1)
-
-        self.coord = np.meshgrid(*coord, indexing='ij') # Corerct for 3D or 4D case ?
+                N.append(n-1)                
         self.N = tuple(N)
 
-    def fill_data(self, f):
-        ''' Fill data with either:
-            a) values evaluated on gridpoints or
-            b) specified numpy array of appropriate size 
-        '''
-        if callable(f):
-            # Fill data with dummy coord values
-            self.data = f(*self.coord)
-        else:
-            print("ComponentGrid data shape: {}".format(np.shape(f)))
-            assert np.shape(f) == self.N or np.shape(f[0]) == self.N, "Invalid shape of provided grid data array"
-            self.data = f
+    def fill_data(self, data):
+        ''' Fill data with specified numpy array of appropriate size '''
+        # print("ComponentGrid data shape: {}".format(np.shape(f)))
+        assert np.shape(data)[::-1] == self.N or np.shape(data[0])[::-1] == self.N, "Invalid shape of provided grid data array"
+        self.data = data
     
     def interpolate_data(self, levelvector) -> np.array:
         # get level for interpolating
         new = tuple(map(float,[(2**i+1) for i in levelvector]))
         # get factor for interpolation
-        fac = np.divide(new, self.N)
-        if np.shape(self.data) == self.N:
+        fac = np.divide(new, self.N[::-1])
+        if np.shape(self.data)[::-1] == self.N:
             return zoom(self.data, fac, order=1)
-        else:
-            interpolated_results = []
-            for result in self.data:
-                interpolated_results.append(zoom(result, fac, order=1))
-            return np.array(interpolated_results)
+        # else: # case for instationary PDEs
+        #     interpolated_results = []
+        #     for result in self.data:
+        #         interpolated_results.append(zoom(result, fac, order=1))
+        #     return np.array(interpolated_results)
 
     def get_dim(self):
         return self.dim
