@@ -2,7 +2,7 @@ from numpy import linalg as LA
 from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
-import RefinementContainer
+from RefinementContainer import RefinementContainer
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
