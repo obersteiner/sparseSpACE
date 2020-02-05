@@ -6,6 +6,20 @@ def sortToRefinePosition(elem):
     return elem[1]
 
 
+class NodeInfo(object):
+    def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object, level_child):
+        self.child = child
+        self.left_parent = left_parent
+        self.right_parent = right_parent
+        self.left_parent_of_left_parent = left_parent_of_left_parent
+        self.right_parent_of_right_parent = right_parent_of_right_parent
+        self.has_left_child = has_left_child
+        self.has_right_child = has_right_child
+        self.left_refinement_object = left_refinement_object
+        self.right_refinement_object = right_refinement_object
+        self.level_child = level_child
+
+
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
@@ -77,26 +91,34 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         points, weights = self.grid.get_points_and_weights()
         return points, weights
 
-    def get_num_points_each_dim(self):
+    def get_num_points_each_dim(self) -> Sequence[int]:
+        """This method returns the number of points in each dimension including boundary points.
+
+        :return: numpy array with number of points
+        """
         num_points = np.zeros(self.dim, dtype=int)
-        for component_grid in self.scheme:
-            point_coords, point_levels, _ = self.get_point_coord_for_each_dim(component_grid.levelvector)
-            self.grid.set_grid(point_coords, point_levels)
-            num_points_component_grid = self.grid.levelToNumPoints(component_grid.levelvector)
-            for i, v in enumerate(num_points_component_grid):
-                if num_points[i] < v:
-                    num_points[i] = v
-        assert all([v > 0 for v in num_points])
+
+        for d in range(self.dim):
+            num_points[d] = self.refinement.get_refinement_container_for_dim(d).size()
+            assert(num_points[d] > 0)
+
         return num_points
 
-    # returns list of coordinates for each dimension (basically refinement stripes) + all points that are associated
-    # with a child in the global refinement structure. There might be now such points that correspond to a global child.
-    def get_point_coord_for_each_dim(self, levelvec: Sequence[int]):
+    def get_point_coord_for_each_dim(self, levelvec: Sequence[int]) -> Tuple[Sequence[Sequence[float]], Sequence[Sequence[int]], Sequence[Sequence[NodeInfo]]]:
+        """This method returns the 1D list of point coordinates and the point levels for each dimension.
+        In addition the 1D list of children for each dimension is returned.
+
+        If self.use_local_children is set the children will be the ones in the local compoenent grid, otherwise we will
+        return only grids that are also children in the global refinement structure (which might not exist).
+
+        :param levelvec: Level vector of the component grid
+        :return: List of point coordinates and levels and children for each dimension.
+        """
         refinement = self.refinement
         # get a list of all coordinates for every this_dim (so (0, 1), (0, 0.5, 1) for example)
-        indicesList = []
+        point_coordinates = []
         children_indices = []
-        indices_level = []
+        points_level = []
         max_coarsenings = np.zeros(self.dim, dtype=int) #only for dimensions with level > 1
         for d in range(self.dim):
             #if levelvec[d] > self.lmin[d]:
@@ -105,12 +127,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             max_coarsenings_dim = list(max_coarsenings)
             refineContainer = refinement.get_refinement_container_for_dim(d)
             refine_container_objects = refineContainer.get_objects()
-            indicesDim = []
-            indices_levelDim = []
+            points_dim = []
+            points_level_dim = []
 
             children_indices_dim = []
-            indicesDim.append(refine_container_objects[0].start)
-            indices_levelDim.append(refine_container_objects[0].levels[0])
+            points_dim.append(refine_container_objects[0].start)
+            points_level_dim.append(refine_container_objects[0].levels[0])
             for i in range(len(refine_container_objects)):
                 refineObj = refine_container_objects[i]
                 if i + 1 < len(refine_container_objects):
@@ -121,42 +143,57 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
 
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
-
-                    indicesDim.append(refineObj.end)
+                    points_dim.append(refineObj.end)
                     if not self.use_local_children:
                         if next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0]):
                             children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
                     else:
-                        indices_levelDim.append(refineObj.levels[1])
-                        #print(d, refineObj.end)
+                        points_level_dim.append(refineObj.levels[1])
 
             if self.use_local_children:
-                for i in range(1,len(indices_levelDim)-1):
-                    if self.is_child(indices_levelDim[i-1], indices_levelDim[i], indices_levelDim[i+1]):
-                        #print(d, indicesDim[i])
-                        children_indices_dim.append((self.get_node_info(i, indicesDim, indices_levelDim, d)))
-                        #print(children_indices_dim, d)
-            indicesList.append(indicesDim)
+                for i in range(1,len(points_level_dim)-1):
+                    if self.is_child(points_level_dim[i-1], points_level_dim[i], points_level_dim[i+1]):
+                        children_indices_dim.append((self.get_node_info(i, points_dim, points_level_dim, d)))
+            point_coordinates.append(points_dim)
             children_indices.append(children_indices_dim)
-            indices_level.append(indices_levelDim)
+            points_level.append(points_level_dim)
 
             # Test if children_indices is valid
             for c in children_indices_dim:
-                indicesDim.index(c.left_parent)
-                indicesDim.index(c.right_parent)
+                points_dim.index(c.left_parent)
+                points_dim.index(c.right_parent)
             # Test if indices are valid
-            assert all(indicesDim[i] <= indicesDim[i + 1] for i in range(len(indicesDim) - 1))
+            assert all(points_dim[i] <= points_dim[i + 1] for i in range(len(points_dim) - 1))
 
-        return indicesList, indices_level, children_indices
+        return point_coordinates, points_level, children_indices
 
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
+        """This method updates subtraction value so that the maximum level is only reached if level is max. We also
+        check that subtraction value is not too large.
+
+        :param subtraction_value: Current value of subtraction_value
+        :param d: Respective dimension for subtraction_value
+        :param max_level: Maximum level in this dimension.
+        :param levelvec:
+        :return:
+        """
         if levelvec[d] - subtraction_value == max_level and levelvec[d] < self.lmax[d]:
             subtraction_value += 1
         subtraction_value = min(subtraction_value, levelvec[d] - self.lmin[d])
         return subtraction_value
 
-    def get_subtraction_value(self, refineObj, refineContainer, i, max_coarsenings, d, levelvec):
+    def get_subtraction_value(self, refineObj: RefinementObject, refineContainer: RefinementContainer, i: int, max_coarsenings: Sequence[int], d: int, levelvec: Sequence[int]) -> int:
+        """This method calculates the subtraction value according to the version. See publication toDo
+
+        :param refineObj: RefinementObject for which we want to calculate subraction value
+        :param refineContainer: RefinementContainer of dimension d
+        :param i: Index of RefineObject in RefinementContainer
+        :param max_coarsenings: Maximum coarsening values for all dimensions
+        :param d: Dimension of RefinementObject
+        :param levelvec: Level vector of component grid
+        :return: The subtraction value (int)
+        """
         if self.version == 5:
             if tuple((d, i)) in self.max_level_dict:
                 if tuple((d, self.max_level_dict[tuple((d, i))])) in self.subtraction_value_cache:
@@ -179,7 +216,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 #                subtraction_value = subtract_value_temp
                 #return self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d,i))], levelvec)
         if self.version == 4 or self.version == 5:
-            #max_coarsenings_levelvec = [coarsening if levelvec[k] > 1 else 0 for k, coarsening in enumerate(max_coarsenings)]
             max_coarsenings_levelvec = max_coarsenings
         if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5:
             refineObj_temp = refineObj
@@ -284,18 +320,31 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return subtraction_value
 
 
-    # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure level 1 is never considered to be a child
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
+        """This method returns if the point of level level_point is a child in the refinement structure.
+        A point with level <= 1 is not considered to be a child.
+
+        :param level_left_point: level of point to left
+        :param level_point: level of point
+        :param level_right_point: level of point to right
+        :return: Bool if point is a child
+        """
         return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
-        #return True
         #if level_left_point < level_point or level_right_point < level_point:
         #    return True
         #else:
         #    return False
 
-    # This method calculates the left and right parent of a child. It might happen that a child has already a child
-    # in one direction but it may not have one in both as it would not be considered to be a child anymore.
-    def get_node_info(self, position, coords_dim, level_dim, d):
+    def get_node_info(self, position: int, coords_dim: Sequence[float], level_dim: Sequence[int], d: int) -> NodeInfo:
+        """This method calculates the left and right parent of a child. It might happen that a child has already a child
+        in one direction but it may not have one in both as it would not be considered to be a child anymore.
+
+        :param position: Position of child in coords_dim and level_dim
+        :param coords_dim: Coordinates of all points in the dimension d
+        :param level_dim:  Level of all points in the dimension d
+        :param d: Current dimension
+        :return: NodeInfo object containing parents and other info for error calculation
+        """
         child = coords_dim[position]
         level_child = level_dim[position]
         if self.equidistant:
@@ -380,9 +429,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    # this method draws the 1D refinement of each dimension individually
-    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):  # update with meta container
-        plt.rcParams.update({'font.size': 60})
+    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
+        """This method plots the refinement trees of the current refinement structure.
+
+        :param filename: Will save plot to specified filename if set.
+        :param markersize: Specifies the used marker size for plotting
+        :param fontsize: Specifies the used fontsize for plotting
+        :param single_dim: Can be set when only specified dimension should be plotted
+        :return: Figure object of plot
+        """
+        plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
         height = 5*sum(self.lmax) if single_dim is None else 5 * self.lmax[single_dim]
@@ -488,7 +544,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #            level = max(area.levels)
         #            area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
-    def _initialize_points(self, points, func_mid, d, i1, i2):
+    def _initialize_points(self, points, func_mid: Callable[[float, float], float], d: int, i1: int, i2: int) -> None:
+        """This method recursively initializes the point coordinates in the refinement structure.
+
+        :param points: numpy array where points should be stored in
+        :param func_mid: Function determining the center of two points
+        :param d: Current dimension
+        :param i1: Index of left point
+        :param i2: Index of right point
+        :return: None
+        """
         if i1+1 >= i2:
             return
         i = (i1 + i2) // 2
@@ -497,6 +562,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self._initialize_points(points, func_mid, d, i, i2)
 
     def _initialize_levels(self, levels, i1, i2, level):
+        """This method recursively initializes the levels of the points in the refinement structure.
+
+        :param levels: numpy array where levels should be stored in
+        :param i1: Index of left point
+        :param i2: Index of right point
+        :param level: Current level
+        :return:
+        """
         if i1+1 >= i2:
             return
         i = (i1 + i2) // 2
@@ -566,7 +639,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #    return False
         return False
 
-    def raise_lmax(self, d: int, value: int):
+    def raise_lmax(self, d: int, value: int) -> None:
+        """This method raises the maximum level of the combination scheme if previous one is exceeded by refinement.
+
+        :param d: Dimension where we want to increase level.
+        :param value: Value by which maximum level is increased.
+        :return: None
+        """
         self.lmax[d] += value
         if self.dim_adaptive:
             if self.print_output:
@@ -582,12 +661,25 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 if refinements == 0:
                     break
 
-    def rebalance(self, d):
+    def rebalance(self, d: int) -> None:
+        """This method rebalances the refinement tree of dimension d. See also publication toDo
+
+        :param d: Dimension of refinement tree.
+        :return: None
+        """
         refinement_container = self.refinement.get_refinement_container_for_dim(d)
         self.rebalance_interval(0, refinement_container.size(), 1, refinement_container)
         #refinement_container.printContainer()
 
     def rebalance_interval(self, start, end, level, refinement_container):
+        """This method recursively rebalances the refinement tree.
+
+        :param start: Start of interval in which we want to rebalance.
+        :param end: End of interval in which we want to rebalance
+        :param level: Current level of the rebalancing procedure.
+        :param refinement_container: RefinementContainer that stores the RefinementObjects.
+        :return: None
+        """
         if end - start <= 2:
             return
         refineContainer = refinement_container
@@ -675,10 +767,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
     def update_coarsening_values(self, refinement_container_d, d):
+        """This method checks if any of the RefinementObject exceeds the maximum level and returns this value.
+
+        :param refinement_container_d: RefinementContainer for dimension d
+        :param d: Dimension where we want to update the values.
+        :return:
+        """
         update_dimension = 0
         for refinement_object in refinement_container_d.get_objects():
             refinement_object.coarsening_level = self.lmax[d] - max(refinement_object.levels)
-            if refinement_object.coarsening_level < update_dimension :
+            if refinement_object.coarsening_level < update_dimension:
                 update_dimension = refinement_object.coarsening_level
             #assert refinement_object.coarsening_level >= -1
         return update_dimension * -1
@@ -702,16 +800,5 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.scheme = self.combischeme.getCombiScheme(do_print=False)
 
 
-class NodeInfo(object):
-    def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object, level_child):
-        self.child = child
-        self.left_parent = left_parent
-        self.right_parent = right_parent
-        self.left_parent_of_left_parent = left_parent_of_left_parent
-        self.right_parent_of_right_parent = right_parent_of_right_parent
-        self.has_left_child = has_left_child
-        self.has_right_child = has_right_child
-        self.left_refinement_object = left_refinement_object
-        self.right_refinement_object = right_refinement_object
-        self.level_child = level_child
+
 
