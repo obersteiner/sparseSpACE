@@ -2,74 +2,172 @@ from numpy import linalg as LA
 from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
+import RefinementContainer
 
 class GridOperation(object):
-    def is_area_operation(self):
+    """This class defines the basic interface for a GridOperation which performs operations on a component grid.
+    It should provide the basic functionalities to solve the operation on arbitrary grids and calculate error estimates
+    for refinement. It also needs to provide functionality in how to combine the individual results on the component
+    grids.
+    """
+    def is_area_operation(self) -> bool:
+        """This function returns a bool to indicate whether the operation can be seperately applied to subareas.
+
+        :return: Bool if function can be separately applied to subareas.
+        """
         return False
+
     @abc.abstractmethod
     def perform_operation(self, levelvector, refinementObjects=None):
+        """Main function of the GridOperation which applies the operation to the specified levelvector.
+
+        :param levelvector:
+        :param refinementObjects:
+        :return:
+        """
         pass
 
     @abc.abstractmethod
     def set_errors(self, refinementObjects=None):
         pass
 
-    # This method indicates whether we should only count unique points for the cost estimate (return True) or
-    # if we should count points multiple times if they are contained in different component grids
     @abc.abstractmethod
-    def count_unique_points(self):
+    def count_unique_points(self) -> bool:
+        """This method indicates whether we should only count unique points for the cost estimate (return True) or
+        if we should count points multiple times if they are contained in different component grids
+
+        :return: Bool
+        """
         return False
 
-    def area_preprocessing(self, area):
+    def area_preprocessing(self, area) -> None:
+        """This area is used to preprocess an area before the operation starts.
+
+        :param area: Area to preprocess.
+        :return: None
+        """
         pass
 
-    def area_postprocessing(self, area):
+    def area_postprocessing(self, area) -> None:
+        """This area is used to postprocess an area after the operation finishes.
+
+        :param area: Area to preprocess.
+        :return: None
+        """
         pass
 
-    def post_processing(self):
+    def post_processing(self) -> None:
+        """This method is used to postprocess after the operation has been applied to all component grids.
+
+        :return: None
+        """
         pass
 
     # This method can be used if there is a better global error estimate than the summation of the local surplusses
-    def get_global_error_estimate(self, refinement):
+    def get_global_error_estimate(self, refinement: RefinementContainer) -> float:
+        """This method returns the global error estimate. Should be implemented if there is a better estimator than sum
+        of local errors in refinement.
+
+        :param refinement: RefinementContainer from which to extract info for global error estimates.
+        :return: Global error estimate
+        """
         return None
 
     def get_grid(self) -> Grid:
+        """This method returns the grid that is used by the GridOperation
+
+        :return: Grid class
+        """
         return self.grid
 
     def get_reference_solution(self) -> Sequence[float]:
+        """This method returns the reference solution if available.
+
+        :return: Reference solution.
+        """
         return self.reference_solution
 
-    def initialize(self):
+    def initialize(self) -> None:
+        """This method can be used to initialize the GridOperation at the start of the adaptive procedure.
+
+        :return: None
+        """
         pass
 
-    # This method calculates the error between the combi result and the reference solution. Can be changed by Operation.
-    def get_error(self, combivalue, reference_solution):
+    def get_error(self, combivalue, reference_solution) -> float:
+        """This method calculates the error between the combi result and the reference solution.
+        Can be changed by Operation.
+
+        :param combivalue: Result of the combination.
+        :param reference_solution: Reference solution
+        :return: Error measure
+        """
         return max(abs(combivalue - reference_solution))
 
-    # This method is called after the combination and should return the combination result
     def get_result(self):
+        """This method is called after the combination and should return the combination result.
+
+        :return: Result of the combination.
+        """
         pass
 
-    # Returns the size of the model evaluations of each point; in case of scalar values
-    # (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output
-    def point_output_length(self):
+
+    def point_output_length(self) -> int:
+        """Returns the length of list/array the model evaluations have at each point; in case of scalar values
+        (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output.
+
+        :return: Length of model values.
+        """
         return 1
 
-    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
-    def interpolate_points(self, values, mesh_points_grid, evaluation_points):
+    def interpolate_points(self, values: Sequence[Sequence[float]], mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float, ...]]):
+        """Interpolates values that are on the mesh_points_grid at the given evaluation_points using bilinear
+        interpolation.
+
+        :param values: Numpy array with values at grid points. Each value is again a numpy array.
+        :param mesh_points_grid: Grid definition where values are placed. List of !D arrays.
+        :param evaluation_points: Points at which we want to evaluate. List of points.
+        :return:
+        """
         return Interpolation.interpolate_points(values, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
+        """This method evaluates the analytic model at the given coordinate.
+
+        :param coordinate: Coordinate for evaluation.
+        :return: Value at coordinate.
+        """
         pass
 
     @abc.abstractmethod
     def get_distinct_points(self):
+        """This method returns the number of all points that were used in the combination.
+
+        :return: Number of points.
+        """
         pass
 
     @abc.abstractmethod
-    def get_component_grid_values(self, component_grid, mesh_points_grid):
+    def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
+        """This method returns the grid values for the specified component grid on the specified mesh.
+
+        :param component_grid: ComponentGridInfo of component grid for which we want the values.
+        :param mesh_points_grid: Grid definition of the points at which we want the values.
+        :return: List of all grid values. This is a 1D array with the values (each values is a numpy array!).
+        """
         pass
+
+    @abc.abstractmethod
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> None:
+        """This method evaluates the operation on a specified component grid based on the level vector. This method is
+        used in the standard or dimension adaptive combination where we do not apply spatial adaptivity.
+
+        :param component_grid: ComponentGridInfo of the specified component grid.
+        :return:
+        """
+        pass
+
 
 class AreaOperation(GridOperation):
     def is_area_operation(self):
@@ -142,7 +240,7 @@ class Integration(AreaOperation):
             refinement_container.integral += partial_integral
         return evaluations
 
-    def evaluate_levelvec(self, component_grid):
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo):
         levelvector = component_grid.levelvector
         partial_integral = self.grid.integrate(self.f, levelvector, self.grid.a, self.grid.b)
         self.integral += partial_integral * component_grid.coefficient

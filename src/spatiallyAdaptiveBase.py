@@ -191,7 +191,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
                                 refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple['RefinementContainer', Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         """This is the main method for the spatially adaptive refinement strategy
 
         :param lmin: Minimum level for truncated combination technique (equal for all dimensions)
@@ -232,7 +232,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.evaluation_points = evaluation_points
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
-    def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+    def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple['RefinementContainer', Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         """Continues the adaptive refinement with potentially new limits.
 
         :param tol: Tolerance at which refinement is stopped
