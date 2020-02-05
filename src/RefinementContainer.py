@@ -273,6 +273,11 @@ class MetaRefinementContainer(object):
             c.apply_remove(sort)
 
     def get_refinement_container_for_dim(self, d: int) -> RefinementContainer:
+        """This method returns the RefinementContainer of dimension d.
+
+        :param d: Dimension of requested RefinementContainer.
+        :return: RefinementContainer
+        """
         return self.refinementContainers[d]
 
     # apply refinement
