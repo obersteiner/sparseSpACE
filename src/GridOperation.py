@@ -1441,6 +1441,7 @@ class PDE_Solve(GridOperation):
     def __init__(self, solver, grid: Grid, reference_solution=None):
         self.solver = solver
         self.grid = grid
+        self.dim = grid.dim
         self.grids_dict = {}
         self.reference_solution = reference_solution
         
@@ -1463,21 +1464,23 @@ class PDE_Solve(GridOperation):
         # Extrapolate all component_grids to adequate size and combine them
         combi_result = []
         for i,grid in enumerate(self.grids_dict.values()):
-            X,Y = np.meshgrid(*[np.linspace(0,2,n) for n in grid.get_points()],sparse=True)
-            plt.pcolor(X, Y, grid.data, cmap='YlGnBu')
-            plt.colorbar()
-            plt.title("{}, coeff: {}".format(grid.get_points(),grid.get_coefficient()))
-            plt.show()
+            # X,Y = np.meshgrid(*[np.linspace(-1,1,n) for n in grid.get_points()],sparse=True)
+            # plt.pcolor(X, Y, grid.data[1], cmap='YlGnBu')
+            # plt.colorbar()
+            # plt.title("{}, coeff: {}".format(grid.get_points(),grid.get_coefficient()))
+            # plt.show()
+            # print(np.shape(grid))
             data = grid.interpolate_data(self.grid.levelvec)
+            print(np.shape(data))
             if combi_result==[]:
                 combi_result = np.zeros(np.shape(data))
-                # print("combi_result shape: {}".format(np.shape(combi_result)))
+                print("combi_result shape: {}".format(np.shape(combi_result)))
             combi_result += grid.get_coefficient()*data
-            X,Y = np.meshgrid(np.linspace(0,2,17),np.linspace(0,2,17))
-            plt.pcolor(X, Y, data , cmap='YlGnBu')
-            plt.title("Combi_result: %d" %(i))
-            plt.colorbar()
-            plt.show()
+            # X,Y = np.meshgrid(np.linspace(-1,1,17),np.linspace(-1,1,17))
+            # plt.pcolor(X, Y, combi_result[1], cmap='YlGnBu')
+            # plt.title("Combi_result: %d" %(i))
+            # plt.colorbar()
+            # plt.show()
 
         return combi_result
 
@@ -1487,7 +1490,7 @@ class PDE_Solve(GridOperation):
     #     # calculate function values at mesh points and transform  correct data structure for scipy
     #     values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
     #     return values
-        return self.component_grid.get_data()
+        return component_grid.get_data()
 
 
     # def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):

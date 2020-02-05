@@ -49,12 +49,12 @@ class FEniCS_Solver(PDE_Solver):
         self.mesh = RectangleMesh(Point(*a), Point(*b), N_x-1, N_y-1) #takes number of intervals (N-1) as an argument
         self.V = FunctionSpace(self.mesh, el_type, degree)
 
-    # return data in order of the array dof
-    def convert_dof(self, data, dof):
-        ret = np.zeros(np.array(data).shape)
-        for i in range(len(data)):
-            ret[dof[i]]=data[i]
-        return ret
+    # # return data in order of the array dof
+    # def convert_dof(self, data, dof):
+    #     ret = np.zeros(np.array(data).shape)
+    #     for i in range(len(data)):
+    #         ret[dof[i]]=data[i]
+    #     return ret
         
     def solve(self):
         pass
@@ -93,9 +93,9 @@ class Poisson(FEniCS_Solver):
         self.u = Function(self.V)
         solve(a == L, self.u, bc)
 
-        return self.u.compute_vertex_values(self.mesh).reshape(*self.N).T
+        return self.u.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
 
-    
+
     def plot_solution(self):
         plot(self.u, title='Finite element solution')
 
@@ -131,7 +131,7 @@ class GaussianHill(FEniCS_Solver):
         self.t_max=t_max
         self.dt=dt
         num_steps = int(t_max/dt)
-        self.result = np.zeros((num_steps+1,*self.N))
+        self.result = np.zeros((num_steps+1,*self.N[::-1]))
 
         # Define boundary condition
         def boundary(x, on_boundary):
@@ -141,7 +141,7 @@ class GaussianHill(FEniCS_Solver):
         # Define initial value
         u_0 = Expression('exp(-a*pow(x[0], 2) - a*pow(x[1], 2))', degree=2, a=5)
         u_n = interpolate(u_0, self.V)
-        self.result[0] = u_n.compute_vertex_values(self.mesh).reshape(*self.N)
+        self.result[0] = u_n.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
 
         # Define variational problem
         u = TrialFunction(self.V)
@@ -157,7 +157,7 @@ class GaussianHill(FEniCS_Solver):
         for n in range(num_steps):
             t += dt
             solve(a == L, u, bc)
-            self.result[n+1] = u.compute_vertex_values(self.mesh).reshape(*self.N)
+            self.result[n+1] = u.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
             u_n.assign(u)
 
         return self.result

@@ -48,11 +48,11 @@ class ComponentGridInfo(object):
         fac = np.divide(new, self.N[::-1])
         if np.shape(self.data)[::-1] == self.N:
             return zoom(self.data, fac, order=1)
-        # else: # case for instationary PDEs
-        #     interpolated_results = []
-        #     for result in self.data:
-        #         interpolated_results.append(zoom(result, fac, order=1))
-        #     return np.array(interpolated_results)
+        else: # case for instationary PDEs
+            interpolated_results = []
+            for result in self.data:
+                interpolated_results.append(zoom(result, fac, order=1))
+            return np.array(interpolated_results)
 
     def get_dim(self):
         return self.dim
