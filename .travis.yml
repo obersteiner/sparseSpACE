@@ -10,7 +10,6 @@ install:
   - git checkout development
   - pip3 install .
   - cd ..
-
 script:
   - ls
   - python3 -m nose -w test/
