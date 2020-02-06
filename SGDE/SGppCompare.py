@@ -8,99 +8,93 @@ from StandardCombi import *
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn import datasets, preprocessing
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# dimension of the problem
-dim = 2
 
-# define number of samples
-size = 500
+def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=False, minimum_level=1, maximum_level=4, lambd=0, pointsPerDim=100):
+    if values is None:
+        print("No values for comparison given.")
+        return
+    if combiObject is None and data is not None:
+        # define integration domain boundaries
+        a = np.zeros(dim)
+        b = np.ones(dim)
 
-# define integration domain boundaries
-a = np.zeros(dim)
-b = np.ones(dim)
+        # define operation to be performed
+        operation = DensityEstimation(data, dim, lambd=lambd)
 
-# csv file
-data = "Circles500.csv"
+        # create the combiObject and initialize it with the operation
+        combi = StandardCombi(a, b, operation=operation)
 
-# define operation to be performed
-operation = DensityEstimation(data, dim)
+        # perform the density estimation operation
+        combi.perform_operation(minimum_level, maximum_level)
+    elif combiObject is not None:
+        combi = combiObject
+    else:
+        print("No data or combiObject given.")
+        return
 
-# create the combiObject and initialize it with the operation
-combiObject = StandardCombi(a, b, operation=operation)
+    if plot_data:
+        print("Plot of dataset:")
+        operation.plot_dataset("Figures/dataset_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png")
 
-# define level of combigrid
-minimum_level = 1
-maximum_level = 4
+    # print("Plot of density estimation")
+    # combiObject.plot(contour=True)
 
-# perform the density estimation operation
-combiObject.perform_operation(minimum_level, maximum_level)
+    X = np.linspace(0.0, 1.0, pointsPerDim)
+    Y = np.linspace(0.0, 1.0, pointsPerDim)
+    X, Y = np.meshgrid(X, Y)
 
-print("Plot of dataset:")
-operation.plot_dataset()
+    print("Plot comparison")
+    Z = np.zeros_like(X)
+    for i in range(pointsPerDim):
+        for j in range(pointsPerDim):
+            Z[i][j] = combi([[X[i, j], Y[i, j]]])
 
-print("Plot of density estimation")
-combiObject.plot()
+    fontsize = 30
+    plt.rcParams.update({'font.size': fontsize})
+    fig = plt.figure(figsize=(30, 20))
+    ax = fig.add_subplot(2, 3, 1, projection='3d')
+    ax.title.set_text("sparseSpACE")
+    ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
-pointsPerDim = 100
-X = np.linspace(0.0, 1.0, pointsPerDim)
-Y = np.linspace(0.0, 1.0, pointsPerDim)
-X, Y = np.meshgrid(X, Y)
+    ax = fig.add_subplot(2, 3, 4)
+    p = ax.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    fig.colorbar(p, cax=cax)
 
-print("Plot of Z")
-Z = np.zeros_like(X)
-for i in range(pointsPerDim):
-    for j in range(pointsPerDim):
-        Z[i][j] = combiObject([[X[i, j], Y[i, j]]])
+    # read in SGpp values for the above points
+    dataCSV = np.genfromtxt(values, delimiter=',')
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+    ax = fig.add_subplot(2, 3, 2, projection='3d')
+    ax.title.set_text("SG++")
+    ax.plot_surface(X, Y, dataCSV, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
-surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-fig.colorbar(surf, shrink=0.5, aspect=5)
-ax.set_xlim(0.0, 1.0)
-ax.set_ylim(0.0, 1.0)
-ax.set_zlim(bottom=0.0)
+    ax = fig.add_subplot(2, 3, 5)
+    p = ax.imshow(dataCSV, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    fig.colorbar(p, cax=cax)
 
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-ax.set_zlabel("z")
-plt.show()
-plt.close(fig)
+    difValues = np.subtract(Z, dataCSV)
 
-# read in SGpp values for the above points
-dataSGpp = "valuesSGpp.csv"
-dataCSV = np.genfromtxt(dataSGpp, delimiter=',')
+    ax = fig.add_subplot(2, 3, 3, projection='3d')
+    ax.title.set_text("Difference")
+    ax.plot_surface(X, Y, difValues, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
-print("Plot of SGpp")
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+    ax = fig.add_subplot(2, 3, 6)
+    p = ax.imshow(difValues, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    fig.colorbar(p, cax=cax)
 
-surf = ax.plot_surface(X, Y, dataCSV, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-fig.colorbar(surf, shrink=0.5, aspect=5)
-ax.set_xlim(0.0, 1.0)
-ax.set_ylim(0.0, 1.0)
-ax.set_zlim(bottom=0.0)
+    plt.savefig("Figures/comparison_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png",
+                bbox_inches='tight')
+    plt.show()
+    plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
 
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-ax.set_zlabel("z")
-plt.show()
-plt.close(fig)
 
-difValues = np.subtract(Z, dataCSV)
+# plot_comparison(dim=2, data="Datasets/Circles500.csv", values="Values/Circles_level_3_lambda_0.0.csv", combiObject=None, plot_data=False,
+#                 minimum_level=1, maximum_level=3, lambd=0.0, pointsPerDim=100)
 
-print("Plot of difference between sparseSpACE and SGpp")
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-
-surf = ax.plot_surface(X, Y, difValues, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-fig.colorbar(surf, shrink=0.5, aspect=5)
-ax.set_xlim(0.0, 1.0)
-ax.set_ylim(0.0, 1.0)
-ax.set_zlim(bottom=0.0)
-
-ax.set_xlabel("x")
-ax.set_ylabel("y")
-ax.set_zlabel("z")
-plt.show()
-plt.close(fig)
