@@ -74,8 +74,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.refinement.reinit_new_objects()
         # initialize values
         self.refinements = 0
-        # self.combiintegral = 0
-        # self.subAreaIntegrals = []
         self.counter = 1
         # self.evaluationsTotal = 0 #number of evaluations in current grid
         # self.evaluationPerArea = [] #number of evaluations per area
@@ -120,7 +118,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         :param evaluation_array: Numpy array in which the number of evaluations per area are stored
         :return: None
         """
-        # calculate integrals
+        # calculate operation
         for component_grid in self.scheme:  # iterate over component grids
             if self.operation.is_area_operation():
                 for k, area in enumerate(areas):
@@ -171,7 +169,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 # print("Refining position", position)
                 quit_refinement = self.do_refinement(refine_object, position)
 
-            else:  # all refinements done for this iteration -> reevaluate integral and check if further refinements necessary
+            else:  # all refinements done for this iteration -> reevaluate operation and check if further refinements necessary
                 if self.print_output:
                     print("Finished refinement")
                     print("Refined ", num_refinements, " times")
@@ -180,8 +178,6 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         if self.recalculate_frequently and self.refinements / self.refinements_for_recalculate > self.counter:
             self.refinement.reinit_new_objects()
-            self.combiintegral = 0
-            self.subAreaIntegrals = []
             self.evaluationPerArea = []
             self.evaluationsTotal = 0
             self.counter += 1
@@ -261,7 +257,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             if self.solutions_storage is not None:
                 assert not self.reevaluate_at_end, "Solutions are only available in the end"
                 # Remember the solutions for each number of evaluations
-                self.solutions_storage[num_evaluations] = self.refinement.integral
+                self.solutions_storage[num_evaluations] = self.operation.get_result()
             # Check if conditions are met to abort refining
             if error <= tol and num_evaluations >= min_evaluations:
                 break
@@ -287,14 +283,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         if self.test_scheme:
             self.check_combi_scheme()
         if self.reevaluate_at_end:
-            # evaluate final integral
-            combiintegral, number_of_evaluations = self.evaluate_final_combi()
+            # evaluate operation again from scratch
+            combi_result, number_of_evaluations = self.evaluate_final_combi()
         else:
-            combiintegral = self.refinement.integral
+            combi_result = self.operation.get_result()
             number_of_evaluations = self.refinement.evaluationstotal
-        self.operation.set_function(None)
-        self.calculated_solution = combiintegral
-        return self.refinement, self.scheme, self.lmax, combiintegral, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax
+        #self.operation.set_function(None)
+        self.calculated_solution = combi_result
+        return self.refinement, self.scheme, self.lmax, combi_result, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax
 
     @abc.abstractmethod
     def initialize_refinement(self):
@@ -335,7 +331,8 @@ class SpatiallyAdaptivBase(StandardCombi):
 
         :return: None
         """
-        self.refinement.apply_remove()
+        removed_objects = self.refinement.apply_remove()
+        self.operation.process_removed_objects(removed_objects)
         self.refinement.refinement_postprocessing()
 
     def calc_error(self, objectID) -> None:
@@ -401,8 +398,6 @@ class SpatiallyAdaptivBase(StandardCombi):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.calc_error(i)
             self.refinement.set_benefit(i)
-
-    def get_calculated_solution(self): return self.calculated_solution
 
     def has_basis_grid(self):
         """This method indicates whether the grid defines basis functions.

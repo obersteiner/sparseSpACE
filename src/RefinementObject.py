@@ -7,11 +7,11 @@ from Grid import *
 class RefinementObject(object):
     def __init__(self, error_estimator):
         self.errorEstimator = error_estimator
-        self.integral = None
+        self.value = None
 
-    # set the local integral for area associated with RefinementObject
-    def set_integral(self, integral):
-        self.integral = integral
+    # set the local value for area associated with RefinementObject
+    def set_value(self, value):
+        self.value = value
 
     # set the evaluations that were performed in the refinementobject
     def set_evaluations(self, evaluations):
@@ -32,6 +32,11 @@ class RefinementObject(object):
     def add_evaluations(self, evaluations):
         self.evaluations += evaluations
 
+    def point_in_area(self, point):
+        for d in range(self.dim):
+            if point[d] < self.start[d] or point[d] > self.end[d]:
+                return False
+        return True
 
 # This class is used in the Extend Split RefinementObject as a container
 # to store various variables used for the error estimates
@@ -87,7 +92,6 @@ class RefinementObjectExtendSplit(RefinementObject):
         self.numberOfRefinementsBeforeExtend = number_of_refinements_before_extend
         self.evaluations = 0
         self.value = None
-        self.integral = None
         # dictionary that maps all coarsened levelvectors to there uncoarsened ones
         # the can only be one uncoarsened levelvector for each coarsened one all other areas are set to 0
         self.levelvec_dict = {}
@@ -141,7 +145,7 @@ class RefinementObjectExtendSplit(RefinementObject):
             #print("Performing extend for", self.start, self.end, benefit_extend, benefit_split, self.parent_info.num_points_split_parent, self.parent_info.num_points_extend_parent, self.parent_info.split_parent_integral, self.parent_info.extend_parent_integral, self.integral, self.sum_siblings)
             benefit_extend = benefit_extend - correction if benefit_extend is not None and self.grid.is_high_order_grid() else None
             num_points_split_parent = self.parent_info.num_points_split_parent if self.grid.is_high_order_grid() else None
-            parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.integral, parent=self.parent_info.parent,
+            parent_info = ErrorInfo(previous_value=self.value if self.value is not None else self.value, parent=self.parent_info.parent,
                                      num_points_extend_parent=self.evaluations,
                                      benefit_extend=benefit_extend, level_parent=self.parent_info.level_parent,
                                      num_points_split_parent=num_points_split_parent)
@@ -346,7 +350,7 @@ class RefinementObjectCell(RefinementObject):
         self.active = True
         self.parents = []
         self.sub_integrals = []
-        self.integral = None
+        self.value = None
         for d in range(self.dim):
             parent = RefinementObjectCell.parent_cell_arbitrary_dim(d, self.levelvec, self.start, self.end, self.a,
                                                                     self.b, self.lmin)
@@ -500,7 +504,7 @@ class RefinementObjectSingleDimension(RefinementObject):
         # number of evaluations
         self.evaluations = 0
         # integral in this area
-        self.integral = 0.0
+        self.value = 0.0
         # volume of this area
         self.volume = None
         # level at start and end as point levels (as tuple)
@@ -588,7 +592,7 @@ class RefinementObjectSingleDimension(RefinementObject):
     def reinit(self):
         self.volume = None
         self.error = 0.0
-        self.integral = 0.0
+        self.value = 0.0
         self.evaluations = 0
 
     def map_chebyshev(self, start, end) -> float:

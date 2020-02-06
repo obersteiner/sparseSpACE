@@ -15,7 +15,7 @@ class RefinementContainer(object):
         self.refinementObjects = initial_objects
         self.dim = dim
         self.evaluationstotal = 0
-        self.integral = 0
+        self.value = 0
         self.popArray = []
         self.startNewObjects = 0
         self.errorEstimator = error_estimator
@@ -58,7 +58,7 @@ class RefinementContainer(object):
     # reset everything so that all RefinementObjects will be iterated
     def reinit_new_objects(self) -> None:
         self.startNewObjects = 0
-        self.integral = 0
+        self.value = 0
         self.evaluationstotal = 0
         for obj in self.refinementObjects:
             obj.reinit()
@@ -105,17 +105,20 @@ class RefinementContainer(object):
         self.popArray.append(objectID)
 
     # remove all RefinementObjects that are outdated from container
-    def apply_remove(self, sort=False) -> None:
+    def apply_remove(self, sort=False) -> List[RefinementObject]:
+        removed_objects = []
         for position in reversed(sorted(self.popArray)):
-            self.integral -= self.refinementObjects[position].integral
+            self.value -= self.refinementObjects[position].value
             self.evaluationstotal -= self.refinementObjects[position].evaluations
-            self.refinementObjects.pop(position)
+            removed_object = self.refinementObjects.pop(position)
+            removed_objects.append(removed_object)
             if self.startNewObjects != 0:
                 self.startNewObjects -= 1
         self.popArray = []
         if sort:
             # sorted after every remove
             self.refinementObjects = sorted(self.refinementObjects, key=attrgetter('start'))
+        return removed_objects
 
     # add new RefinementObjects to the container
     def add(self, new_refinement_objects) -> None:
@@ -171,10 +174,10 @@ class RefinementContainer(object):
             obj.print()
 
     # sets the integral for area associated with specified RefinementObject
-    def set_integral(self, object_id: int, integral: Sequence[float]) -> None:
+    def set_value(self, object_id: int, value: Sequence[float]) -> None:
         # also add integral to global integral value
-        self.integral += integral
-        self.refinementObjects[object_id].set_integral(integral)
+        self.value += value
+        self.refinementObjects[object_id].set_value(value)
 
     def set_benefit(self, object_id: int) -> None:
         refine_object = self.refinementObjects[object_id]
@@ -192,12 +195,13 @@ class RefinementContainer(object):
 # this class defines a container of refinement containers for each dimension in the single dimension test case
 # it delegates methods to subcontainers and coordinates everything
 class MetaRefinementContainer(object):
-    def __init__(self, refinement_containers: Sequence[RefinementContainer]):
+    def __init__(self, refinement_containers: Sequence[RefinementContainer], calculate_volume_weights=False):
         self.refinementContainers = refinement_containers
         self.evaluationstotal = 0
-        self.integral = [0]
+        self.value = [0]
         # for get next obj for refinement:
         self.curContainer = 0
+        self.calculate_volume_weights = calculate_volume_weights
 
     # return the maximal error among all RefinementContainers
     def get_max_benefit(self) -> float:
@@ -226,9 +230,10 @@ class MetaRefinementContainer(object):
         for c in self.refinementContainers:
             c.refinement_postprocessing()
 
-    # sets the integral for area associated with whole meta container
-    def set_integral(self, objectID: int, integral: Sequence[float]) -> None:
-        self.integral = integral
+    # sets the value for area associated with whole meta container
+    def set_value(self, objectID: int, value: Sequence[float]) -> None:
+        assert(False)
+        self.value = value
 
     # sets the number of evaluations associated with whole meta container
     def set_evaluations(self, objectID: int, evaluations: int) -> None:
@@ -268,9 +273,10 @@ class MetaRefinementContainer(object):
         return False, None, None
 
     # delegate to containers
-    def apply_remove(self, sort: bool=False) -> None:
+    def apply_remove(self, sort: bool=False) -> List[RefinementObject]:
         for c in self.refinementContainers:
             c.apply_remove(sort)
+        return []
 
     def get_refinement_container_for_dim(self, d: int) -> RefinementContainer:
         """This method returns the RefinementContainer of dimension d.
@@ -294,7 +300,10 @@ class MetaRefinementContainer(object):
 
     # calculate the error according to the error estimator for specified RefinementObjects
     def calc_error(self, object_id: int, norm: int) -> None:
-        volume_weights = np.array([1.0 / v if abs(v) > 10 ** -10 else 1.0 for v in self.integral])
+        if self.calculate_volume_weights:
+            volume_weights = np.array([1.0 / v if abs(v) > 10 ** -10 else 1.0 for v in self.value])
+        else:
+            volume_weights = None
         for cont in self.refinementContainers:
             for obj in range(0, cont.size()):
                 cont.calc_error(obj, norm, volume_weights=volume_weights)

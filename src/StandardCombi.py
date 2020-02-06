@@ -10,7 +10,7 @@ class StandardCombi(object):
 
     """
 
-    def __init__(self, a, b, operation: GridOperation, print_output=True):
+    def __init__(self, a, b, operation: GridOperation, print_output=True, norm=2):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -29,6 +29,7 @@ class StandardCombi(object):
         assert (len(a) == len(b))
         self.operation = operation
         self.do_parallel = True
+        self.norm = norm
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation points using the Combination Technique.
@@ -179,8 +180,8 @@ class StandardCombi(object):
         if reference_solution is not None:
             if self.print_output:
                 print("Analytic Solution", reference_solution)
-                print("Difference", self.operation.get_error(combi_result, reference_solution))
-            return self.scheme, self.operation.get_error(combi_result, reference_solution), combi_result
+                print("Difference", self.operation.compute_difference(combi_result, reference_solution, norm))
+            return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
 
