@@ -3,6 +3,7 @@ from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
 from RefinementContainer import RefinementContainer
+from RefinementObject import RefinementObject
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
@@ -94,15 +95,25 @@ class GridOperation(object):
         """
         pass
 
-    def get_error(self, combivalue, reference_solution) -> float:
-        """This method calculates the error between the combi result and the reference solution.
-        Can be changed by Operation.
+    def compute_difference(self, first_value: Sequence[float], second_value: Sequence[float], norm) -> float:
+        """This method calculates the difference measure (e.g error measure) between the combi result and the reference
+        solution as a scalar value. Can be changed by Operation.
 
-        :param combivalue: Result of the combination.
-        :param reference_solution: Reference solution
-        :return: Error measure
+        :param first_value: Value that you want to compare to second value.
+        :param second_value: Value that you want to compare to first value.
+        :param norm: Norm in which the error should be calculated.
+        :return: Difference measure
         """
-        return max(abs(combivalue - reference_solution))
+        return LA.norm(abs(first_value - second_value), norm)
+
+    def add_values(self, first_value: Sequence[float], second_value: Sequence[float]) -> Sequence[float]:
+        """This value adds to values from GridOperation together and returns result.
+
+        :param first_value: First value that you want to add up.
+        :param second_value: Second value that you want to add up.
+        :return: Addition of both values.
+        """
+        return first_value + second_value
 
     def get_result(self):
         """This method is called after the combination and should return the combination result.
@@ -110,7 +121,6 @@ class GridOperation(object):
         :return: Result of the combination.
         """
         pass
-
 
     def point_output_length(self) -> int:
         """Returns the length of list/array the model evaluations have at each point; in case of scalar values
@@ -168,6 +178,38 @@ class GridOperation(object):
         """
         pass
 
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+        """This method is used to compute the operation in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+
+
+    @abc.abstractmethod
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+        """This method is used to compute the error estimates in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param children_indices: List of children for each dimensions (list of lists)
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+        pass
+
+    @abc.abstractmethod
+    def process_removed_objects(self, removed_objects: List[RefinementObject]):
+        """This method is used whenever the refinement structure changes and contributions from old RefinementObjects
+        need to be removed.
+
+        :param removed_objects: RefinementObjects that were removed.
+        :return: None
+        """
+
+
 
 class AreaOperation(GridOperation):
     def is_area_operation(self):
@@ -196,6 +238,10 @@ class Integration(AreaOperation):
 
     def get_distinct_points(self):
         return self.f.get_f_dict_size()
+
+    def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
+        for removed_object in removed_objects:
+            self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
         mesh_points = get_cross_product(mesh_points_grid)
@@ -228,16 +274,15 @@ class Integration(AreaOperation):
         return combined_solution + component_grid_info.coefficient * new_solution
 
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
-        partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start, area.end)
-        if area.integral is None:
-            area.integral = partial_integral
+        partial_integral = self.grid.integrate(self.f, levelvector, area.start, area.end)
+        if area.value is None:
+            area.value = partial_integral * componentgrid_info.coefficient
         else:
-            area.integral += partial_integral
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
-
+            area.value += partial_integral * componentgrid_info.coefficient
         evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
-            refinement_container.integral += partial_integral
+            refinement_container.value += partial_integral * componentgrid_info.coefficient
+        self.integral += partial_integral * componentgrid_info.coefficient
         return evaluations
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo):
@@ -259,7 +304,7 @@ class Integration(AreaOperation):
             if area.switch_to_parent_estimation:
                 extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
                 if area.parent_info.extend_error_correction is None:
-                    area.parent_info.extend_error_correction = np.array(area.integral)
+                    area.parent_info.extend_error_correction = np.array(area.value)
                 area.parent_info.extend_error_correction -= extend_parent_new * componentgrid_info.coefficient
                 return np.prod(self.grid.levelToNumPoints(levelvector))
             else:
@@ -280,7 +325,7 @@ class Integration(AreaOperation):
                 integral = 0.0
                 num_points = 0
                 for i, (p, weight) in enumerate(zip(points, weights)):
-                    if self.point_in_area(p, additional_info.filter_area):
+                    if additional_info.filter_area.point_in_area(p):
                         integral += self.f(p) * weight * self.get_point_factor(p, additional_info.filter_area, area)
                         num_points += 1
             else:  # use bilinear interpolation to get function values in filter_area
@@ -310,7 +355,7 @@ class Integration(AreaOperation):
 
                 # count the number of mesh points that fall into the filter area
                 for p in mesh_points:
-                    if self.point_in_area(p, additional_info.filter_area) and self.grid.point_not_zero(p):
+                    if additional_info.filter_area.point_in_area(p) and self.grid.point_not_zero(p):
                         num_points += 1
             if additional_info.error_name == "split_parent":
                 child_area = additional_info.filter_area
@@ -328,59 +373,12 @@ class Integration(AreaOperation):
                     assert additional_info.error_name == "reference"
             return num_points
 
-
-    def get_best_fit(self, area, norm):
-        old_value = area.parent_info.split_parent_integral
-        new_value = area.parent_info.split_parent_integral2
-        if old_value is None:
-            area.parent_info.split_parent_integral = np.array(new_value)
-        else:
-            if new_value is None or LA.norm(abs(area.integral - old_value), norm) < LA.norm(abs(area.integral - new_value), norm):
-                pass
-            else:
-                area.parent_info.split_parent_integral = np.array(area.parent_info.split_parent_integral2)
-
-    def initialize_error_estimates(self,area):
-        area.parent_info.split_parent_integral = None
-        area.parent_info.split_parent_integral2 = None
-        area.parent_info.extend_parent_integral = None
-        if area.parent_info.benefit_split is None:
-            area.parent_info.num_points_extend_parent = None
-        if area.parent_info.benefit_extend is None:
-            area.parent_info.num_points_split_parent = None
-        area.parent_info.num_points_reference = None
-        area.parent_info.extend_error_correction = None
-
-    def initialize_split_error(self, area):
-        area.parent_info.split_parent_integral = None
-        area.parent_info.split_parent_integral2 = None
-        if area.parent_info.benefit_extend is None:
-            area.parent_info.num_points_split_parent = None
-
-    def initialize_error(self, area, error_name):
-        if error_name == "split_parent":
-            area.parent_info.split_parent_integral = None
-        if error_name == "split_parent2":
-            area.parent_info.split_parent_integral2 = None
-        if error_name == "extend_parent":
-            area.parent_info.extend_parent_integral = None
-
-    def initialize_point_numbers(self, area, error_name):
-        if error_name == "split_parent":
-            area.parent_info.num_points_split_parent = None
-        if error_name == "split_parent2":
-            area.parent_info.num_points_split_parent = None
-        if error_name == "extend_parent":
-            area.parent_info.num_points_extend_parent = None
-
-    def get_previous_value_from_split_parent(self, area):
-        area.parent_info.previous_value = area.parent_info.split_parent_integral
-
     def count_unique_points(self):
         return True
 
     def area_preprocessing(self, area):
-        area.set_integral(0.0)
+        #area.set_integral(0.0)
+        area.set_value(np.zeros(self.f.output_length()))
         #area.evaluations = 0
         #area.levelvec_dict = {}
         #area.error = None
@@ -389,65 +387,12 @@ class Integration(AreaOperation):
         if self.reference_solution is None:
             return None
         elif LA.norm(self.reference_solution) == 0.0:
-            return LA.norm(abs(refinement_container.integral), norm)
+            return LA.norm(abs(self.integral), norm)
         else:
-            return LA.norm(abs((self.reference_solution - refinement_container.integral)/self.reference_solution), norm)
+            return LA.norm(abs((self.reference_solution - self.integral)/self.reference_solution), norm)
 
-    def area_postprocessing(self, area):
-        area.value = np.array(area.integral)
-
-    def get_sum_sibling_value(self, area):
-        area.sum_siblings = 0.0
-        i = 0
-        for child in area.parent_info.parent.children:
-            if child.integral is not None:
-                area.sum_siblings += child.integral
-                i += 1
-        assert i == 2 ** self.dim or i == 2  # we always have 2**dim children
-
-    def set_extend_benefit(self, area, norm):
-        if area.parent_info.benefit_extend is not None:
-            return
-        if area.switch_to_parent_estimation:
-            comparison = area.sum_siblings
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            comparison = area.integral
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
-
-        error_extend = LA.norm(abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)), norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_extend = error_extend * (area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_extend = error_extend * area.parent_info.num_points_split_parent
-
-    def set_split_benefit(self, area, norm):
-        if area.parent_info.benefit_split is not None:
-            return
-        if area.switch_to_parent_estimation:
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_extend_parent
-
-        if self.grid.boundary:
-            assert area.parent_info.num_points_split_parent > 0
-        error_split = LA.norm(abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)), norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_split = error_split * (area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
-
-    def set_extend_error_correction(self, area, norm):
-        if area.switch_to_parent_estimation:
-            area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction, norm) * area.parent_info.num_points_split_parent
-
-    def point_in_area(self, point, area):
-        for d in range(self.dim):
-            if point[d] < area.start[d] or point[d] > area.end[d]:
-                return False
-        return True
+#    def area_postprocessing(self, area):
+#        area.value = np.array(area.integral)
 
     def get_point_factor(self, point, area, area_parent):
         factor = 1.0
@@ -456,9 +401,6 @@ class Integration(AreaOperation):
                     point[d] == area_parent.start[d] or point[d] == area_parent.end[d]):
                 factor /= 2.0
         return factor
-
-    def initialize_global_value(self, refinement):
-        refinement.integral = 0.0
 
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def compute_subcell_with_interpolation(self, cell, subcell, coefficient, refinement_container):
@@ -475,21 +417,17 @@ class Integration(AreaOperation):
         for p in interpolated_values:
             integral += p * factor
         subcell.cell_dict[subcell.get_key()].sub_integrals.append((integral, coefficient))
-        subcell.integral += integral * coefficient
+        subcell.value += integral * coefficient
         if refinement_container is not None:
-            refinement_container.integral += integral * coefficient
+            refinement_container.value += integral * coefficient
 
     def print_evaluation_output(self, refinement):
-        combi_integral = refinement.integral
+        combi_integral = self.integral
         if len(combi_integral) == 1:
             combi_integral = combi_integral[0]
         print("combiintegral:", combi_integral)
 
-    def get_twin_error(self, d, area, norm):
-        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))        
-        #return LA.norm(abs(area.integral - area.twins[d].integral), norm)
-
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, reuse_old_values):
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
         reuse_old_values = False
         if reuse_old_values:
             previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
@@ -517,11 +455,11 @@ class Integration(AreaOperation):
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
             self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
-        self.refinement_container.integral += integral * component_grid.coefficient
+            integral = self.grid.integrate(self.f, component_grid.levelvector, self.a, self.b)
+        self.refinement_container.value += integral * component_grid.coefficient
+        self.integral += integral * component_grid.coefficient
         self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
         self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
-        return integral
 
     def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid):
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
@@ -541,8 +479,9 @@ class Integration(AreaOperation):
         self.a = a
         self.b = b
 
-    def initialize_refinement_container_dimension_wise(self, refinement_container):
-        refinement_container.integral = 0.0
+    def initialize_evaluation_dimension_wise(self, refinement_container):
+        refinement_container.value = np.zeros(self.f.output_length())
+        self.integral = np.zeros(self.f.output_length())
     # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
@@ -566,7 +505,6 @@ class Integration(AreaOperation):
                     while i < np.prod(self.grid.numPoints):
                         surplus_pole[:,j] += np.sum(abs(surplusses_1d[:,i:i+stride])) #* weights[i:i+stride]))
                         i += stride * self.grid.numPoints[d]
-                #print("surplus pole", surplus_pole, surplusses_1d, stride)
             for child_info in children_indices[d]:
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
@@ -577,9 +515,6 @@ class Integration(AreaOperation):
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 else:
                     volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d)
-                #print("surplus pole", surplus_pole[1], grid_values[d], child)
-                #print(surplus_pole[grid_points[d].index(child)])
-
 
                 k_old = 0
                 if left_parent < 0:
@@ -599,7 +534,6 @@ class Integration(AreaOperation):
                 if not (refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right):
                     for child_info in children_indices[d]:
                         print(child_info.left_parent, child_info.child, child_info.right_parent)
-                #print(refine_obj.start, refine_obj.end, left_parent, right_parent)
                 assert refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right
                 max_level = 1
                 while k < refinement_dim.size():
@@ -607,8 +541,6 @@ class Integration(AreaOperation):
                     factor = 1 - tol if right_parent >= 0 else 1 + tol
                     if refine_obj.start >= right_parent * factor:
                         break
-                    #refine_obj.print()
-                    #print("Right parent", right_parent)
                     assert refine_obj.end <= right_parent * factor_right
                     k += 1
                     max_level = max(max_level, max(refine_obj.levels))
@@ -1162,15 +1094,6 @@ class UncertaintyQuantification(Integration):
         cdf = self.distributions[d].cdf
         return cdf(right_parent) - cdf(left_parent)
 
-    # reuse_old_values does not work for multidimensional function output,
-    # so this method is overridden here
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start, end, _reuse_old_values=False):
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
-        self.refinement_container.integral += integral * component_grid.coefficient
-        return integral
-
     # This function exchanges the operation's function so that the adaptive
     # refinement can use a different function than the operation's function
     def set_function(self, f=None):
@@ -1239,7 +1162,7 @@ class UncertaintyQuantification(Integration):
             self.f_evals = [self.f_model(coord) for coord in self.nodes]
 
     def _get_combiintegral(self, combiinstance, scale_weights=False):
-        integral = combiinstance.get_calculated_solution()
+        integral = self.get_result()
         if scale_weights:
             assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
             return self._scale_values(integral)

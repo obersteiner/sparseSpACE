@@ -21,15 +21,15 @@ class NodeInfo(object):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False, use_volume_weighting=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
         self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
         self.version = version
-        self.dict_integral = {}
-        self.dict_points = {}
+        #self.dict_integral = {}
+        #self.dict_points = {}
         self.no_previous_integrals = True
         self.use_local_children = True #self.version == 2 or self.version == 3
         if margin is None:
@@ -42,6 +42,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
         self.chebyshev_points = chebyshev_points
+        self.use_volume_weighting = use_volume_weighting
 
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -511,7 +512,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return fig
 
     def init_evaluation_operation(self, areas):
-        self.operation.initialize_refinement_container_dimension_wise(areas[0])
+        self.operation.initialize_evaluation_dimension_wise(areas[0])
 
     def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
@@ -519,7 +520,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            integral = self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid, self.a, self.b, False)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
+            self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             self.operation.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
@@ -602,7 +603,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), grid=self.grid,
                                                                                      coarsening_level=0, a=self.a[d], b=self.b[d], chebyshev=self.chebyshev_points) for i in
                                                      range(2 ** maxv)], d, self.errorEstimator) for d in
-                                                   range(self.dim)])
+                                                   range(self.dim)], calculate_volume_weights=self.use_volume_weighting)
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
