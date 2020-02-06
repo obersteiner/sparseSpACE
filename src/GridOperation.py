@@ -91,12 +91,12 @@ from numpy.linalg import solve
 from scipy.integrate import nquad
 from sklearn import datasets, preprocessing
 import csv
+from matplotlib import cm
 
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, masslumping=False, lambd=0):
-        # TODO make possible to use csv files for data
+    def __init__(self, data, dim, masslumping=False, print_output=True, lambd=0):
         self.data = data
         self.dim = dim
         self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -104,6 +104,7 @@ class DensityEstimation(AreaOperation):
         self.masslumping = masslumping
         self.alphas = {}
         self.initialized = False
+        self.print_output = print_output
 
     def initialize(self):
         scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
@@ -174,20 +175,20 @@ class DensityEstimation(AreaOperation):
         if self.check_adjacency(ivec, jvec):
             dim = len(ivec)
             f = lambda *x: (self.hat_function(ivec, lvec, [*x]) * self.hat_function(jvec, lvec, [*x]))
-            print("-" * 100)
-            print("Calculating")
             start = [(min(ivec[d], jvec[d]) - 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
             end = [(max(ivec[d], jvec[d]) + 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
-            print("Gridpoints: ", ivec, jvec)
-            print("Domain: ", start, end)
-            temp = [[start[d], end[d]] for d in range(dim)]
-            return nquad(f, [[start[d], end[d]] for d in range(dim)], opts={"epsabs": 10 ** (-15),
-                                                                            "epsrel": 1 ** (
-                                                                                -15)})
+            if self.print_output:
+                print("-" * 100)
+                print("Calculating")
+                print("Gridpoints: ", ivec, jvec)
+                print("Domain: ", start, end)
+            # TODO hardcode and don't use integration nquad
+            return nquad(f, [[start[d], end[d]] for d in range(dim)], opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
         else:
-            print("-" * 100)
-            print("Skipping calculation")
-            print("Gridpoints: ", ivec, jvec)
+            if self.print_output:
+                print("-" * 100)
+                print("Skipping calculation")
+                print("Gridpoints: ", ivec, jvec)
             return (0, 0)
 
     def calculate_density_estimation(self, levelvec):
@@ -195,8 +196,9 @@ class DensityEstimation(AreaOperation):
         R[np.diag_indices_from(R)] += self.lambd
         b = self.calculate_B(self.data, levelvec)
         alphas = solve(R, b)
-        print("Alphas: ", levelvec, alphas)
-        print("-" * 100)
+        if self.print_output:
+            print("Alphas: ", levelvec, alphas)
+            print("-" * 100)
         return alphas
 
     def calculate_B(self, data, levelvec):
@@ -210,7 +212,8 @@ class DensityEstimation(AreaOperation):
             for j in range(M):
                 sum += self.hat_function(indexList[i], levelvec, data[j])
             b[i] = ((1 / M) * sum)
-        print("B vector: ", b)
+        if self.print_output:
+            print("B vector: ", b)
         return b
 
     def construct_R(self, levelvec):
@@ -218,10 +221,11 @@ class DensityEstimation(AreaOperation):
         numberPoints = np.prod(self.grid.levelToNumPoints(levelvec))
         R = np.zeros((numberPoints, numberPoints))
         indexList = self.get_indexlist(levelvec)
-        print("Indexlist: ", indexList)
-        print("Levelvector: ", levelvec)
         diagVal, err = self.calculate_L2_scalarproduct(indexList[0], indexList[0], levelvec)
-        print("Diagonal value: ", diagVal)
+        if self.print_output:
+            print("Indexlist: ", indexList)
+            print("Levelvector: ", levelvec)
+            print("Diagonal value: ", diagVal)
         R[np.diag_indices_from(R)] += diagVal
         if self.masslumping == False:
             for i in range(0, len(indexList) - 1):
@@ -229,7 +233,8 @@ class DensityEstimation(AreaOperation):
                     temp, err = self.calculate_L2_scalarproduct(indexList[i], indexList[j], levelvec)
 
                     if temp != 0:
-                        print("Result: ", temp)
+                        if self.print_output:
+                            print("Result: ", temp)
                         R[i, j] = temp
                         R[j, i] = temp
         return R
@@ -243,24 +248,35 @@ class DensityEstimation(AreaOperation):
             result *= max((1 - abs(2 ** lvector[d] * x2[d] - ivec[d])), 0)
         return result
 
+    def inSupport(self, levelvec, index, x):
+        dim = len(levelvec)
+        lvec = tuple(levelvec)
+        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
+        pos = [index[d] * meshsize[d] for d in range(dim)]
+        domain = [[pos[d] - meshsize[d], pos[d] + meshsize[d]] for d in range(dim)]
+        for i in range(len(domain)):
+            if x[i] < domain[i][0] or x[i] > domain[i][1]:
+                return False
+        return True
+
     def weighted_basis_function(self, levelvec, alphas, x):
         indices = self.get_indexlist(levelvec)
         sum = 0
         for i, index in enumerate(indices):
-            # TODO test if i is in support of x, if not --> dont calculate
-            sum += self.hat_function(index, levelvec, x) * alphas[i]
+            if self.inSupport(levelvec, index, x):
+                sum += self.hat_function(index, levelvec, x) * alphas[i]
         return sum
 
-    def plot_dataset(self):
+    def plot_dataset(self, filename=None):
         if self.initialized == False:
             self.initialize()
-        fontsize = 60
+        fontsize = 30
         plt.rcParams.update({'font.size': fontsize})
-        fig = plt.figure(figsize=(20, 20))
+        fig = plt.figure(figsize=(10, 10))
         if self.dim == 2:
             ax = fig.add_subplot(1, 1, 1)
             x, y = zip(*self.data)
-            ax.scatter(x, y, s=250)
+            ax.scatter(x, y, s=125)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_title("#points = %d" % len(self.data))
@@ -268,7 +284,7 @@ class DensityEstimation(AreaOperation):
         elif self.dim == 3:
             ax = fig.add_subplot(1, 1, 1, projection='3d')
             x, y, z = zip(*self.data)
-            ax.scatter(x, y, z, s=250)
+            ax.scatter(x, y, z, s=125)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
@@ -277,9 +293,27 @@ class DensityEstimation(AreaOperation):
         else:
             print("Cannot print data of dimension > 2")
 
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
         # reset fontsize to default so it does not affect other figures
         plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+
+    def plot_component_grid(self, component_grid, grid: Axes3D, levels=20, pointsPerDim=100):
+        X = np.linspace(0.0, 1.0, pointsPerDim)
+        Y = np.linspace(0.0, 1.0, pointsPerDim)
+        X, Y = np.meshgrid(X, Y)
+        Z = np.zeros_like(X)
+
+        for i in range(pointsPerDim):
+            for j in range(pointsPerDim):
+                Z[i][j] = self.weighted_basis_function(component_grid.levelvector,
+                                                       self.get_result().get(tuple(component_grid.levelvector)),
+                                                       [X[i, j], Y[i, j]])
+        # TODO contour of imshow?
+        grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+        # grid.contourf(X, Y, Z, levels,cmap=cm.coolwarm)
+        # grid.axis(aspect='image')
 
 
 from scipy.interpolate import interpn
