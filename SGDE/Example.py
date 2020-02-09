@@ -68,8 +68,7 @@ combiObject.print_resulting_combi_scheme(
     operation=operation)
 
 print("Sparse Grid:")
-combiObject.print_resulting_sparsegrid("Figures/sparseGrid_" + str(minimum_level) + "_" + str(maximum_level) + ".png",
-                                       markersize=20)
+combiObject.print_resulting_sparsegrid("Figures/sparseGrid_" + str(minimum_level) + "_" + str(maximum_level) + ".png", markersize=20)
 
 print("Plot of density estimation")
 # when contour = True, the contour plot is shown next to the 3D plot
