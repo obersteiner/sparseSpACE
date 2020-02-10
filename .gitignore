@@ -1,3 +1,7 @@
 __pycache__/
 .ipynb_checkpoints
+*.pdf
+*.ipynb
+*.pyc
+*.svg
 Untitled.ipynb

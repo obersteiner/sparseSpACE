@@ -43,7 +43,7 @@ class ErrorCalculatorExtendSplit(ErrorCalculator):
         if refine_object.switch_to_parent_estimation:
             return LA.norm(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value), norm)
         else:
-            return LA.norm(abs(refine_object.integral - refine_object.parent_info.previous_value), norm)
+            return LA.norm(abs(refine_object.value - refine_object.parent_info.previous_value), norm)
 
 
 class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):

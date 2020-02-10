@@ -258,7 +258,14 @@ class IntegratorHierarchicalBasisFunctions(IntegratorBase):
         self.surplus_values = None
 
     def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
-        self.surplus_values = self.hierarchization(f, numPoints, self.grid)
+        output_dim = f.output_length()
+        grid_values = np.empty((output_dim, np.prod(numPoints)))
+        points = self.grid.getPoints()
+        for i, point in enumerate(points):
+            v = f(point)
+            assert len(v) == output_dim, "The Function returned a wrong output length"
+            grid_values[:, i] = v
+        self.surplus_values = self.hierarchization(grid_values, numPoints, self.grid)
         weights = self.grid.get_weights()
         #print(sum(weights), np.prod(np.array(end) - np.array(start)), start,end, weights, self.grid.weights)
         #if not isclose(sum(weights), np.prod(np.array(end) - np.array(start))):

@@ -34,7 +34,7 @@ class TestUncertaintyQuantification(unittest.TestCase):
         op.set_expectation_variance_Function()
         # Initialize the adaptive refinement instance and refine the grid until
         # it has at least 200 points
-        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2)
+        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2, use_volume_weighting=True)
         lmax = 2
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         combiinstance.performSpatiallyAdaptiv(1, lmax,

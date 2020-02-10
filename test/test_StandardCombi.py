@@ -72,9 +72,9 @@ class TestStandardCombi(unittest.TestCase):
                     self.assertEqual(len(points), standardCombi.get_total_num_points(distinct_function_evals=False))
                     self.assertEqual(len(points), len(weights))
                     for component_grid in standardCombi.scheme:
-                        points, weights = standardCombi.get_points_and_weights_component_grid(component_grid.levelvector, None)
+                        points, weights = standardCombi.get_points_and_weights_component_grid(component_grid.levelvector)
                         self.assertEqual(len(points), np.prod(standardCombi.grid.levelToNumPoints(component_grid.levelvector)))
-                        self.assertEqual(standardCombi.get_num_points_component_grid(component_grid.levelvector, False, None), np.prod(standardCombi.grid.levelToNumPoints(component_grid.levelvector)))
+                        self.assertEqual(standardCombi.get_num_points_component_grid(component_grid.levelvector, False), np.prod(standardCombi.grid.levelToNumPoints(component_grid.levelvector)))
 
 
 if __name__ == '__main__':
