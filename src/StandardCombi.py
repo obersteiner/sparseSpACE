@@ -6,6 +6,7 @@ import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+
 class StandardCombi(object):
     """This class implements the standard combination technique.
 
@@ -42,7 +43,8 @@ class StandardCombi(object):
         self.do_parallel = False
         if self.do_parallel:
             pool = mp.Pool(4)
-            interpolation_results = pool.starmap_async(self.get_multiplied_interpolation, [(interpolation_points, component_grid) for component_grid in self.scheme]).get()
+            interpolation_results = pool.starmap_async(self.get_multiplied_interpolation,
+                                                       [(interpolation_points, component_grid) for component_grid in self.scheme]).get()
             pool.close()
             pool.join()
             for result in interpolation_results:
@@ -60,7 +62,8 @@ class StandardCombi(object):
         :return: List of values (each a numpy array)
         """
         self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
-        return self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary), mesh_points_grid=self.grid.coordinate_array_with_boundary,
+        return self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary),
+                                                 mesh_points_grid=self.grid.coordinate_array_with_boundary,
                                                  evaluation_points=interpolation_points)
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
@@ -95,7 +98,7 @@ class StandardCombi(object):
         """
         return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
 
-    def plot(self,filename: str = None, plotdimension: int = 0, contour=False) -> None:
+    def plot(self, filename: str = None, plotdimension: int = 0, contour=False) -> None:
         """This method plots the model obtained by the Combination Technique.
 
         :param plotdimension: Dimension of the output vector that should be plotted. (0 if scalar outputs)
@@ -112,7 +115,7 @@ class StandardCombi(object):
         Y = [y for y in yArray]
         points = list(get_cross_product([X, Y]))
 
-        #f_values = np.asarray(self.interpolate_grid([X,Y]))
+        # f_values = np.asarray(self.interpolate_grid([X,Y]))
 
         X, Y = np.meshgrid(X, Y, indexing="ij")
         Z = np.zeros(np.shape(X))
@@ -132,7 +135,6 @@ class StandardCombi(object):
 
             # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-
 
             ax = fig.add_subplot(1, 2, 2)
             p = ax.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
@@ -170,7 +172,6 @@ class StandardCombi(object):
         self.lmax = [lmax for i in range(self.dim)]
         # get combi scheme
         self.scheme = self.combischeme.getCombiScheme(lmin, lmax, self.print_output)
-
 
     # lmin = minimum level; lmax = target level
     def perform_operation(self, lmin: int, lmax: int) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
@@ -221,8 +222,8 @@ class StandardCombi(object):
         """
         return np.prod(self.grid.levelToNumPoints(levelvector))
 
-    def get_total_num_points(self, doNaive: bool=False,
-                             distinct_function_evals: bool=True) -> int:  # we assume here that all lmax entries are equal
+    def get_total_num_points(self, doNaive: bool = False,
+                             distinct_function_evals: bool = True) -> int:  # we assume here that all lmax entries are equal
         """This method calculates the total number of points used in the combination technique.
 
         :param doNaive: Indicates whether we should count points that appear multiple times in a grid again (False-> no)
@@ -261,12 +262,13 @@ class StandardCombi(object):
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
-        lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
+        lmax = self.lmax  # [self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(10*self.lmax[0], 10*self.lmax[1]))
+        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1,
+                               figsize=(10 * self.lmax[0], 10 * self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -368,9 +370,10 @@ class StandardCombi(object):
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
                 if show_coefficient:
-                    coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
+                    coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(
+                        int(component_grid.coefficient))
                     grid.text(0.55, 0.55, coefficient,
-                          fontsize=fontsize * 2, ha='center', color="blue")
+                              fontsize=fontsize * 2, ha='center', color="blue")
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
                 if operation is not None:
@@ -378,7 +381,7 @@ class StandardCombi(object):
         # ax1 = fig.add_subplot(111, alpha=0)
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
-        #plt.tight_layout()
+        # plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
 
@@ -586,7 +589,7 @@ class StandardCombi(object):
             print("Grid does not support surplusses")
             return None
 
-    def add_refinment_to_figure_axe(self, ax, linewidth: int=1) -> None:
+    def add_refinment_to_figure_axe(self, ax, linewidth: int = 1) -> None:
         """This method is used to add additional refinement info to the specified axe in the matplotlib figure.
 
         :param ax: Axe of a matplotlib figure.
