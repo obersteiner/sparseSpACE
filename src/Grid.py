@@ -893,7 +893,8 @@ class GlobalGrid(Grid):
         assert len(grid_points) == len(grid_levels)
         for d in range(self.dim):
             assert len(grid_levels[d]) == len(grid_points[d])
-        self.coords = []
+        self.coordinate_array = []
+        self.coordinate_array_with_boundary = []
         self.weights = []
         self.levels = []
         #print("Points and levels", grid_points, grid_levels)
@@ -917,11 +918,14 @@ class GlobalGrid(Grid):
                 coordsD = grid_points[d][1:-1]
                 weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1]
                 levelsD = grid_levels[d][1:-1]
-            self.coords.append(coordsD)
+            coords_d_with_boundary = grid_points[d]
+            self.coordinate_array.append(coordsD)
+            self.coordinate_array_with_boundary.append(coords_d_with_boundary)
             self.weights.append(weightsD)
             self.levels.append(levelsD)
             self.numPoints[d] = len(coordsD)
-        self.coords = np.asarray(self.coords)
+        self.coordinate_array = np.asarray(self.coordinate_array)
+        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary)
         self.weights = np.asarray(self.weights)
         self.levels = np.asarray(self.levels)
 
@@ -932,12 +936,12 @@ class GlobalGrid(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
-        return get_cross_product(self.coords)
+        return get_cross_product(self.coordinate_array)
 
     def getCoordinate(self, indexvector: Sequence[int]) -> Sequence[float]:
         position = np.zeros(self.dim)
         for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
+            position[d] = self.coordinate_array[d][indexvector[d]]
         return position
 
     def getWeight(self, indexvector: Sequence[int]) -> float:
@@ -947,10 +951,10 @@ class GlobalGrid(Grid):
         return weight
 
     def get_coordinates(self) -> Sequence[Sequence[float]]:
-        return self.coords
+        return self.coordinate_array
 
     def get_coordinates_dim(self, d: int) -> Sequence[float]:
-        return self.coords[d]
+        return self.coordinate_array[d]
 
     @abc.abstractmethod
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
@@ -1974,12 +1978,12 @@ class EquidistantGridGlobal(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self):
-        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coords)]))
+        return list(zip(*[g.ravel() for g in np.meshgrid(*self.coordinate_array)]))
 
     def getCoordinate(self, indexvector):
         position = np.zeros(self.dim)
         for d in range(self.dim):
-            position[d] = self.coords[d][indexvector[d]]
+            position[d] = self.coordinate_array[d][indexvector[d]]
         return position
 
     def mapPoints(self, equidistantAdaptivePoints, level, d):

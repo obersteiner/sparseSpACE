@@ -19,10 +19,10 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         #print("full interaction size:", self.full_interaction_size)
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_component_grid(self, levelvec):
         return self.operation.f.get_f_dict_points()
 
-    def get_points_and_weights_component_grid(self, levelvec, numSubDiagonal):
+    def get_points_and_weights_component_grid(self, levelvec):
         print("Not yet implemented!")
         assert(False)
 
@@ -74,66 +74,6 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         if self.errorEstimator is None:
             self.errorEstimator = ErrorCalculatorSurplusCell()
 
-    def evaluate_area(self, f, area, component_grid):  # area is a cell here
-        # calculates all parents of the cell for which the level vector l >= l_cell - e
-        # where e is the unity vector (1, 1 , 1 , ...)
-
-        relevant_parents_of_cell = [(area.get_key(), area.levelvec, 1)]
-        subareas_fused = {}
-        subareas_fused[area.get_key()] = 1
-        for d in range(self.dim):
-            new_parents = []
-            for subarea in relevant_parents_of_cell:
-                levelvec_parent = list(subarea[1])
-                levelvec_parent[d] -= 1
-                start_subarea = subarea[0][0]
-                end_subarea = subarea[0][1]
-                coefficient = subarea[2]
-                parent_area = RefinementObjectCell.parent_cell_arbitrary_dim(d, list(subarea[1]), start_subarea, end_subarea, self.a, self.b, self.lmin)
-                assert((parent_area is not None) or (subarea[1][d] == self.lmin[d]))
-                if parent_area is not None:
-                    new_parents.append((parent_area, levelvec_parent, coefficient*-1))
-            relevant_parents_of_cell.extend(new_parents)
-        assert(len(relevant_parents_of_cell) <= 2**self.dim)
-
-        # calculate the integral surplus of this cell by subtracting the parent contribution for this cell area
-        # for this we interpolate the corner points of this cell in the parent cell using only the parent corner values
-        # -> from these interpolated points we can calculate the parent approximation for the cell and apply the
-        #  combination coefficient (this is similar to the integral surplus in
-        # "Dimension–Adaptive Tensor–Product Quadrature" from Gerstner and Griebel)
-        integral = 0
-        evaluations = 0
-        #print(len(relevant_parents_of_cell))
-        for (parentcell, levelvec, coefficient) in relevant_parents_of_cell:
-            #print(area.get_key(), parentcell, coefficient)
-            if coefficient != 0:
-                sub_integral = self.integrate_subcell_with_interpolation(parentcell, area.get_key())
-                self.cell_dict[area.get_key()].sub_integrals.append((sub_integral, coefficient))
-                integral += sub_integral * coefficient
-                #print(self.integrate_subcell_with_interpolation(area.get_key(), subcell) * coefficient)
-                evaluations += 2**self.dim
-        #else:
-            #pass
-            #print("Nothing to do in this region")
-        #print("integral of cell", area.get_key(), "is:", integral)
-        '''
-        for p in self.grid_points:
-            print(self.cell_dict)
-            value = 0
-            cells_with_point, levelvec = self.get_cells_to_point(p)
-            level_to_cell_dict = {}
-            for cell in cells_with_point:
-                level_to_cell_dict[cell[1]] = cell[0]
-            print(cells_with_point)
-            coefficients = CombiScheme.get_coefficients_to_index_set(set([cell[1] for cell in cells_with_point]))
-            print(coefficients)
-            for i, coefficient in enumerate(coefficients):
-                if coefficient[1] != 0:
-                value += self.interpolate_point(level_to_cell_dict[coefficient[0]], p) * coefficient[1]
-            print("Combined value at position:", p, "is", value, "with levelevector:", levelvec, "function value is", self.f(p))
-        '''
-        return integral, None, evaluations
-
     def evaluate_operation_area(self, component_grid, area, additional_info=None):
         relevant_parents_of_cell = [(area.get_key(), area.levelvec, 1)]
         subareas_fused = {}
@@ -153,12 +93,11 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             relevant_parents_of_cell.extend(new_parents)
         assert(len(relevant_parents_of_cell) <= 2**self.dim)
 
-        # calculate the integral surplus of this cell by subtracting the parent contribution for this cell area
+        # calculate the operation value surplus of this cell by subtracting the parent contribution for this cell area
         # for this we interpolate the corner points of this cell in the parent cell using only the parent corner values
         # -> from these interpolated points we can calculate the parent approximation for the cell and apply the
         #  combination coefficient (this is similar to the integral surplus in
         # "Dimension–Adaptive Tensor–Product Quadrature" from Gerstner and Griebel)
-        integral = 0
         evaluations = 0
         #print(len(relevant_parents_of_cell))
         for (parent_cell_key, levelvec, coefficient) in relevant_parents_of_cell:
@@ -231,6 +170,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         
         return integral, None, evaluations
         '''
+    '''
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def integrate_subcell_with_interpolation(self, cell, subcell):
         #print("Cell and subcell", cell, subcell)
@@ -245,6 +185,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             integral += p * factor
         #print("integral of subcell", subcell, "of cell", cell, "is", integral, "interpolated values", interpolated_values, "on points", subcell_points, "factor", factor)
         return integral
+    '''
 
     # interpolates the cell corner function values at the given points
     def interpolate_points(self, cell, points):

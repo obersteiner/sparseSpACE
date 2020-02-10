@@ -2,77 +2,233 @@ from numpy import linalg as LA
 from math import isclose, isinf
 from Grid import *
 from BasisFunctions import *
-
+from RefinementContainer import RefinementContainer
+from RefinementObject import RefinementObject
 
 class GridOperation(object):
-    def is_area_operation(self):
+    """This class defines the basic interface for a GridOperation which performs operations on a component grid.
+    It should provide the basic functionalities to solve the operation on arbitrary grids and calculate error estimates
+    for refinement. It also needs to provide functionality in how to combine the individual results on the component
+    grids.
+    """
+    def is_area_operation(self) -> bool:
+        """This function returns a bool to indicate whether the operation can be seperately applied to subareas.
+
+        :return: Bool if function can be separately applied to subareas.
+        """
         return False
 
     @abc.abstractmethod
     def perform_operation(self, levelvector, refinementObjects=None):
+        """Main function of the GridOperation which applies the operation to the specified levelvector.
+
+        :param levelvector:
+        :param refinementObjects:
+        :return:
+        """
         pass
 
     @abc.abstractmethod
     def set_errors(self, refinementObjects=None):
         pass
 
-    # This method indicates whether we should only count unique points for the cost estimate (return True) or
-    # if we should count points multiple times if they are contained in different component grids
     @abc.abstractmethod
-    def count_unique_points(self):
+    def count_unique_points(self) -> bool:
+        """This method indicates whether we should only count unique points for the cost estimate (return True) or
+        if we should count points multiple times if they are contained in different component grids
+
+        :return: Bool
+        """
         return False
 
-    def area_preprocessing(self, area):
+    def area_preprocessing(self, area) -> None:
+        """This area is used to preprocess an area before the operation starts.
+
+        :param area: Area to preprocess.
+        :return: None
+        """
         pass
 
-    def area_postprocessing(self, area):
+    def area_postprocessing(self, area) -> None:
+        """This area is used to postprocess an area after the operation finishes.
+
+        :param area: Area to preprocess.
+        :return: None
+        """
         pass
 
-    def post_processing(self):
+    def post_processing(self) -> None:
+        """This method is used to postprocess after the operation has been applied to all component grids.
+
+        :return: None
+        """
         pass
 
     # This method can be used if there is a better global error estimate than the summation of the local surplusses
-    def get_global_error_estimate(self, refinement):
+    def get_global_error_estimate(self, refinement: RefinementContainer) -> float:
+        """This method returns the global error estimate. Should be implemented if there is a better estimator than sum
+        of local errors in refinement.
+
+        :param refinement: RefinementContainer from which to extract info for global error estimates.
+        :return: Global error estimate
+        """
         return None
 
     def get_grid(self) -> Grid:
+        """This method returns the grid that is used by the GridOperation
+
+        :return: Grid class
+        """
         return self.grid
 
     def get_reference_solution(self) -> Sequence[float]:
+        """This method returns the reference solution if available.
+
+        :return: Reference solution.
+        """
         return self.reference_solution
 
-    def initialize(self):
+    def initialize(self) -> None:
+        """This method can be used to initialize the GridOperation at the start of the adaptive procedure.
+
+        :return: None
+        """
         pass
 
-    # This method calculates the error between the combi result and the reference solution. Can be changed by Operation.
-    def get_error(self, combivalue, reference_solution):
-        return max(abs(combivalue - reference_solution))
+    def compute_difference(self, first_value: Sequence[float], second_value: Sequence[float], norm) -> float:
+        """This method calculates the difference measure (e.g error measure) between the combi result and the reference
+        solution as a scalar value. Can be changed by Operation.
 
-    # This method is called after the combination and should return the combination result
+        :param first_value: Value that you want to compare to second value.
+        :param second_value: Value that you want to compare to first value.
+        :param norm: Norm in which the error should be calculated.
+        :return: Difference measure
+        """
+        return LA.norm(abs(first_value - second_value), norm)
+
+    def add_values(self, first_value: Sequence[float], second_value: Sequence[float]) -> Sequence[float]:
+        """This value adds to values from GridOperation together and returns result.
+
+        :param first_value: First value that you want to add up.
+        :param second_value: Second value that you want to add up.
+        :return: Addition of both values.
+        """
+        return first_value + second_value
+
     def get_result(self):
+        """This method is called after the combination and should return the combination result.
+
+        :return: Result of the combination.
+        """
         pass
 
-    # Returns the size of the model evaluations of each point; in case of scalar values
-    # (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output
-    def point_output_length(self):
+    def point_output_length(self) -> int:
+        """Returns the length of list/array the model evaluations have at each point; in case of scalar values
+        (e.g. of a scalar-valued function) it is 1, otherwise the vector length of the vector output.
+
+        :return: Length of model values.
+        """
         return 1
 
-    # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
-    def interpolate_points(self, values, mesh_points_grid, evaluation_points):
+    def interpolate_points(self, values: Sequence[Sequence[float]], mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float, ...]]):
+        """Interpolates values that are on the mesh_points_grid at the given evaluation_points using bilinear
+        interpolation.
+
+        :param values: Numpy array with values at grid points. Each value is again a numpy array.
+        :param mesh_points_grid: Grid definition where values are placed. List of !D arrays.
+        :param evaluation_points: Points at which we want to evaluate. List of points.
+        :return:
+        """
         return Interpolation.interpolate_points(values, self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
+        """This method evaluates the analytic model at the given coordinate.
+
+        :param coordinate: Coordinate for evaluation.
+        :return: Value at coordinate.
+        """
         pass
 
     @abc.abstractmethod
     def get_distinct_points(self):
+        """This method returns the number of all points that were used in the combination.
+
+        :return: Number of points.
+        """
         pass
 
     @abc.abstractmethod
-    def get_component_grid_values(self, component_grid, mesh_points_grid):
+    def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
+        """This method returns the grid values for the specified component grid on the specified mesh.
+
+        :param component_grid: ComponentGridInfo of component grid for which we want the values.
+        :param mesh_points_grid: Grid definition of the points at which we want the values.
+        :return: List of all grid values. This is a 1D array with the values (each values is a numpy array!).
+        """
         pass
 
+    @abc.abstractmethod
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> None:
+        """This method evaluates the operation on a specified component grid based on the level vector. This method is
+        used in the standard or dimension adaptive combination where we do not apply spatial adaptivity.
+
+        :param component_grid: ComponentGridInfo of the specified component grid.
+        :return:
+        """
+        pass
+
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+        """This method is used to compute the operation in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+
+
+    @abc.abstractmethod
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+        """This method is used to compute the error estimates in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param children_indices: List of children for each dimensions (list of lists)
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+        pass
+
+    @abc.abstractmethod
+    def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
+        """This method is used whenever the refinement structure changes and contributions from old RefinementObjects
+        need to be removed.
+
+        :param removed_objects: RefinementObjects that were removed.
+        :return: None
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        pass
+
+    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
+        """This method calculates the 1D surplus width for a linear basis function with left and right parent.
+
+        :param d: Dimension we are in.
+        :param right_parent: Right parent of the point (end of support)
+        :param left_parent: Left parent of the point (beginning of support)
+        :return:
+        """
+        return right_parent - left_parent
 
 class AreaOperation(GridOperation):
     def is_area_operation(self):
@@ -433,6 +589,19 @@ class Integration(AreaOperation):
     def get_distinct_points(self):
         return self.f.get_f_dict_size()
 
+    def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        return np.asarray([self.f(p) for p in points])
+
+    def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
+        for removed_object in removed_objects:
+            self.integral -= removed_object.value
+
     def get_component_grid_values(self, component_grid, mesh_points_grid):
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = self.f.output_length()
@@ -462,31 +631,27 @@ class Integration(AreaOperation):
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
         return self.f.eval(coordinate)
 
-    def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float],
-                  component_grid_info: ComponentGridInfo):
+    def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution
 
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
-        partial_integral = componentgrid_info.coefficient * self.grid.integrate(self.f, levelvector, area.start,
-                                                                                area.end)
-        if area.integral is None:
-            area.integral = partial_integral
+        partial_integral = self.grid.integrate(self.f, levelvector, area.start, area.end)
+        if area.value is None:
+            area.value = partial_integral * componentgrid_info.coefficient
         else:
-            area.integral += partial_integral
-        evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
-
+            area.value += partial_integral * componentgrid_info.coefficient
         evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
-            refinement_container.integral += partial_integral
+            refinement_container.value += partial_integral * componentgrid_info.coefficient
+        self.integral += partial_integral * componentgrid_info.coefficient
         return evaluations
 
-    def evaluate_levelvec(self, component_grid):
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo):
         levelvector = component_grid.levelvector
         partial_integral = self.grid.integrate(self.f, levelvector, self.grid.a, self.grid.b)
         self.integral += partial_integral * component_grid.coefficient
 
-    def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container,
-                                          additional_info):
+    def evaluate_area_for_error_estimates(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
         if additional_info.error_name == "extend_parent":
             assert additional_info.filter_area is None
             extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
@@ -500,19 +665,19 @@ class Integration(AreaOperation):
             if area.switch_to_parent_estimation:
                 extend_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
                 if area.parent_info.extend_error_correction is None:
-                    area.parent_info.extend_error_correction = np.array(area.integral)
+                    area.parent_info.extend_error_correction = np.array(area.value)
                 area.parent_info.extend_error_correction -= extend_parent_new * componentgrid_info.coefficient
                 return np.prod(self.grid.levelToNumPoints(levelvector))
             else:
                 return 0
         elif additional_info.error_name == "split_no_filter":
-            assert additional_info.filter_area is None
-            split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
-            if additional_info.target_area.parent_info.split_parent_integral is None:
-                additional_info.target_area.parent_info.split_parent_integral = split_parent_new * componentgrid_info.coefficient
-            else:
-                additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
-            return np.prod(self.grid.levelToNumPoints(levelvector))
+                assert additional_info.filter_area is None
+                split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
+                if additional_info.target_area.parent_info.split_parent_integral is None:
+                    additional_info.target_area.parent_info.split_parent_integral = split_parent_new * componentgrid_info.coefficient
+                else:
+                    additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
+                return np.prod( self.grid.levelToNumPoints(levelvector))
         else:
             assert additional_info.filter_area is not None
             if not additional_info.interpolate:  # use filtering approach
@@ -521,7 +686,7 @@ class Integration(AreaOperation):
                 integral = 0.0
                 num_points = 0
                 for i, (p, weight) in enumerate(zip(points, weights)):
-                    if self.point_in_area(p, additional_info.filter_area):
+                    if additional_info.filter_area.point_in_area(p):
                         integral += self.f(p) * weight * self.get_point_factor(p, additional_info.filter_area, area)
                         num_points += 1
             else:  # use bilinear interpolation to get function values in filter_area
@@ -537,13 +702,11 @@ class Integration(AreaOperation):
                 mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
 
                 # get points of filter area for which we want interpolated values
-                self.grid.setCurrentArea(additional_info.filter_area.start, additional_info.filter_area.end,
-                                         levelvector)
+                self.grid.setCurrentArea(additional_info.filter_area.start, additional_info.filter_area.end, levelvector)
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = self.interpolate_points(
-                    self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
+                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
 
                 integral += np.inner(interpolated_values.T, weights)
 
@@ -553,7 +716,7 @@ class Integration(AreaOperation):
 
                 # count the number of mesh points that fall into the filter area
                 for p in mesh_points:
-                    if self.point_in_area(p, additional_info.filter_area) and self.grid.point_not_zero(p):
+                    if additional_info.filter_area.point_in_area(p) and self.grid.point_not_zero(p):
                         num_points += 1
             if additional_info.error_name == "split_parent":
                 child_area = additional_info.filter_area
@@ -571,132 +734,26 @@ class Integration(AreaOperation):
                     assert additional_info.error_name == "reference"
             return num_points
 
-    def get_best_fit(self, area, norm):
-        old_value = area.parent_info.split_parent_integral
-        new_value = area.parent_info.split_parent_integral2
-        if old_value is None:
-            area.parent_info.split_parent_integral = np.array(new_value)
-        else:
-            if new_value is None or LA.norm(abs(area.integral - old_value), norm) < LA.norm(
-                    abs(area.integral - new_value), norm):
-                pass
-            else:
-                area.parent_info.split_parent_integral = np.array(area.parent_info.split_parent_integral2)
-
-    def initialize_error_estimates(self, area):
-        area.parent_info.split_parent_integral = None
-        area.parent_info.split_parent_integral2 = None
-        area.parent_info.extend_parent_integral = None
-        if area.parent_info.benefit_split is None:
-            area.parent_info.num_points_extend_parent = None
-        if area.parent_info.benefit_extend is None:
-            area.parent_info.num_points_split_parent = None
-        area.parent_info.num_points_reference = None
-        area.parent_info.extend_error_correction = None
-
-    def initialize_split_error(self, area):
-        area.parent_info.split_parent_integral = None
-        area.parent_info.split_parent_integral2 = None
-        if area.parent_info.benefit_extend is None:
-            area.parent_info.num_points_split_parent = None
-
-    def initialize_error(self, area, error_name):
-        if error_name == "split_parent":
-            area.parent_info.split_parent_integral = None
-        if error_name == "split_parent2":
-            area.parent_info.split_parent_integral2 = None
-        if error_name == "extend_parent":
-            area.parent_info.extend_parent_integral = None
-
-    def initialize_point_numbers(self, area, error_name):
-        if error_name == "split_parent":
-            area.parent_info.num_points_split_parent = None
-        if error_name == "split_parent2":
-            area.parent_info.num_points_split_parent = None
-        if error_name == "extend_parent":
-            area.parent_info.num_points_extend_parent = None
-
-    def get_previous_value_from_split_parent(self, area):
-        area.parent_info.previous_value = area.parent_info.split_parent_integral
-
     def count_unique_points(self):
         return True
 
     def area_preprocessing(self, area):
-        area.set_integral(0.0)
-        # area.evaluations = 0
-        # area.levelvec_dict = {}
-        # area.error = None
+        #area.set_integral(0.0)
+        area.set_value(np.zeros(self.f.output_length()))
+        #area.evaluations = 0
+        #area.levelvec_dict = {}
+        #area.error = None
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
             return None
         elif LA.norm(self.reference_solution) == 0.0:
-            return LA.norm(abs(refinement_container.integral), norm)
+            return LA.norm(abs(self.integral), norm)
         else:
-            return LA.norm(abs((self.reference_solution - refinement_container.integral) / self.reference_solution),
-                           norm)
+            return LA.norm(abs((self.reference_solution - self.integral)/self.reference_solution), norm)
 
-    def area_postprocessing(self, area):
-        area.value = np.array(area.integral)
-
-    def get_sum_sibling_value(self, area):
-        area.sum_siblings = 0.0
-        i = 0
-        for child in area.parent_info.parent.children:
-            if child.integral is not None:
-                area.sum_siblings += child.integral
-                i += 1
-        assert i == 2 ** self.dim or i == 2  # we always have 2**dim children
-
-    def set_extend_benefit(self, area, norm):
-        if area.parent_info.benefit_extend is not None:
-            return
-        if area.switch_to_parent_estimation:
-            comparison = area.sum_siblings
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            comparison = area.integral
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_split_parent or area.switch_to_parent_estimation
-
-        error_extend = LA.norm(
-            abs((area.parent_info.split_parent_integral - comparison) / (abs(comparison) + 10 ** -100)), norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_extend = error_extend * (
-                    area.parent_info.num_points_split_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_extend = error_extend * area.parent_info.num_points_split_parent
-
-    def set_split_benefit(self, area, norm):
-        if area.parent_info.benefit_split is not None:
-            return
-        if area.switch_to_parent_estimation:
-            num_comparison = area.evaluations * 2 ** self.dim
-        else:
-            num_comparison = area.evaluations
-        assert num_comparison > area.parent_info.num_points_extend_parent
-
-        if self.grid.boundary:
-            assert area.parent_info.num_points_split_parent > 0
-        error_split = LA.norm(
-            abs((area.parent_info.extend_parent_integral - area.integral) / (abs(area.integral) + 10 ** -100)), norm)
-        if not self.grid.is_high_order_grid():
-            area.parent_info.benefit_split = error_split * (
-                    area.parent_info.num_points_extend_parent - area.parent_info.num_points_reference)
-        else:
-            area.parent_info.benefit_split = error_split * area.parent_info.num_points_extend_parent
-
-    def set_extend_error_correction(self, area, norm):
-        if area.switch_to_parent_estimation:
-            area.parent_info.extend_error_correction = LA.norm(area.parent_info.extend_error_correction,
-                                                               norm) * area.parent_info.num_points_split_parent
-
-    def point_in_area(self, point, area):
-        for d in range(self.dim):
-            if point[d] < area.start[d] or point[d] > area.end[d]:
-                return False
-        return True
+#    def area_postprocessing(self, area):
+#        area.value = np.array(area.integral)
 
     def get_point_factor(self, point, area, area_parent):
         factor = 1.0
@@ -706,42 +763,32 @@ class Integration(AreaOperation):
                 factor /= 2.0
         return factor
 
-    def initialize_global_value(self, refinement):
-        refinement.integral = 0.0
-
     # interpolates the cell at the subcell edge points and evaluates the integral based on the trapezoidal rule
     def compute_subcell_with_interpolation(self, cell, subcell, coefficient, refinement_container):
         start_subcell = subcell.start
         end_subcell = subcell.end
         start_cell = cell.start
         end_cell = cell.end
-        subcell_points = list(
-            zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
+        subcell_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
-        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid,
-                                                      subcell_points)
+        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
         width = np.prod(np.array(end_subcell) - np.array(start_subcell))
-        factor = 0.5 ** self.dim * width
+        factor = 0.5**self.dim * width
         integral = 0.0
         for p in interpolated_values:
             integral += p * factor
         subcell.cell_dict[subcell.get_key()].sub_integrals.append((integral, coefficient))
-        subcell.integral += integral * coefficient
+        subcell.value += integral * coefficient
         if refinement_container is not None:
-            refinement_container.integral += integral * coefficient
+            refinement_container.value += integral * coefficient
 
     def print_evaluation_output(self, refinement):
-        combi_integral = refinement.integral
+        combi_integral = self.integral
         if len(combi_integral) == 1:
             combi_integral = combi_integral[0]
         print("combiintegral:", combi_integral)
 
-    def get_twin_error(self, d, area, norm):
-        return LA.norm(abs(area.parent_info.parent.integral - (area.integral + area.twins[d].integral)))
-        # return LA.norm(abs(area.integral - area.twins[d].integral), norm)
-
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start,
-                                           end, reuse_old_values):
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
         reuse_old_values = False
         if reuse_old_values:
             previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
@@ -760,31 +807,26 @@ class Integration(AreaOperation):
                 integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
             if modification_points is not None:
                 # ~ integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
-                # ~ gridPointCoordsAsStripes)
+                                                        # ~ gridPointCoordsAsStripes)
                 v = self.subtract_contributions(modification_points, previous_points_coarsened,
-                                                gridPointCoordsAsStripes)
+                                                        gridPointCoordsAsStripes)
                 assert len(v) == len(integral)
                 integral -= v
                 integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
         else:
             self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
             self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            integral = self.grid.integrate(self.f, component_grid.levelvector, start, end)
-        self.refinement_container.integral += integral * component_grid.coefficient
-        self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
-        self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
-        return integral
-
-    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices,
-                                               component_grid):
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
+            integral = self.grid.integrate(self.f, component_grid.levelvector, self.a, self.b)
+        self.refinement_container.value += integral * component_grid.coefficient
+        self.integral += integral * component_grid.coefficient
+        if reuse_old_values:
+            self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
+            self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
 
     def set_function(self, f=None):
         assert f is None or f == self.f, "Integration and the refinement should use the same function"
 
-    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
+    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version = 2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
         self.refinement_container = refinement_container
@@ -794,372 +836,9 @@ class Integration(AreaOperation):
         self.a = a
         self.b = b
 
-    def initialize_refinement_container_dimension_wise(self, refinement_container):
-        refinement_container.integral = 0.0
-
-    # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
-    # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
-    # on this slice.
-    def calculate_surplusses(self, grid_points, children_indices, component_grid):
-        tol = 10 ** -84
-        if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
-            grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
-            points = self.grid.getPoints()
-            for i, point in enumerate(points):
-                grid_values[:, i] = self.f(point)
-        for d in range(0, self.dim):
-            k = 0
-            refinement_dim = self.refinement_container.get_refinement_container_for_dim(d)
-            if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses,
-                                                                                 GlobalLagrangeGrid):
-                hierarchization_operator = HierarchizationLSG(self.grid)
-                surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values),
-                                                                                   self.grid.numPoints, self.f, d)
-                surplus_pole = np.zeros((self.f.output_length(), self.grid.numPoints[d]))
-                stride = int(np.prod(self.grid.numPoints[d + 1:]))
-                for j in range(self.grid.numPoints[d]):
-                    i = j * stride
-                    while i < np.prod(self.grid.numPoints):
-                        surplus_pole[:, j] += np.sum(abs(surplusses_1d[:, i:i + stride]))  # * weights[i:i+stride]))
-                        i += stride * self.grid.numPoints[d]
-                # print("surplus pole", surplus_pole, surplusses_1d, stride)
-            for child_info in children_indices[d]:
-                left_parent = child_info.left_parent
-                right_parent = child_info.right_parent
-                child = child_info.child
-                if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses,
-                                                                                     GlobalLagrangeGrid):
-                    index_child = grid_points[d].index(child) - int(not (self.grid.boundary))
-                    volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * \
-                             self.grid.weights[d][index_child]
-                    evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
-                else:
-                    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info,
-                                                                                   grid_points=grid_points, d=d)
-                # print("surplus pole", surplus_pole[1], grid_values[d], child)
-                # print(surplus_pole[grid_points[d].index(child)])
-
-                k_old = 0
-                if left_parent < 0:
-                    factor_left = (1 + tol)
-                else:
-                    factor_left = (1 - tol)
-                for i in range(refinement_dim.size()):
-                    if refinement_dim.get_object(i).start >= left_parent * factor_left:
-                        k_old = i
-                        break
-                k = k_old
-                refine_obj = refinement_dim.get_object(k)
-                if right_parent < 0:
-                    factor_right = (1 - tol)
-                else:
-                    factor_right = (1 + tol)
-                if not (
-                        refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right):
-                    for child_info in children_indices[d]:
-                        print(child_info.left_parent, child_info.child, child_info.right_parent)
-                # print(refine_obj.start, refine_obj.end, left_parent, right_parent)
-                assert refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right
-                max_level = 1
-                while k < refinement_dim.size():
-                    refine_obj = refinement_dim.get_object(k)
-                    factor = 1 - tol if right_parent >= 0 else 1 + tol
-                    if refine_obj.start >= right_parent * factor:
-                        break
-                    # refine_obj.print()
-                    # print("Right parent", right_parent)
-                    assert refine_obj.end <= right_parent * factor_right
-                    k += 1
-                    max_level = max(max_level, max(refine_obj.levels))
-                for i in range(k_old, k):
-                    refine_obj = refinement_dim.get_object(i)
-                    num_area_in_support = (k - k_old)
-                    # ~ fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
-                    modified_volume = volume / num_area_in_support ** 2  # / 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
-                    # ~ assert fraction_of_support <= 1
-                    # print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
-                    # if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
-                    # print(volume)
-                    refine_obj.add_volume(modified_volume * component_grid.coefficient)
-                    # refine_obj.add_evaluations(evaluations / num_area_in_support * component_grid.coefficient)
-                    # assert component_grid.coefficient == 1
-                    # * component_grid.coefficient)
-                    # print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume, modified_volume)
-
-                    '''
-                    if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
-                        width_refinement = refine_obj.end - refine_obj.start
-                        width_basis = right_parent - left_parent
-                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
-
-                    elif refine_obj.start >= child and refine_obj.end <= right_parent: #and not child_info.has_right_child:
-                        width_refinement = refine_obj.end - refine_obj.start
-                        width_basis = right_parent - left_parent
-                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
-                    else:
-                        break
-                    '''
-                k = min(k, refinement_dim.size() - 1)
-
-                '''
-                if not child_info.has_right_child:
-                    child_info.right_refinement_object.add_volume(volume / 2.0)
-                    child_info.right_refinement_object.add_evaluations(evaluations / 2.0)
-                if not child_info.has_left_child:
-                    child_info.left_refinement_object.add_volume(volume/2.0)
-                    child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
-                '''
-
-    def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
-        return right_parent - left_parent
-
-    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
-    #  The surplusses are calculated based on the left and right parents.
-    def sum_up_volumes_for_point(self, child_info, grid_points, d):
-        # print(grid_points)
-        child = child_info.child
-        left_parent = child_info.left_parent
-        right_parent = child_info.right_parent
-        left_parent_of_left_parent = child_info.left_parent_of_left_parent
-        right_parent_of_right_parent = child_info.right_parent_of_right_parent
-        volume = 0.0
-        assert right_parent > child > left_parent
-
-        # npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-
-        # Searching close points does not work right when points have
-        # low distance to each other.
-        # ~ for p in grid_points[d]:
-        # ~ if isclose(p, left_parent):
-        # ~ left_parent = p
-        # ~ if isclose(p, right_parent):
-        # ~ right_parent = p
-        index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
-        index_child = grid_points[d].index(child) - 1 * int(not self.grid.boundary)
-        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
-
-        left_parent_in_grid = self.grid_surplusses.boundary or not (isclose(left_parent, self.a[d]))
-        right_parent_in_grid = self.grid_surplusses.boundary or not (isclose(right_parent, self.b[d]))
-        # avoid evaluating on boundary points if grids has none
-        if left_parent_in_grid:
-            if isinf(right_parent):
-                factor_left_parent = 1.0
-            else:
-                factor_left_parent = (right_parent - child) / (right_parent - left_parent)
-            # points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
-            # points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
-        if right_parent_in_grid:
-            if isinf(left_parent):
-                factor_right_parent = 1.0
-            else:
-                factor_right_parent = (child - left_parent) / (right_parent - left_parent)
-            # points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
-            # points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
-        points_children = get_cross_product(
-            [self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])
-        # points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = get_cross_product(
-            [range(len(self.grid_surplusses.coords[d2])) if d != d2 else [1] for d2 in range(self.dim)])
-        # indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
-        for (point_child, index) in zip(points_children, indices):
-            # index = indices[i]
-            factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
-            # factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
-            if factor != 0:
-                exponent = 1  # if not self.do_high_order else 2
-                # if factor2 != 0:
-                value = self.f(point_child)
-                # print(points_children[i], self.f.f_dict.keys())
-                # avoid evaluating on boundary points if grids has none
-                assert (tuple(point_child) in self.f.f_dict)
-
-                if left_parent_in_grid:
-                    point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d + 1:])
-                    if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
-
-                        left_of_left_parent = list(point_left_parent)
-                        left_of_left_parent[d] = left_parent_of_left_parent
-                        # print("Left of left:", left_of_left_parent, points_left_parent[i])
-                        # value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
-                        # assert (tuple(points_left_parent[i]) in self.f.f_dict)
-
-                        if isclose(left_of_left_parent[d], self.a[d]):
-                            value = self.f(point_child) - self.f(point_left_parent)
-                        else:
-                            m = (self.f(tuple(left_of_left_parent)) - self.f(point_left_parent)) / (
-                                    left_parent_of_left_parent - left_parent)
-                            previous_value_at_child = m * (child - left_parent) + self.f(point_left_parent)
-                            value = self.f(point_child) - previous_value_at_child
-                            # print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
-
-                            assert (tuple(left_of_left_parent) in self.f.f_dict)
-
-                    else:
-                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
-
-                        value -= factor_left_parent * self.f(point_left_parent)
-                if right_parent_in_grid:
-                    point_right_parent = tuple(point_child[:d] + tuple([right_parent]) + point_child[d + 1:])
-                    if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-
-                        right_of_right_parent = list(point_right_parent)
-                        right_of_right_parent[d] = right_parent_of_right_parent
-                        # print("Right of right:", right_of_right_parent, points_right_parent[i])
-                        # value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
-                        # assert (tuple(points_right_parent[i]) in self.f.f_dict)
-                        if isclose(right_of_right_parent[d], self.b[d]):
-                            value = self.f(point_child) - self.f(point_right_parent)
-                        else:
-                            m = (self.f(tuple(right_of_right_parent)) - self.f(point_right_parent)) / (
-                                    right_parent_of_right_parent - right_parent)
-                            previous_value_at_child = m * (child - right_parent) + self.f(point_right_parent)
-                            value = self.f(point_child) - previous_value_at_child
-                            # print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
-                            assert (tuple(right_of_right_parent) in self.f.f_dict)
-                    else:
-                        # print(points_right_parent[i], self.f.f_dict.keys())
-                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-                        value -= factor_right_parent * self.f(point_right_parent)
-                volume += factor * abs(value) * (self.get_surplus_width(d, right_parent, left_parent)) ** exponent
-        if self.version == 0 or self.version == 2:
-            evaluations = len(points_children)  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
-        else:
-            evaluations = 0
-        return abs(volume), evaluations
-
-    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
-    #  The surplusses are calculated based on the left and right parents.
-    def sum_up_volumes_for_point_vectorized(self, child_info, grid_points, d):
-        # print(grid_points)
-        child = child_info.child
-        left_parent = child_info.left_parent
-        right_parent = child_info.right_parent
-        left_parent_of_left_parent = child_info.left_parent_of_left_parent
-        right_parent_of_right_parent = child_info.right_parent_of_right_parent
-        assert right_parent > child > left_parent
-
-        # npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-
-        for p in grid_points[d]:
-            if isclose(p, left_parent):
-                left_parent = p
-            if isclose(p, right_parent):
-                right_parent = p
-        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
-        index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
-
-        left_parent_in_grid = self.grid_surplusses.boundary or not (isclose(left_parent, self.a[d]))
-        right_parent_in_grid = self.grid_surplusses.boundary or not (isclose(right_parent, self.b[d]))
-
-        size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
-        # avoid evaluating on boundary points if grids has none
-        if left_parent_in_grid:
-            if isinf(right_parent):
-                factor_left_parent = 1.0
-            else:
-                factor_left_parent = (right_parent - child) / (right_parent - left_parent)
-            points_left_parent = get_cross_product(
-                [self.grid_surplusses.coords[d2] if d != d2 else [left_parent] for d2 in range(self.dim)])
-            # points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
-        if right_parent_in_grid:
-            if isinf(left_parent):
-                factor_right_parent = 1.0
-            else:
-                factor_right_parent = (child - left_parent) / (right_parent - left_parent)
-            points_right_parent = get_cross_product(
-                [self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
-            # points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
-        if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-            left_of_left_parents = get_cross_product(
-                [self.grid_surplusses.coords[d2] if d != d2 else [left_parent_of_left_parent] for d2 in
-                 range(self.dim)])
-        if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-            right_of_right_parents = get_cross_product(
-                [self.grid_surplusses.coords[d2] if d != d2 else [right_parent_of_right_parent] for d2 in
-                 range(self.dim)])
-
-        points_children = get_cross_product(
-            [self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])
-        # points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = get_cross_product(
-            [range(len(self.grid_surplusses.coords[d2])) if d != d2 else [1] for d2 in range(self.dim)])
-        # indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
-        # index = indices[i]
-        factors = np.asarray(
-            [np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for
-             index in indices]).reshape((size_slize, 1))
-        # factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
-        exponent = 1  # if not self.do_high_order else 2
-        # if factor2 != 0:
-        # print(points_children[i], self.f.f_dict.keys())
-        # avoid evaluating on boundary points if grids has none
-        # assert (tuple(point_child) in self.f.f_dict)
-        point_values = np.asarray([self.f(p) for p in points_children])
-        values = point_values
-        if left_parent_in_grid:
-            point_values_left_parent = np.asarray([self.f(p) for p in points_left_parent])
-            # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
-            if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-                # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
-
-                # left_of_left_parent = list(point_left_parent)
-                # left_of_left_parent[d] = left_parent_of_left_parent
-                # print("Left of left:", left_of_left_parent, points_left_parent[i])
-                # value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
-                # assert (tuple(points_left_parent[i]) in self.f.f_dict)
-
-                if isclose(left_parent_of_left_parent, self.a[d]):
-                    values = point_values - point_values_left_parent
-                else:
-                    point_values_left_of_left_parent = np.asarray([self.f(p) for p in left_of_left_parents])
-
-                    m = (point_values_left_of_left_parent - point_values_left_parent) / (
-                            left_parent_of_left_parent - left_parent)
-                    previous_value_at_child = m * (child - left_parent) + point_values_left_parent
-                    values = point_values - previous_value_at_child
-                    # print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
-
-                    # assert(tuple(left_of_left_parent) in self.f.f_dict)
-
-            else:
-                # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
-
-                values -= factor_left_parent * point_values_left_parent
-        if right_parent_in_grid:
-            point_values_right_parent = np.asarray([self.f(p) for p in points_right_parent])
-            if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-
-                # right_of_right_parent = list(point_right_parent)
-                # right_of_right_parent[d] = right_parent_of_right_parent
-                # print("Right of right:", right_of_right_parent, points_right_parent[i])
-                # value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
-                # assert (tuple(points_right_parent[i]) in self.f.f_dict)
-                if isclose(right_parent_of_right_parent, self.b[d]):
-                    values = point_values - point_values_right_parent
-                else:
-                    point_values_right_of_right_parent = np.asarray([self.f(p) for p in right_of_right_parents])
-                    m = (point_values_right_of_right_parent - point_values_right_parent) / (
-                            right_parent_of_right_parent - right_parent)
-                    previous_value_at_child = m * (child - right_parent) + point_values_right_parent
-                    values = point_values - previous_value_at_child
-                    # print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
-                    # assert(tuple(right_of_right_parent) in self.f.f_dict)
-            else:
-                # print(points_right_parent[i], self.f.f_dict.keys())
-                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-                values -= factor_right_parent * point_values_right_parent
-        # print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
-        volume = np.sum(factors * abs(values), axis=0) * (
-            self.get_surplus_width(d, right_parent, left_parent)) ** exponent
-        # print("Volume", volume)
-        if self.version == 0 or self.version == 2:
-            evaluations = size_slize  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
-        else:
-            evaluations = 0
-        return abs(volume), evaluations
+    def initialize_evaluation_dimension_wise(self, refinement_container):
+        refinement_container.value = np.zeros(self.f.output_length())
+        self.integral = np.zeros(self.f.output_length())
 
     # This method returns the previous integral approximation + the points contained in this grid for the given
     # component grid identified by the levelvector. In case the component grid is new, we search for a close component
@@ -1181,8 +860,7 @@ class Integration(AreaOperation):
                 for value in reduction_values:
                     levelvec_temp = np.array(levelvector) - np.array(list(value))
                     if tuple(levelvec_temp) in self.dict_integral:
-                        return np.array(self.dict_integral[tuple(levelvec_temp)]), np.array(
-                            self.dict_points[tuple(levelvec_temp)])
+                        return np.array(self.dict_integral[tuple(levelvec_temp)]), np.array(self.dict_points[tuple(levelvec_temp)])
                 k += 1
         assert False
 
@@ -1202,7 +880,7 @@ class Integration(AreaOperation):
                 found_modification = True
                 modification_1D = self.get_modification_objects(modifications, new_points[d])
                 modification_array_added[d].extend(list(modification_1D))
-            # get removed points for dimension d
+            #get removed points for dimension d
             modifications_coarsen = sorted(list(set(old_points[d]) - set(new_points[d])))
             if len(modifications_coarsen) != 0:
                 found_modification2 = True
@@ -1247,13 +925,11 @@ class Integration(AreaOperation):
             for point in modification_points[d]:
                 # calculate the changes in contributions for all points that contain the neighbouring points point[0]
                 # and point[2] in dimension d
-                points_for_slice = list([point[0], point[2]])
+                points_for_slice = list([point[0],point[2]])
                 # remove boundary points if contained if grid has no boundary points
                 if not self.grid.boundary:
-                    points_for_slice = [p for p in points_for_slice if
-                                        not (isclose(p, self.a[d]) or isclose(p, self.b[d]))]
-                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points,
-                                                           subtract_contribution=True, dict=dict_weights_fine)
+                    points_for_slice = [p for p in points_for_slice if not(isclose(p, self.a[d]) or isclose(p, self.b[d]))]
+                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
         return integral
 
     # This method calculates the new contributions of the points specified in modification_points to the grid new_points
@@ -1273,18 +949,15 @@ class Integration(AreaOperation):
     # We also account for the fact that some points might be traversed by multiple of these slice calculations and
     # reduce the factors accordingly. If subtract_contribution is set we calculate the difference of the
     # new contribution from previously existing points to the new points.
-    def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points,
-                                  subtract_contribution=False, dict=None):
+    def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
         integral = 0.0
         positions = [list(self.grid_surplusses.coords[d]).index(point) for point in points_for_slice]
-        points = list(zip(*[g.ravel() for g in np.meshgrid(
-            *[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(
-            *[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
+        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
+        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
             # index of current point in grid_points grid
             index = indices[i]
-            # point coordinates of current point
+            #point coordinates of current point
             current_point = points[i]
             # old weight of current point in coarser grid
             weight = self.grid_surplusses.getWeight(index)
@@ -1300,7 +973,7 @@ class Integration(AreaOperation):
                         if current_point[d2] == mod_point[0] or current_point[d2] == mod_point[2]:
                             number_of_dimensions_that_intersect += 1
                 # calculate the weight difference from the old to the new grid
-                factor = (weight - weight_fine) / number_of_dimensions_that_intersect
+                factor = (weight - weight_fine)/number_of_dimensions_that_intersect
             else:
                 number_of_dimensions_that_intersect = 1
                 # calculate if other slices also contain this point
@@ -1312,18 +985,15 @@ class Integration(AreaOperation):
                             number_of_dimensions_that_intersect += 1
                 # calculate the new weight contribution of newly added point
                 factor = weight / number_of_dimensions_that_intersect
-            assert (factor >= 0)
+            assert(factor >= 0)
             integral += self.f(current_point) * factor
         return integral
-
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     @staticmethod
-    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid,
-                           mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float, ...]]):
+    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
         # constructing all points from mesh definition
-        mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = len(values[0])
         interpolated_values_array = []
         for d in range(function_value_dim):
@@ -1344,13 +1014,12 @@ import scipy.stats as sps
 from Function import *
 from StandardCombi import *  # For reference solution calculation
 
-
 class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
     def __init__(self, f, distributions, a: Sequence[float], b: Sequence[float],
-                 dim: int = None, grid=None, reference_solution=None):
+            dim: int=None, grid=None, reference_solution=None):
         dim = dim or len(a)
         super().__init__(f, grid, dim, reference_solution)
         self.f_model = f
@@ -1370,8 +1039,7 @@ class UncertaintyQuantification(Integration):
         self.gPCE = None
         self.pce_polys = None
 
-    def set_grid(self, grid):
-        self.grid = grid
+    def set_grid(self, grid): self.grid = grid
 
     def set_reference_solution(self, reference_solution):
         self.reference_solution = reference_solution
@@ -1379,7 +1047,7 @@ class UncertaintyQuantification(Integration):
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
     def _prepare_distributions(self, distris, a: Sequence[float],
-                               b: Sequence[float]):
+            b: Sequence[float]):
         self.distributions = []
         self.distribution_infos = distris
         chaospy_distributions = []
@@ -1416,13 +1084,10 @@ class UncertaintyQuantification(Integration):
                     # The chaospy normal distribution does not work with big values
                     def pdf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.pdf(x, loc=_mu, scale=_sigma)
-
                     def cdf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.cdf(x, loc=_mu, scale=_sigma)
-
                     def ppf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.ppf(x, loc=_mu, scale=_sigma)
-
                     self.distributions.append(UQDistribution(pdf, cdf, ppf))
             elif distr_type == "Laplace":
                 mu = distr_info[1]
@@ -1432,13 +1097,10 @@ class UncertaintyQuantification(Integration):
                 if not distr_known:
                     def pdf(x, _mu=mu, _scale=scale):
                         return sps.laplace.pdf(x, loc=_mu, scale=_scale)
-
                     def cdf(x, _mu=mu, _scale=scale):
                         return sps.laplace.cdf(x, loc=_mu, scale=_scale)
-
                     def ppf(x, _mu=mu, _scale=scale):
                         return sps.laplace.ppf(x, loc=_mu, scale=_scale)
-
                     self.distributions.append(UQDistribution(pdf, cdf, ppf))
             else:
                 assert False, "Distribution not implemented: " + distr_type
@@ -1453,16 +1115,6 @@ class UncertaintyQuantification(Integration):
         cdf = self.distributions[d].cdf
         return cdf(right_parent) - cdf(left_parent)
 
-    # reuse_old_values does not work for multidimensional function output,
-    # so this method is overridden here
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid, start,
-                                           end, _reuse_old_values=False):
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        integral = self.grid.integrator(self.f, self.grid.numPoints, start, end)
-        self.refinement_container.integral += integral * component_grid.coefficient
-        return integral
-
     # This function exchanges the operation's function so that the adaptive
     # refinement can use a different function than the operation's function
     def set_function(self, f=None):
@@ -1474,11 +1126,11 @@ class UncertaintyQuantification(Integration):
             self.f_actual = self.f
             self.f = f
 
-    def get_distributions(self):
-        return self.distributions
+    def update_function(self, f):
+        self.f = f
 
-    def get_distributions_chaospy(self):
-        return self.distributions_chaospy
+    def get_distributions(self): return self.distributions
+    def get_distributions_chaospy(self): return self.distributions_chaospy
 
     # This function returns boundaries for distributions which have an infinite
     # domain, such as normal distribution
@@ -1497,15 +1149,14 @@ class UncertaintyQuantification(Integration):
             return
         self.polynomial_degrees = polynomial_degrees
         if not hasattr(polynomial_degrees, "__iter__"):
-            self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint,
-                                                               retall=True)
+            self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint, retall=True)
             return
 
         # Chaospy does not support different degrees for each dimension, so
         # the higher degree polynomials are removed afterwards
         polys, norms = cp.orth_ttr(max(polynomial_degrees), self.distributions_joint, retall=True)
         polys_filtered, norms_filtered = [], []
-        for i, poly in enumerate(polys):
+        for i,poly in enumerate(polys):
             max_exponents = [max(exps) for exps in poly.exponents.T]
             if any([max_exponents[d] > deg_max for d, deg_max in enumerate(polynomial_degrees)]):
                 continue
@@ -1516,7 +1167,7 @@ class UncertaintyQuantification(Integration):
 
     def _scale_values(self, values):
         assert self.all_uniform, "Division by the domain volume should be used for uniform distributions only"
-        div = 1.0 / np.prod([self.b[i] - v_a for i, v_a in enumerate(self.a)])
+        div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
         return values * div
 
     def _set_nodes_weights_evals(self, combiinstance, scale_weights=False):
@@ -1527,22 +1178,22 @@ class UncertaintyQuantification(Integration):
             self.weights = self._scale_values(self.weights)
             # ~ self.f_evals = combiinstance.get_surplusses()
             # Surpluses are required here..
-            self.f_evals = [self.f(coord) for coord in self.nodes]
+            self.f_evals = [self.f_model(coord) for coord in self.nodes]
         else:
-            self.f_evals = [self.f(coord) for coord in self.nodes]
+            self.f_evals = [self.f_model(coord) for coord in self.nodes]
 
     def _get_combiintegral(self, combiinstance, scale_weights=False):
-        integral = combiinstance.get_calculated_solution()
+        integral = self.get_result()
         if scale_weights:
             assert combiinstance.has_basis_grid(), "scale_weights should only be needed for basis grids"
             return self._scale_values(integral)
         return integral
 
-    def calculate_moment(self, combiinstance, k: int = None,
-                         use_combiinstance_solution=True, scale_weights=False):
+    def calculate_moment(self, combiinstance, k: int=None,
+            use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
-            assert len(mom) == self.f.output_length()
+            assert len(mom) == self.f_model.output_length()
             return mom
         self._set_nodes_weights_evals(combiinstance)
         vals = [self.f_evals[i] ** k * self.weights[i] for i in range(len(self.f_evals))]
@@ -1553,7 +1204,7 @@ class UncertaintyQuantification(Integration):
 
     @staticmethod
     def moments_to_expectation_variance(mom1: Sequence[float],
-                                        mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
+            mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
         expectation = mom1
         variance = [mom2[i] - ex * ex for i, ex in enumerate(expectation)]
         for i, v in enumerate(variance):
@@ -1574,8 +1225,7 @@ class UncertaintyQuantification(Integration):
             expectation_of_squared = self.calculate_moment(combiinstance, k=2, use_combiinstance_solution=False)
         return self.moments_to_expectation_variance(expectation, expectation_of_squared)
 
-    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True,
-                      scale_weights=False):
+    def calculate_PCE(self, polynomial_degrees, combiinstance, restrict_degrees=False, use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             assert self.pce_polys is not None
             assert not restrict_degrees
@@ -1583,7 +1233,7 @@ class UncertaintyQuantification(Integration):
             num_polys = len(self.pce_polys)
             output_dim = len(integral) // num_polys
             coefficients = integral.reshape((num_polys, output_dim))
-            self.gPCE = np.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
             return
 
         self._set_nodes_weights_evals(combiinstance)
@@ -1597,10 +1247,9 @@ class UncertaintyQuantification(Integration):
 
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
-                                      self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
+            self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
 
-    def get_gPCE(self):
-        return self.gPCE
+    def get_gPCE(self): return self.gPCE
 
     def get_expectation_PCE(self):
         if self.gPCE is None:
@@ -1615,7 +1264,7 @@ class UncertaintyQuantification(Integration):
     def get_expectation_and_variance_PCE(self):
         return self.get_expectation_PCE(), self.get_variance_PCE()
 
-    def get_Percentile_PCE(self, q: float, sample: int = 10000):
+    def get_Percentile_PCE(self, q: float, sample: int=10000):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Perc(self.gPCE, q, self.distributions_joint, sample)
@@ -1638,20 +1287,20 @@ class UncertaintyQuantification(Integration):
         return FunctionPower(self.f, k)
 
     def set_moment_Function(self, k: int):
-        self.f = self.get_moment_Function(k)
+        self.update_function(self.get_moment_Function(k))
 
     # Optimizes adapting for multiple moments at once
     def get_moments_Function(self, ks: Sequence[int]):
         return FunctionConcatenate([self.get_moment_Function(k) for k in ks])
 
     def set_moments_Function(self, ks: Sequence[int]):
-        self.f = self.get_moments_Function(ks)
+        self.update_function(self.get_moments_Function(ks))
 
     def get_expectation_variance_Function(self):
         return self.get_moments_Function([1, 2])
 
     def set_expectation_variance_Function(self):
-        self.f = self.get_expectation_variance_Function()
+        self.update_function(self.get_expectation_variance_Function())
 
     # Returns a Function which can be passed to performSpatiallyAdaptiv
     # so that adapting is optimized for the PCE
@@ -1665,14 +1314,14 @@ class UncertaintyQuantification(Integration):
         return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
 
     def set_PCE_Function(self, polynomial_degrees):
-        self.f = self.get_PCE_Function(polynomial_degrees)
+        self.update_function(self.get_PCE_Function(polynomial_degrees))
 
     def get_pdf_Function(self):
         pdf = self.distributions_joint.pdf
         return FunctionCustom(lambda coords: float(pdf(coords)))
 
     def set_pdf_Function(self):
-        self.f = self.get_pdf_Function()
+        self.update_function(self.get_pdf_Function())
 
     # Returns a Function which applies the PPF functions before evaluating
     # the problem function; it can be integrated without weighting
@@ -1680,8 +1329,7 @@ class UncertaintyQuantification(Integration):
         return FunctionInverseTransform(func or self.f, self.distributions)
 
     def set_inverse_transform_Function(self, func=None):
-        self.f = self.get_inverse_transform_Function(func or self.f, self.distributions)
-
+        self.update_function(self.get_inverse_transform_Function(func or self.f, self.distributions))
 
 # UncertaintyQuantification extended for testing purposes
 class UncertaintyQuantificationTesting(UncertaintyQuantification):
@@ -1689,7 +1337,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
     def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
         self._set_pce_polys(polynomial_degrees)
         nodes, weights = cp.generate_quadrature(num_quad_points,
-                                                self.distributions_joint, rule="G")
+            self.distributions_joint, rule="G")
         f_evals = [self.f(c) for c in zip(*nodes)]
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
@@ -1702,7 +1350,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
 
     def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton", modeparams=None):
         if mode == "ChaospyHalton":
-            num_points = modeparams or 2 ** 14
+            num_points = modeparams or 2**14
             nodes = self.distributions_joint.sample(num_points, rule="H")
             num_samples = len(nodes[0])
             assert num_points == num_samples
@@ -1710,7 +1358,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
             weights = np.array([w for _ in range(num_samples)])
         elif mode == "ChaospyGauss":
             nodes, weights = cp.generate_quadrature(29,
-                                                    self.distributions_joint, rule="G")
+                self.distributions_joint, rule="G")
         elif mode == "StandardcombiGauss":
             if all([distr[0] == "Normal" for distr in self.distribution_infos]):
                 expectations = [distr[1] for distr in self.distribution_infos]
@@ -1768,7 +1416,6 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
 
 from scipy import integrate
 
-
 class UQDistribution:
     def __init__(self, pdf, cdf, ppf):
         self.pdf = pdf
@@ -1782,7 +1429,7 @@ class UQDistribution:
     def from_chaospy(cp_distr):
         # The inverse Rosenblatt transformation is the inverse cdf here
         return UQDistribution(cp_distr.pdf, cp_distr.cdf,
-                              lambda x: float(cp_distr.inv(x)))
+            lambda x: float(cp_distr.inv(x)))
 
     def get_zeroth_moment(self, x1: float, x2: float):
         cache = self.cached_moments[0]
@@ -1797,7 +1444,7 @@ class UQDistribution:
         if (x1, x2) in cache:
             return cache[(x1, x2)]
         moment_1 = integrate.quad(lambda x: x * self.pdf(x), x1, x2,
-                                  epsrel=10 ** -2, epsabs=np.inf)[0]
+            epsrel=10 ** -2, epsabs=np.inf)[0]
         cache[(x1, x2)] = moment_1
         return moment_1
 
@@ -1817,8 +1464,8 @@ class UQDistribution:
         # ~ k = (func, x1, x2)
         # ~ cache = self.cache_integrals
         # ~ if k in cache:
-        # ~ print("Cache match")
-        # ~ return cache[k]
+            # ~ print("Cache match")
+            # ~ return cache[k]
         integral = integrate.quad(lambda x: func(x) * self.pdf(x), x1, x2)[0]
         # ~ cache[k] = integral
         return integral

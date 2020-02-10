@@ -25,7 +25,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     self.assertEqual(combiintegral, f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
                     self.assertTrue(all([error == 0.0 for error in error_array]))
@@ -42,7 +42,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     self.assertAlmostEqual(combiintegral[0] / f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)), 1.0, places=12)
                     self.assertTrue(all([ -10**-13 * combiintegral[0] <= error <= 10**-13 * combiintegral[0] for error in error_array]))
@@ -60,7 +60,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     self.assertEqual(combiintegral, f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
                     self.assertTrue(all([error == 0.0 for error in error_array]))
@@ -77,7 +77,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     self.assertEqual(combiintegral, f.getAnalyticSolutionIntegral(a * np.ones(d), b * np.ones(d)))
                     self.assertTrue(all([error == 0.0 for error in error_array]))
@@ -95,7 +95,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     points = get_cross_product_list([np.linspace(a, b, 5, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)
@@ -115,7 +115,7 @@ class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
                     spatiallyAdaptive = SpatiallyAdaptiveSingleDimensions2(a * np.ones(d), b * np.ones(d), version=3,
                                                                            operation=operation)
                     _, _, _, combiintegral, _, error_array, _, surplus_error_array, _, _ = spatiallyAdaptive.performSpatiallyAdaptiv(
-                        minv=1, maxv=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
+                        lmin=1, lmax=l, errorOperator=errorOperator, tol=-1, max_evaluations=num_points,
                         print_output=False)
                     points = get_cross_product_list([np.linspace(a, b, 3, endpoint=False) for _ in range(d)])
                     f_values = spatiallyAdaptive(points)

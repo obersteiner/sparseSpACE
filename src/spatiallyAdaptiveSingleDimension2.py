@@ -6,16 +6,30 @@ def sortToRefinePosition(elem):
     return elem[1]
 
 
+class NodeInfo(object):
+    def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object, level_child):
+        self.child = child
+        self.left_parent = left_parent
+        self.right_parent = right_parent
+        self.left_parent_of_left_parent = left_parent_of_left_parent
+        self.right_parent_of_right_parent = right_parent_of_right_parent
+        self.has_left_child = has_left_child
+        self.has_right_child = has_right_child
+        self.left_refinement_object = left_refinement_object
+        self.right_refinement_object = right_refinement_object
+        self.level_child = level_child
+
+
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False, use_volume_weighting=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
         self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
         self.version = version
-        self.dict_integral = {}
-        self.dict_points = {}
+        #self.dict_integral = {}
+        #self.dict_points = {}
         self.no_previous_integrals = True
         self.use_local_children = True #self.version == 2 or self.version == 3
         if margin is None:
@@ -28,6 +42,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
         self.chebyshev_points = chebyshev_points
+        self.use_volume_weighting = use_volume_weighting
 
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -59,7 +74,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         pass
 
     # returns the points coordinates of a single component grid with refinement
-    def get_points_all_dim(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
+    def get_points_all_dim(self, levelvec: Sequence[int]) -> List[Tuple[float, ...]]:
         indicesList, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(levelvec)
         if not self.grid.boundary:
             indicesList = [indices[1:-1] for indices in indicesList]
@@ -68,35 +83,43 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return allPoints
 
     # returns the points of a single component grid with refinement
-    def get_points_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> List[Tuple[float, ...]]:
-        return self.get_points_all_dim(levelvec, numSubDiagonal)
+    def get_points_component_grid(self, levelvec: Sequence[int]) -> List[Tuple[float, ...]]:
+        return self.get_points_all_dim(levelvec)
 
-    def get_points_and_weights_component_grid(self, levelvec: Sequence[int], numSubDiagonal: int) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
+    def get_points_and_weights_component_grid(self, levelvec: Sequence[int]) -> Tuple[Sequence[Tuple[float, ...]], Sequence[float]]:
         point_coords, point_levels, _ =self.get_point_coord_for_each_dim(levelvec)
         self.grid.set_grid(point_coords, point_levels)
         points, weights = self.grid.get_points_and_weights()
         return points, weights
 
-    def get_num_points_each_dim(self):
+    def get_num_points_each_dim(self) -> Sequence[int]:
+        """This method returns the number of points in each dimension including boundary points.
+
+        :return: numpy array with number of points
+        """
         num_points = np.zeros(self.dim, dtype=int)
-        for component_grid in self.scheme:
-            point_coords, point_levels, _ = self.get_point_coord_for_each_dim(component_grid.levelvector)
-            self.grid.set_grid(point_coords, point_levels)
-            num_points_component_grid = self.grid.levelToNumPoints(component_grid.levelvector)
-            for i, v in enumerate(num_points_component_grid):
-                if num_points[i] < v:
-                    num_points[i] = v
-        assert all([v > 0 for v in num_points])
+
+        for d in range(self.dim):
+            num_points[d] = self.refinement.get_refinement_container_for_dim(d).size()
+            assert(num_points[d] > 0)
+
         return num_points
 
-    # returns list of coordinates for each dimension (basically refinement stripes) + all points that are associated
-    # with a child in the global refinement structure. There might be now such points that correspond to a global child.
-    def get_point_coord_for_each_dim(self, levelvec: Sequence[int]):
+    def get_point_coord_for_each_dim(self, levelvec: Sequence[int]) -> Tuple[Sequence[Sequence[float]], Sequence[Sequence[int]], Sequence[Sequence[NodeInfo]]]:
+        """This method returns the 1D list of point coordinates and the point levels for each dimension.
+        In addition the 1D list of children for each dimension is returned.
+
+        If self.use_local_children is set the children will be the ones in the local compoenent grid, otherwise we will
+        return only grids that are also children in the global refinement structure (which might not exist).
+
+        :param levelvec: Level vector of the component grid
+        :return: List of point coordinates and levels and children for each dimension.
+        """
         refinement = self.refinement
         # get a list of all coordinates for every this_dim (so (0, 1), (0, 0.5, 1) for example)
-        indicesList = []
+        point_coordinates = []
         children_indices = []
-        indices_level = []
+        points_level = []
         max_coarsenings = np.zeros(self.dim, dtype=int) #only for dimensions with level > 1
         for d in range(self.dim):
             #if levelvec[d] > self.lmin[d]:
@@ -105,12 +128,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             max_coarsenings_dim = list(max_coarsenings)
             refineContainer = refinement.get_refinement_container_for_dim(d)
             refine_container_objects = refineContainer.get_objects()
-            indicesDim = []
-            indices_levelDim = []
+            points_dim = []
+            points_level_dim = []
 
             children_indices_dim = []
-            indicesDim.append(refine_container_objects[0].start)
-            indices_levelDim.append(refine_container_objects[0].levels[0])
+            points_dim.append(refine_container_objects[0].start)
+            points_level_dim.append(refine_container_objects[0].levels[0])
             for i in range(len(refine_container_objects)):
                 refineObj = refine_container_objects[i]
                 if i + 1 < len(refine_container_objects):
@@ -121,42 +144,57 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
 
                 if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
-
-                    indicesDim.append(refineObj.end)
+                    points_dim.append(refineObj.end)
                     if not self.use_local_children:
                         if next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0]):
                             children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
                     else:
-                        indices_levelDim.append(refineObj.levels[1])
-                        #print(d, refineObj.end)
+                        points_level_dim.append(refineObj.levels[1])
 
             if self.use_local_children:
-                for i in range(1,len(indices_levelDim)-1):
-                    if self.is_child(indices_levelDim[i-1], indices_levelDim[i], indices_levelDim[i+1]):
-                        #print(d, indicesDim[i])
-                        children_indices_dim.append((self.get_node_info(i, indicesDim, indices_levelDim, d)))
-                        #print(children_indices_dim, d)
-            indicesList.append(indicesDim)
+                for i in range(1,len(points_level_dim)-1):
+                    if self.is_child(points_level_dim[i-1], points_level_dim[i], points_level_dim[i+1]):
+                        children_indices_dim.append((self.get_node_info(i, points_dim, points_level_dim, d)))
+            point_coordinates.append(points_dim)
             children_indices.append(children_indices_dim)
-            indices_level.append(indices_levelDim)
+            points_level.append(points_level_dim)
 
             # Test if children_indices is valid
             for c in children_indices_dim:
-                indicesDim.index(c.left_parent)
-                indicesDim.index(c.right_parent)
+                points_dim.index(c.left_parent)
+                points_dim.index(c.right_parent)
             # Test if indices are valid
-            assert all(indicesDim[i] <= indicesDim[i + 1] for i in range(len(indicesDim) - 1))
+            assert all(points_dim[i] <= points_dim[i + 1] for i in range(len(points_dim) - 1))
 
-        return indicesList, indices_level, children_indices
+        return point_coordinates, points_level, children_indices
 
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
+        """This method updates subtraction value so that the maximum level is only reached if level is max. We also
+        check that subtraction value is not too large.
+
+        :param subtraction_value: Current value of subtraction_value
+        :param d: Respective dimension for subtraction_value
+        :param max_level: Maximum level in this dimension.
+        :param levelvec:
+        :return:
+        """
         if levelvec[d] - subtraction_value == max_level and levelvec[d] < self.lmax[d]:
             subtraction_value += 1
         subtraction_value = min(subtraction_value, levelvec[d] - self.lmin[d])
         return subtraction_value
 
-    def get_subtraction_value(self, refineObj, refineContainer, i, max_coarsenings, d, levelvec):
+    def get_subtraction_value(self, refineObj: RefinementObject, refineContainer: RefinementContainer, i: int, max_coarsenings: Sequence[int], d: int, levelvec: Sequence[int]) -> int:
+        """This method calculates the subtraction value according to the version. See publication toDo
+
+        :param refineObj: RefinementObject for which we want to calculate subraction value
+        :param refineContainer: RefinementContainer of dimension d
+        :param i: Index of RefineObject in RefinementContainer
+        :param max_coarsenings: Maximum coarsening values for all dimensions
+        :param d: Dimension of RefinementObject
+        :param levelvec: Level vector of component grid
+        :return: The subtraction value (int)
+        """
         if self.version == 5:
             if tuple((d, i)) in self.max_level_dict:
                 if tuple((d, self.max_level_dict[tuple((d, i))])) in self.subtraction_value_cache:
@@ -179,7 +217,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 #                subtraction_value = subtract_value_temp
                 #return self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d,i))], levelvec)
         if self.version == 4 or self.version == 5:
-            #max_coarsenings_levelvec = [coarsening if levelvec[k] > 1 else 0 for k, coarsening in enumerate(max_coarsenings)]
             max_coarsenings_levelvec = max_coarsenings
         if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5:
             refineObj_temp = refineObj
@@ -284,18 +321,31 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return subtraction_value
 
 
-    # returns if the coordinate refineObj.levels[1] is a child in the global refinement structure level 1 is never considered to be a child
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
+        """This method returns if the point of level level_point is a child in the refinement structure.
+        A point with level <= 1 is not considered to be a child.
+
+        :param level_left_point: level of point to left
+        :param level_point: level of point
+        :param level_right_point: level of point to right
+        :return: Bool if point is a child
+        """
         return (level_left_point < level_point and level_right_point < level_point) and level_point > 1
-        #return True
         #if level_left_point < level_point or level_right_point < level_point:
         #    return True
         #else:
         #    return False
 
-    # This method calculates the left and right parent of a child. It might happen that a child has already a child
-    # in one direction but it may not have one in both as it would not be considered to be a child anymore.
-    def get_node_info(self, position, coords_dim, level_dim, d):
+    def get_node_info(self, position: int, coords_dim: Sequence[float], level_dim: Sequence[int], d: int) -> NodeInfo:
+        """This method calculates the left and right parent of a child. It might happen that a child has already a child
+        in one direction but it may not have one in both as it would not be considered to be a child anymore.
+
+        :param position: Position of child in coords_dim and level_dim
+        :param coords_dim: Coordinates of all points in the dimension d
+        :param level_dim:  Level of all points in the dimension d
+        :param d: Current dimension
+        :return: NodeInfo object containing parents and other info for error calculation
+        """
         child = coords_dim[position]
         level_child = level_dim[position]
         if self.equidistant:
@@ -380,9 +430,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    # this method draws the 1D refinement of each dimension individually
-    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):  # update with meta container
-        plt.rcParams.update({'font.size': 60})
+    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
+        """This method plots the refinement trees of the current refinement structure.
+
+        :param filename: Will save plot to specified filename if set.
+        :param markersize: Specifies the used marker size for plotting
+        :param fontsize: Specifies the used fontsize for plotting
+        :param single_dim: Can be set when only specified dimension should be plotted
+        :return: Figure object of plot
+        """
+        plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
         height = 5*sum(self.lmax) if single_dim is None else 5 * self.lmax[single_dim]
@@ -455,7 +512,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return fig
 
     def init_evaluation_operation(self, areas):
-        self.operation.initialize_refinement_container_dimension_wise(areas[0])
+        self.operation.initialize_evaluation_dimension_wise(areas[0])
 
     def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
@@ -463,10 +520,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            integral = self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid, self.a, self.b, False)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
+            self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
-            self.operation.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
+            self.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
 
             # save the number of evaluations used per d-1 dimensional slice
             #for d in range(self.dim):
@@ -488,7 +545,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #            level = max(area.levels)
         #            area.set_evaluations(np.sum(self.evaluationCounts[d][level-1:]))
 
-    def _initialize_points(self, points, func_mid, d, i1, i2):
+    def _initialize_points(self, points, func_mid: Callable[[float, float], float], d: int, i1: int, i2: int) -> None:
+        """This method recursively initializes the point coordinates in the refinement structure.
+
+        :param points: numpy array where points should be stored in
+        :param func_mid: Function determining the center of two points
+        :param d: Current dimension
+        :param i1: Index of left point
+        :param i2: Index of right point
+        :return: None
+        """
         if i1+1 >= i2:
             return
         i = (i1 + i2) // 2
@@ -497,6 +563,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self._initialize_points(points, func_mid, d, i, i2)
 
     def _initialize_levels(self, levels, i1, i2, level):
+        """This method recursively initializes the levels of the points in the refinement structure.
+
+        :param levels: numpy array where levels should be stored in
+        :param i1: Index of left point
+        :param i2: Index of right point
+        :param level: Current level
+        :return:
+        """
         if i1+1 >= i2:
             return
         i = (i1 + i2) // 2
@@ -529,7 +603,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                                                                                      initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), grid=self.grid,
                                                                                      coarsening_level=0, a=self.a[d], b=self.b[d], chebyshev=self.chebyshev_points) for i in
                                                      range(2 ** maxv)], d, self.errorEstimator) for d in
-                                                   range(self.dim)])
+                                                   range(self.dim)], calculate_volume_weights=self.use_volume_weighting)
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
@@ -566,7 +640,13 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #    return False
         return False
 
-    def raise_lmax(self, d: int, value: int):
+    def raise_lmax(self, d: int, value: int) -> None:
+        """This method raises the maximum level of the combination scheme if previous one is exceeded by refinement.
+
+        :param d: Dimension where we want to increase level.
+        :param value: Value by which maximum level is increased.
+        :return: None
+        """
         self.lmax[d] += value
         if self.dim_adaptive:
             if self.print_output:
@@ -582,12 +662,25 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 if refinements == 0:
                     break
 
-    def rebalance(self, d):
+    def rebalance(self, d: int) -> None:
+        """This method rebalances the refinement tree of dimension d. See also publication toDo
+
+        :param d: Dimension of refinement tree.
+        :return: None
+        """
         refinement_container = self.refinement.get_refinement_container_for_dim(d)
         self.rebalance_interval(0, refinement_container.size(), 1, refinement_container)
         #refinement_container.printContainer()
 
     def rebalance_interval(self, start, end, level, refinement_container):
+        """This method recursively rebalances the refinement tree.
+
+        :param start: Start of interval in which we want to rebalance.
+        :param end: End of interval in which we want to rebalance
+        :param level: Current level of the rebalancing procedure.
+        :param refinement_container: RefinementContainer that stores the RefinementObjects.
+        :return: None
+        """
         if end - start <= 2:
             return
         refineContainer = refinement_container
@@ -675,10 +768,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
     def update_coarsening_values(self, refinement_container_d, d):
+        """This method checks if any of the RefinementObject exceeds the maximum level and returns this value.
+
+        :param refinement_container_d: RefinementContainer for dimension d
+        :param d: Dimension where we want to update the values.
+        :return:
+        """
         update_dimension = 0
         for refinement_object in refinement_container_d.get_objects():
             refinement_object.coarsening_level = self.lmax[d] - max(refinement_object.levels)
-            if refinement_object.coarsening_level < update_dimension :
+            if refinement_object.coarsening_level < update_dimension:
                 update_dimension = refinement_object.coarsening_level
             #assert refinement_object.coarsening_level >= -1
         return update_dimension * -1
@@ -701,17 +800,346 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 refinement_container_d.update_values(update_d)
         self.scheme = self.combischeme.getCombiScheme(do_print=False)
 
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid):
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
-class NodeInfo(object):
-    def __init__(self, child, left_parent, right_parent, left_parent_of_left_parent, right_parent_of_right_parent, has_left_child, has_right_child, left_refinement_object, right_refinement_object, level_child):
-        self.child = child
-        self.left_parent = left_parent
-        self.right_parent = right_parent
-        self.left_parent_of_left_parent = left_parent_of_left_parent
-        self.right_parent_of_right_parent = right_parent_of_right_parent
-        self.has_left_child = has_left_child
-        self.has_right_child = has_right_child
-        self.left_refinement_object = left_refinement_object
-        self.right_refinement_object = right_refinement_object
-        self.level_child = level_child
+    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
+    #  The surplusses are calculated based on the left and right parents.
+    def sum_up_volumes_for_point(self, child_info, grid_points, d):
+        #print(grid_points)
+        child = child_info.child
+        left_parent = child_info.left_parent
+        right_parent = child_info.right_parent
+        left_parent_of_left_parent = child_info.left_parent_of_left_parent
+        right_parent_of_right_parent = child_info.right_parent_of_right_parent
+        volume = 0.0
+        assert right_parent > child > left_parent
+
+        #npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
+        # Searching close points does not work right when points have
+        # low distance to each other.
+        # ~ for p in grid_points[d]:
+            # ~ if isclose(p, left_parent):
+                # ~ left_parent = p
+            # ~ if isclose(p, right_parent):
+                # ~ right_parent = p
+        index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
+        index_child = grid_points[d].index(child) - 1 * int(not self.grid.boundary)
+        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
+
+        left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
+        right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
+        # avoid evaluating on boundary points if grids has none
+        if left_parent_in_grid:
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            #points_left_parent = get_cross_product([self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])
+            #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+        if right_parent_in_grid:
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            #points_right_parent = get_cross_product([self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])
+            #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        points_children = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
+        #points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = get_cross_product([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
+        #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        for (point_child, index) in zip(points_children, indices):
+            #index = indices[i]
+            factor = np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)])
+            #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
+            if factor != 0:
+                exponent = 1# if not self.do_high_order else 2
+                #if factor2 != 0:
+                value = self.f(point_child)
+                #print(points_children[i], self.f.f_dict.keys())
+                # avoid evaluating on boundary points if grids has none
+                assert (tuple(point_child) in self.f.f_dict)
+
+                if left_parent_in_grid:
+                    point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
+                    if self.grid_surplusses.modified_basis and not right_parent_in_grid:
+                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+
+                        left_of_left_parent = list(point_left_parent)
+                        left_of_left_parent[d] = left_parent_of_left_parent
+                        #print("Left of left:", left_of_left_parent, points_left_parent[i])
+                        #value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
+                        #assert (tuple(points_left_parent[i]) in self.f.f_dict)
+
+                        if isclose(left_of_left_parent[d], self.a[d]):
+                            value = self.f(point_child) - self.f(point_left_parent)
+                        else:
+                            m = (self.f(tuple(left_of_left_parent)) - self.f(point_left_parent)) / (
+                                        left_parent_of_left_parent - left_parent)
+                            previous_value_at_child = m * (child - left_parent) + self.f(point_left_parent)
+                            value = self.f(point_child) - previous_value_at_child
+                            #print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
+
+                            assert(tuple(left_of_left_parent) in self.f.f_dict)
+
+                    else:
+                        assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+
+                        value -= factor_left_parent * self.f(point_left_parent)
+                if right_parent_in_grid:
+                    point_right_parent = tuple(point_child[:d] + tuple([right_parent]) + point_child[d+1:])
+                    if self.grid_surplusses.modified_basis and not left_parent_in_grid:
+                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+
+                        right_of_right_parent = list(point_right_parent)
+                        right_of_right_parent[d] = right_parent_of_right_parent
+                        #print("Right of right:", right_of_right_parent, points_right_parent[i])
+                        #value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
+                        #assert (tuple(points_right_parent[i]) in self.f.f_dict)
+                        if isclose(right_of_right_parent[d], self.b[d]):
+                            value = self.f(point_child) - self.f(point_right_parent)
+                        else:
+                            m = (self.f(tuple(right_of_right_parent)) - self.f(point_right_parent))  / (right_parent_of_right_parent - right_parent)
+                            previous_value_at_child = m * (child - right_parent) + self.f(point_right_parent)
+                            value = self.f(point_child) - previous_value_at_child
+                            #print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
+                            assert(tuple(right_of_right_parent) in self.f.f_dict)
+                    else:
+                        #print(points_right_parent[i], self.f.f_dict.keys())
+                        assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+                        value -= factor_right_parent * self.f(point_right_parent)
+                volume += factor * abs(value) * (self.operation.get_surplus_width(d, right_parent, left_parent))**exponent
+        if self.version == 0 or self.version == 2:
+            evaluations = len(points_children) #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+        else:
+            evaluations = 0
+        return abs(volume), evaluations
+
+    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
+    #  The surplusses are calculated based on the left and right parents.
+    def sum_up_volumes_for_point_vectorized(self, child_info: NodeInfo, grid_points: Sequence[Sequence[float]], d: int, component_grid:ComponentGridInfo):
+        #print(grid_points)
+        child = child_info.child
+        left_parent = child_info.left_parent
+        right_parent = child_info.right_parent
+        left_parent_of_left_parent = child_info.left_parent_of_left_parent
+        right_parent_of_right_parent = child_info.right_parent_of_right_parent
+        assert right_parent > child > left_parent
+
+        #npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
+        for p in grid_points[d]:
+            if isclose(p, left_parent):
+                left_parent = p
+            if isclose(p, right_parent):
+                right_parent = p
+        index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
+        index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
+
+        left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
+        right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
+
+        size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+        # avoid evaluating on boundary points if grids has none
+        if left_parent_in_grid:
+            if isinf(right_parent):
+                factor_left_parent = 1.0
+            else:
+                factor_left_parent = (right_parent - child)/(right_parent - left_parent)
+            points_left_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in range(self.dim)])
+            #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
+        if right_parent_in_grid:
+            if isinf(left_parent):
+                factor_right_parent= 1.0
+            else:
+                factor_right_parent = (child - left_parent)/(right_parent - left_parent)
+            points_right_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in range(self.dim)])
+            #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
+        if self.grid_surplusses.modified_basis and not right_parent_in_grid:
+            left_of_left_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in range(self.dim)])
+        if self.grid_surplusses.modified_basis and not left_parent_in_grid:
+            right_of_right_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2 in range(self.dim)])
+
+        points_children = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
+        #points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
+        indices = get_cross_product([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
+        #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        #index = indices[i]
+        factors = np.asarray([np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for index in indices]).reshape((size_slize, 1))
+        #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
+        exponent = 1# if not self.do_high_order else 2
+        #if factor2 != 0:
+        #print(points_children[i], self.f.f_dict.keys())
+        # avoid evaluating on boundary points if grids has none
+        #assert (tuple(point_child) in self.f.f_dict)
+        point_values = self.operation.get_point_values_component_grid(points_children, component_grid) #np.asarray([self.f(p) for p in points_children])
+        values = point_values
+        if left_parent_in_grid:
+            point_values_left_parent = self.operation.get_point_values_component_grid(points_left_parent, component_grid) #np.asarray([self.f(p) for p in points_left_parent])
+            #point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
+            if self.grid_surplusses.modified_basis and not right_parent_in_grid:
+                #assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+
+                #left_of_left_parent = list(point_left_parent)
+                #left_of_left_parent[d] = left_parent_of_left_parent
+                #print("Left of left:", left_of_left_parent, points_left_parent[i])
+                #value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
+                #assert (tuple(points_left_parent[i]) in self.f.f_dict)
+
+                if isclose(left_parent_of_left_parent, self.a[d]):
+                    values = point_values - point_values_left_parent
+                else:
+                    point_values_left_of_left_parent = self.operation.get_point_values_component_grid(left_of_left_parents, component_grid) #np.asarray([self.f(p) for p in left_of_left_parents])
+
+                    m = (point_values_left_of_left_parent - point_values_left_parent) / (
+                                left_parent_of_left_parent - left_parent)
+                    previous_value_at_child = m * (child - left_parent) + point_values_left_parent
+                    values = point_values - previous_value_at_child
+                    #print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
+
+                    #assert(tuple(left_of_left_parent) in self.f.f_dict)
+
+            else:
+                #assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+
+                values -= factor_left_parent * point_values_left_parent
+        if right_parent_in_grid:
+            point_values_right_parent = self.operation.get_point_values_component_grid(points_right_parent, component_grid) #np.asarray([self.f(p) for p in points_right_parent])
+            if self.grid_surplusses.modified_basis and not left_parent_in_grid:
+                #assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+
+                #right_of_right_parent = list(point_right_parent)
+                #right_of_right_parent[d] = right_parent_of_right_parent
+                #print("Right of right:", right_of_right_parent, points_right_parent[i])
+                #value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
+                #assert (tuple(points_right_parent[i]) in self.f.f_dict)
+                if isclose(right_parent_of_right_parent, self.b[d]):
+                    values = point_values - point_values_right_parent
+                else:
+                    point_values_right_of_right_parent = self.operation.get_point_values_component_grid(right_of_right_parents, component_grid) #np.asarray([self.f(p) for p in right_of_right_parents])
+                    m = (point_values_right_of_right_parent - point_values_right_parent)  / (right_parent_of_right_parent - right_parent)
+                    previous_value_at_child = m * (child - right_parent) + point_values_right_parent
+                    values = point_values - previous_value_at_child
+                    #print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
+                    #assert(tuple(right_of_right_parent) in self.f.f_dict)
+            else:
+                #print(points_right_parent[i], self.f.f_dict.keys())
+                #assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+                values -= factor_right_parent * point_values_right_parent
+        #print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
+        volume = np.sum(factors * abs(values), axis=0) * (self.operation.get_surplus_width(d, right_parent, left_parent))**exponent
+        #print("Volume", volume)
+        if self.version == 0 or self.version == 2:
+            evaluations = size_slize #* (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+        else:
+            evaluations = 0
+        return abs(volume), evaluations
+
+    # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
+    # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
+    # on this slice.
+    def calculate_surplusses(self, grid_points: Sequence[Sequence[float]], children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo):
+        tol = 10**-84
+        if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
+            # grid_values = np.empty((self.f.output_length(), np.prod(self.grid.numPoints)))
+            # points = self.grid.getPoints()
+            # for i, point in enumerate(points):
+            #     grid_values[:, i] = self.f(point)
+            grid_values = self.operation.get_component_grid_values(component_grid, self.grid.get_coordinates())
+        for d in range(0, self.dim):
+            k=0
+            refinement_dim = self.refinement.get_refinement_container_for_dim(d)
+            if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
+                hierarchization_operator = HierarchizationLSG(self.grid)
+                surplusses_1d = hierarchization_operator.hierarchize_poles_for_dim(np.array(grid_values.T), self.grid.numPoints, d)
+                surplus_pole = np.zeros((self.operation.point_output_length(), self.grid.numPoints[d]))
+                stride = int(np.prod(self.grid.numPoints[d+1:]))
+                for j in range(self.grid.numPoints[d]):
+                    i = j * stride
+                    while i < np.prod(self.grid.numPoints):
+                        surplus_pole[:,j] += np.sum(abs(surplusses_1d[:,i:i+stride])) #* weights[i:i+stride]))
+                        i += stride * self.grid.numPoints[d]
+            for child_info in children_indices[d]:
+                left_parent = child_info.left_parent
+                right_parent = child_info.right_parent
+                child = child_info.child
+                if isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid):
+                    index_child = grid_points[d].index(child) - int(not(self.grid.boundary))
+                    volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
+                    evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
+                else:
+                    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
+
+                k_old = 0
+                if left_parent < 0:
+                    factor_left = (1 + tol)
+                else:
+                    factor_left = (1 - tol)
+                for i in range(refinement_dim.size() ):
+                    if refinement_dim.get_object(i).start >= left_parent * factor_left:
+                        k_old = i
+                        break
+                k = k_old
+                refine_obj = refinement_dim.get_object(k)
+                if right_parent < 0:
+                    factor_right = (1 - tol)
+                else:
+                    factor_right = (1 + tol)
+                if not (refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right):
+                    for child_info in children_indices[d]:
+                        print(child_info.left_parent, child_info.child, child_info.right_parent)
+                assert refine_obj.start >= left_parent * factor_left and refine_obj.end <= right_parent * factor_right
+                max_level = 1
+                while k < refinement_dim.size():
+                    refine_obj = refinement_dim.get_object(k)
+                    factor = 1 - tol if right_parent >= 0 else 1 + tol
+                    if refine_obj.start >= right_parent * factor:
+                        break
+                    assert refine_obj.end <= right_parent * factor_right
+                    k += 1
+                    max_level = max(max_level, max(refine_obj.levels))
+                for i in range(k_old, k):
+                    refine_obj = refinement_dim.get_object(i)
+                    num_area_in_support = (k-k_old)
+                    # ~ fraction_of_support = (refine_obj.end - refine_obj.start)/(right_parent - left_parent)
+                    modified_volume = volume/num_area_in_support ** 2 #/ 2**(max_level - log2((self.b[d] - self.a[d])/(right_parent - left_parent))) #/  (num_area_in_support)**2
+                    # ~ assert fraction_of_support <= 1
+                    #print(modified_volume, left_parent, child, right_parent, refine_obj.start, refine_obj.end, num_area_in_support, evaluations)
+                    #if not self.combischeme.has_forward_neighbour(component_grid.levelvector):
+                    #print(volume)
+                    refine_obj.add_volume(modified_volume * component_grid.coefficient)
+                    #refine_obj.add_evaluations(evaluations / num_area_in_support * component_grid.coefficient)
+                    #assert component_grid.coefficient == 1
+                     #* component_grid.coefficient)
+                    #print("Dim:", d, refine_obj.start, refine_obj.end, refine_obj.volume, refine_obj.evaluations, child, left_parent, right_parent, volume, modified_volume)
+
+                    '''
+                    if refine_obj.start >= left_parent and refine_obj.end <= child: #and not child_info.has_left_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+
+                    elif refine_obj.start >= child and refine_obj.end <= right_parent: #and not child_info.has_right_child:
+                        width_refinement = refine_obj.end - refine_obj.start
+                        width_basis = right_parent - left_parent
+                        refine_obj.add_volume(modified_volume)  # * width_refinement/ width_basis)
+                    else:
+                        break
+                    '''
+                k = min(k, refinement_dim.size() - 1)
+
+                '''
+                if not child_info.has_right_child:
+                    child_info.right_refinement_object.add_volume(volume / 2.0)
+                    child_info.right_refinement_object.add_evaluations(evaluations / 2.0)
+                if not child_info.has_left_child:
+                    child_info.left_refinement_object.add_volume(volume/2.0)
+                    child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
+                '''
+
+
+
 
