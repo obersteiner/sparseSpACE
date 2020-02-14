@@ -269,7 +269,6 @@ class DensityEstimation(AreaOperation):
         self.print_output = print_output
 
     # TODO scalar numpy arrays benutzen und numpy arrays nutzen wenn möglich
-    # TODO Überall kommentare hinzufügen was die Funktion macht und was für parameter es gibt + typehints für parameter und returns
     def initialize(self):
         """
         This method is used to initialize the operation with the dataset. If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
@@ -340,16 +339,6 @@ class DensityEstimation(AreaOperation):
             [surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
         return values.reshape((len(values), 1))
 
-    # def interpolate_points(self, values, mesh_points_grid, evaluation_points):
-    #     interpolated_values = []
-    #     for i in range(len(evaluation_points)):
-    #         interpolated_values.append(self.weighted_basis_function(values,
-    #                                                                 self.alphas.get(tuple(values)),
-    #                                                                 evaluation_points[i]))
-    #
-    #     interpolated_values = np.asarray([[value] for value in interpolated_values])
-    #     return interpolated_values
-
     def get_indexlist(self, levelvec: Sequence[int]) -> List[Tuple[Union[float, int], ...]]:
         """
         This method builds a list of indices for the specified levelvector
@@ -371,6 +360,51 @@ class DensityEstimation(AreaOperation):
             if abs(ivec[i] - jvec[i]) > 1:
                 return False
         return True
+
+    # TODO change so you get the hat functions of x
+    def in_support(self, levelvec: Sequence[int], index: Sequence[int], x: Sequence[float]) -> bool:
+        """
+        This method checks if the datapoint x is in the support of the hat function at the index
+        :param levelvec: Levelvector of the component grid
+        :param index: Index of the hat function
+        :param x: datapoint
+        :return: True if x is in support of the hat function at index, False otherwise
+        """
+        dim = len(levelvec)
+        lvec = tuple(levelvec)
+        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
+        pos = [index[d] * meshsize[d] for d in range(dim)]
+        domain = [[pos[d] - meshsize[d], pos[d] + meshsize[d]] for d in range(dim)]
+        for i in range(len(domain)):
+            if x[i] < domain[i][0] or x[i] > domain[i][1]:
+                return False
+        return True
+
+    def get_hats_in_support(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
+        """
+        This method returns all the hat functions that are in the support of x
+        :param levelvec: Levelvector of the component grid
+        :param alphas: surpluses of the grid
+        :param x: datapoint
+        :return: All the hat functions that are in the support of x
+        """
+        dim = len(levelvec)
+        lvec = tuple(levelvec)
+        indexlist = self.get_indexlist(levelvec)
+        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
+        posList = list(map(lambda i, m: i * m, np.array(indexlist), np.array(meshsize * len(indexlist)).reshape((len(indexlist), dim))))
+        domainPoint = [[x[d] - meshsize[d], x[d] + meshsize[d]] for d in range(dim)]
+        hat_functions = []
+        alphaValues = []
+        for i in range(len(posList)):
+            add = True
+            for j in range(len(domainPoint)):
+                # TODO >= and <= or > and <?
+                add = add and (posList[i][j] > domainPoint[j][0] and posList[i][j] < domainPoint[j][1])
+            if add:
+                hat_functions.append(indexlist[i])
+                alphaValues.append(alphas[i])
+        return hat_functions, alphaValues
 
     def calculate_L2_scalarproduct(self, ivec: Sequence[int], jvec: Sequence[int], lvec: Sequence[int]) -> Tuple[float, float]:
         """
@@ -479,25 +513,6 @@ class DensityEstimation(AreaOperation):
             result *= max((1 - abs(2 ** lvector[d] * x2[d] - ivec[d])), 0)
         return result
 
-    # TODO change so you get the hat functions of x
-    def inSupport(self, levelvec: Sequence[int], index: Sequence[int], x: Sequence[float]) -> bool:
-        """
-        This method checks if the datapoint x is in the support of the hat function at the index
-        :param levelvec: Levelvector of the component grid
-        :param index: Index of the hat function
-        :param x: datapoint
-        :return: True if x is in support of the hat function at index, False otherwise
-        """
-        dim = len(levelvec)
-        lvec = tuple(levelvec)
-        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
-        pos = [index[d] * meshsize[d] for d in range(dim)]
-        domain = [[pos[d] - meshsize[d], pos[d] + meshsize[d]] for d in range(dim)]
-        for i in range(len(domain)):
-            if x[i] < domain[i][0] or x[i] > domain[i][1]:
-                return False
-        return True
-
     def weighted_basis_function(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> float:
         """
         This method calculates the sum of basis functions of the component grid weighted by the surpluses
@@ -506,11 +521,11 @@ class DensityEstimation(AreaOperation):
         :param x: datapoint
         :return: Sum of basis functions of the component grid that are in the support of x weighted by the surpluses
         """
-        indices = self.get_indexlist(levelvec)
+        # TODO optimize so only hat functions are evaluated that are in the support of x
         sum = 0
-        for i, index in enumerate(indices):
-            if self.inSupport(levelvec, index, x):
-                sum += self.hat_function(index, levelvec, x) * alphas[i]
+        hats, alphaValues = self.get_hats_in_support(levelvec, alphas, x)
+        for i, index in enumerate(hats):
+            sum += self.hat_function(index, levelvec, x) * alphaValues[i]
         return sum
 
     def plot_dataset(self, filename: str = None):

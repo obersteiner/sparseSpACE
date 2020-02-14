@@ -298,8 +298,6 @@ def hat3(ivec, lvec, x):
     dim = len(ivec)
     result = 1
     for d in range(dim):
-        # TODO Which one?
-        # result *= max((1 - abs(2 ** lvec[d] * x - ivec[d])) / (2 ** lvec[d]), 0)
         result *= max((1 - abs(2 ** lvec[d] * x[d] - ivec[d])), 0)
     return result
 
