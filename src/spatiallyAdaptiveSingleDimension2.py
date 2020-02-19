@@ -247,11 +247,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 partial_sum = 0
                 while True:
                     if m > 0:
-                        partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] > m - 1 ])
-                    partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] > m])
-                    if partial_sum <= subtraction_value:
+                        partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] >= subtraction_value - (m - 1) ])
+                    partial_sum_temp = sum([1 for i in range(d+1) if max_coarsenings[i] >= subtraction_value - m])
+                    if partial_sum + partial_sum_temp <= subtraction_value:
                         m += 1
-                    if partial_sum >= subtraction_value:
+                    if partial_sum + partial_sum_temp >= subtraction_value:
                         break
                 return self.modify_according_to_levelvec(m,d,max_level,levelvec)
             if (self.version == 4 or self.version == 5) and max_level > 2:
