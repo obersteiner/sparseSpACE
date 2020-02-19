@@ -216,9 +216,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 #            else:
                 #                subtraction_value = subtract_value_temp
                 #return self.modify_according_to_levelvec(subtraction_value, d, self.max_level_dict[tuple((d,i))], levelvec)
+
+
         if self.version == 4 or self.version == 5:
             max_coarsenings_levelvec = max_coarsenings
-        if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5:
+        if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5 or self.version == 6:
             refineObj_temp = refineObj
             if not tuple((d,i)) in self.max_level_dict:
                 max_level = refineObj_temp.levels[1]
@@ -240,6 +242,18 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 max_level = self.max_level_dict[tuple((d,i))]
             subtraction_value = (self.lmax[d] - max_level)
             self.max_level_dict[tuple((d,i))] = max_level
+            if self.version == 6:
+                m = 0
+                partial_sum = 0
+                while True:
+                    if m > 0:
+                        partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] > m - 1 ])
+                    partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] > m])
+                    if partial_sum <= subtraction_value:
+                        m += 1
+                    if partial_sum >= subtraction_value:
+                        break
+                return self.modify_according_to_levelvec(m,d,max_level,levelvec)
             if (self.version == 4 or self.version == 5) and max_level > 2:
                 # if levelvec[d] > self.lmax[d] - subtraction_value:
                 #    subtraction_value = self.lmax[d]
