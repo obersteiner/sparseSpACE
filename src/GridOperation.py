@@ -253,6 +253,7 @@ from scipy.integrate import nquad
 from sklearn import datasets, preprocessing
 import csv
 from matplotlib import cm
+import matplotlib.colors as colors
 
 
 class DensityEstimation(AreaOperation):
@@ -361,7 +362,6 @@ class DensityEstimation(AreaOperation):
                 return False
         return True
 
-    # TODO change so you get the hat functions of x
     def in_support(self, levelvec: Sequence[int], index: Sequence[int], x: Sequence[float]) -> bool:
         """
         This method checks if the datapoint x is in the support of the hat function at the index
@@ -405,6 +405,24 @@ class DensityEstimation(AreaOperation):
                 hat_functions.append(indexlist[i])
                 alphaValues.append(alphas[i])
         return hat_functions, alphaValues
+
+    def get_hats(self, levelvec: Sequence[int], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
+        if self.grid.point_not_zero(x):
+            meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
+            numbPoints = self.grid.levelToNumPoints(levelvec)
+            index_set = []
+            for i in range(len(x)):
+                lower = math.floor(x[i] / meshsize[i])
+                upper = math.ceil(x[i] / meshsize[i])
+                if (lower > 0 and lower <= numbPoints[i]) and (upper > 0 and upper <= numbPoints[i]):
+                    index_set.append((lower, upper))
+                elif (lower < 1 or lower > numbPoints[i]):
+                    index_set.append((upper,))
+                elif (upper < 1 or upper > numbPoints[i]):
+                    index_set.append((lower,))
+            return list(set(product(*index_set)))
+        else:
+            return []
 
     def calculate_L2_scalarproduct(self, ivec: Sequence[int], jvec: Sequence[int], lvec: Sequence[int]) -> Tuple[float, float]:
         """
@@ -452,19 +470,18 @@ class DensityEstimation(AreaOperation):
         This method calculates the B vector for the component grid and the dataset of the operation ((R + λ*I) = B)
         :param data: dataset specified for the operation
         :param levelvec: Levelvector of the component grid
-        :return:
+        :return: b vector of the component grid
         """
         M = len(data)
         N = np.prod(self.grid.levelToNumPoints(levelvec))
-        b = np.empty(N)
-
+        b = np.zeros(N)
         indexList = self.get_indexlist(levelvec)
-        for i in range(N):
-            sum = 0
-            # TODO optimize (get indexes that are in support of x and not other way around)
-            for j in range(M):
-                sum += self.hat_function(indexList[i], levelvec, data[j])
-            b[i] = ((1 / M) * sum)
+
+        for i in range(M):
+            hats = self.get_hats(levelvec, data[i])
+            for j in range(len(hats)):
+                b[indexList.index(hats[j])] += self.hat_function(hats[j], levelvec, data[i])
+        b *= (1 / M)
         if self.print_output:
             print("B vector: ", b)
         return b
@@ -521,11 +538,11 @@ class DensityEstimation(AreaOperation):
         :param x: datapoint
         :return: Sum of basis functions of the component grid that are in the support of x weighted by the surpluses
         """
-        # TODO optimize so only hat functions are evaluated that are in the support of x
+        indexlist = self.get_indexlist(levelvec)
         sum = 0
-        hats, alphaValues = self.get_hats_in_support(levelvec, alphas, x)
+        hats = self.get_hats(levelvec, x)
         for i, index in enumerate(hats):
-            sum += self.hat_function(index, levelvec, x) * alphaValues[i]
+            sum += self.hat_function(index, levelvec, x) * alphas[indexlist.index(index)]
         return sum
 
     def plot_dataset(self, filename: str = None):
@@ -585,9 +602,10 @@ class DensityEstimation(AreaOperation):
                 Z[i][j] = self.weighted_basis_function(component_grid.levelvector,
                                                        self.get_result().get(tuple(component_grid.levelvector)),
                                                        [X[i, j], Y[i, j]])
-        # TODO is this really better with the vmin vmax? With high lambda the density values are lower so on the plot you almost see nothing
-        # grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, vmin=self.extrema[0], vmax=self.extrema[1])
-        grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+
+        grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, norm=colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1]))
+        # grid.imshow(Z, cmap=cm.coolwarm, norm=colors.LogNorm(vmin=1e-5,vmax=self.extrema[1]))
+        # grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
         # grid.axis(aspect='image')
         # grid.contourf(X, Y, Z, levels,cmap=cm.coolwarm)
 
