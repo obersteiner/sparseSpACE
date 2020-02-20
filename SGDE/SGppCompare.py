@@ -45,11 +45,8 @@ def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=F
     Y = np.linspace(0.0, 1.0, pointsPerDim)
     X, Y = np.meshgrid(X, Y)
 
-    Z = np.zeros_like(X)
-    for i in range(pointsPerDim):
-        for j in range(pointsPerDim):
-            Z[i][j] = combi([[X[i, j], Y[i, j]]])
-
+    Z = combi(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())))
+    Z = Z.reshape((100, 100))
     fontsize = 30
     plt.rcParams.update({'font.size': fontsize})
     fig = plt.figure(figsize=(30, 20))
@@ -93,7 +90,5 @@ def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=F
     plt.show()
     plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
 
-
 # plot_comparison(dim=2, data="Datasets/Circles500.csv", values="Values/Circles_level_3_lambda_0.0.csv", combiObject=None, plot_data=False,
 #                 minimum_level=1, maximum_level=3, lambd=0.0, pointsPerDim=100)
-
