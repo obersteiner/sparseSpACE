@@ -14,7 +14,7 @@ dim = 2
 # define number of samples
 size = 500
 
-# define integration domain boundaries
+# define boundaries
 a = np.zeros(dim)
 b = np.ones(dim)
 
@@ -40,10 +40,10 @@ b = np.ones(dim)
 # csv dataset file
 data = "Datasets/Circles500.csv"
 # SGpp values for datasetf
-values = "Values/Circles_level_4_lambda_0.1.csv"
+values = "Values/Circles_level_4_lambda_0.0.csv"
 
 # define lambda
-lambd = 0.1
+lambd = 0.0
 
 # define level of combigrid
 minimum_level = 1
@@ -63,9 +63,7 @@ operation.plot_dataset("Figures/dataset_" + data[9:-4] + ".png")
 
 print("Combination Scheme:")
 # when you pass the operation the function also plots the contour plot of each component grid
-combiObject.print_resulting_combi_scheme(
-    "Figures/combiScheme_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png",
-    operation=operation)
+combiObject.print_resulting_combi_scheme("Figures/combiScheme_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png", operation=operation)
 
 print("Sparse Grid:")
 combiObject.print_resulting_sparsegrid("Figures/sparseGrid_" + str(minimum_level) + "_" + str(maximum_level) + ".png", markersize=20)
@@ -76,6 +74,4 @@ combiObject.plot("Figures/DEplot_" + data[9:-4] + "_" + str(minimum_level) + "_"
 
 print("Plot of comparison between sparseSpACE and SG++")
 # plot comparison between sparseSpACE and SG++ result
-plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level,
-                maximum_level=maximum_level, lambd=lambd,
-                pointsPerDim=100)
+plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level, maximum_level=maximum_level, lambd=lambd, pointsPerDim=100)

@@ -49,6 +49,7 @@ class TestDensityEstimation(unittest.TestCase):
                            1.73628713, 0.89247333, 0.87148175, 0.22760649],
                   (1, 3): [2.31825217, 0.51211262, 1.23434597, 0.93710882, 1.23434597,
                            0.51211262, 2.31825217]}
+        # TODO change test so it uses new methods and values
         for i in range(len(levelvecs)):
             R = operation.construct_R(levelvecs[i])
             b = operation.calculate_B(operation.data, levelvecs[i])
