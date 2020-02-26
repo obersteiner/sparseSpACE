@@ -30,6 +30,7 @@ class StandardCombi(object):
         self.operation = operation
         self.do_parallel = True
         self.norm = norm
+        print("Norm", norm)
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation points using the Combination Technique.
@@ -180,7 +181,7 @@ class StandardCombi(object):
         if reference_solution is not None:
             if self.print_output:
                 print("Analytic Solution", reference_solution)
-                print("Difference", self.operation.compute_difference(combi_result, reference_solution, norm))
+                print("Difference", self.operation.compute_difference(combi_result, reference_solution, self.norm))
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
