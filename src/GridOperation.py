@@ -339,16 +339,6 @@ class DensityEstimation(AreaOperation):
         values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
         return values.reshape((len(values), 1))
 
-    def get_indexlist(self, levelvec: Sequence[int]) -> List[Tuple[Union[float, int], ...]]:
-        """
-        This method builds a list of indices for the specified levelvector
-        :param levelvec: Levelvector of the component grid
-        :return: List of indices for the specified levelvector
-        """
-        lengths = [2 ** l - 1 for l in levelvec]
-        dim_lists = [range(1, n + 1) for n in lengths]
-        return get_cross_product_list(dim_lists)
-
     def check_adjacency(self, ivec: Sequence[int], jvec: Sequence[int]) -> bool:
         """
         This method checks if the two hat functions specified by ivec and jvec are adjacent to each other
@@ -389,7 +379,7 @@ class DensityEstimation(AreaOperation):
         """
         dim = len(levelvec)
         lvec = tuple(levelvec)
-        indexlist = self.get_indexlist(levelvec)
+        indexlist = self.grid.get_indexlist()
         meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
         posList = self.grid.getPoints()
         domainPoint = [[x[d] - meshsize[d], x[d] + meshsize[d]] for d in range(dim)]
@@ -431,7 +421,7 @@ class DensityEstimation(AreaOperation):
         grid_size = self.grid.get_num_points()
         R = np.zeros((grid_size, grid_size))
         dim = len(levelvec)
-        index_list = self.get_indexlist(levelvec)
+        index_list = self.grid.get_indexlist()
 
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
         R[np.diag_indices_from(R)] += (diag_val + self.lambd)
@@ -524,7 +514,7 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = self.grid.get_num_points()
         b = np.zeros(N)
-        index_list = self.get_indexlist(levelvec)
+        index_list = self.grid.get_indexlist()
 
         for i in range(M):
             hats = self.get_hats(levelvec, data[i])
@@ -543,7 +533,7 @@ class DensityEstimation(AreaOperation):
         """
         number_points = self.grid.get_num_points()
         R = np.zeros((number_points, number_points))
-        index_list = self.get_indexlist(levelvec)
+        index_list = self.grid.get_indexlist()
         diag_val, err = self.calculate_L2_scalarproduct(index_list[0], index_list[0], levelvec)
         if self.print_output:
             print("Indexlist: ", index_list)
@@ -584,7 +574,7 @@ class DensityEstimation(AreaOperation):
         :param x: datapoint
         :return: Sum of basis functions of the component grid that are in the support of x weighted by the surpluses
         """
-        index_list = self.get_indexlist(levelvec)
+        index_list = self.grid.get_indexlist()
         sum = 0
         hats_in_support = self.get_hats(levelvec, x)
         for i, index in enumerate(hats_in_support):

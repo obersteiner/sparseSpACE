@@ -134,6 +134,10 @@ class Grid(object):
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
         return get_cross_product_list(self.coordinate_array)
 
+    # this method returns all the index tuples of all points in the grid
+    def get_indexlist(self) -> Sequence[Tuple[float, ...]]:
+        return get_cross_product_list([range(1, n + 1) for n in self.levelToNumPoints(self.levelvec)])
+
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector: Sequence[int]) -> float:
         weight = 1
