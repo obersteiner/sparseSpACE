@@ -137,7 +137,8 @@ class StandardCombi(object):
             ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
             ax = fig.add_subplot(1, 2, 2)
-            p = ax.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+            # TODO why do I have to transpose here so it plots in the right orientation?
+            p = ax.imshow(np.transpose(Z), extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
             # ax.axis(aspect="image")
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.1)
