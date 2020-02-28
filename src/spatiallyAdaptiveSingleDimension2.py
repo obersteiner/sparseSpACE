@@ -184,7 +184,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         subtraction_value = min(subtraction_value, levelvec[d] - self.lmin[d])
         return subtraction_value
 
-    def get_subtraction_value(self, refineObj: RefinementObject, refineContainer: RefinementContainer, i: int, max_coarsenings: Sequence[int], d: int, levelvec: Sequence[int]) -> int:
+    def get_subtraction_value(self, refineObj: RefinementObjectSingleDimension, refineContainer: RefinementContainer, i: int, max_coarsenings: Sequence[int], d: int, levelvec: Sequence[int]) -> int:
         """This method calculates the subtraction value according to the version. See publication toDo
 
         :param refineObj: RefinementObject for which we want to calculate subraction value
@@ -220,26 +220,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         if self.version == 4 or self.version == 5:
             max_coarsenings_levelvec = max_coarsenings
-        if self.version == 2 or self.version == 3 or self.version == 4 or self.version == 5 or self.version == 6:
-            refineObj_temp = refineObj
-            if not tuple((d,i)) in self.max_level_dict:
-                max_level = refineObj_temp.levels[1]
-                k = 0
-                while (i - k > 0):
-                    refineObj_temp = refineContainer.get_objects()[i - k]
-                    max_level = max(max_level, refineObj_temp.levels[0])
-                    if refineObj_temp.levels[0] <= refineObj.levels[1]:
-                        break
-                    k += 1
-                k = 1
-                while (i + k < len(refineContainer.get_objects())):
-                    refineObj_temp = refineContainer.get_objects()[i + k]
-                    max_level = max(max_level, refineObj_temp.levels[1])
-                    if refineObj_temp.levels[1] <= refineObj.levels[1]:
-                        break
-                    k += 1
-            else:
-                max_level = self.max_level_dict[tuple((d,i))]
+        if 2 <= self.version <= 8:
+            max_level = self.get_max_level(refineContainer, refineObj, i, d)
             subtraction_value = (self.lmax[d] - max_level)
             self.max_level_dict[tuple((d,i))] = max_level
             if self.version == 6:
@@ -249,6 +231,28 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     if m > 0:
                         partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] >= subtraction_value - (m - 1) ])
                     partial_sum_temp = sum([1 for i in range(d+1) if max_coarsenings[i] >= subtraction_value - m])
+                    if partial_sum + partial_sum_temp <= subtraction_value:
+                        m += 1
+                    if partial_sum + partial_sum_temp >= subtraction_value:
+                        break
+                return self.modify_according_to_levelvec(m,d,max_level,levelvec)
+            if self.version == 7:
+                m = 0
+                partial_sum = 0
+                while True:
+                    partial_sum += sum([1 for i in range(self.dim) if max_coarsenings[i] >= subtraction_value - m])
+                    if partial_sum <= subtraction_value:
+                        m += 1
+                    if partial_sum >= subtraction_value:
+                        break
+                return self.modify_according_to_levelvec(m,d,max_level,levelvec)
+            if self.version == 8:
+                m = 0
+                partial_sum = 0
+                while True:
+                    if m > 0:
+                        partial_sum += min(max_level - 1, sum([1 for i in range(self.dim) if max_coarsenings[i] >= subtraction_value - (m - 1) ]))
+                    partial_sum_temp = min(max_level - 1, sum([1 for i in range(d+1) if max_coarsenings[i] >= subtraction_value - m]))
                     if partial_sum + partial_sum_temp <= subtraction_value:
                         m += 1
                     if partial_sum + partial_sum_temp >= subtraction_value:
@@ -286,6 +290,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         subtraction_value_new = 0
                     while (remainder > 0):
                         #print(max_coarsenings_temp, remainder)
+                        print(subtraction_value_new, remainder, "d", d, "i", i)
                         max_coarsening = max(max_coarsenings_temp)
                         second_largest_coarsening = max(
                             [coarsening if coarsening < max_coarsening else 0 for coarsening in max_coarsenings_temp])
@@ -295,6 +300,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         max_dimensions = [1 if coarsening == max_coarsening else 0 for coarsening in
                                           max_coarsenings_temp]
                         num_max_coarsening = min(sum(max_dimensions), min((max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)])))
+                        print("num_max_coarsening", num_max_coarsening, sum(max_dimensions), (max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)]))
                         #print(num_max_coarsening, self.combischeme.lmax_adaptive - max(sum([1 if self.lmax[k] <= 2 else 0 for k in range(self.dim)]), 1), self.combischeme.lmax_adaptive, self.lmax)
                         my_position = sum(max_dimensions[:d])
                         if remainder >= (max_coarsening - second_largest_coarsening) * num_max_coarsening:
@@ -303,6 +309,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         else:
 
                             added_subtraction_value = int(remainder / num_max_coarsening)
+                            print(added_subtraction_value)
                             #subtraction_value_new += added_subtraction_value
                             if added_subtraction_value - int(
                                     added_subtraction_value) > my_position / num_max_coarsening:
@@ -313,6 +320,21 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         max_coarsenings_temp = [coarsening if coarsening < max_coarsening else second_largest_coarsening
                                                 for coarsening in max_coarsenings_temp]
                         assert subtraction_value >= subtraction_value_new
+                        print(subtraction_value_new, remainder, "d", d, "i", i)
+                    if True:
+                        m = 0
+                        partial_sum = 0
+                        while True:
+                            partial_sum += sum(
+                                [1 for i in range(self.dim) if max_coarsenings[i] >= subtraction_value - m])
+                            if partial_sum <= subtraction_value:
+                                m += 1
+                            if partial_sum >= subtraction_value:
+                                break
+                    if subtraction_value_new != m:
+                        print("subtraction_value", subtraction_value_new, "m", m, "d", d, "i", i)
+                        print("max_coarsenings", max_coarsenings)
+                    assert subtraction_value_new == m
                     assert subtraction_value >= subtraction_value_new
                     subtraction_value = subtraction_value_new
                     # print(subtraction_value, d, max_level, max_coarsenings)
@@ -334,6 +356,26 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             subtraction_value = 0
         return subtraction_value
 
+    def get_max_level(self, refine_container:RefinementContainer, refine_obj: RefinementObjectSingleDimension, i: int, d: int):
+        if not tuple((d, i)) in self.max_level_dict:
+            max_level = refine_obj.levels[1]
+            k = 0
+            while (i - k > 0):
+                refine_obj_temp = refine_container.get_objects()[i - k]
+                max_level = max(max_level, refine_obj_temp.levels[0])
+                if refine_obj_temp.levels[0] <= refine_obj.levels[1]:
+                    break
+                k += 1
+            k = 1
+            while i + k < len(refine_container.get_objects()):
+                refine_obj_temp = refine_container.get_objects()[i + k]
+                max_level = max(max_level, refine_obj_temp.levels[1])
+                if refine_obj_temp.levels[1] <= refine_obj.levels[1]:
+                    break
+                k += 1
+        else:
+            max_level = self.max_level_dict[tuple((d, i))]
+        return max_level
 
     def is_child(self, level_left_point: int, level_point: int, level_right_point: int) -> bool:
         """This method returns if the point of level level_point is a child in the refinement structure.
