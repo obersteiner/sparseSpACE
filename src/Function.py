@@ -271,6 +271,16 @@ class FunctionCantileverBeamD(Function):
 
     def getAnalyticSolutionIntegral(self, start, end): assert "not implemented"
 
+class CustomFunction(Function):
+    def __init__(self, function, output_length=1):
+        self.function = function
+        self.output_length_parameter = output_length
+
+    def eval(self, coordinates):
+        return self.function(coordinates)
+
+    def output_length(self) -> int:
+        return self.output_length_parameter
 
 # g-function of Sobol: https://www.sfu.ca/~ssurjano/gfunc.html
 class FunctionG(Function):
