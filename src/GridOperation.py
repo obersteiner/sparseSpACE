@@ -249,6 +249,7 @@ class AreaOperation(GridOperation):
 
 
 from numpy.linalg import solve
+from scipy.sparse.linalg import cg
 from scipy.integrate import nquad
 from sklearn import datasets, preprocessing
 import csv
@@ -450,18 +451,19 @@ class DensityEstimation(AreaOperation):
                         else:
                             res *= 1 / (2 ** (levelvec[k] - 1) * 12)
 
-                    if self.print_output:
-                        if res == 0:
+                    if res == 0:
+                        if self.print_output:
                             print("-" * 100)
                             print("Skipping calculation")
                             print("Gridpoints: ", index_list[i], index_list[j])
-                        else:
+                    else:
+                        if self.print_output:
                             print("-" * 100)
                             print("Calculating")
                             print("Gridpoints: ", index_list[i], index_list[j])
                             print("Result: ", res)
-                            R[i, j] = res
-                            R[j, i] = res
+                        R[i, j] = res
+                        R[j, i] = res
         return R
 
     def calculate_L2_scalarproduct(self, ivec: Sequence[int], jvec: Sequence[int], lvec: Sequence[int]) -> Tuple[float, float]:
@@ -498,7 +500,7 @@ class DensityEstimation(AreaOperation):
         """
         R = self.build_R_matrix(levelvec)
         b = self.calculate_B(self.data, levelvec)
-        alphas = solve(R, b)
+        alphas, info = cg(R, b)
         if self.print_output:
             print("Alphas: ", levelvec, alphas)
             print("-" * 100)
@@ -598,7 +600,7 @@ class DensityEstimation(AreaOperation):
             ax.scatter(x, y, s=125)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title("#points = %d" % len(self.data))
+            ax.set_title("M = %d" % len(self.data))
 
         elif self.dim == 3:
             ax = fig.add_subplot(1, 1, 1, projection='3d')
