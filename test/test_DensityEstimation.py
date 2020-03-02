@@ -6,27 +6,56 @@ from StandardCombi import *
 from Grid import *
 from GridOperation import DensityEstimation
 
-dim = 2
-
-# define integration domain boundaries
-a = np.zeros(dim)
-b = np.ones(dim)
-
-# define data
-data = datasets.make_moons()
-
-# define operation to be performed
-operation = DensityEstimation(data, dim)
-operation.initialize()
-
-combiObject = StandardCombi(a, b, operation=operation)
-minimum_level = 1
-maximum_level = 4
-
 
 class TestDensityEstimation(unittest.TestCase):
 
+    def test_L2_scalarproduct(self):
+        dim = 2
+
+        size = 1000
+        # define integration domain boundaries
+        a = np.zeros(dim)
+        b = np.ones(dim)
+
+        # define data
+        data = np.random.random((size, dim))
+
+        # define operation to be performed
+        operation = DensityEstimation(data, dim)
+        operation.initialize()
+
+        combiObject = StandardCombi(a, b, operation=operation)
+
+        levelvec = (1, 5)
+        operation.grid.setCurrentArea(a, b, levelvec)
+        indexlist = operation.grid.get_indexlist()
+
+        N = operation.grid.get_num_points()
+        R_explicit = operation.build_R_matrix(levelvec)
+        for i in range(N):
+            for j in range(N):
+                val1 = R_explicit[i, j]
+                val2, error = operation.calculate_L2_scalarproduct(indexlist[i], indexlist[j], levelvec)
+                self.assertAlmostEqual(val1, val2, 4)
+
     def test_DE(self):
+        dim = 2
+
+        # define integration domain boundaries
+        a = np.zeros(dim)
+        b = np.ones(dim)
+
+        # define data
+        data = datasets.make_moons()
+
+        # define operation to be performed
+        operation = DensityEstimation(data, dim)
+        operation.initialize()
+
+        combiObject = StandardCombi(a, b, operation=operation)
+        minimum_level = 1
+        maximum_level = 4
+
         levelvecs = [(1, 4), (2, 3), (3, 2), (4, 1), (1, 3), (2, 2), (3, 1)]
         # old values with using integration np.nquad
         alphas1 = {(4, 1): [2.41206017, 0.1531592, 0.38504719, -0.38292677, 1.55369606,
