@@ -41,7 +41,7 @@ lambd = 0.0
 
 pointsPerDim = 3
 
-minimum_level = 4
+minimum_level = 2
 maximum_level = 5
 
 X = np.linspace(0.25, 0.75, pointsPerDim)
@@ -58,6 +58,8 @@ combiObject_fullgrid.perform_operation(maximum_level, maximum_level)
 numb_points_fullgrid = operation_fullgrid.grid.get_num_points()
 result_fullgrid = combiObject_fullgrid(points)
 # result_fullgrid = result_fullgrid.reshape((pointsPerDim, pointsPerDim))
+surplus_l2_norm_fullgrid = norm(np.concatenate(list(operation_fullgrid.get_result().values())), 2)
+surplus_lmax_norm_fullgrid = norm(np.concatenate(list(operation_fullgrid.get_result().values())), np.infty)
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Combi 1-max
@@ -69,6 +71,9 @@ numb_points_combi = numb_points_sparse_grid(combiObject_combi)
 result_combi = combiObject_combi(points)
 # result_combi = result_combi.reshape((pointsPerDim, pointsPerDim))
 diff_combi = np.subtract(result_fullgrid, result_combi)
+
+surplus_l2_norm_combi = norm(np.concatenate(list(operation_combi.get_result().values())), 2)
+surplus_lmax_norm_combi = norm(np.concatenate(list(operation_combi.get_result().values())), np.infty)
 
 l1_norm_combi = norm(diff_combi, 1)
 l2_norm_combi = norm(diff_combi, 2)
@@ -89,6 +94,9 @@ result_lmin_lmax = combiObject_lmin_lmax(points)
 # result_lmin_lmax = result_lmin_lmax.reshape((pointsPerDim, pointsPerDim))
 diff_lmin_lmax = np.subtract(result_fullgrid, result_lmin_lmax)
 
+surplus_l2_norm_lmin_lmax = norm(np.concatenate(list(operation_lmin_lmax.get_result().values())), 2)
+surplus_lmax_norm_lmin_lmax = norm(np.concatenate(list(operation_lmin_lmax.get_result().values())), np.infty)
+
 l1_norm_lmin_lmax = norm(diff_lmin_lmax, 1)
 l2_norm_lmin_lmax = norm(diff_lmin_lmax, 2)
 lmax_norm_lmin_lmax = norm(diff_lmin_lmax, np.inf)
@@ -103,6 +111,9 @@ numb_points_lumping = numb_points_sparse_grid(combiObject_lumping)
 result_lumping = combiObject_lumping(points)
 # result_lumping = result_lumping.reshape((pointsPerDim, pointsPerDim))
 diff_lumping = np.subtract(result_fullgrid, result_lumping)
+
+surplus_l2_norm_lumping = norm(np.concatenate(list(operation_lumping.get_result().values())), 2)
+surplus_lmax_norm_lumping = norm(np.concatenate(list(operation_lumping.get_result().values())), np.infty)
 
 l1_norm_lumping = norm(diff_lumping, 1)
 l2_norm_lumping = norm(diff_lumping, 2)
@@ -125,18 +136,23 @@ with open("Results/result_" + data_name + "_" + str(minimum_level) + "_" + str(m
         data_name + "Config:\n\tMin: " + str(minimum_level) + "\n\tMax: " + str(maximum_level) + "\n\tDim: " + str(dim) + "\n\tSize: " + str(size) + "\n\tpointsPerDim: " + str(pointsPerDim) + "\n")
     file.write("\tPoints: " + str(points) + "\n")
     file.write("\nFullgrid " + str(maximum_level) + ":\n")
-    file.write("\tResult: " + str(list(result_fullgrid.flatten())) + "\n\t#Points: " + str(numb_points_fullgrid) + "\n\tLambda: " + str(lambd) + "\n")
+    file.write("\tResult: " + str(list(result_fullgrid.flatten())) + "\n\t#Points: " + str(numb_points_fullgrid) + "\n\tLambda: " + str(lambd) + "\n\tL2 surpluses: " + str(
+        surplus_l2_norm_fullgrid) + "\n\tLmax surpluses: " + str(surplus_lmax_norm_fullgrid) + "\n")
     file.write("\nCombi 1 " + str(maximum_level) + ":\n")
     file.write(
-        "\tResult: " + str(list(result_combi.flatten())) + "\n\tDiff: " + str(list(diff_combi.flatten())) + "\n\tL1: " + str(l1_norm_combi) + "\n\tL2: " + str(l2_norm_combi) + "\n\tLmax: " + str(
+        "\tResult: " + str(list(result_combi.flatten())) + "\n\tDiff: " + str(list(diff_combi.flatten())) + "\n\tL2 surpluses: " + str(surplus_l2_norm_combi) + "\n\tLmax surpluses: " + str(
+            surplus_lmax_norm_combi) + "\n\tL1: " + str(l1_norm_combi) + "\n\tL2: " + str(l2_norm_combi) + "\n\tLmax: " + str(
             lmax_norm_combi) + "\n\t#Points: " + str(numb_points_combi) + "\n\tLambda: " + str(lambd) + "\n")
 
     file.write("\nLmin Lmax " + str(minimum_level) + " " + str(maximum_level) + ":\n")
-    file.write("\tResult: " + str(list(result_lmin_lmax.flatten())) + "\n\tDiff: " + str(list(diff_lmin_lmax.flatten())) + "\n\tL1: " + str(l1_norm_lmin_lmax) + "\n\tL2: " + str(
+    file.write("\tResult: " + str(list(result_lmin_lmax.flatten())) + "\n\tDiff: " + str(list(diff_lmin_lmax.flatten())) + "\n\tL2 surpluses: " + str(
+        surplus_l2_norm_lmin_lmax) + "\n\tLmax surpluses: " + str(surplus_lmax_norm_lmin_lmax) + "\n\tL1: " + str(l1_norm_lmin_lmax) + "\n\tL2: " + str(
         l2_norm_lmin_lmax) + "\n\tLmax: " + str(lmax_norm_lmin_lmax) + "\n\t#Points: " + str(numb_points_lmin_lmax) + "\n\tLambda: " + str(lambd) + "\n")
 
     file.write("\nLumping 1 " + str(maximum_level) + ":\n")
-    file.write("\tResult: " + str(list(result_lumping.flatten())) + "\n\tDiff: " + str(list(diff_lumping.flatten())) + "\n\tL1: " + str(l1_norm_lumping) + "\n\tL2: " + str(
-        l2_norm_lumping) + "\n\tLmax: " + str(lmax_norm_lumping) + "\n\t#Points: " + str(numb_points_lumping) + "\n\tLambda: " + str(lambd) + "\n")
+    file.write(
+        "\tResult: " + str(list(result_lumping.flatten())) + "\n\tDiff: " + str(list(diff_lumping.flatten())) + "\n\tL2 surpluses: " + str(surplus_l2_norm_lumping) + "\n\tLmax surpluses: " + str(
+            surplus_lmax_norm_lumping) + "\n\tL1: " + str(l1_norm_lumping) + "\n\tL2: " + str(
+            l2_norm_lumping) + "\n\tLmax: " + str(lmax_norm_lumping) + "\n\t#Points: " + str(numb_points_lumping) + "\n\tLambda: " + str(lambd) + "\n")
 
     file.close()
