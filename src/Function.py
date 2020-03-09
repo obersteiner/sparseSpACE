@@ -273,6 +273,7 @@ class FunctionCantileverBeamD(Function):
 
 class CustomFunction(Function):
     def __init__(self, function, output_length=1):
+        super().__init__()
         self.function = function
         self.output_length_parameter = output_length
 
