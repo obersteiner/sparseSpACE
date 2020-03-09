@@ -30,7 +30,6 @@ class StandardCombi(object):
         self.operation = operation
         self.do_parallel = True
         self.norm = norm
-        print("Norm", norm)
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation points using the Combination Technique.
@@ -147,7 +146,7 @@ class StandardCombi(object):
 
 
     # lmin = minimum level; lmax = target level
-    def perform_operation(self, lmin: int, lmax: int) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
+    def perform_operation(self, lmin: int, lmax: int, plot:bool=False) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
         """This method performs the standard combination scheme for the chosen operation.
 
         :param lmin: Minimum level of combination technique.
@@ -176,6 +175,12 @@ class StandardCombi(object):
         # output combi_result
         if self.print_output:
             print("CombiSolution", combi_result)
+
+        if plot:
+            print("Combi scheme:")
+            self.print_resulting_combi_scheme()
+            print("Sparse Grid:")
+            self.print_resulting_sparsegrid()
 
         # return results
         if reference_solution is not None:
@@ -216,7 +221,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -229,7 +234,6 @@ class StandardCombi(object):
         :param show_coefficient: If set the coefficient of component grid will be shown.
         :return: Matplotlib Figure.
         """
-        fontsize = 60
         plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         lmin = self.lmin
@@ -252,11 +256,15 @@ class StandardCombi(object):
             x_array = [p[0] for p in points]
             y_array = [p[1] for p in points]
             if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
-                ax.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
-                ax.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
+                offsetx = 0.04 * (max(x_array) - min(x_array))
+                offsety = 0.04 * (max(y_array) - min(y_array))
+                ax.set_xlim([min(x_array) - offsetx, max(x_array) + offsetx])
+                ax.set_ylim([min(y_array) - offsety, max(y_array) + offsety])
             else:
-                ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-                ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+                offsetx = 0.04 * (self.b[0] - self.a[0])
+                offsety = 0.04 * (self.b[1] - self.a[1])
+                ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+                ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
             ax.plot(x_array, y_array, 'o', markersize=markersize, color="black")
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -304,11 +312,23 @@ class StandardCombi(object):
                 grid.xaxis.set_ticks_position('none')
                 grid.yaxis.set_ticks_position('none')
                 if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
-                    grid.set_xlim([min(x_array) - 0.05, max(x_array) + 0.05])
-                    grid.set_ylim([min(y_array) - 0.05, max(y_array) + 0.05])
+                    offsetx = 0.04 * (max(x_array) - min(x_array))
+                    offsety = 0.04 * (max(y_array) - min(y_array))
+                    startx = min(x_array) - offsetx
+                    starty = min(y_array) - offsety
+                    endx = max(x_array) + offsetx
+                    endy =  max(y_array) + offsety
+                    grid.set_xlim([startx, endx])
+                    grid.set_ylim([starty,endy])
                 else:
-                    grid.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-                    grid.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+                    startx = self.a[0]
+                    starty = self.a[1]
+                    endx = self.b[0]
+                    endy =  self.b[1]
+                    offsetx = 0.04 * (self.b[0] - self.a[0])
+                    offsety = 0.04 * (self.b[1] - self.a[1])
+                    grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+                    grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
                 grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
                 grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color="black")
                 grid.spines['top'].set_visible(False)
@@ -318,10 +338,6 @@ class StandardCombi(object):
                 if show_levelvec:
                     grid.set_title(str(tuple(component_grid.levelvector)))
                 if show_border:
-                    startx = self.a[0]
-                    starty = self.a[1]
-                    endx = self.b[0]
-                    endy = self.b[1]
                     facecolor = 'limegreen' if component_grid.coefficient == 1 else 'orange'
                     grid.add_patch(
                         patches.Rectangle(
@@ -389,13 +405,18 @@ class StandardCombi(object):
                 max_point = [max([point[d] for point in points]) for d in range(dim)]
                 start = min_point if start is None else [min(start[d], v) for d,v in enumerate(min_point)]
                 end = max_point if end is None else [max(end[d], v) for d,v in enumerate(max_point)]
-            ax.set_xlim([start[0] - 0.05, end[0] + 0.05])
-            ax.set_ylim([start[1] - 0.05, end[1] + 0.05])
+            offsetx = 0.04 * (end[0] - start[0])
+            offsety = 0.04 * (end[1] - start[1])
+
+            ax.set_xlim([start[0] - offsetx, end[0] + offsetx])
+            ax.set_ylim([start[1] - offsety, end[1] + offsety])
             if dim == 3:
                 ax.set_zlim([start[2] - 0.05, end[2] + 0.05])
         else:
-            ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-            ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+            offsetx = 0.04 * (self.b[0] - self.a[0])
+            offsety = 0.04 * (self.b[1] - self.a[1])
+            ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+            ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
             if dim == 3:
                 ax.set_zlim([self.a[2] - 0.05, self.b[2] + 0.05])
         ax.xaxis.set_ticks_position('none')
