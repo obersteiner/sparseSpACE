@@ -221,7 +221,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -242,7 +242,7 @@ class StandardCombi(object):
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(10*self.lmax[0], 10*self.lmax[1]))
+        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -370,7 +370,7 @@ class StandardCombi(object):
         return fig
 
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize=20):
         """This method prints the resulting sparse grid obtained by the combination technique.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -390,7 +390,7 @@ class StandardCombi(object):
             print("Cannot print sparse grid of dimension > 3")
             return None
         if dim == 2:
-            fig, ax = plt.subplots(figsize=(20, 20))
+            fig, ax = plt.subplots(figsize=(figsize, figsize))
         if dim == 3:
             fig = plt.figure(figsize=(20, 20))
             ax = fig.add_subplot(111, projection='3d')
