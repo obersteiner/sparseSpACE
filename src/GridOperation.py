@@ -273,6 +273,7 @@ class DensityEstimation(AreaOperation):
     def initialize(self):
         """
         This method is used to initialize the operation with the dataset. If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
+        It gets called in the perform_operation function of StandardCombi
         :return:
         """
         scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
@@ -301,6 +302,7 @@ class DensityEstimation(AreaOperation):
     def post_processing(self):
         """
         This method is used to compute the minimum and maximum surplus of the component grid
+        It gets called in the perform_operation function of StandardCombi
         :return: Tuple of minimum and maximum surplus
         """
         surpluses = np.concatenate(list(self.get_result().values()))
@@ -396,6 +398,12 @@ class DensityEstimation(AreaOperation):
         return hat_functions, alphaValues
 
     def get_hats(self, levelvec: Sequence[int], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
+        """
+        This method returns all the hat functions that are in the support of x
+        :param levelvec: Levelvector of the component grid
+        :param x: datapoint
+        :return: All the hat functions that are in the support of x
+        """
         if self.grid.point_not_zero(x):
             meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
             numb_points = self.grid.levelToNumPoints(levelvec)
@@ -621,7 +629,7 @@ class DensityEstimation(AreaOperation):
         plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
-    def plot_component_grid(self, component_grid: ComponentGridInfo, grid: Axes3D, pointsPerDim: int = 100) -> None:
+    def plot_component_grid(self, combiObject: "StandardCombi", component_grid: ComponentGridInfo, grid: Axes3D, pointsPerDim: int = 100) -> None:
         """
         This method plots the contourplot of the component grid specified by the ComponentGridInfo
         :param component_grid:  ComponentGridInfo of the specified component grid.
@@ -633,14 +641,8 @@ class DensityEstimation(AreaOperation):
         X = np.linspace(0.0, 1.0, pointsPerDim)
         Y = np.linspace(0.0, 1.0, pointsPerDim)
         X, Y = np.meshgrid(X, Y)
-        Z = np.zeros_like(X)
-
-        for i in range(pointsPerDim):
-            for j in range(pointsPerDim):
-                Z[i][j] = self.weighted_basis_function(component_grid.levelvector,
-                                                       self.get_result().get(tuple(component_grid.levelvector)),
-                                                       [X[i, j], Y[i, j]])
-
+        Z = combiObject.interpolate_points(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())), component_grid)
+        Z = Z.reshape((100, 100))
         grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, norm=colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1]))
 
 

@@ -151,9 +151,8 @@ class StandardCombi(object):
 
             # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.1)
-            fig.colorbar(p, cax=cax)
+            # TODO make colorbar look nicer
+            fig.colorbar(p, ax=ax)
         # plt.show()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
@@ -378,7 +377,7 @@ class StandardCombi(object):
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
                 if operation is not None:
-                    operation.plot_component_grid(component_grid, grid)
+                    operation.plot_component_grid(self, component_grid, grid)
         # ax1 = fig.add_subplot(111, alpha=0)
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])

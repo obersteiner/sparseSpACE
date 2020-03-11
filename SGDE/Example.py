@@ -29,21 +29,22 @@ b = np.ones(dim)
 # data = np.random.standard_normal((size, dim))
 
 # multivariate normal distribution
-# mean = [0, 0]
-# cov = [[1, 0], [0, 100]]
-# data = np.random.multivariate_normal(mean, cov, size)
+# mean = np.array([0.0] * dim)
+# sigma = np.array([0.25]*dim)
+# cov = np.diag(sigma**2)
+# data2 = np.random.multivariate_normal(mean, cov, size)
 
 # scikit learn datasets
-# data = datasets.make_moons(size)
-# data = datasets.make_circles(size)
+# data = datasets.make_moons(size, noise=0.1)
+# data = datasets.make_circles(size, noise=0.1)
 
 # csv dataset file
-data = "Datasets/Circles500.csv"
-# SGpp values for datasetf
+data = "Datasets/moons.csv"
+# SGpp values for dataset
 values = "Values/Circles_level_4_lambda_0.0.csv"
 
 # define lambda
-lambd = 0.0
+lambd = 0.01
 
 # define level of combigrid
 minimum_level = 1
