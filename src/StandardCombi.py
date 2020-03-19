@@ -369,6 +369,187 @@ class StandardCombi(object):
         plt.show()
         return fig
 
+    def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True):
+        """This method plots the the subspaces of the generated sparse grid. It might not plot them exactly for adaptive sparse grids.
+
+        :param filename: If set the plot will be set to the specified filename.
+        :param add_refinement: If set the refinement structure of the refinement strategy will be plotted.
+        :param ticks: If set the ticks in the plots will be set.
+        :param markersize: Specifies the marker size in the plot.
+        :param show_border: If set the borders of the indivdual plots will be shown for each component grid.
+        :param linewidth: Specifies linewidth.
+        :param show_levelvec: If set level vectors will be printed above component grids.
+        :param fontsize: fontsize that is used for plotting
+        :param figsize: unit size of the figure that is generated. This size will be scaled according to the subspaces.
+        :param sparse_grid_spaces: if this is set only the subspaces of the sparse grid are shown.
+        :param fade_full_grid: if this parameter is set the subspaces that are not in the sparse grid will be colored
+        lightgrey.
+        Otherwise all full grid spaces are printed.
+        :return: Matplotlib Figure.
+        """
+        plt.rcParams.update({'font.size': fontsize})
+        scheme = self.scheme
+        lmin = self.lmin
+        lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
+        dim = self.dim
+        if dim != 2:
+            print("Cannot print combischeme of dimension > 2")
+            return None
+        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
+        # for axis in ax:
+        #    spine = axis.spines.values()
+        #    spine.set_visible(False)
+        # get points of each component grid and plot them individually
+        if lmax == lmin:
+            ax.xaxis.set_ticks_position('none')
+            ax.yaxis.set_ticks_position('none')
+            ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
+            ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
+            points = self.get_points_component_grid(lmax)
+            x_array = [p[0] for p in points]
+            y_array = [p[1] for p in points]
+            if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
+                offsetx = 0.04 * (max(x_array) - min(x_array))
+                offsety = 0.04 * (max(y_array) - min(y_array))
+                ax.set_xlim([min(x_array) - offsetx, max(x_array) + offsetx])
+                ax.set_ylim([min(y_array) - offsety, max(y_array) + offsety])
+            else:
+                offsetx = 0.04 * (self.b[0] - self.a[0])
+                offsety = 0.04 * (self.b[1] - self.a[1])
+                ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+                ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
+            ax.plot(x_array, y_array, 'o', markersize=markersize, color="black")
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            if show_levelvec:
+                ax.set_title(str(tuple(self.lmax)))
+            if show_border:
+                startx = self.a[0]
+                starty = self.a[1]
+                endx = self.b[0]
+                endy = self.b[1]
+                facecolor = "green"
+                ax.add_patch(
+                    patches.Rectangle(
+                        (startx, starty),
+                        endx - startx,
+                        endy - starty,
+                        fill=True,  # remove background,
+                        alpha=0.5,
+                        linewidth=linewidth, visible=True, facecolor=facecolor,edgecolor='black'
+                    )
+                )
+            if not ticks:
+                ax.axis('off')
+            if add_refinement:
+                self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
+        else:
+
+            for i in range(lmax[0] - lmin[0] + 1):
+                for j in range(lmax[1] - lmin[1] + 1):
+                    ax[j, i].axis('off')
+            if sparse_grid_spaces:
+                if self.combischeme.initialized_adaptive:
+                    combischeme = self.combischeme
+                else:
+                    combischeme = CombiScheme(self.dim)
+                    combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
+            else:
+                combischeme = CombiScheme(self.dim)
+                combischeme.init_full_grid(self.lmax[0], self.lmin[0])
+            levelvectors = combischeme.get_index_set()
+            for levelvector in levelvectors:
+                points = self.get_points_component_grid(levelvector)
+                points_not_null = self.get_points_component_grid_not_null(levelvector)
+                x_array = [p[0] for p in points]
+                y_array = [p[1] for p in points]
+                x_array_not_null = [[p[0] for p in points_not_null]]
+                y_array_not_null = [[p[1] for p in points_not_null]]
+                grid = ax[lmax[1] - lmin[1] - (levelvector[1] - lmin[1]), (levelvector[0] - lmin[0])]
+                grid.axis('on')
+                for axdir in ("x", "y"):
+                    grid.tick_params(axis=axdir, labelcolor='#345040')
+                grid.xaxis.set_ticks_position('none')
+                grid.yaxis.set_ticks_position('none')
+                if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
+                    offsetx = 0.04 * (max(x_array) - min(x_array))
+                    offsety = 0.04 * (max(y_array) - min(y_array))
+                    startx = min(x_array) - offsetx
+                    starty = min(y_array) - offsety
+                    endx = max(x_array) + offsetx
+                    endy =  max(y_array) + offsety
+                    grid.set_xlim([startx, endx])
+                    grid.set_ylim([starty,endy])
+                else:
+                    startx = self.a[0]
+                    starty = self.a[1]
+                    endx = self.b[0]
+                    endy =  self.b[1]
+                    offsetx = 0.04 * (self.b[0] - self.a[0])
+                    offsety = 0.04 * (self.b[1] - self.a[1])
+                    grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+                    grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
+                # to plot subspaces we need to filter points from lower subspaces
+                # filter points from grid to the left (x-1)
+                levelvector_x_1 = list(levelvector)
+                if levelvector_x_1[0] > self.lmin[0]:
+                    levelvector_x_1[0] -= 1
+                    points_x1 = self.get_points_component_grid(levelvector_x_1)
+                    points_not_null = set(points_not_null) - set(points_x1)
+                    points = set(points) - set(points_x1)
+                # filter points from grid downwards (y-1)
+                levelvector_y_1 = list(levelvector)
+                if levelvector_y_1[1] > self.lmin[1]:
+                    levelvector_y_1[0] -= 1
+                    points_y1 = self.get_points_component_grid(levelvector_y_1)
+                    points_not_null = set(points_not_null) - set(points_y1)
+                    points = set(points) - set(points_y1)
+                x_array_not_null = [[p[0] for p in points_not_null]]
+                y_array_not_null = [[p[1] for p in points_not_null]]
+                x_array = [p[0] for p in points]
+                y_array = [p[1] for p in points]
+                if sum(levelvector) > self.lmax[0] + (self.dim - 1) * self.lmin[0] and fade_full_grid:
+                    color = 'lightgrey'
+                else:
+                    color = 'black'
+                grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
+                grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color=color)
+                grid.spines['top'].set_visible(False)
+                grid.spines['right'].set_visible(False)
+                grid.spines['bottom'].set_visible(False)
+                grid.spines['left'].set_visible(False)
+                if show_levelvec:
+                    grid.set_title(str(tuple(levelvector)))
+                if show_border:
+                    grid.add_patch(
+                        patches.Rectangle(
+                            (startx, starty),
+                            endx - startx,
+                            endy - starty,
+                            fill=False,  # remove background,
+                            #alpha=0.5,
+                            linewidth=linewidth, visible=True, edgecolor=color
+                        )
+                    )
+                if not ticks:
+                    grid.axis('off')
+                if add_refinement:
+                    self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+                # for axis in ['top', 'bottom', 'left', 'right']:
+                #    grid.spines[axis].set_visible(False)
+        # ax1 = fig.add_subplot(111, alpha=0)
+        # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
+        # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
+        #plt.tight_layout()
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+
+        plt.show()
+        return fig
+
+
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
                                    linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize=20):
         """This method prints the resulting sparse grid obtained by the combination technique.
