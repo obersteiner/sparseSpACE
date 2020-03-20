@@ -764,6 +764,7 @@ class Integration(AreaOperation):
         subcell.value += integral * coefficient
         if refinement_container is not None:
             refinement_container.value += integral * coefficient
+        self.integral += integral * coefficient
 
     def print_evaluation_output(self, refinement):
         combi_integral = self.integral

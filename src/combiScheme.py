@@ -24,6 +24,22 @@ class CombiScheme:
         self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)  # type: Set[Tuple[int, ...]]
         self.lmax_adaptive = lmax  # type: int
 
+    # This method initializes the subspaces for a full grid. This method should only be used for plotting as it violates
+    # the basic properties of the index sets for adaptation.
+    def init_full_grid(self, lmax: int, lmin: int) -> None:
+        assert lmax >= lmin
+        assert lmax >= 0
+        assert lmin >= 0
+        self.lmin = lmin
+        self.lmax = lmax
+        self.initialized_adaptive = True  # type: bool
+
+        self.active_index_set = set()
+        self.old_index_set = CombiScheme.init_old_index_set(lmax, lmin, self.dim)  # type: Set[Tuple[int, ...]]
+        for i in range(1+lmax-lmin):
+            self.old_index_set = self.old_index_set | CombiScheme.init_active_index_set(lmax, lmin+i, self.dim)  # type: Set[Tuple[int, ...]]
+        self.lmax_adaptive = lmax  # type: int
+
     def extendable_level(self, levelvec: List[int]) -> Tuple[bool, int]:
         assert self.initialized_adaptive
         counter = 0
