@@ -32,16 +32,16 @@ b = np.ones(dim)
 # mean = np.array([0.0] * dim)
 # sigma = np.array([0.25]*dim)
 # cov = np.diag(sigma**2)
-# data2 = np.random.multivariate_normal(mean, cov, size)
+# data = np.random.multivariate_normal(mean, cov, size)
 
 # scikit learn datasets
 # data = datasets.make_moons(size, noise=0.1)
-# data = datasets.make_circles(size, noise=0.1)
+data = datasets.make_circles(size, noise=0.1)
 
 # csv dataset file
-data = "Datasets/moons.csv"
+# data = "Datasets/faithful.csv"
 # SGpp values for dataset
-values = "Values/Circles_level_4_lambda_0.0.csv"
+# values = "Values/Circles_level_4_lambda_0.0.csv"
 
 # define lambda
 lambd = 0.01
@@ -60,19 +60,19 @@ combiObject = StandardCombi(a, b, operation=operation)
 combiObject.perform_operation(minimum_level, maximum_level)
 
 print("Plot of dataset:")
-operation.plot_dataset("Figures/dataset_" + data[9:-4] + ".png")
+operation.plot_dataset()
 
 print("Combination Scheme:")
 # when you pass the operation the function also plots the contour plot of each component grid
-combiObject.print_resulting_combi_scheme("Figures/combiScheme_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png", operation=operation)
+combiObject.print_resulting_combi_scheme(operation=operation)
 
 print("Sparse Grid:")
-combiObject.print_resulting_sparsegrid("Figures/sparseGrid_" + str(minimum_level) + "_" + str(maximum_level) + ".png", markersize=20)
+combiObject.print_resulting_sparsegrid(markersize=20)
 
 print("Plot of density estimation")
 # when contour = True, the contour plot is shown next to the 3D plot
-combiObject.plot("Figures/DEplot_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png", contour=True)
+combiObject.plot(contour=True)
 
 print("Plot of comparison between sparseSpACE and SG++")
-# plot comparison between sparseSpACE and SG++ result
-plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level, maximum_level=maximum_level, lambd=lambd, pointsPerDim=100)
+# plot comparison between sparseSpACE and SG++ result if path to SG++ values is given
+# plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level, maximum_level=maximum_level, lambd=lambd, pointsPerDim=100)

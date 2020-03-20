@@ -11,7 +11,8 @@ from sklearn import datasets, preprocessing
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=False, minimum_level=1, maximum_level=4, lambd=0, pointsPerDim=100):
+def plot_comparison(filename: str = None, dim: int = 2, data: str = None, values: str = None, combiObject: StandardCombi = None, plot_data: bool = False, minimum_level: int = 1,
+                    maximum_level: int = 5, lambd: float = 0.0, pointsPerDim: int = 100):
     if values is None:
         print("No values for comparison given.")
         return
@@ -47,8 +48,10 @@ def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=F
 
     Z = combi(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())))
     Z = Z.reshape((100, 100))
+
     fontsize = 30
     plt.rcParams.update({'font.size': fontsize})
+
     fig = plt.figure(figsize=(30, 20))
     ax = fig.add_subplot(2, 3, 1, projection='3d')
     ax.title.set_text("sparseSpACE")
@@ -85,10 +88,7 @@ def plot_comparison(dim=2, data=None, values=None, combiObject=None, plot_data=F
     cax = divider.append_axes("right", size="5%", pad=0.1)
     fig.colorbar(p, cax=cax)
 
-    plt.savefig("Figures/comparison_" + data[9:-4] + "_" + str(minimum_level) + "_" + str(maximum_level) + "_" + str(lambd) + ".png",
-                bbox_inches='tight')
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
     plt.show()
     plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
-
-# plot_comparison(dim=2, data="Datasets/Circles500.csv", values="Values/Circles_level_3_lambda_0.0.csv", combiObject=None, plot_data=False,
-#                 minimum_level=1, maximum_level=3, lambd=0.0, pointsPerDim=100)
