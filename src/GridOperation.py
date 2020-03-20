@@ -259,7 +259,7 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, masslumping=False, print_output=True, lambd=0):
+    def __init__(self, data, dim, masslumping=False, print_output=True, lambd=0.0):
         self.data = data
         self.dim = dim
         self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -272,7 +272,8 @@ class DensityEstimation(AreaOperation):
 
     def initialize(self):
         """
-        This method is used to initialize the operation with the dataset. If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
+        This method is used to initialize the operation with the dataset.
+        If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
         It gets called in the perform_operation function of StandardCombi
         :return:
         """
@@ -280,7 +281,7 @@ class DensityEstimation(AreaOperation):
         if (isinstance(self.data, str)):
             dataCSV = []
             with open(self.data, "r", newline="") as file:
-                has_header = csv.Sniffer().has_header(file.read(1024))
+                has_header = csv.Sniffer().has_header(file.read(2048))
                 file.seek(0)
                 reader = csv.reader(file)
                 if has_header:
@@ -302,6 +303,7 @@ class DensityEstimation(AreaOperation):
     def post_processing(self):
         """
         This method is used to compute the minimum and maximum surplus of the component grid
+        so they can be used when plotting the heat map for the combi scheme when calling print_resulting_combi_scheme
         It gets called in the perform_operation function of StandardCombi
         :return: Tuple of minimum and maximum surplus
         """
@@ -321,18 +323,18 @@ class DensityEstimation(AreaOperation):
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
         """
-        This method calculates the surpluses for the the specified component grid and dataset
+        This method calculates the surpluses for the the specified component grid
         :param component_grid: ComponentGridInfo of the specified component grid
         :return: Surpluses of the component grid
         """
         self.grid.setCurrentArea(np.zeros(len(component_grid.levelvector)), np.ones(len(component_grid.levelvector)), component_grid.levelvector)
-        surpluses = self.calculate_density_estimation(component_grid.levelvector)
+        surpluses = self.calculate_surpluses(component_grid.levelvector)
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
         return surpluses
 
     def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) -> Sequence[float]:
         """
-        This method fills up the surplus array with zeros for the points on the boundary
+        This method fills up the surplus array with zeros for the points on the boundary so it can be properly used when interpolating
         :param component_grid: ComponentGridInfo of the specified component grid
         :param mesh_points_grid: Points of the component grid, with boundary points
         :return: Surpluses for the component_grid filled up with zero on the boundary
@@ -354,57 +356,14 @@ class DensityEstimation(AreaOperation):
                 return False
         return True
 
-    def in_support(self, levelvec: Sequence[int], index: Sequence[int], x: Sequence[float]) -> bool:
+    def get_hats_in_support(self, levelvec: Sequence[int], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
         """
-        This method checks if the datapoint x is in the support of the hat function at the index
-        :param levelvec: Levelvector of the component grid
-        :param index: Index of the hat function
-        :param x: datapoint
-        :return: True if x is in support of the hat function at index, False otherwise
-        """
-        dim = len(levelvec)
-        lvec = tuple(levelvec)
-        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
-        pos = [index[d] * meshsize[d] for d in range(dim)]
-        domain = [[pos[d] - meshsize[d], pos[d] + meshsize[d]] for d in range(dim)]
-        for i in range(len(domain)):
-            if x[i] < domain[i][0] or x[i] > domain[i][1]:
-                return False
-        return True
-
-    def get_hats_in_support(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
-        """
-        This method returns all the hat functions that are in the support of x
-        :param levelvec: Levelvector of the component grid
-        :param alphas: surpluses of the grid
-        :param x: datapoint
-        :return: All the hat functions that are in the support of x
-        """
-        dim = len(levelvec)
-        lvec = tuple(levelvec)
-        indexlist = self.grid.get_indexlist()
-        meshsize = [2 ** (-float(lvec[d])) for d in range(dim)]
-        posList = self.grid.getPoints()
-        domainPoint = [[x[d] - meshsize[d], x[d] + meshsize[d]] for d in range(dim)]
-        hat_functions = []
-        alphaValues = []
-        for i in range(len(posList)):
-            add = True
-            for j in range(len(domainPoint)):
-                add = add and (posList[i][j] > domainPoint[j][0] and posList[i][j] < domainPoint[j][1])
-            if add:
-                hat_functions.append(indexlist[i])
-                alphaValues.append(alphas[i])
-        return hat_functions, alphaValues
-
-    def get_hats(self, levelvec: Sequence[int], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
-        """
-        This method returns all the hat functions that are in the support of x
+        This method returns all the hat functions in whose support the data point x lies
         :param levelvec: Levelvector of the component grid
         :param x: datapoint
-        :return: All the hat functions that are in the support of x
+        :return: All the hat functions in whose support the data point x lies
         """
-        if self.grid.point_not_zero(x):
+        if self.grid.point_not_zero(x) and ((x >= 0).all() and (x <= 1).all()):
             meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
             numb_points = self.grid.levelToNumPoints(levelvec)
             index_set = []
@@ -474,33 +433,7 @@ class DensityEstimation(AreaOperation):
                         R[j, i] = res
         return R
 
-    def calculate_L2_scalarproduct(self, ivec: Sequence[int], jvec: Sequence[int], lvec: Sequence[int]) -> Tuple[float, float]:
-        """
-        This method calculates the L2-scalarproduct of the two hat functions
-        :param ivec: Index of the first hat function
-        :param jvec: Index of the second hat function
-        :param lvec: Levelvector of the component grid
-        :return: L2-scalarproduct of the two hat functions plus the error of the calculation
-        """
-        if self.check_adjacency(ivec, jvec):
-            dim = len(ivec)
-            f = lambda *x: (self.hat_function(ivec, lvec, [*x]) * self.hat_function(jvec, lvec, [*x]))
-            start = [(min(ivec[d], jvec[d]) - 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
-            end = [(max(ivec[d], jvec[d]) + 1) * 2 ** (float(-lvec[d])) for d in range(dim)]
-            if self.print_output:
-                print("-" * 100)
-                print("Calculating")
-                print("Gridpoints: ", ivec, jvec)
-                print("Domain: ", start, end)
-            return nquad(f, [[start[d], end[d]] for d in range(dim)], opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
-        else:
-            if self.print_output:
-                print("-" * 100)
-                print("Skipping calculation")
-                print("Gridpoints: ", ivec, jvec)
-            return (0, 0)
-
-    def calculate_density_estimation(self, levelvec: Sequence[int]) -> Sequence[float]:
+    def calculate_surpluses(self, levelvec: Sequence[int]) -> Sequence[float]:
         """
         Calculates the surpluses of the component grid for the specified dataset
         :param levelvec: Levelvector of the component grid
@@ -516,7 +449,7 @@ class DensityEstimation(AreaOperation):
 
     def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
         """
-        This method calculates the B vector for the component grid and the dataset of the operation ((R + λ*I) = B)
+        This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
         :param data: dataset specified for the operation
         :param levelvec: Levelvector of the component grid
         :return: b vector of the component grid
@@ -527,40 +460,13 @@ class DensityEstimation(AreaOperation):
         index_list = self.grid.get_indexlist()
 
         for i in range(M):
-            hats = self.get_hats(levelvec, data[i])
+            hats = self.get_hats_in_support(levelvec, data[i])
             for j in range(len(hats)):
                 b[index_list.index(hats[j])] += self.hat_function(hats[j], levelvec, data[i])
         b *= (1 / M)
         if self.print_output:
             print("B vector: ", b)
         return b
-
-    def construct_R(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        """
-        This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
-        :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid
-        """
-        number_points = self.grid.get_num_points()
-        R = np.zeros((number_points, number_points))
-        index_list = self.grid.get_indexlist()
-        diag_val, err = self.calculate_L2_scalarproduct(index_list[0], index_list[0], levelvec)
-        if self.print_output:
-            print("Indexlist: ", index_list)
-            print("Levelvector: ", levelvec)
-            print("Diagonal value: ", diag_val)
-        R[np.diag_indices_from(R)] += (diag_val + self.lambd)
-        if self.masslumping == False:
-            for i in range(0, len(index_list) - 1):
-                for j in range(i + 1, len(index_list)):
-                    temp, err = self.calculate_L2_scalarproduct(index_list[i], index_list[j], levelvec)
-
-                    if temp != 0:
-                        if self.print_output:
-                            print("Result: ", temp)
-                        R[i, j] = temp
-                        R[j, i] = temp
-        return R
 
     def hat_function(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:
         """
@@ -570,7 +476,7 @@ class DensityEstimation(AreaOperation):
         :param x: datapoint
         :return: Value of the hat function at x
         """
-        dim = len(ivec)
+        dim = len(lvec)
         result = 1.0
         for d in range(dim):
             result *= max((1 - abs(2 ** lvec[d] * x[d] - ivec[d])), 0)
@@ -578,22 +484,23 @@ class DensityEstimation(AreaOperation):
 
     def weighted_basis_function(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> float:
         """
-        This method calculates the sum of basis functions of the component grid weighted by the surpluses
+        This method calculates the sum of basis functions of the component grid,
+        in whose support the data point x lies, weighted by the specific surpluses
         :param levelvec: Levelvector of the compoenent grid
         :param alphas: the calculated surpluses of the component grid
         :param x: datapoint
-        :return: Sum of basis functions of the component grid that are in the support of x weighted by the surpluses
+        :return: Sum of basis functions of the component grid in whose support the data point x lies, weighted by the surpluses
         """
         index_list = self.grid.get_indexlist()
+        hats_in_support = self.get_hats_in_support(levelvec, x)
         sum = 0
-        hats_in_support = self.get_hats(levelvec, x)
         for i, index in enumerate(hats_in_support):
             sum += self.hat_function(index, levelvec, x) * alphas[index_list.index(index)]
         return sum
 
     def plot_dataset(self, filename: str = None):
         """
-        This method scatter plots the dataset specified for this operation Parameters
+        This method plots the data set specified for this operation
         :param filename: If set the plot will be saved to the specified filename
         :return: Matplotlib figure
         """
@@ -631,7 +538,8 @@ class DensityEstimation(AreaOperation):
 
     def plot_component_grid(self, combiObject: "StandardCombi", component_grid: ComponentGridInfo, grid: Axes3D, pointsPerDim: int = 100) -> None:
         """
-        This method plots the contourplot of the component grid specified by the ComponentGridInfo
+        This method plots the contour plot of the component grid specified by the ComponentGridInfo.
+        This method is used by print_resulting_combi_scheme in StandardCombi
         :param component_grid:  ComponentGridInfo of the specified component grid.
         :param grid: Axes3D of the
         :param levels: the amount of different levels for the contourf plot
