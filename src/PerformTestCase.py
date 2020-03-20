@@ -11,7 +11,7 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
     interpolation_errorL2 = []
     interpolation_errorMax = []
     for i in range(lmin + 1, lmin + maxLmax):
-        scheme, error, result = standardCombi.perform_combi(lmin, i, f, reference_solution=reference_solution)
+        scheme, error, result = standardCombi.perform_operation(lmin, i)
         errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
@@ -75,7 +75,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         coarsening, combischeme, lmax, integral, numberOfEvaluations, error_array_new, num_point_array_new, surplus_error_array_new, interpolation_errorL2, interpolation_errorMax = \
         algorithm[
             0].performSpatiallyAdaptiv(
-            algorithm[1], algorithm[2], f, algorithm[3], 10 ** -maxtol, max_evaluations=max_evaluations, evaluation_points=evaluation_points)
+            algorithm[1], algorithm[2], algorithm[3], 10 ** -maxtol, max_evaluations=max_evaluations, evaluation_points=evaluation_points)
         # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
         errorArrayAlgorithm.extend(error_array_new)
         surplusErrorArrayAlgorithm.extend(surplus_error_array_new)
