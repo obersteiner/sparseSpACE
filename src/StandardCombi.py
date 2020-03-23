@@ -221,7 +221,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10, fill_boundary_points=False, consider_not_null=False):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -265,7 +265,8 @@ class StandardCombi(object):
                 offsety = 0.04 * (self.b[1] - self.a[1])
                 ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
                 ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
-            ax.plot(x_array, y_array, 'o', markersize=markersize, color="black")
+            self.plot_points(points=points, grid=ax, markersize=markersize, color="black",
+                             fill_boundary=fill_boundary_points)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
@@ -329,8 +330,11 @@ class StandardCombi(object):
                     offsety = 0.04 * (self.b[1] - self.a[1])
                     grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
                     grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
-                grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
-                grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color="black")
+                if consider_not_null:
+                    self.plot_points(points=points, grid=grid, markersize=markersize, color="red", fill_boundary=fill_boundary_points)
+                    self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color="black", fill_boundary=fill_boundary_points)
+                else:
+                    self.plot_points(points=points, grid=grid, markersize=markersize, color="black", fill_boundary=fill_boundary_points)
                 grid.spines['top'].set_visible(False)
                 grid.spines['right'].set_visible(False)
                 grid.spines['bottom'].set_visible(False)
@@ -369,7 +373,7 @@ class StandardCombi(object):
         plt.show()
         return fig
 
-    def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True):
+    def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
         """This method plots the the subspaces of the generated sparse grid. It might not plot them exactly for adaptive sparse grids.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -418,7 +422,8 @@ class StandardCombi(object):
                 offsety = 0.04 * (self.b[1] - self.a[1])
                 ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
                 ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
-            ax.plot(x_array, y_array, 'o', markersize=markersize, color="black")
+            self.plot_points(points=points, grid=ax, markersize=markersize, color="black",
+                             fill_boundary=fill_boundary_points)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
@@ -506,16 +511,15 @@ class StandardCombi(object):
                     points_y1 = self.get_points_component_grid(levelvector_y_1)
                     points_not_null = set(points_not_null) - set(points_y1)
                     points = set(points) - set(points_y1)
-                x_array_not_null = [[p[0] for p in points_not_null]]
-                y_array_not_null = [[p[1] for p in points_not_null]]
-                x_array = [p[0] for p in points]
-                y_array = [p[1] for p in points]
                 if sum(levelvector) > self.lmax[0] + (self.dim - 1) * self.lmin[0] and fade_full_grid:
                     color = 'lightgrey'
                 else:
                     color = 'black'
-                grid.plot(x_array, y_array, 'o', markersize=markersize, color="red")
-                grid.plot(x_array_not_null, y_array_not_null, 'o', markersize=markersize, color=color)
+                if consider_not_null:
+                    self.plot_points(points=points, grid=grid, markersize=markersize, color="red", fill_boundary=fill_boundary_points)
+                    self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color=color, fill_boundary=fill_boundary_points)
+                else:
+                    self.plot_points(points=points, grid=grid, markersize=markersize, color=color, fill_boundary=fill_boundary_points)
                 grid.spines['top'].set_visible(False)
                 grid.spines['right'].set_visible(False)
                 grid.spines['bottom'].set_visible(False)
@@ -549,9 +553,23 @@ class StandardCombi(object):
         plt.show()
         return fig
 
+    def plot_points(self, points, grid, markersize, color="black", fill_boundary="False"):
+        if not fill_boundary:
+            points_interior = [p for p in points if not self.grid.point_on_boundary(p)]
+            points_boundary = [p for p in points if self.grid.point_on_boundary(p)]
+            x_array_interior = [p[0] for p in points_interior]
+            y_array_interior = [p[1] for p in points_interior]
+            x_array_boundary = [p[0] for p in points_boundary]
+            y_array_boundary = [p[1] for p in points_boundary]
+            grid.plot(x_array_interior, y_array_interior, 'o', markersize=markersize, color=color)
+            grid.plot(x_array_boundary, y_array_boundary, 'o', markersize=markersize, color=color, fillstyle='none')
+        else:
+            x_array = [p[0] for p in points]
+            y_array = [p[1] for p in points]
+            grid.plot(x_array, y_array, 'o', markersize=markersize, color=color)
 
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize=20):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False):
         """This method prints the resulting sparse grid obtained by the combination technique.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -608,38 +626,40 @@ class StandardCombi(object):
             markersize /= 2
 
         # get points of each component grid and plot them in one plot
+        points = set()
         for component_grid in scheme:
-            points = self.get_points_component_grid(component_grid.levelvector)
+            points = set(self.get_points_component_grid(component_grid.levelvector)) | points
+
+        if dim == 2:
+            self.plot_points(points, grid=plt, markersize=markersize, color=color, fill_boundary=fill_boundary_points)
+        if dim == 3:
             xArray = [p[0] for p in points]
             yArray = [p[1] for p in points]
-            if dim == 2:
-                plt.plot(xArray, yArray, 'o', markersize=markersize, color=color)
-            if dim == 3:
-                zArray = [p[2] for p in points]
-                plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
-            for axdir in ("x", "y"):
-                ax.tick_params(axis=axdir, labelcolor='#345040')
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-            ax.set_xlabel("$x_1$")
-            ax.set_ylabel("$x_2$")
-            if show_border:
-                startx = self.a[0]
-                starty = self.a[1]
-                endx = self.b[0]
-                endy = self.b[1]
-                ax.add_patch(
-                    patches.Rectangle(
-                        (startx, starty),
-                        endx - startx,
-                        endy - starty,
-                        fill=False,  # remove background,
-                        alpha=1,
-                        linewidth=linewidth, visible=True
-                    )
+            zArray = [p[2] for p in points]
+            plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
+        for axdir in ("x", "y"):
+            ax.tick_params(axis=axdir, labelcolor='#345040')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.set_xlabel("$x_1$")
+        ax.set_ylabel("$x_2$")
+        if show_border:
+            startx = self.a[0]
+            starty = self.a[1]
+            endx = self.b[0]
+            endy = self.b[1]
+            ax.add_patch(
+                patches.Rectangle(
+                    (startx, starty),
+                    endx - startx,
+                    endy - starty,
+                    fill=False,  # remove background,
+                    alpha=1,
+                    linewidth=linewidth, visible=True
                 )
+            )
         if not ticks:
             ax.axis('off')
         if add_refinement and dim == 2:
