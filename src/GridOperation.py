@@ -5,12 +5,14 @@ from BasisFunctions import *
 from RefinementContainer import RefinementContainer
 from RefinementObject import RefinementObject
 
+
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
     It should provide the basic functionalities to solve the operation on arbitrary grids and calculate error estimates
     for refinement. It also needs to provide functionality in how to combine the individual results on the component
     grids.
     """
+
     def is_area_operation(self) -> bool:
         """This function returns a bool to indicate whether the operation can be seperately applied to subareas.
 
@@ -130,7 +132,8 @@ class GridOperation(object):
         """
         return 1
 
-    def interpolate_points(self, values: Sequence[Sequence[float]], mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float, ...]]):
+    def interpolate_points(self, values: Sequence[Sequence[float]], mesh_points_grid: Sequence[Sequence[float]],
+                           evaluation_points: Sequence[Tuple[float, ...]]):
         """Interpolates values that are on the mesh_points_grid at the given evaluation_points using bilinear
         interpolation.
 
@@ -178,7 +181,8 @@ class GridOperation(object):
         """
         pass
 
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]],
+                                           component_grid: ComponentGridInfo) -> None:
         """This method is used to compute the operation in the dimension-wise refinement strategy.
 
         :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
@@ -187,9 +191,9 @@ class GridOperation(object):
         :return: None
         """
 
-
     @abc.abstractmethod
-    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
+    def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]],
+                                               children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo) -> None:
         """This method is used to compute the error estimates in the dimension-wise refinement strategy.
 
         :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
@@ -230,6 +234,7 @@ class GridOperation(object):
         """
         return right_parent - left_parent
 
+
 class AreaOperation(GridOperation):
     def is_area_operation(self):
         return True
@@ -242,10 +247,318 @@ class AreaOperation(GridOperation):
     def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container):
         pass
 
+
+from numpy.linalg import solve
+from scipy.sparse.linalg import cg
+from scipy.integrate import nquad
+from sklearn import datasets, preprocessing
+import csv
+from matplotlib import cm
+import matplotlib.colors as colors
+
+
+class DensityEstimation(AreaOperation):
+
+    def __init__(self, data, dim, masslumping=False, print_output=True, lambd=0.0):
+        self.data = data
+        self.dim = dim
+        self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
+        self.lambd = lambd
+        self.masslumping = masslumping
+        self.surpluses = {}
+        self.initialized = False
+        self.extrema = None
+        self.print_output = print_output
+
+    def initialize(self):
+        """
+        This method is used to initialize the operation with the dataset.
+        If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
+        It gets called in the perform_operation function of StandardCombi
+        :return:
+        """
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        if (isinstance(self.data, str)):
+            dataCSV = []
+            with open(self.data, "r", newline="") as file:
+                has_header = csv.Sniffer().has_header(file.read(2048))
+                file.seek(0)
+                reader = csv.reader(file)
+                if has_header:
+                    next(reader)
+                for row in reader:
+                    dataCSV.append([float(i) for i in row])
+                scaler.fit(dataCSV)
+                self.data = scaler.transform(dataCSV)
+                self.initialized = True
+        elif (isinstance(self.data, tuple)):
+            scaler.fit(self.data[0])
+            self.data = scaler.transform(self.data[0])
+            self.initialized = True
+        else:
+            scaler.fit(self.data)
+            self.data = scaler.transform(self.data)
+            self.initialized = True
+
+    def post_processing(self):
+        """
+        This method is used to compute the minimum and maximum surplus of the component grid
+        so they can be used when plotting the heat map for the combi scheme when calling print_resulting_combi_scheme
+        It gets called in the perform_operation function of StandardCombi
+        :return: Tuple of minimum and maximum surplus
+        """
+        surpluses = np.concatenate(list(self.get_result().values()))
+        max = np.max(surpluses)
+        min = np.min(surpluses)
+        if self.print_output:
+            print("Max: ", max, "Min: ", min)
+        self.extrema = (min, max)
+        return self.extrema
+
+    def get_result(self) -> Dict[Sequence[int], Sequence[float]]:
+        return self.surpluses
+
+    def get_reference_solution(self) -> None:
+        return None
+
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
+        """
+        This method calculates the surpluses for the the specified component grid
+        :param component_grid: ComponentGridInfo of the specified component grid
+        :return: Surpluses of the component grid
+        """
+        self.grid.setCurrentArea(np.zeros(len(component_grid.levelvector)), np.ones(len(component_grid.levelvector)), component_grid.levelvector)
+        surpluses = self.calculate_surpluses(component_grid.levelvector)
+        self.surpluses.update({tuple(component_grid.levelvector): surpluses})
+        return surpluses
+
+    def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) -> Sequence[float]:
+        """
+        This method fills up the surplus array with zeros for the points on the boundary so it can be properly used when interpolating
+        :param component_grid: ComponentGridInfo of the specified component grid
+        :param mesh_points_grid: Points of the component grid, with boundary points
+        :return: Surpluses for the component_grid filled up with zero on the boundary
+        """
+        surpluses = list(self.get_result().get(tuple(component_grid.levelvector)))
+        mesh_points = get_cross_product(mesh_points_grid)
+        values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
+        return values.reshape((len(values), 1))
+
+    def check_adjacency(self, ivec: Sequence[int], jvec: Sequence[int]) -> bool:
+        """
+        This method checks if the two hat functions specified by ivec and jvec are adjacent to each other
+        :param ivec: Index of the first hat function
+        :param jvec: Index of the second hat function
+        :return: True if the two hat functions are adjacent, False otherwise
+        """
+        for i in range(len(ivec)):
+            if abs(ivec[i] - jvec[i]) > 1:
+                return False
+        return True
+
+    def get_hats_in_support(self, levelvec: Sequence[int], x: Sequence[float]) -> Sequence[Tuple[int, ...]]:
+        """
+        This method returns all the hat functions in whose support the data point x lies
+        :param levelvec: Levelvector of the component grid
+        :param x: datapoint
+        :return: All the hat functions in whose support the data point x lies
+        """
+        if self.grid.point_not_zero(x) and ((x >= 0).all() and (x <= 1).all()):
+            meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
+            numb_points = self.grid.levelToNumPoints(levelvec)
+            index_set = []
+            for i in range(len(x)):
+                lower = math.floor(x[i] / meshsize[i])
+                upper = math.ceil(x[i] / meshsize[i])
+                if (lower > 0 and lower <= numb_points[i]) and (upper > 0 and upper <= numb_points[i]):
+                    index_set.append((lower, upper))
+                elif (lower < 1 or lower > numb_points[i]):
+                    index_set.append((upper,))
+                elif (upper < 1 or upper > numb_points[i]):
+                    index_set.append((lower,))
+            return list(set(product(*index_set)))
+        else:
+            return []
+
+    def build_R_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        """
+        This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+        grid_size = self.grid.get_num_points()
+        R = np.zeros((grid_size, grid_size))
+        dim = len(levelvec)
+        index_list = self.grid.get_indexlist()
+
+        diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
+        R[np.diag_indices_from(R)] += (diag_val + self.lambd)
+        if self.print_output:
+            print("Indexlist: ", index_list)
+            print("Levelvector: ", levelvec)
+            print("Diagonal value: ", diag_val)
+        if self.masslumping == False:
+            for i in range(grid_size - 1):
+                for j in range(i + 1, grid_size):
+                    res = 1.0
+
+                    for k in range(dim):
+                        index_ik = index_list[i][k]
+                        index_jk = index_list[j][k]
+
+                        # basis function overlap fully
+                        if index_ik == index_jk:
+                            res *= 1 / (2 ** (levelvec[k] - 1) * 3)
+                        # basis function do not overlap
+                        elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) >= min((index_ik + 1) * 2 ** (levelvec[k] - 1),
+                                                                                                                          (index_jk + 1) * 2 ** (levelvec[k] - 1)):
+                            res = 0
+                            break
+                        # basis functions overlap partly
+                        else:
+                            res *= 1 / (2 ** (levelvec[k] - 1) * 12)
+
+                    if res == 0:
+                        if self.print_output:
+                            print("-" * 100)
+                            print("Skipping calculation")
+                            print("Gridpoints: ", index_list[i], index_list[j])
+                    else:
+                        if self.print_output:
+                            print("-" * 100)
+                            print("Calculating")
+                            print("Gridpoints: ", index_list[i], index_list[j])
+                            print("Result: ", res)
+                        R[i, j] = res
+                        R[j, i] = res
+        return R
+
+    def calculate_surpluses(self, levelvec: Sequence[int]) -> Sequence[float]:
+        """
+        Calculates the surpluses of the component grid for the specified dataset
+        :param levelvec: Levelvector of the component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+        R = self.build_R_matrix(levelvec)
+        b = self.calculate_B(self.data, levelvec)
+        alphas, info = cg(R, b)
+        if self.print_output:
+            print("Alphas: ", levelvec, alphas)
+            print("-" * 100)
+        return alphas
+
+    def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
+        """
+        This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
+        :param data: dataset specified for the operation
+        :param levelvec: Levelvector of the component grid
+        :return: b vector of the component grid
+        """
+        M = len(data)
+        N = self.grid.get_num_points()
+        b = np.zeros(N)
+        index_list = self.grid.get_indexlist()
+
+        for i in range(M):
+            hats = self.get_hats_in_support(levelvec, data[i])
+            for j in range(len(hats)):
+                b[index_list.index(hats[j])] += self.hat_function(hats[j], levelvec, data[i])
+        b *= (1 / M)
+        if self.print_output:
+            print("B vector: ", b)
+        return b
+
+    def hat_function(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:
+        """
+        This method calculates the value of the hat function at the point x
+        :param ivec: Index of the hat function
+        :param lvec: Levelvector of the component grid
+        :param x: datapoint
+        :return: Value of the hat function at x
+        """
+        dim = len(lvec)
+        result = 1.0
+        for d in range(dim):
+            result *= max((1 - abs(2 ** lvec[d] * x[d] - ivec[d])), 0)
+        return result
+
+    def weighted_basis_function(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> float:
+        """
+        This method calculates the sum of basis functions of the component grid,
+        in whose support the data point x lies, weighted by the specific surpluses
+        :param levelvec: Levelvector of the compoenent grid
+        :param alphas: the calculated surpluses of the component grid
+        :param x: datapoint
+        :return: Sum of basis functions of the component grid in whose support the data point x lies, weighted by the surpluses
+        """
+        index_list = self.grid.get_indexlist()
+        hats_in_support = self.get_hats_in_support(levelvec, x)
+        sum = 0
+        for i, index in enumerate(hats_in_support):
+            sum += self.hat_function(index, levelvec, x) * alphas[index_list.index(index)]
+        return sum
+
+    def plot_dataset(self, filename: str = None):
+        """
+        This method plots the data set specified for this operation
+        :param filename: If set the plot will be saved to the specified filename
+        :return: Matplotlib figure
+        """
+        if self.initialized == False:
+            self.initialize()
+        fontsize = 30
+        plt.rcParams.update({'font.size': fontsize})
+        fig = plt.figure(figsize=(10, 10))
+        if self.dim == 2:
+            ax = fig.add_subplot(1, 1, 1)
+            x, y = zip(*self.data)
+            ax.scatter(x, y, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title("M = %d" % len(self.data))
+
+        elif self.dim == 3:
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            x, y, z = zip(*self.data)
+            ax.scatter(x, y, z, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+            ax.set_title("#points = %d" % len(self.data))
+
+        else:
+            print("Cannot print data of dimension > 2")
+
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        return fig
+
+    def plot_component_grid(self, combiObject: "StandardCombi", component_grid: ComponentGridInfo, grid: Axes3D, pointsPerDim: int = 100) -> None:
+        """
+        This method plots the contour plot of the component grid specified by the ComponentGridInfo.
+        This method is used by print_resulting_combi_scheme in StandardCombi
+        :param component_grid:  ComponentGridInfo of the specified component grid.
+        :param grid: Axes3D of the
+        :param levels: the amount of different levels for the contourf plot
+        :param pointsPerDim: amount of points to be plotted in each dimension
+        :return: None
+        """
+        X = np.linspace(0.0, 1.0, pointsPerDim)
+        Y = np.linspace(0.0, 1.0, pointsPerDim)
+        X, Y = np.meshgrid(X, Y)
+        Z = combiObject.interpolate_points(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())), component_grid)
+        Z = Z.reshape((100, 100))
+        grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, norm=colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1]))
+
+
 from scipy.interpolate import interpn
 
+
 class Integration(AreaOperation):
-    def __init__(self, f: Function, grid: Grid, dim: int,  reference_solution: Sequence[float]=None):
+    def __init__(self, f: Function, grid: Grid, dim: int, reference_solution: Sequence[float] = None):
         self.f = f
         self.f_actual = None
         self.grid = grid
@@ -275,14 +588,16 @@ class Integration(AreaOperation):
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = self.f.output_length()
         # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        values = np.array(
+            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         return values
 
     def get_mesh_values(self, mesh_points_grid):
         mesh_points = get_cross_product(mesh_points_grid)
         function_value_dim = self.f.output_length()
         # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array([self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        values = np.array(
+            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
         return values
 
     def get_result(self):
@@ -338,13 +653,13 @@ class Integration(AreaOperation):
             else:
                 return 0
         elif additional_info.error_name == "split_no_filter":
-                assert additional_info.filter_area is None
-                split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
-                if additional_info.target_area.parent_info.split_parent_integral is None:
-                    additional_info.target_area.parent_info.split_parent_integral = split_parent_new * componentgrid_info.coefficient
-                else:
-                    additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
-                return np.prod( self.grid.levelToNumPoints(levelvector))
+            assert additional_info.filter_area is None
+            split_parent_new = self.grid.integrate(self.f, levelvector, area.start, area.end)
+            if additional_info.target_area.parent_info.split_parent_integral is None:
+                additional_info.target_area.parent_info.split_parent_integral = split_parent_new * componentgrid_info.coefficient
+            else:
+                additional_info.target_area.parent_info.split_parent_integral += split_parent_new * componentgrid_info.coefficient
+            return np.prod(self.grid.levelToNumPoints(levelvector))
         else:
             assert additional_info.filter_area is not None
             if not additional_info.interpolate:  # use filtering approach
@@ -373,7 +688,8 @@ class Integration(AreaOperation):
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid, points)
+                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid,
+                                                              points)
 
                 integral += np.inner(interpolated_values.T, weights)
 
@@ -405,11 +721,11 @@ class Integration(AreaOperation):
         return True
 
     def area_preprocessing(self, area):
-        #area.set_integral(0.0)
+        # area.set_integral(0.0)
         area.set_value(np.zeros(self.f.output_length()))
-        #area.evaluations = 0
-        #area.levelvec_dict = {}
-        #area.error = None
+        # area.evaluations = 0
+        # area.levelvec_dict = {}
+        # area.error = None
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
@@ -417,10 +733,10 @@ class Integration(AreaOperation):
         elif LA.norm(self.reference_solution) == 0.0:
             return LA.norm(abs(self.integral), norm)
         else:
-            return LA.norm(abs((self.reference_solution - self.integral)/self.reference_solution), norm)
+            return LA.norm(abs((self.reference_solution - self.integral) / self.reference_solution), norm)
 
-#    def area_postprocessing(self, area):
-#        area.value = np.array(area.integral)
+    #    def area_postprocessing(self, area):
+    #        area.value = np.array(area.integral)
 
     def get_point_factor(self, point, area, area_parent):
         factor = 1.0
@@ -440,7 +756,7 @@ class Integration(AreaOperation):
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
         interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
         width = np.prod(np.array(end_subcell) - np.array(start_subcell))
-        factor = 0.5**self.dim * width
+        factor = 0.5 ** self.dim * width
         integral = 0.0
         for p in interpolated_values:
             integral += p * factor
@@ -475,9 +791,9 @@ class Integration(AreaOperation):
                 integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
             if modification_points is not None:
                 # ~ integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
-                                                        # ~ gridPointCoordsAsStripes)
+                # ~ gridPointCoordsAsStripes)
                 v = self.subtract_contributions(modification_points, previous_points_coarsened,
-                                                        gridPointCoordsAsStripes)
+                                                gridPointCoordsAsStripes)
                 assert len(v) == len(integral)
                 integral -= v
                 integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
@@ -494,7 +810,7 @@ class Integration(AreaOperation):
     def set_function(self, f=None):
         assert f is None or f == self.f, "Integration and the refinement should use the same function"
 
-    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version = 2):
+    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
         self.grid = grid
         self.grid_surplusses = grid_surplusses
         self.refinement_container = refinement_container
@@ -548,7 +864,7 @@ class Integration(AreaOperation):
                 found_modification = True
                 modification_1D = self.get_modification_objects(modifications, new_points[d])
                 modification_array_added[d].extend(list(modification_1D))
-            #get removed points for dimension d
+            # get removed points for dimension d
             modifications_coarsen = sorted(list(set(old_points[d]) - set(new_points[d])))
             if len(modifications_coarsen) != 0:
                 found_modification2 = True
@@ -593,11 +909,12 @@ class Integration(AreaOperation):
             for point in modification_points[d]:
                 # calculate the changes in contributions for all points that contain the neighbouring points point[0]
                 # and point[2] in dimension d
-                points_for_slice = list([point[0],point[2]])
+                points_for_slice = list([point[0], point[2]])
                 # remove boundary points if contained if grid has no boundary points
                 if not self.grid.boundary:
-                    points_for_slice = [p for p in points_for_slice if not(isclose(p, self.a[d]) or isclose(p, self.b[d]))]
-                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True, dict=dict_weights_fine)
+                    points_for_slice = [p for p in points_for_slice if not (isclose(p, self.a[d]) or isclose(p, self.b[d]))]
+                integral += self.calc_slice_through_points(points_for_slice, old_points, d, modification_points, subtract_contribution=True,
+                                                           dict=dict_weights_fine)
         return integral
 
     # This method calculates the new contributions of the points specified in modification_points to the grid new_points
@@ -620,12 +937,14 @@ class Integration(AreaOperation):
     def calc_slice_through_points(self, points_for_slice, grid_points, d, modification_points, subtract_contribution=False, dict=None):
         integral = 0.0
         positions = [list(self.grid_surplusses.coords[d]).index(point) for point in points_for_slice]
-        points = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
-        indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
+        points = list(
+            zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else points_for_slice for d2 in range(self.dim)])]))
+        indices = list(zip(
+            *[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else positions for d2 in range(self.dim)])]))
         for i in range(len(points)):
             # index of current point in grid_points grid
             index = indices[i]
-            #point coordinates of current point
+            # point coordinates of current point
             current_point = points[i]
             # old weight of current point in coarser grid
             weight = self.grid_surplusses.getWeight(index)
@@ -641,7 +960,7 @@ class Integration(AreaOperation):
                         if current_point[d2] == mod_point[0] or current_point[d2] == mod_point[2]:
                             number_of_dimensions_that_intersect += 1
                 # calculate the weight difference from the old to the new grid
-                factor = (weight - weight_fine)/number_of_dimensions_that_intersect
+                factor = (weight - weight_fine) / number_of_dimensions_that_intersect
             else:
                 number_of_dimensions_that_intersect = 1
                 # calculate if other slices also contain this point
@@ -653,14 +972,16 @@ class Integration(AreaOperation):
                             number_of_dimensions_that_intersect += 1
                 # calculate the new weight contribution of newly added point
                 factor = weight / number_of_dimensions_that_intersect
-            assert(factor >= 0)
+            assert (factor >= 0)
             integral += self.f(current_point) * factor
         return integral
+
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
     @staticmethod
-    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]], evaluation_points: Sequence[Tuple[float,...]]):
+    def interpolate_points(values: Sequence[Sequence[float]], dim: int, grid: Grid, mesh_points_grid: Sequence[Sequence[float]],
+                           evaluation_points: Sequence[Tuple[float, ...]]):
         # constructing all points from mesh definition
         function_value_dim = len(values[0])
         interpolated_values_array = []
@@ -682,12 +1003,13 @@ import scipy.stats as sps
 from Function import *
 from StandardCombi import *  # For reference solution calculation
 
+
 class UncertaintyQuantification(Integration):
     # The constructor resembles Integration's constructor;
     # it has an additional parameter:
     # distributions can be a list, tuple or string
     def __init__(self, f, distributions, a: Sequence[float], b: Sequence[float],
-            dim: int=None, grid=None, reference_solution=None):
+                 dim: int = None, grid=None, reference_solution=None):
         dim = dim or len(a)
         super().__init__(f, grid, dim, reference_solution)
         self.f_model = f
@@ -707,7 +1029,8 @@ class UncertaintyQuantification(Integration):
         self.gPCE = None
         self.pce_polys = None
 
-    def set_grid(self, grid): self.grid = grid
+    def set_grid(self, grid):
+        self.grid = grid
 
     def set_reference_solution(self, reference_solution):
         self.reference_solution = reference_solution
@@ -715,7 +1038,7 @@ class UncertaintyQuantification(Integration):
     # From the user provided information about distributions, this function
     # creates the distributions list which contains Chaospy distributions
     def _prepare_distributions(self, distris, a: Sequence[float],
-            b: Sequence[float]):
+                               b: Sequence[float]):
         self.distributions = []
         self.distribution_infos = distris
         chaospy_distributions = []
@@ -752,10 +1075,13 @@ class UncertaintyQuantification(Integration):
                     # The chaospy normal distribution does not work with big values
                     def pdf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.pdf(x, loc=_mu, scale=_sigma)
+
                     def cdf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.cdf(x, loc=_mu, scale=_sigma)
+
                     def ppf(x, _mu=mu, _sigma=sigma):
                         return sps.norm.ppf(x, loc=_mu, scale=_sigma)
+
                     self.distributions.append(UQDistribution(pdf, cdf, ppf))
             elif distr_type == "Laplace":
                 mu = distr_info[1]
@@ -765,10 +1091,13 @@ class UncertaintyQuantification(Integration):
                 if not distr_known:
                     def pdf(x, _mu=mu, _scale=scale):
                         return sps.laplace.pdf(x, loc=_mu, scale=_scale)
+
                     def cdf(x, _mu=mu, _scale=scale):
                         return sps.laplace.cdf(x, loc=_mu, scale=_scale)
+
                     def ppf(x, _mu=mu, _scale=scale):
                         return sps.laplace.ppf(x, loc=_mu, scale=_scale)
+
                     self.distributions.append(UQDistribution(pdf, cdf, ppf))
             else:
                 assert False, "Distribution not implemented: " + distr_type
@@ -797,8 +1126,11 @@ class UncertaintyQuantification(Integration):
     def update_function(self, f):
         self.f = f
 
-    def get_distributions(self): return self.distributions
-    def get_distributions_chaospy(self): return self.distributions_chaospy
+    def get_distributions(self):
+        return self.distributions
+
+    def get_distributions_chaospy(self):
+        return self.distributions_chaospy
 
     # This function returns boundaries for distributions which have an infinite
     # domain, such as normal distribution
@@ -824,7 +1156,7 @@ class UncertaintyQuantification(Integration):
         # the higher degree polynomials are removed afterwards
         polys, norms = cp.orth_ttr(max(polynomial_degrees), self.distributions_joint, retall=True)
         polys_filtered, norms_filtered = [], []
-        for i,poly in enumerate(polys):
+        for i, poly in enumerate(polys):
             max_exponents = [max(exps) for exps in poly.exponents.T]
             if any([max_exponents[d] > deg_max for d, deg_max in enumerate(polynomial_degrees)]):
                 continue
@@ -835,7 +1167,7 @@ class UncertaintyQuantification(Integration):
 
     def _scale_values(self, values):
         assert self.all_uniform, "Division by the domain volume should be used for uniform distributions only"
-        div = 1.0 / np.prod([self.b[i] - v_a for i,v_a in enumerate(self.a)])
+        div = 1.0 / np.prod([self.b[i] - v_a for i, v_a in enumerate(self.a)])
         return values * div
 
     def _set_nodes_weights_evals(self, combiinstance, scale_weights=False):
@@ -857,8 +1189,8 @@ class UncertaintyQuantification(Integration):
             return self._scale_values(integral)
         return integral
 
-    def calculate_moment(self, combiinstance, k: int=None,
-            use_combiinstance_solution=True, scale_weights=False):
+    def calculate_moment(self, combiinstance, k: int = None,
+                         use_combiinstance_solution=True, scale_weights=False):
         if use_combiinstance_solution:
             mom = self._get_combiintegral(combiinstance, scale_weights=scale_weights)
             assert len(mom) == self.f_model.output_length()
@@ -872,7 +1204,7 @@ class UncertaintyQuantification(Integration):
 
     @staticmethod
     def moments_to_expectation_variance(mom1: Sequence[float],
-            mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
+                                        mom2: Sequence[float]) -> Tuple[Sequence[float], Sequence[float]]:
         expectation = mom1
         variance = [mom2[i] - ex * ex for i, ex in enumerate(expectation)]
         for i, v in enumerate(variance):
@@ -915,9 +1247,10 @@ class UncertaintyQuantification(Integration):
 
         self._set_pce_polys(polynomial_degrees)
         self.gPCE = cp.fit_quadrature(self.pce_polys, list(zip(*self.nodes)),
-            self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
+                                      self.weights, np.asarray(self.f_evals), norms=self.pce_polys_norms)
 
-    def get_gPCE(self): return self.gPCE
+    def get_gPCE(self):
+        return self.gPCE
 
     def get_expectation_PCE(self):
         if self.gPCE is None:
@@ -932,7 +1265,7 @@ class UncertaintyQuantification(Integration):
     def get_expectation_and_variance_PCE(self):
         return self.get_expectation_PCE(), self.get_variance_PCE()
 
-    def get_Percentile_PCE(self, q: float, sample: int=10000):
+    def get_Percentile_PCE(self, q: float, sample: int = 10000):
         if self.gPCE is None:
             assert False, "calculatePCE must be invoked before this method"
         return cp.Perc(self.gPCE, q, self.distributions_joint, sample)
@@ -999,13 +1332,14 @@ class UncertaintyQuantification(Integration):
     def set_inverse_transform_Function(self, func=None):
         self.update_function(self.get_inverse_transform_Function(func or self.f, self.distributions))
 
+
 # UncertaintyQuantification extended for testing purposes
 class UncertaintyQuantificationTesting(UncertaintyQuantification):
     # This function uses the quadrature provided by Chaospy.
     def calculate_PCE_chaospy(self, polynomial_degrees, num_quad_points):
         self._set_pce_polys(polynomial_degrees)
         nodes, weights = cp.generate_quadrature(num_quad_points,
-            self.distributions_joint, rule="G")
+                                                self.distributions_joint, rule="G")
         f_evals = [self.f(c) for c in zip(*nodes)]
         self.gPCE = cp.fit_quadrature(self.pce_polys, nodes, weights, np.asarray(f_evals), norms=self.pce_polys_norms)
 
@@ -1018,7 +1352,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
 
     def calculate_expectation_and_variance_reference(self, mode="ChaospyHalton", modeparams=None):
         if mode == "ChaospyHalton":
-            num_points = modeparams or 2**14
+            num_points = modeparams or 2 ** 14
             nodes = self.distributions_joint.sample(num_points, rule="H")
             num_samples = len(nodes[0])
             assert num_points == num_samples
@@ -1026,7 +1360,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
             weights = np.array([w for _ in range(num_samples)])
         elif mode == "ChaospyGauss":
             nodes, weights = cp.generate_quadrature(29,
-                self.distributions_joint, rule="G")
+                                                    self.distributions_joint, rule="G")
         elif mode == "StandardcombiGauss":
             if all([distr[0] == "Normal" for distr in self.distribution_infos]):
                 expectations = [distr[1] for distr in self.distribution_infos]
@@ -1084,6 +1418,7 @@ class UncertaintyQuantificationTesting(UncertaintyQuantification):
 
 from scipy import integrate
 
+
 class UQDistribution:
     def __init__(self, pdf, cdf, ppf):
         self.pdf = pdf
@@ -1097,7 +1432,7 @@ class UQDistribution:
     def from_chaospy(cp_distr):
         # The inverse Rosenblatt transformation is the inverse cdf here
         return UQDistribution(cp_distr.pdf, cp_distr.cdf,
-            lambda x: float(cp_distr.inv(x)))
+                              lambda x: float(cp_distr.inv(x)))
 
     def get_zeroth_moment(self, x1: float, x2: float):
         cache = self.cached_moments[0]
@@ -1112,7 +1447,7 @@ class UQDistribution:
         if (x1, x2) in cache:
             return cache[(x1, x2)]
         moment_1 = integrate.quad(lambda x: x * self.pdf(x), x1, x2,
-            epsrel=10 ** -2, epsabs=np.inf)[0]
+                                  epsrel=10 ** -2, epsabs=np.inf)[0]
         cache[(x1, x2)] = moment_1
         return moment_1
 
@@ -1132,8 +1467,8 @@ class UQDistribution:
         # ~ k = (func, x1, x2)
         # ~ cache = self.cache_integrals
         # ~ if k in cache:
-            # ~ print("Cache match")
-            # ~ return cache[k]
+        # ~ print("Cache match")
+        # ~ return cache[k]
         integral = integrate.quad(lambda x: func(x) * self.pdf(x), x1, x2)[0]
         # ~ cache[k] = integral
         return integral
