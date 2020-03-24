@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from combiScheme import *
 from GridOperation import *
 import importlib
 import multiprocessing as mp
-from mpl_toolkits.axisartist.axislines import SubplotZero
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 class StandardCombi(object):
     """This class implements the standard combination technique.
@@ -94,7 +96,7 @@ class StandardCombi(object):
         """
         return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
 
-    def plot(self, plotdimension: int=0) -> None:
+    def plot(self, filename: str = None, plotdimension: int = 0, contour=False) -> None:
         """This method plots the model obtained by the Combination Technique.
 
         :param plotdimension: Dimension of the output vector that should be plotted. (0 if scalar outputs)
@@ -103,6 +105,8 @@ class StandardCombi(object):
         if self.dim != 2:
             print("Can only plot 2D results")
             return
+        fontsize = 30
+        plt.rcParams.update({'font.size': fontsize})
         xArray = np.linspace(self.a[0], self.b[0], 10 ** 2)
         yArray = np.linspace(self.a[1], self.b[1], 10 ** 2)
         X = [x for x in xArray]
@@ -121,15 +125,38 @@ class StandardCombi(object):
                 Z[i, j] = f_values[j + i * len(X)][plotdimension]
         # Z=self.eval((X,Y))
         # print Z
-        fig = plt.figure(figsize=(14, 6))
+        if contour:
+            fig = plt.figure(figsize=(20, 10))
 
-        # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
-        ax = fig.add_subplot(1, 2, 1, projection='3d')
+            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+            ax = fig.add_subplot(1, 2, 1, projection='3d')
 
-        # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, linewidth=0, antialiased=False)
+            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+            ax = fig.add_subplot(1, 2, 2)
+            # TODO why do I have to transpose here so it plots in the right orientation?
+            p = ax.imshow(np.transpose(Z), extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm)
+            # ax.axis(aspect="image")
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            fig.colorbar(p, cax=cax)
+        else:
+            fig = plt.figure(figsize=(20, 10))
+
+            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            # TODO make colorbar look nicer
+            fig.colorbar(p, ax=ax)
         # plt.show()
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
 
     def set_combi_parameters(self, lmin: int, lmax: int) -> None:
         """Initializes the combi parameters according to minimum and maximum level.
@@ -200,8 +227,8 @@ class StandardCombi(object):
         """
         return np.prod(self.grid.levelToNumPoints(levelvector))
 
-    def get_total_num_points(self, doNaive: bool=False,
-                             distinct_function_evals: bool=True) -> int:  # we assume here that all lmax entries are equal
+    def get_total_num_points(self, doNaive: bool = False,
+                             distinct_function_evals: bool = True) -> int:  # we assume here that all lmax entries are equal
         """This method calculates the total number of points used in the combination technique.
 
         :param doNaive: Indicates whether we should count points that appear multiple times in a grid again (False-> no)
@@ -221,7 +248,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10, fill_boundary_points=False, consider_not_null=False):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10, fill_boundary_points=False, consider_not_null=False, operation=None):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -275,7 +302,7 @@ class StandardCombi(object):
             ax.spines['left'].set_visible(False)
             if show_levelvec:
                 ax.set_title(str(tuple(self.lmax)))
-            if show_border:
+            if show_border and operation is None:
                 startx = self.a[0]
                 starty = self.a[1]
                 endx = self.b[0]
@@ -288,13 +315,15 @@ class StandardCombi(object):
                         endy - starty,
                         fill=True,  # remove background,
                         alpha=0.5,
-                        linewidth=linewidth, visible=True, facecolor=facecolor,edgecolor='black'
+                        linewidth=linewidth, visible=True, facecolor=facecolor, edgecolor='black'
                     )
                 )
             if not ticks:
                 ax.axis('off')
             if add_refinement:
                 self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
+            if operation is not None:
+                operation.plot_component_grid(scheme[0], ax)
         else:
 
             for i in range(lmax[0] - lmin[0] + 1):
@@ -343,7 +372,7 @@ class StandardCombi(object):
                 grid.spines['left'].set_visible(False)
                 if show_levelvec:
                     grid.set_title(str(tuple(component_grid.levelvector)))
-                if show_border:
+                if show_border and operation is None:
                     facecolor = 'limegreen' if component_grid.coefficient == 1 else 'orange'
                     grid.add_patch(
                         patches.Rectangle(
@@ -393,14 +422,18 @@ class StandardCombi(object):
                     length_includes_head= True, clip_on = False)
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
+                if operation is not None:
+                    operation.plot_component_grid(self, component_grid, grid)
         # ax1 = fig.add_subplot(111, alpha=0)
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
-        #plt.tight_layout()
+        # plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
 
         plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
@@ -729,6 +762,8 @@ class StandardCombi(object):
             plt.savefig(filename, bbox_inches='tight')
         if show_fig:
             plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     # check if combischeme is right; assertion is thrown if not
