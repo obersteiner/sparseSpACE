@@ -3,7 +3,7 @@ from combiScheme import *
 from GridOperation import *
 import importlib
 import multiprocessing as mp
-
+from mpl_toolkits.axisartist.axislines import SubplotZero
 
 class StandardCombi(object):
     """This class implements the standard combination technique.
@@ -242,7 +242,9 @@ class StandardCombi(object):
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
+        ncols = self.lmax[0] - self.lmin[0] + 1
+        nrows = self.lmax[1] - self.lmin[1] + 1
+        fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -361,6 +363,34 @@ class StandardCombi(object):
                     coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
                     grid.text(0.55, 0.55, coefficient,
                           fontsize=fontsize * 2, ha='center', color="blue")
+                if True:
+                    #fig, overax = plt.subplots()
+                    #overax = SubplotZero(fig, 111)
+                    #fig.add_subplot(overax)
+
+                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
+                    overax.patch.set_alpha(0)
+                    #overax.axis('off')
+                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
+                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
+                    overax.set_xticks([],[])
+                    overax.set_yticks([],[])
+                    overax.set_xlabel("$l_1$")
+                    overax.set_ylabel("$l_2$")
+                    #plt.rcParams['axes.linewidth'] = 1
+                    for direction in ["left", "bottom"]:
+                        # adds arrows at the ends of each axis
+                        #overax.spines[direction].set_axisline_style("-|>")
+
+                        # adds X and Y-axis from the origin
+                        overax.spines[direction].set_visible(True)
+                    for direction in ["right", "top"]:
+                        # hides borders
+                        overax.spines[direction].set_visible(False)
+                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
         # ax1 = fig.add_subplot(111, alpha=0)
@@ -541,6 +571,37 @@ class StandardCombi(object):
                     grid.axis('off')
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+
+                if True:
+                    #fig, overax = plt.subplots()
+                    #overax = SubplotZero(fig, 111)
+                    #fig.add_subplot(overax)
+
+                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
+                    overax.patch.set_alpha(0)
+                    #overax.axis('off')
+                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
+                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
+                    overax.set_xticks([],[])
+                    overax.set_yticks([],[])
+                    overax.set_xlabel("$l_1$")
+                    overax.set_ylabel("$l_2$")
+                    #plt.rcParams['axes.linewidth'] = 1
+                    for direction in ["left", "bottom"]:
+                        # adds arrows at the ends of each axis
+                        #overax.spines[direction].set_axisline_style("-|>")
+
+                        # adds X and Y-axis from the origin
+                        overax.spines[direction].set_visible(True)
+                    for direction in ["right", "top"]:
+                        # hides borders
+                        overax.spines[direction].set_visible(False)
+                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+
+
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
         # ax1 = fig.add_subplot(111, alpha=0)
