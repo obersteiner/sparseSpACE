@@ -433,7 +433,8 @@ class StandardCombi(object):
 
         plt.show()
         # reset fontsize to default so it does not affect other figures
-        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        plt.rcdefaults()
         return fig
 
     def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
@@ -643,8 +644,8 @@ class StandardCombi(object):
         #plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-
         plt.show()
+        plt.rcdefaults()
         return fig
 
     def plot_points(self, points, grid, markersize, color="black", fill_boundary="False"):
@@ -763,7 +764,8 @@ class StandardCombi(object):
         if show_fig:
             plt.show()
         # reset fontsize to default so it does not affect other figures
-        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        plt.rcdefaults()
+        #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     # check if combischeme is right; assertion is thrown if not
