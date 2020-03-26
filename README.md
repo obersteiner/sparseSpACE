@@ -17,4 +17,5 @@ Software requirements:
 - ipython3 (for Tutorials)
 - ipython3 notebooks or jupyter notebook (for Tutorials)
 - chaospy (for UQ)
+- scikit-learn (for SGDE)
 - dill (for saving/loading the current state of the refinement to/from a file)
