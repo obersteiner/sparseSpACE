@@ -664,7 +664,7 @@ class StandardCombi(object):
             grid.plot(x_array, y_array, 'o', markersize=markersize, color=color)
 
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False, additional_points=[]):
         """This method prints the resulting sparse grid obtained by the combination technique.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -685,9 +685,16 @@ class StandardCombi(object):
             return None
         if dim == 2:
             fig, ax = plt.subplots(figsize=(figsize, figsize))
+            xArray = [p[0] for p in additional_points]
+            yArray = [p[1] for p in additional_points]
+            plt.plot(xArray, yArray, 'o', markersize=markersize, color="blue")
         if dim == 3:
             fig = plt.figure(figsize=(20, 20))
             ax = fig.add_subplot(111, projection='3d')
+            xArray = [p[0] for p in additional_points]
+            yArray = [p[1] for p in additional_points]
+            zArray = [p[2] for p in additional_points]
+            plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
 
         inf_bounds = any([math.isinf(x) for x in np.concatenate([self.a, self.b])])
         if inf_bounds:
