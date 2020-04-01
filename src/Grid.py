@@ -134,6 +134,10 @@ class Grid(object):
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
         return get_cross_product_list(self.coordinate_array)
 
+    # this method returns all the index tuples of all points in the grid
+    def get_indexlist(self) -> Sequence[Tuple[float, ...]]:
+        return get_cross_product_list([range(1, n + 1) for n in self.levelToNumPoints(self.levelvec)])
+
     # this method returns the quadrature weight for the point specified by the indexvector
     def getWeight(self, indexvector: Sequence[int]) -> float:
         weight = 1
@@ -2087,11 +2091,19 @@ class GaussGrid1D(Grid1d):
 
 # this class generates a grid according to the Gauss-Legendre quadrature
 class GaussLegendreGrid(GaussGrid):
+    def __init__(self,a, b, normalize=False):
+        self.normalize=normalize
+        super().__init__(a, b)
+
     def _initialize_grids1D(self):
-        self.grids = [GaussLegendreGrid1D(a=self.a[d], b=self.b[d], boundary=self.boundary) for d in range(self.dim)]
+        self.grids = [GaussLegendreGrid1D(a=self.a[d], b=self.b[d], boundary=self.boundary, normalize=self.normalize) for d in range(self.dim)]
 
 
 class GaussLegendreGrid1D(GaussGrid1D):
+    def __init__(self,a, b, boundary=False, normalize=False):
+        self.normalize=normalize
+        super().__init__(a, b, boundary)
+
     def get_1d_points_and_weights(self) -> Tuple[Sequence[float], Sequence[float]]:
         coordsD, weightsD = legendre.leggauss(int(self.num_points))
         coordsD = np.array(coordsD)
@@ -2099,6 +2111,8 @@ class GaussLegendreGrid1D(GaussGrid1D):
         coordsD *= self.length / 2.0
         coordsD += self.start
         weightsD = np.array(weightsD) * self.length / 2
+        if self.normalize:
+            weightsD *= 1/(self.end - self.start)
         return coordsD, weightsD
 
 

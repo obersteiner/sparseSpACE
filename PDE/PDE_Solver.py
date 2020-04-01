@@ -16,16 +16,17 @@ class FEniCS_Solver(PDE_Solver):
         - f: String - C++ style expression (including cmath header file) for PDE's input
         - f_degree: int - degree of the input expression
                     e.g f='1 + x[0]*x[0] + 2*x[1]*x[1]’, f_degree=2
-        - u_D: String - C++ style expression for Dirichlet boundary
+        - u_D: String - C++ style expression for boundary
         - u_D_degree: int
     '''
     def __init__(self, f, f_degree, u_D, u_D_degree):
-        self.f= Expression(f, degree=f_degree)
-        self.u_D = Expression(u_D, degree=u_D_degree)
+        self.f= Expression(f, degree=f_degree) # rhs expression
+        self.u_D = Expression(u_D, degree=u_D_degree) # expression for the boundary
 
-    def define_mesh_from_points(self, grid, el_type: str, degree: int):
+    def define_mesh_from_points(self, coords, el_type: str = 'P', degree: int = 1):
         """ Defines mesh from a point coordinates specified by grid
-                grid: colection of vectors specifying node coordinates along each axis
+            Parameters:
+                coords: colection of vectors specifying node coordinates along each axis
         """
         pass
 
@@ -49,12 +50,6 @@ class FEniCS_Solver(PDE_Solver):
         self.mesh = RectangleMesh(Point(*a), Point(*b), N_x-1, N_y-1) #takes number of intervals (N-1) as an argument
         self.V = FunctionSpace(self.mesh, el_type, degree)
 
-    # # return data in order of the array dof
-    # def convert_dof(self, data, dof):
-    #     ret = np.zeros(np.array(data).shape)
-    #     for i in range(len(data)):
-    #         ret[dof[i]]=data[i]
-    #     return ret
         
     def solve(self):
         pass
@@ -93,7 +88,7 @@ class Poisson(FEniCS_Solver):
         self.u = Function(self.V)
         solve(a == L, self.u, bc)
 
-        return self.u.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
+        return self.u.compute_vertex_values(self.mesh).reshape(*self.N[::-1]) # reverse order due to matrix shape convention
 
 
     def plot_solution(self):
@@ -118,19 +113,20 @@ class GaussianHill(FEniCS_Solver):
             u = u_0             at t = 0 (chosen as a Gaussian hill)
             u_D = f = 0
     """
-    def __init__(self):
-        pass
+    def __init__(self, dt=0.05, t_max=1):
+        self.dt = dt
+        self.t_max = t_max
 
-    def solve(self, dt=0.05, t_max=1):
-        ''' Solves instationary diffusion equation (implicit Euler) on predefined mesh 
-                dt - time-step size
-                t_max - end time
-            returns nodal values at each timestep as an array of arrays'''
+    def solve(self):
+        ''' 
+        Solves instationary diffusion equation (implicit Euler) on predefined mesh 
+        Paremeters:
+            dt - time-step size
+            t_max - end time
+        Returns: nodal values at each timestep as an array of arrays'''
 
         assert self.mesh != None, " First, define the mesh "
-        self.t_max=t_max
-        self.dt=dt
-        num_steps = int(t_max/dt)
+        num_steps = int(self.t_max/self.dt)
         self.result = np.zeros((num_steps+1,*self.N[::-1]))
 
         # Define boundary condition
@@ -139,7 +135,7 @@ class GaussianHill(FEniCS_Solver):
         bc = DirichletBC(self.V, Constant(0), boundary)
 
         # Define initial value
-        u_0 = Expression('exp(-a*pow(x[0], 2) - a*pow(x[1], 2))', degree=2, a=5)
+        u_0 = Expression('exp(-a*pow(x[0], 2) - a*pow(x[1], 2))', degree=2, a=5) # Gaussian Hill
         u_n = interpolate(u_0, self.V)
         self.result[0] = u_n.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
 
@@ -148,14 +144,14 @@ class GaussianHill(FEniCS_Solver):
         v = TestFunction(self.V)
         f = Constant(0)
 
-        F = u*v*dx + dt*dot(grad(u), grad(v))*dx - (u_n + dt*f)*v*dx
+        F = u*v*dx + self.dt*dot(grad(u), grad(v))*dx - (u_n + self.dt*f)*v*dx
         a, L = lhs(F), rhs(F)
 
         # Time-stepping
         u = Function(self.V)
         t = 0
         for n in range(num_steps):
-            t += dt
+            t += self.dt
             solve(a == L, u, bc)
             self.result[n+1] = u.compute_vertex_values(self.mesh).reshape(*self.N[::-1])
             u_n.assign(u)

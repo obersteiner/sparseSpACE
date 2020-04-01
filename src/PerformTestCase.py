@@ -11,7 +11,7 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
     interpolation_errorL2 = []
     interpolation_errorMax = []
     for i in range(lmin + 1, lmin + maxLmax):
-        scheme, error, result = standardCombi.perform_combi(lmin, i, f, reference_solution=reference_solution)
+        scheme, error, result = standardCombi.perform_operation(lmin, i)
         errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
