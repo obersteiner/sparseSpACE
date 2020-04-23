@@ -571,7 +571,7 @@ class StandardCombi(object):
                 # filter points from grid downwards (y-1)
                 levelvector_y_1 = list(levelvector)
                 if levelvector_y_1[1] > self.lmin[1]:
-                    levelvector_y_1[0] -= 1
+                    levelvector_y_1[1] -= 1
                     points_y1 = self.get_points_component_grid(levelvector_y_1)
                     points_not_null = set(points_not_null) - set(points_y1)
                     points = set(points) - set(points_y1)
