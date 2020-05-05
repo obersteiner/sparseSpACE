@@ -83,8 +83,14 @@ class RefinementContainer(object):
     # return the maximal error among all RefinementObjects
     def get_total_error(self) -> float:
         total_error = 0
+        k=0                             #new
         for i in self.refinementObjects:
             total_error += i.error
+            if k==0: #new {
+                self.errorVec=i.errorVec
+            else:    
+                self.errorVec=np.add(i.errorVec,self.errorVec)
+            k+=1     #new }
         return total_error
 
     # indicate that all objects have been processed and new RefinementObjects will be added at the end
@@ -128,7 +134,7 @@ class RefinementContainer(object):
     def calc_error(self, object_id, norm, volume_weights=None) -> None:
         refine_object = self.refinementObjects[object_id]
         refine_object.set_error(self.errorEstimator.calc_error(refine_object, norm, volume_weights=volume_weights))
-
+        refine_object.set_errorSt(self.errorEstimator.errorSt) #new
     # returns all RefinementObjects in the container
     def get_objects(self) -> List[RefinementObject]:
         return self.refinementObjects
@@ -222,8 +228,14 @@ class MetaRefinementContainer(object):
     # return the maximal error among all RefinementContainers
     def get_total_error(self) -> float:
         total_error = 0.0
+        i=0 #new
         for c in self.refinementContainers:
             total_error += c.get_total_error()
+            if i==0: #new {
+                self.errorVec=c.errorVec
+            else:    
+                self.errorVec=np.add(self.errorVec,c.errorVec) #new
+            i+=1    #new }
         return total_error
 
     def refinement_postprocessing(self) -> None:
