@@ -4,7 +4,8 @@ from Grid import *
 from BasisFunctions import *
 from RefinementContainer import RefinementContainer
 from RefinementObject import RefinementObject
-
+from mpi4py import MPI
+import os
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
@@ -606,9 +607,12 @@ class Integration(AreaOperation):
     def point_output_length(self):
         return self.f.output_length()
 
-    def initialize(self):
+    def initialize(self,points):
         self.f.reset_dictionary()
         self.integral = np.zeros(self.f.output_length())
+        if points is not None:
+            new_points=self.get_new_points(points)
+            self.start_parallel_evaluation(new_points)
 
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
         return self.f.eval(coordinate)
@@ -820,10 +824,72 @@ class Integration(AreaOperation):
         self.a = a
         self.b = b
 
-    def initialize_evaluation_dimension_wise(self, refinement_container):
+    def initialize_evaluation_dimension_wise(self, refinement_container,points):
+        if points is not None:
+            new_points=self.get_new_points(points)                               #new
+            self.start_parallel_evaluation(new_points)
         refinement_container.value = np.zeros(self.f.output_length())
         self.integral = np.zeros(self.f.output_length())
-
+    
+    def get_new_points(self,points):
+       # new_points=[]               
+        new_points=set()
+        for point in points:
+            if not (os.path.exists('output/CampusUtilisation.'+str(point[0])+"," + str(point[1]) + "," + str(point[2]) + "," + str(point[3])+"/timesteps.txt")):     
+                
+                new_points.add(tuple(point))
+        return list(new_points) 
+    def start_parallel_evaluation(self,points):
+        new_points=self.get_new_points(points)
+        len_points=len(new_points)        
+        if len_points>0:
+                comm=MPI.COMM_WORLD
+                rank=comm.Get_rank()
+                size=comm.Get_size()
+                data=[]
+                if (rank==0):
+                    
+                    step=len_points // size
+                    remainder=len_points % size
+                    counter=len_points % size
+                    for i in range(size):
+                        if i==0:
+                            
+                            if remainder>0:
+                                           data=new_points[:(step+1)]
+                                          # print(new_points[:(step+1)],rank,"hello from main process")
+                                           counter-=1 #new code
+                            else: 
+                                data=new_points[:step]
+                              #  print(new_points[:step],rank,"hello from main process")
+                        else:
+                        
+                             part_to_eval=step*(i)
+                             if counter>0:
+                            
+                                           part_to_eval+=remainder-counter
+                                           comm.send(new_points[part_to_eval:(part_to_eval+step+1)],dest=i)
+                                           counter-=1  #new code
+                                          # print(new_points[part_to_eval:(part_to_eval+step+1)],rank,"hello from subprocess")
+                             else:
+                                    if size<len_points:
+                                                       part_to_eval+=remainder 
+                                                       comm.send(new_points[part_to_eval:(part_to_eval+step)],dest=i)
+                                                    #   print(new_points[part_to_eval:(part_to_eval+step)],rank,"hello from subprocess")
+                                    else:
+                                          comm.send([],dest=i)
+                        #counter-=1 
+                              
+                #if rank>0:
+                       #  data=comm.recv(source=0)
+                
+                if (len(data))>0:
+                        for i in range(len(data)):
+                                  self.f.eval(data[i])
+                barrier=False                
+                for i in range(size-1):    #new
+                    barrier=comm.recv(source=i+1)   #new
+                #comm.Barrier()
     # This method returns the previous integral approximation + the points contained in this grid for the given
     # component grid identified by the levelvector. In case the component grid is new, we search for a close component
     # grid with levelvector2 <= levelvector and return the respective previous integral and the points of the
