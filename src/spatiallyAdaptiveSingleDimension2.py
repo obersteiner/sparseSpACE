@@ -568,7 +568,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         return fig
 
     def init_evaluation_operation(self, areas):
-        self.operation.initialize_evaluation_dimension_wise(areas[0])
+        points,weights=self.get_points_and_weights()           #new
+        self.operation.initialize_evaluation_dimension_wise(areas[0],points)
+        
 
     def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
