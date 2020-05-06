@@ -1077,7 +1077,7 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         elif not boundary and num_points == 3:
             return [0.0, 1.0, 0.0]
         assert boundary or num_points > 3
-        if modified_basis:
+        if modified_basis and a!=-np.inf and b!=np.inf :
             # This only works with the Uniform distribution.
             weights = GlobalTrapezoidalGrid.compute_weights(grid_1D, a, b, True) / (b - a)
             assert isclose(sum(weights), 1.0), sum(weights)
