@@ -68,7 +68,9 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.combischeme = CombiScheme(self.dim)
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=self.print_output)
             self.initialize_refinement()
-            self.operation.initialize()
+            points,weights=self.get_points_and_weights()
+            self.operation.initialize(points)
+            #self.operation.initialize()
         else:  # use the given refinement; in this case reuse old lmin and lmax and finestWidth; works only if there was no other run in between on same object
             self.refinement = refinement_container
             self.refinement.reinit_new_objects()
@@ -93,6 +95,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
+        self.errorVec=self.refinement.errorVec                   #new
         if self.print_output:
             print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
             self.operation.print_evaluation_output(self.refinement)
@@ -216,6 +219,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.reference_solution = self.operation.get_reference_solution()
         self.init_adaptive_combi(lmin, lmax, refinement_container, tol)
         self.error_array = []
+        self.vecErrorStorage={}           #new
         self.surplus_error_array = []
         self.interpolation_error_arrayL2 = []
         self.interpolation_error_arrayMax = []
@@ -241,6 +245,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         while True:
             error, surplus_error = self.evaluate_operation()
             self.error_array.append(error)
+            self.vecErrorStorage[self.get_total_num_points(distinct_function_evals=True)]=(self.errorVec)     #new
             self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
             if self.evaluation_points is not None:
@@ -290,7 +295,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             number_of_evaluations = self.refinement.evaluationstotal
         #self.operation.set_function(None)
         self.calculated_solution = combi_result
-        return self.refinement, self.scheme, self.lmax, combi_result, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax
+        return self.refinement, self.scheme, self.lmax, combi_result, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax,self.vecErrorStorage   #new
 
     @abc.abstractmethod
     def initialize_refinement(self):
