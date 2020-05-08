@@ -51,10 +51,10 @@ class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
         # pagoda-volume
         volumes = refine_object.volume
         if volume_weights is None:
-            self.errorVector=np.array((abs(volumes)))
+            self.errorSt=np.array((abs(volumes)))
             return LA.norm(abs(volumes), norm)
         # Normalized volumes
-        self.errorVector=np.array((abs(volumes * volume_weights)))
+        self.errorSt=np.array((abs(volumes * volume_weights)))
         return LA.norm(abs(volumes * volume_weights), norm)
 
 
