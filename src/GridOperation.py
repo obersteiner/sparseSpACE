@@ -1489,11 +1489,14 @@ class PDE_Solve(GridOperation):
     def __init__(self, solver, grid: Grid, dim:int, reference_solution=None):
         self.solver = solver
         self.grid = grid
-        self.grid_coords = grid.coordinate_array
+        self.grid_coords = grid.coordinate_array #DOESN'T WORK WITH GLOBALTRAPEZOID
         self.dim = dim
         self.grids_dict = {}
         self.reference_solution = reference_solution
         self.combi_result = None
+
+    def is_area_operation(self) -> bool:
+        return True
     
 
     def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
@@ -1529,9 +1532,18 @@ class PDE_Solve(GridOperation):
             try:
                 values.append(points_dict[point])
             except KeyError:
-                print("Point {} could not have been found in current component_grid".format(point))
+                print("Point {} was not found in current component_grid".format(point))
         return values
     
+
+    def get_values_and_points(self, levelvector: tuple):
+        """ This method returns the values and points associated with a component_grid with specified levelvector. """
+        try:
+            component_grid = self.grids_dict[levelvector]
+            return component_grid.get_data().flatten(), component_grid.get_points()
+        except KeyError:
+            print("No data for component grid associated with specified level vector")
+
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid) -> None:
         """ This method is used to compute the operation in the dimension-wise refinement strategy.
@@ -1540,65 +1552,43 @@ class PDE_Solve(GridOperation):
             grid_point_levels: Grid point levels as list of 1D lists
             component_grid: Component grid on which operation should be applied
         """
-        reuse_old_values = False
-        if reuse_old_values:
-            previous_integral, previous_points = self.get_previous_integral_and_points(component_grid.levelvector)
-            integral = np.array(previous_integral)
-            previous_points_coarsened = list(previous_points)
-            modification_points, modification_points_coarsen = self.get_modification_points(previous_points,
-                                                                                            gridPointCoordsAsStripes)
-            if modification_points_coarsen is not None:
-                for d in range(self.dim):
-                    previous_points_coarsened[d] = list(previous_points[d])
-                    for mod_point in modification_points_coarsen[d]:
-                        for removal_point in mod_point[1]:
-                            previous_points_coarsened[d].remove(removal_point)
-                integral += self.subtract_contributions(modification_points_coarsen, previous_points_coarsened,
-                                                        previous_points)
-                integral -= self.get_new_contributions(modification_points_coarsen, previous_points)
-            if modification_points is not None:
-                # ~ integral -= self.subtract_contributions(modification_points, previous_points_coarsened,
-                # ~ gridPointCoordsAsStripes)
-                v = self.subtract_contributions(modification_points, previous_points_coarsened,
-                                                gridPointCoordsAsStripes)
-                assert len(v) == len(integral)
-                integral -= v
-                integral += self.get_new_contributions(modification_points, gridPointCoordsAsStripes)
-        else:
-            self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-            integral = self.grid.integrate(self.f, component_grid.levelvector, self.a, self.b)
-        self.refinement_container.value += integral * component_grid.coefficient
-        self.integral += integral * component_grid.coefficient
-        if reuse_old_values:
-            self.dict_integral[tuple(component_grid.levelvector)] = np.array(integral)
-            self.dict_points[tuple(component_grid.levelvector)] = np.array(gridPointCoordsAsStripes)
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+
+        # result = self.evaluate_levelvec(component_grid)
+        print(gridPointCoordsAsStripes)
+        self.solver.define_mesh_from_points(gridPointCoordsAsStripes)
+        nodal_values = self.solver.solve()
+        component_grid.store_data(nodal_values)
+        self.refinement_container.value += nodal_values * component_grid.coefficient
 
 
     def evaluate_levelvec(self, component_grid) -> None:
         """ Evaluates given PDE on specified component_grid and stores the result in grids_dict - necesary for combining them later."""
-        N_x, N_y = component_grid.get_N()
-        self.solver.define_rectangle_mesh(self.grid.a, self.grid.b, N_x, N_y) # Define mesh from provided component_grid
-        # self.solver.define_unit_hypercube_mesh(component_grid.get_points())
+        self.solver.define_rectangle_mesh(self.grid.a, self.grid.b, *component_grid.get_N()) # Define mesh from provided component_grid
         nodal_values = self.solver.solve()
         component_grid.store_data(nodal_values) # the result is stored in component_grid: ComponentGridInfo
-        self.grids_dict[component_grid.get_levelvector()] = component_grid  # ...and locally in dictionary to be combined
+        self.grids_dict[component_grid.get_levelvector()] = component_grid  # the component grid itself is saved locally in a dictionary to be combined later
 
 
     def get_result(self):
-        """ Calculates the combination result. """
-        # Extrapolate all component_grids to adequate size and combine them
+        """ Calculates the final result by interpolating all component_grids to adequate size 
+            and combining them. 
+        """
         combi_result = []
         for c_grid in self.grids_dict.values():
-            # print(np.shape(c_grid.data))
+
+            # Interpolate component grid data to global grid
             data = c_grid.interpolate_to_levelvec(self.grid.levelvec)
-            # print(np.shape(data))
-            if combi_result==[]:
+
+            # Combine
+            if combi_result == []:
                 combi_result = np.zeros(np.shape(data))
-                # print("combi_result shape: {}".format(np.shape(combi_result)))
-            combi_result += c_grid.get_coefficient()*data
+            combi_result += data*c_grid.get_coefficient()
+
         self.combi_result = combi_result # store locally
         return combi_result
+
 
     def get_reference_solution(self):
         """ Returns reference solution if not None """
@@ -1615,87 +1605,125 @@ class PDE_Solve(GridOperation):
 
     def compute_difference(self, first_value: Sequence[float], second_value: Sequence[float], norm) -> float:
         """ This method calculates the difference measure (e.g error measure) between the combi result and the reference
-        solution as a scalar value. Can be changed by Operation.
+        solution as a scalar value. In case of instationary solution it somputes an average difference.
+        Can be changed by Operation.
+
         Parameters:
             first_value: Value that you want to compare to second value.
             second_value: Value that you want to compare to first value.
             norm: Norm in which the error should be calculated.
         Return: Difference measure
         """
-        if len(np.shape(first_value))>2:
+        if self.solver.instationary:
             result = 0
-            l = len(first_value)
-            for i in range(l):
-                result += LA.norm(abs(first_value[i] - second_value[i]), norm)
-            return result/l
-        else:
+            n = len(first_value) # number of timesteps
+            if self.solver.data_dim == 1: # if scalar valued
+                for i in range(n):
+                    result += LA.norm(abs(first_value[i] - second_value[i]), norm)
+            else: # if vector valued
+                for i in range(n):
+                    temp = 0
+                    for j in range(self.solver.data_dim): # for each vector component
+                        temp += LA.norm(abs(first_value[i][j] - second_value[i][j]), norm)
+                    result += temp
+            return result/n
+        else: # if stationary
             return LA.norm(abs(first_value - second_value), norm)
 
 
     def plot_component_grid(self, combiObject: "StandardCombi", component_grid: ComponentGridInfo, grid: Axes3D) -> None:
         """ This method plots the contour plot of the specified component grid and is used by print_resulting_combi_scheme 
         in StandardCombi. """
-        try:
+        if not self.solver.instationary:
             grid.imshow(component_grid.get_data(), extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
                         interpolation='none', origin='lower', cmap=cm.viridis)
+
+            # # Alternative representations:
+            # # Tiles
             # grid.pcolormesh(*component_grid.coords, component_grid.get_data(), cmap = cm.viridis)
+            # # Scatter plot
             # X,Y = np.meshgrid(*component_grid.coords)
             # grid.scatter(X, Y,c=component_grid.get_data(), s=500)
-        except:
-            print("Printing the result for time t=0")
-            grid.imshow(component_grid.get_data()[0], extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
-                        interpolation='none', origin='lower')
+        else:
+            # Printing the result for time t=dt
+            if self.solver.data_dim == 1: # scalar output
+                grid.imshow(component_grid.get_data()[1], extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
+                            interpolation='none', origin='lower')
+            elif self.solver.data_dim == 2: # vector output
+                X,Y = np.meshgrid(*component_grid.coords)
+                U, V = component_grid.data[1]
+                M = np.hypot(U, V) # Given the “legs” of a right triangle, return its hypotenuse.
+                grid.quiver(X, Y, U, V, M, units='x', width=0.005)
 
 
     def plot_combi_solution(self, snapshots=3):
-        """ Plots resulting combi_solution. In case of an instationary PDE the method will plot several snapshots of the solution. """
+        """ Plots resulting combi_solution. In case of an instationary PDE the method will plot several equally spaced snapshots"""
         assert self.combi_result is not None
-        # X,Y = np.meshgrid(*self.grid_coords)
-        try:
+        X,Y = np.meshgrid(*self.grid_coords) #needed for countourf
+
+        if self.solver.instationary:
             idxs = np.linspace(0, int(self.solver.t_max/self.solver.dt), snapshots, dtype=int)
             fig, axes = plt.subplots(1, snapshots, sharey=True, figsize=(snapshots*5,5))
             for i, ax in enumerate(axes):
                 ax.set_aspect('equal')
                 ax.set_title("Combi result at t= {}".format(round(idxs[i]*self.solver.dt, 3)))
-                # cf = ax.contourf(X,Y,self.combi_result)
-                cf = ax.imshow(self.combi_result[idxs[i]], extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
+                # cf = ax.contourf(X,Y,self.combi_result) # countour plot
+                if self.solver.data_dim == 1: # scalar output
+                    cf = ax.imshow(self.combi_result[idxs[i]], extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
                             interpolation='bilinear', origin='lower', cmap=cm.viridis)
+                elif self.solver.data_dim == 2: # vector output
+                    U, V = self.combi_result[idxs[i]]
+                    M = np.hypot(U, V) # Given the “legs” of a right triangle, return its hypotenuse.
+                    cf = ax.quiver(X, Y, U, V, M, units='x', width=0.01)
+                    qr = ax.quiverkey(cf, 0.9, 0.9, 1, r'$1 \frac{m}{s}$', labelpos='E', coordinates='figure')
+                    ax.scatter(X, Y, color='0.5', s=1)
+                else:
+                    print("Plotting of 3D vector fields not supported")
+
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.2)
                 fig.colorbar(cf, cax=cax)
-        except AttributeError:
+
+        else: #stationary case
             fig, ax = plt.subplots(figsize=(5,5))
             ax.set_aspect('equal')
             ax.set_title("Combi result")
             # cf = ax.contourf(X,Y,self.combi_result)
             cf = ax.imshow(self.combi_result, extent=[self.grid.a[0], self.grid.b[0], self.grid.a[1], self.grid.b[1]], 
-                        interpolation='bilinear', origin='lower', cmap=cm.viridis)
+                    interpolation='bilinear', origin='lower', cmap=cm.viridis)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.2)
             fig.colorbar(cf, cax=cax)
     
+
     def plot_error(self, snapshots=3):
         """ Plots relative error compared to reference solution. In case of an instationary PDE the method will plot 
         several snapshots of the error."""
         X,Y = np.meshgrid(*self.grid_coords)
         try:
-            idxs = np.linspace(0, int(self.solver.t_max/self.solver.dt), snapshots, dtype=int)
-            fig, axes = plt.subplots(1, snapshots, sharey=True, figsize=(snapshots*5,5))
-            for i, ax in enumerate(axes):
+            if self.solver.instationary:
+                idxs = np.linspace(0, int(self.solver.t_max/self.solver.dt), snapshots, dtype=int)
+                fig, axes = plt.subplots(1, snapshots, sharey=True, figsize=(snapshots*5,5))
+                for i, ax in enumerate(axes):
+                    ax.set_aspect('equal')
+                    ax.set_title("Error at t= {}".format(round(idxs[i]*self.solver.dt, 3)))
+                    if self.solver.data_dim == 1: # scalar output
+                        error = np.subtract(self.combi_result[idxs[i]], self.reference_solution[idxs[i]])
+                    else:
+                        error = np.subtract(self.combi_result[idxs[i]][0], self.reference_solution[idxs[i]][0])
+                        for j in range(1,self.solver.data_dim):
+                            error += np.subtract(self.combi_result[idxs[i]][j], self.reference_solution[idxs[i]][j])
+                    cf = ax.contourf(X,Y, error)
+                    divider = make_axes_locatable(ax)
+                    cax = divider.append_axes("right", size="5%", pad=0.2)
+                    fig.colorbar(cf, cax=cax)
+            else:
+                fig, ax = plt.subplots(figsize=(5,5))
                 ax.set_aspect('equal')
-                ax.set_title("Error at t= {}".format(round(idxs[i]*self.solver.dt, 3)))
-                error = np.subtract(self.combi_result[idxs[i]], self.reference_solution[idxs[i]])
-                cf = ax.contourf(X,Y, error)
+                ax.set_title("Error")
+                cf = ax.contourf(X,Y, np.subtract(self.combi_result, self.reference_solution))
                 divider = make_axes_locatable(ax)
                 cax = divider.append_axes("right", size="5%", pad=0.2)
                 fig.colorbar(cf, cax=cax)
-        except AttributeError:
-            fig, ax = plt.subplots(figsize=(5,5))
-            ax.set_aspect('equal')
-            ax.set_title("Error")
-            cf = ax.contourf(X,Y, np.subtract(self.combi_result, self.reference_solution))
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.2)
-            fig.colorbar(cf, cax=cax)
         except TypeError:
             print("Either combi_result or reference_solution are None")

@@ -268,6 +268,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             # refine further
             self.refine()
             if self.do_plot:
+                print("Evaluation points: {}".format(self.evaluation_points))
                 print("Refinement Graph:")
                 self.draw_refinement()
                 print("Combi Scheme:")

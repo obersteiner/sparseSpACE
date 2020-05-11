@@ -654,12 +654,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             else:
                 self._initialize_points(points, func_mid, d, 0, num_points-1)
             initial_points.append(np.array(points))
-        self.refinement = MetaRefinementContainer([RefinementContainer
-                                                   ([RefinementObjectSingleDimension(initial_points[d][i],
-                                                                                     initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), grid=self.grid,
-                                                                                     coarsening_level=0, a=self.a[d], b=self.b[d], chebyshev=self.chebyshev_points) for i in
-                                                     range(2 ** maxv)], d, self.errorEstimator) for d in
-                                                   range(self.dim)], calculate_volume_weights=self.use_volume_weighting)
+        self.refinement = MetaRefinementContainer([RefinementContainer(
+                                [RefinementObjectSingleDimension(initial_points[d][i], initial_points[d][i + 1], d, self.dim, list((levels[i], levels[i+1])), 
+                                grid=self.grid, coarsening_level=0, a=self.a[d], b=self.b[d], chebyshev=self.chebyshev_points) 
+                                for i in range(2 ** maxv)], d, self.errorEstimator) 
+                                for d in range(self.dim)], calculate_volume_weights=self.use_volume_weighting)
+
         if self.dim_adaptive:
             self.combischeme.init_adaptive_combi_scheme(self.lmax[0], self.lmin[0])
         #self.evaluationCounts = [np.zeros(self.lmax[d]) for d in range(self.dim)]
