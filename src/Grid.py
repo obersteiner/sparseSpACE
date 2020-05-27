@@ -6,6 +6,7 @@ import numpy.polynomial.hermite as hermite
 import math
 from math import isclose, isinf
 from BasisFunctions import *
+from Extrapolation import RombergGrid, RombergGridVersion
 from Utils import *
 from ComponentGridInfo import *
 from typing import Callable, Tuple, Sequence
@@ -1035,6 +1036,7 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         return weights
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
         return self.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
@@ -1127,6 +1129,25 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
+
+
+class GlobalRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert not(modified_basis) or not(boundary)
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
+        romberg_grid = RombergGrid(grid_version=RombergGridVersion.GROUPED_SLICES)
+        romberg_grid.set_grid(grid_1D, grid_levels_1D)
+
+        return romberg_grid.get_weights()
 
 
 class GlobalBasisGrid(GlobalGrid):
