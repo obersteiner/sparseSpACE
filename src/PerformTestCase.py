@@ -76,7 +76,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         algorithm[
             0].performSpatiallyAdaptiv(
             algorithm[1], algorithm[2], algorithm[3], 10 ** -maxtol, max_evaluations=max_evaluations, evaluation_points=evaluation_points)
-        # errorArrayAlgorithm.append(abs(integral - realIntegral) / abs(realIntegral))
+        # errorArrayAlgorithm.append(abs(integral - reference_solution) / abs(reference_solution))
         errorArrayAlgorithm.extend(error_array_new)
         surplusErrorArrayAlgorithm.extend(surplus_error_array_new)
 
@@ -92,8 +92,8 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numNaive.append(numNaiveAlgorithm)
         numIdeal.append(numIdealAlgorithm)
         numFEvalIdeal.append(numFEvalIdealAlgorithm)
-        interpolation_error_arrayL2.append(interpolation_errorL2)
-        interpolation_error_arrayMax.append(interpolation_errorMax)
+        # interpolation_error_arrayL2.append(interpolation_errorL2)
+        # interpolation_error_arrayMax.append(interpolation_errorMax)
 
 
 
@@ -119,23 +119,23 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         xArrayStandard.append(xArrayStandardTest)
         xFEvalArrayStandard.append(xFEvalArrayStandardTest)
         errorArrayStandard.append(errorArrayStandardTest)
-        interpolation_error_standardL2.append(interpolation_errorL2)
-        interpolation_error_standardMax.append(interpolation_errorMax)
+        # interpolation_error_standardL2.append(interpolation_errorL2)
+        # interpolation_error_standardMax.append(interpolation_errorMax)
     # plot
     for i in range(maxLmin - minLmin):
         print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + minLmin))
-        print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evaks Standard lmin= " + str(i + minLmin))
-        print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
-        print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
+        print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evals Standard lmin= " + str(i + minLmin))
+        # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
+        # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
-        # plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
-        #plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
-        #           label='standardCombination distinct f evals lmin=' + str(i + minLmin))
+        plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
+        plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
+                  label='standardCombination distinct f evals lmin=' + str(i + minLmin))
 
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-                   label='standardCombination L2 lmin=' + str(i + minLmin))
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-                   label='standardCombination Linf lmin=' + str(i + minLmin))
+        # plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+        #            label='standardCombination L2 lmin=' + str(i + minLmin))
+        # plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+        #            label='standardCombination Linf lmin=' + str(i + minLmin))
     if doDimAdaptive:
         print("numPoints =", numFEvalIdealDimAdaptive)
         print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
@@ -145,18 +145,18 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
         print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' distinct f evals')
         print(numFEvalIdeal[i], surplusErrorArray[i], adaptiveAlgorithmVector[i][4] + ' surplus error distinct f evals')
-        print(numFEvalIdeal[i],interpolation_error_arrayL2[i], adaptiveAlgorithmVector[i][4] + ' L2 interpolation error')
-        print(numFEvalIdeal[i], interpolation_error_arrayMax[i], adaptiveAlgorithmVector[i][4] + ' Linf interpolation error')
+        # print(numFEvalIdeal[i],interpolation_error_arrayL2[i], adaptiveAlgorithmVector[i][4] + ' L2 interpolation error')
+        # print(numFEvalIdeal[i], interpolation_error_arrayMax[i], adaptiveAlgorithmVector[i][4] + ' Linf interpolation error')
 
         # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        #plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
+        plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        # plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
+        # plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
         plt.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
 
     plt.legend(bbox_to_anchor=(3, 1), loc="upper right")
     plt.xlabel('Number of points')
     plt.ylabel('Approximation error')
-    # plt.savefig('convergence.pdf', bbox_inches='tight')
+    plt.savefig('convergence.pdf', bbox_inches='tight')
     plt.show()

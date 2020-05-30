@@ -24,35 +24,76 @@ class Function(ABC):
 
 
 class ExtrapolationCoefficientVersion(Enum):
-    LINEAR = 1
-    QUADRATIC = 2
-    CUBIC = 3
+    ROMBERG = 1
+    ROMBERG_LINEAR = 2
+    TRAPEZOIDAL_SLICE = 3
 
 
 class ExtrapolationCoefficientsFactory:
-    def __init__(self, a, b, version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.QUADRATIC):
+    def __init__(self, a, b, support_sequence=None,
+                 version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.ROMBERG):
         self.a = a
         self.b = b
+
+        assert not (version == ExtrapolationCoefficientVersion.TRAPEZOIDAL_SLICE) or \
+               (version == ExtrapolationCoefficientVersion.TRAPEZOIDAL_SLICE and support_sequence is not None)
+        self.support_sequence = support_sequence
+
         self.version = version
 
     def get_coefficient(self, m, j):
-        if self.version == ExtrapolationCoefficientVersion.LINEAR:
-            exponent = 1  # extrapolation with h_k
-        elif self.version == ExtrapolationCoefficientVersion.QUADRATIC:
-            exponent = 2  # extrapolation with (h_k)^2
-        elif self.version == ExtrapolationCoefficientVersion.CUBIC:
-            exponent = 3  # extrapolation with (h_k)^3
+        if self.version == ExtrapolationCoefficientVersion.ROMBERG\
+                or self.version == ExtrapolationCoefficientVersion.ROMBERG_LINEAR:
+            return self.get_romberg_coefficient(m, j)
+        elif self.version == ExtrapolationCoefficientVersion.TRAPEZOIDAL_SLICE:
+            return self.get_trapezoidal_slice_coefficient(m, j)
         else:
             raise RuntimeError("No valid ExtrapolationCoefficientVersion provided")
 
+    def get_romberg_coefficient(self, m, j):
         coefficient = 1
         h_j = self.get_step_width(j)
+
+        exponent = 2  # default Romberg
+
+        if self.version == ExtrapolationCoefficientVersion.ROMBERG_LINEAR:
+            exponent = 1
 
         for i in range(m + 1):
             h_i = self.get_step_width(i)
             coefficient *= (h_i ** exponent) / (h_i ** exponent - h_j ** exponent) if i != j else 1
 
-        # Trapezoidal coefficient
+        return coefficient
+
+    def get_trapezoidal_slice_coefficient(self, max_level, j):
+        coefficient = 1
+        x_left, x_right = self.support_sequence[-1]
+
+        midpoint = (x_left + x_right) / 2
+        assert max_level == len(self.support_sequence) - 1
+
+        left_j, right_j = self.support_sequence[j]
+        H_j = right_j - left_j
+
+        for i in range(max_level + 1):
+            left_i, right_i = self.support_sequence[i]
+
+            if i > 0:
+                left_prev, right_prev = self.support_sequence[i - 1]
+            else:
+                left_prev = None
+                right_prev = None
+
+            H_i = right_i - left_i
+
+            if left_i == left_prev and left_prev is None:
+                coefficient *= (H_j) / (H_j - H_i) if i != j else 1
+            else:
+                d_j = H_j / (left_j - midpoint)
+                d_i = H_i / (left_i - midpoint)
+
+                coefficient *= (d_j) / (d_j - d_i) if i != j else 1
+
         return coefficient
 
     def get_step_width(self, j):
@@ -60,11 +101,11 @@ class ExtrapolationCoefficientsFactory:
 
 
 class RombergWeightFactory:
-    def __init__(self, a, b, version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.QUADRATIC):
+    def __init__(self, a, b, version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.ROMBERG):
         self.a = a
         self.b = b
         self.version = version
-        self.extrapolation_factory = ExtrapolationCoefficientsFactory(a, b, version)
+        self.extrapolation_factory = ExtrapolationCoefficientsFactory(a, b, version=version)
 
     def get_boundary_point_weight(self, max_level):
         weight = 0
@@ -103,7 +144,9 @@ class RombergGridVersion(Enum):
 class RombergGrid:
     def __init__(self, function: Function = None,
                  grid_version: RombergGridVersion = RombergGridVersion.UNIT_SLICES,
-                 coefficient_version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.QUADRATIC,
+                 coefficient_version: ExtrapolationCoefficientVersion = ExtrapolationCoefficientVersion.ROMBERG,
+                 force_full_binary_tree_grid=False,
+                 optimized_container_splitting=False,
                  print_debug=False):
         self.print_debug = print_debug
 
@@ -117,8 +160,10 @@ class RombergGrid:
         self.set_function(function)
         self.integral_approximation = None
 
-        self.coefficient_version = coefficient_version
         self.grid_version = grid_version
+        self.coefficient_version = coefficient_version
+        self.force_full_binary_tree_grid = force_full_binary_tree_grid
+        self.optimized_container_splitting = optimized_container_splitting
 
     # Integration
     def integrate(self, function: Function = None):
@@ -151,15 +196,23 @@ class RombergGrid:
 
     # This method updates the grid and initializes the new slices
     def set_grid(self, grid, grid_levels):
-        assert len(grid) == len(grid_levels) and len(grid) >= 2
-
-        # Set boundary points
-        self.a = grid[0]
-        self.b = grid[-1]
+        assert len(grid) == len(grid_levels) and len(grid) >= 2, "Wrong grid or grid levels provided."
 
         self.grid = grid
         self.grid_levels = grid_levels
         self.weights = None
+
+        if self.force_full_binary_tree_grid:
+            print("Forcing the grid to its closest full binary tree")
+            tree = GridBinaryTree(print_debug=self.print_debug)
+            tree.init_tree(grid, grid_levels)
+            tree.force_full_tree_invariant()
+            self.grid = tree.get_grid()
+            self.grid_levels = tree.get_grid_levels()
+
+        # Set boundary points
+        self.a = self.grid[0]
+        self.b = self.grid[-1]
 
         if self.print_debug:
             print("The grid is set to  \n   {}, with grid levels \n   {}".format(grid, grid_levels))
@@ -192,6 +245,7 @@ class RombergGrid:
             assert step_width == self.get_step_width(max_level), message
 
             support_sequence = self.compute_support_sequence(i, i + 1)
+
             grid_slice = RombergGridSlice(
                 [start_point, end_point],
                 [start_level, end_level],
@@ -268,19 +322,59 @@ class RombergGrid:
         for i, container in enumerate(self.slice_containers):
             size = container.size()
 
-            # TODO Optimize splitting: Only split until size is a power of 2
             # Split container if size != 2^k for k >= 0 (<=> log_2(size) isn't an integer)
+            #   Split until size is the next closest power of 2
             if not (math.log(size, 2)).is_integer():
-                # Create new container for each slice
-                for slice in container.slices:
-                    container = RombergGridSliceContainer(self.coefficient_version, function=self.function)
-                    container.append_slice(slice)
+                # Find closest power of 2
+                closest_power_below = self.__find_closest_power_below(size, 2)
 
+                if not self.optimized_container_splitting:
+                    # Create new container for each slice
+                        for slice in container.slices:
+                            container = RombergGridSliceContainer(self.coefficient_version, function=self.function)
+                            container.append_slice(slice)
+                            self.__assert_container_size(container)
+
+                            new_containers.append(container)
+                # Optimized container splitting. Split remainders slices until container size is 2^k
+                else:
                     new_containers.append(container)
+                    new_index = len(new_containers) - 1
+
+                    for (j, slice) in enumerate(container.slices):
+                        # Create new container for each slice whose index exceeds the closest power below (2^k)
+                        if j >= closest_power_below:
+                            container = RombergGridSliceContainer(self.coefficient_version, function=self.function)
+                            container.append_slice(slice)
+                            self.__assert_container_size(container)
+
+                            new_containers.append(container)
+
+                    # Remove slices from initial container that have been split into a new unit container
+                    new_containers[new_index].slices = \
+                        new_containers[new_index].slices[0:closest_power_below]
+                    self.__assert_container_size(new_containers[new_index])
             else:
                 new_containers.append(container)
+                self.__assert_container_size(container)
 
         self.slice_containers = new_containers
+
+    @staticmethod
+    def __assert_container_size(container):
+        # print("Container size: {}".format(container.size()))
+        assert (math.log(container.size(), 2)).is_integer()
+
+    @staticmethod
+    def __find_closest_power_below(n, base=2):
+        for i in range(n):
+            left_pow = math.pow(base, i)
+            right_pow = math.pow(base, i + 1)
+
+            if left_pow < n < right_pow:
+                return int(left_pow)
+
+        return 1
 
     # This method computes the new weights and overrides the old ones
     def update_weights(self):
@@ -452,7 +546,8 @@ class RombergGridSlice:
         (a, b) = self.support_sequence[0]
 
         # Generate the extrapolation coefficients
-        coefficient_factory = ExtrapolationCoefficientsFactory(a, b, self.coefficient_version)
+        coefficient_factory = ExtrapolationCoefficientsFactory(a, b,
+                                                               self.support_sequence, self.coefficient_version)
 
         # Dictionary that maps grid points to their extrapolated weights
         weight_dictionary = defaultdict(list)
@@ -575,7 +670,7 @@ class RombergGridSliceContainer:
 
         # This container has >= 2 slices
         # Execute default Romberg on this container
-        factory = RombergWeightFactory(self.left_point, self.right_point, ExtrapolationCoefficientVersion.QUADRATIC)
+        factory = RombergWeightFactory(self.left_point, self.right_point, ExtrapolationCoefficientVersion.ROMBERG)
         grid = self.get_grid()
         normalized_grid_levels = self.get_normalized_grid_levels()
         normalized_max_level = max(normalized_grid_levels)
@@ -619,9 +714,8 @@ class RombergGridSliceContainer:
         # The container grid must contain and odd number of grid points
         assert len(grid) % 2 == 1
         assert len(grid) >= 3
-
-        # Assert len(grid) = (2^k) - 1
-        assert (math.log(len(grid) - 1, 2)).is_integer()
+        # Assert that the there are 2^k slices
+        self.__assert_size()
 
         return [0] + self.__get_normalized_grid_levels(1, len(grid) - 2) + [0]
 
@@ -699,6 +793,10 @@ class RombergGridSliceContainer:
             str_builder += "   " + slice.to_string() + "\n"
 
         return str_builder
+
+    def __assert_size(self):
+        # print("Self size: {}".format(self.size()))
+        assert (math.log(self.size(), 2)).is_integer()
 
 
 class GridBinaryTree:

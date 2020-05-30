@@ -35,13 +35,15 @@ coefficients = np.array([ 10**0 * (d+1) for d in range(dim)])
 f = GenzDiscontinious(border=midpoint,coeffs=coefficients)
 
 # plot function
-f.plot(np.ones(dim)*a,np.ones(dim)*b)
+# f.plot(np.ones(dim)*a,np.ones(dim)*b)
 reference_solution = f.getAnalyticSolutionIntegral(a,b)
 errorOperator = ErrorCalculatorSingleDimVolumeGuided()
 
 # Grids
 # grid=GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=True)
-grid = GlobalRombergGrid(a=a, b=b, modified_basis=False, boundary=True)
+grid = GlobalRombergGrid(a=a, b=b, modified_basis=False, boundary=True,
+                         grid_version=RombergGridVersion.GROUPED_SLICES,
+                         optimized_container_splitting=False)
 
 operation = Integration(f=f, grid=grid, dim=dim, reference_solution=reference_solution)
 
