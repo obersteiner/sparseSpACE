@@ -9,7 +9,7 @@ from GridOperation import GridOperation
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int=np.inf):
+    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int=np.inf, timings=None):
         assert operation is not None
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
@@ -22,6 +22,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.margin = 0.9
         self.calculated_solution = None
         assert (len(a) == len(b))
+        self.timings = timings
 
     def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool) -> int:
         array2 = self.get_points_component_grid(levelvec)
@@ -87,7 +88,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         areas = self.get_new_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
         self.init_evaluation_operation(areas)
+        comp0 = time.time_ns()
         self.compute_solutions(areas, evaluation_array)
+        comp1 = time.time_ns()
+        if self.timings is not None:
+            self.timings['BASE_compute_solutions'] = [comp1 - comp0] \
+                if 'BASE_compute_solutions' not in self.timings \
+                else self.timings['BASE_compute_solutions'] + [comp1 - comp0]
+        #print('BASE: compute_solutions time taken: ', comp1 - comp0)
         self.finalize_evaluation_operation(areas, evaluation_array)
 
         # getArea with maximal error
@@ -239,7 +247,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         start_time = time.time()
         while True:
+            eval0 = time.time_ns()
             error, surplus_error = self.evaluate_operation()
+            eval1 = time.time_ns()
+            if self.timings is not None:
+                self.timings['BASE_evaluate_operation'] = [eval1 - eval0] \
+                    if 'BASE_evaluate_operation' not in self.timings \
+                    else self.timings['BASE_evaluate_operation'] + [eval1 - eval0]
+            #print('BASE: evaluate_operation time taken: ', eval1 - eval0)
             self.error_array.append(error)
             self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
@@ -253,6 +268,13 @@ class SpatiallyAdaptivBase(StandardCombi):
 
             if self.print_output:
                 print("Current error:", error)
+            if self.do_plot:
+                print("Contour plot:")
+                filename = 'dimWise_contour'
+                import os
+                while os.path.isfile(filename+'.png'):
+                    filename = filename + '+'
+                self.plot(filename=filename, contour=True)
             num_evaluations = self.get_total_num_points()
             if self.solutions_storage is not None:
                 assert not self.reevaluate_at_end, "Solutions are only available in the end"
@@ -266,20 +288,37 @@ class SpatiallyAdaptivBase(StandardCombi):
             if max_time is not None and time.time() - start_time > max_time:
                 break
             # refine further
+            ref0 = time.time_ns()
             self.refine()
+            ref1 = time.time_ns()
+            if self.timings is not None:
+                self.timings['BASE_refinement'] = [ref1 - ref0] \
+                    if 'BASE_refinement' not in self.timings \
+                    else self.timings['BASE_refinement'] + [ref1 - ref0]
+            #print('BASE: refinement time taken: ', ref1 - ref0)
             if self.do_plot:
+                import os
                 print("Refinement Graph:")
-                self.draw_refinement()
+                filename = 'dimWise_refinementGraph'
+                while os.path.isfile(filename+'.png'):
+                    filename = filename + '+'
+                self.draw_refinement(filename=filename)
                 print("Combi Scheme:")
-                self.print_resulting_combi_scheme(markersize=5)
+                filename = 'dimWise_combiScheme'
+                while os.path.isfile(filename+'.png'):
+                    filename = filename + '+'
+                self.print_resulting_combi_scheme(filename=filename, markersize=5)
                 print("Resulting Sparse Grid:")
-                self.print_resulting_sparsegrid(markersize=10)
+                filename = 'dimWise_gridResult'
+                while os.path.isfile(filename+'.png'):
+                    filename = filename + '+'
+                self.print_resulting_sparsegrid(filename=filename, markersize=10)
         # finished adaptive algorithm
-        if self.print_output:
-            print("Number of refinements", self.refinements)
-            print("Number of distinct points used during the refinement", self.get_total_num_points())
-            print("Time used (s):", time.time() - start_time)
-            print("Final error:", error)
+        #if self.print_output:
+        print("Number of refinements", self.refinements)
+        print("Number of distinct points used during the refinement", self.get_total_num_points())
+        print("Time used (s):", time.time() - start_time)
+        print("Final error:", error)
         if self.test_scheme:
             self.check_combi_scheme()
         if self.reevaluate_at_end:

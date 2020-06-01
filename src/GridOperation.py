@@ -5,6 +5,7 @@ from BasisFunctions import *
 from RefinementContainer import RefinementContainer
 from RefinementObject import RefinementObject
 
+import time
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
@@ -259,16 +260,23 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, masslumping=False, print_output=True, lambd=0.0):
+    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None):
         self.data = data
         self.dim = dim
-        self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
+        if grid is None:
+            self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
+        else:
+            self.grid = grid
         self.lambd = lambd
         self.masslumping = masslumping
         self.surpluses = {}
         self.initialized = False
         self.extrema = None
         self.print_output = print_output
+        self.reference_solution = None
+        self.debug = False
+        self.classes = classes
+        print('DensityEstimation debug: ', self.debug)
 
     def initialize(self):
         """
@@ -277,28 +285,34 @@ class DensityEstimation(AreaOperation):
         It gets called in the perform_operation function of StandardCombi
         :return:
         """
-        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
-        if (isinstance(self.data, str)):
-            dataCSV = []
-            with open(self.data, "r", newline="") as file:
-                has_header = csv.Sniffer().has_header(file.read(2048))
-                file.seek(0)
-                reader = csv.reader(file)
-                if has_header:
-                    next(reader)
-                for row in reader:
-                    dataCSV.append([float(i) for i in row])
-                scaler.fit(dataCSV)
-                self.data = scaler.transform(dataCSV)
-                self.initialized = True
-        elif (isinstance(self.data, tuple)):
-            scaler.fit(self.data[0])
-            self.data = scaler.transform(self.data[0])
-            self.initialized = True
-        else:
-            scaler.fit(self.data)
-            self.data = scaler.transform(self.data)
-            self.initialized = True
+        scaler = preprocessing.MinMaxScaler(feature_range=(0.0, 1.0))
+        self.initialized = True
+
+        # if (isinstance(self.data, str)):
+        #     dataCSV = []
+        #     with open(self.data, "r", newline="") as file:
+        #         has_header = csv.Sniffer().has_header(file.read(2048))
+        #         file.seek(0)
+        #         reader = csv.reader(file)
+        #         if has_header:
+        #             next(reader)
+        #         for row in reader:
+        #             dataCSV.append([float(i) for i in row])
+        #         scaler.fit(dataCSV)
+        #         self.data = scaler.transform(dataCSV)
+        #         self.initialized = True
+        # elif (isinstance(self.data, tuple)):
+        #     scaler.fit(self.data[0])
+        #     self.data = scaler.transform(self.data[0])
+        #     self.initialized = True
+        # else:
+        #     # if (self.dim > 1):
+        #     #     scaler.fit(self.data)
+        #     # else:
+        #     #     self.data = self.data.reshape(-1, 1)
+        #     #     scaler.fit(self.data)
+        #     # self.data = scaler.transform(self.data)
+        #     self.initialized = True
 
     def post_processing(self):
         """
@@ -321,6 +335,10 @@ class DensityEstimation(AreaOperation):
     def get_reference_solution(self) -> None:
         return None
 
+    def get_distinct_points(self):
+        s = sum([len(x) for x in self.surpluses.values()])
+        return s
+
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
         """
         This method calculates the surpluses for the the specified component grid
@@ -331,6 +349,58 @@ class DensityEstimation(AreaOperation):
         surpluses = self.calculate_surpluses(component_grid.levelvector)
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
         return surpluses
+
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
+        """This method is used to compute the operation in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+        # TODO
+        reuse_old_values = False
+        # if reuse_old_values:
+        #     whole bunch of stuff goes here when implemented
+        # else:
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        surpluses = self.calculate_surpluses_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)
+
+        #self.refinement_container.value += np.array(LA.norm(abs(surpluses), 2)) * component_grid.coefficient
+        self.refinement_container.value += np.array(abs(surpluses.sum() / surpluses.size)) * component_grid.coefficient
+        self.surpluses.update({tuple(component_grid.levelvector): surpluses * component_grid.coefficient})
+
+        #if reuse_old_values:
+        #    # do nothing as of yet
+        #    True
+
+    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
+        self.grid = grid
+        self.grid_surplusses = grid_surplusses
+        self.refinement_container = refinement_container
+        self.version = version
+        self.lmin = lmin
+        self.lmax = lmax
+        self.a = a
+        self.b = b
+
+    def initialize_evaluation_dimension_wise(self, refinement_container):
+        # TODO
+        refinement_container.value = np.zeros(1)
+
+    # def get_existing_indices(self, levelvec):
+    #     """
+    #     This method returns a list of existing index tuples for the grid based on the coordinate_array of the grid
+    #     :return: List of index tuples
+    #     """
+    #     full_index_list = get_cross_product_list([range(1, n + 1) for n in self.grid.levelToNumPoints(levelvec)])
+    #     # points = self.grid.levelToNumPoints(levelvec)
+    #     coords = self.grid.coordinate_array
+    #     boundary = int(self.grid.boundary)
+    #     # filter indices whose coordinates are not in the coordinate array
+    #     index_list = list(filter(lambda x: ((x[d] * (1 / 2 ** levelvec[d])) - boundary * (1 / 2 ** levelvec[d]) in coords[d] for d in enumerate(levelvec)), full_index_list))
+    #     return index_list
 
     def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) -> Sequence[float]:
         """
@@ -343,6 +413,45 @@ class DensityEstimation(AreaOperation):
         mesh_points = get_cross_product(mesh_points_grid)
         values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
         return values.reshape((len(values), 1))
+
+    def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
+        # TODO
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        if self.debug:
+            mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
+            mesh_points = list(get_cross_product(mesh_points_grid))
+            points_list = list(points)
+            points_indices = [mesh_points.index(p) for p in points_list]
+            nodal_values = list(self.get_result().get(tuple(component_grid.levelvector)))
+            if len(nodal_values) > 0 and len(points_list) > 0:
+                pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
+                validPoint = lambda x: True if x in mesh_points else False
+                values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
+                values_indices = [nodal_values.index(s) for s in values]
+                if (len(nodal_values) == 0 or len(points_list) == 0 or len(values) == 0):
+                    print('Operation DensityEstimation; error, stop here with debugger')
+                    print('second print to prevent the stupid debugger from skipping lines again')
+                #if points_indices != values_indices:
+                #    # if nodal_values has duplicate entries we can also end up here
+                #    print('returned wrong component grid value(s)')
+                return values.reshape((len(values), 1))
+                #return values
+            else:
+                return np.zeros((len(points_list), 1))
+                #return np.zeros(len(points_list))
+        else:
+            mesh_points_grid = (self.grid.coordinate_array[d] for d in range(self.dim))
+            mesh_points = list(get_cross_product(mesh_points_grid))
+            nodal_values = self.get_result().get(tuple(component_grid.levelvector))
+            pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
+            validPoint = lambda x: True if x in mesh_points else False
+            values = np.array([pickPoint(p) for p in points if validPoint(p)])
+            return values.reshape((len(values), 1))
 
     def check_adjacency(self, ivec: Sequence[int], jvec: Sequence[int]) -> bool:
         """
@@ -376,9 +485,253 @@ class DensityEstimation(AreaOperation):
                     index_set.append((upper,))
                 elif (upper < 1 or upper > numb_points[i]):
                     index_set.append((lower,))
+            #test = list(set(product(*index_set)))
+            #if not self.grid.is_global():
             return list(set(product(*index_set)))
+            #else:
+            #    existing_indices = self.get_existing_indices(levelvec)
+            #    result = list(filter(lambda p: p in existing_indices, list(set(product(*index_set)))))
+            #    return result
         else:
             return []
+
+    def get_neighbors(self, point, gridPointCoordsAsStripes):
+        """
+        This method
+        :param point: d-dimensional tuple containing the coordinates of the grid point
+        :param gridPointCoordsAsStripes:
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
+        """
+        # check if the coordinate is on the boundary and if we have points on the boundary
+        boundary_check = lambda x: self.grid.boundary if (x == 0 or x == 1.0) else True
+
+        # create a tuple for each point whose elements are the coordinates that are within the domain
+        neighbor_tuple = lambda n: tuple((n[d] for d in range(0, self.dim) if
+                                          n[d] >= point_domain[d][0] and n[d] <= point_domain[d][1] and boundary_check(
+                                              n[d])))
+        if self.debug:
+            all_points = list(get_cross_product(gridPointCoordsAsStripes))
+            point_domain = self.get_hat_domain(point, gridPointCoordsAsStripes)
+            # pick only tuples where both coordinates are within the domain
+            neighbors = [neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim]
+            return neighbors
+        else:
+            all_points = get_cross_product(gridPointCoordsAsStripes)
+            point_domain = self.get_hat_domain(point, gridPointCoordsAsStripes)
+            # pick only tuples where both coordinates are within the domain
+            neighbors = (neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim)
+            return neighbors
+
+    def get_hat_domain(self, point, gridPointCoordsAsStripes):
+        """
+        This method
+        :param point: d-dimensional tuple containing the indices of the point
+        :param xxx: Sequence of length d with the maximum level for each dimension
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
+        """
+        # go through stripes and collect 2 coordinates with lowest distance to the point for each dimension
+        domain = []
+        if self.debug:
+            for d in range(0, self.dim):
+                upper = [coord for coord in gridPointCoordsAsStripes[d] if coord > point[d]]
+                lower = [coord for coord in gridPointCoordsAsStripes[d] if coord < point[d]]
+                element = (0 if not lower else max(lower), 1.0 if not upper else min(upper))
+                domain.append(element)
+        else:
+            for d in range(0, self.dim):
+                #upper = (coord for coord in gridPointCoordsAsStripes[d] if coord > point[d])
+                #lower = (coord for coord in gridPointCoordsAsStripes[d] if coord < point[d])
+                element = (max((coord for coord in gridPointCoordsAsStripes[d] if coord < point[d]), default=0.0),
+                           min((coord for coord in gridPointCoordsAsStripes[d] if coord > point[d]), default=1.0))
+                domain.append(element)
+        return domain
+
+    def build_R_matrix_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels) -> Sequence[Sequence[float]]:
+        """
+        This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
+        non-equidistant grids (usually used adaptive schemes)
+        :param xxx:
+        :param xxx:
+        :return: R matrix of the component grid specified by the levelvector
+        """
+        test = list(get_cross_product(gridPointCoordsAsStripes))
+        if not self.grid.boundary:
+            point_list = [x for x in test if 0.0 not in x and 1.0 not in x]
+        else:
+            point_list = test
+
+        grid_size = len(point_list)
+        R = np.zeros((grid_size, grid_size))
+        # TODO
+
+        if self.print_output:
+            print("Point list: ", point_list)
+            print("Point levels: ", grid_point_levels)
+        # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
+        for i in range(0, len(point_list)):
+            for j in range(i, len(point_list)):
+                res = self.calculate_L2_scalarproduct(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                      point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                R[i][j] = res[0]
+                R[j][i] = res[0]
+
+        ###########
+        #naive_R = np.zeros((grid_size, grid_size))
+        #for i in range(0, len(point_list)):
+        #    for j in range(0, len(point_list)):
+        #        res = self.calculate_L2_scalarproduct(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+        #                                              point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+        #        naive_R[i][j] = res[0]
+        ###########
+
+        # if np.array_equal(R, naive_R):
+        #     print('R and naive_R equal')
+        # else:
+        #     print('R and naive_R NOT equal')
+
+        return R
+        #normalize
+        #return R / np.max(np.abs(R))
+
+    def calculate_B_dimension_wise(self, data, gridPointCoordsAsStripes) -> Sequence[float]:
+        """
+        This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
+        :param data: dataset specified for the operation
+        :param levelvec: Levelvector of the component grid
+        :return: b vector of the component grid
+        """
+        test = list(get_cross_product(gridPointCoordsAsStripes))
+        if not self.grid.boundary:
+            point_list = [x for x in test if 0.0 not in x and 1.0 not in x]
+        else:
+            point_list = test
+
+        M = len(data)
+        N = len(point_list)
+        b = np.zeros(N)
+        #naive_b = np.zeros(N)
+
+        ########### for naive_b
+        #if not self.grid.boundary:
+        #    point_list = [x for x in list(get_cross_product(gridPointCoordsAsStripes)) if 0.0 not in x and 1.0 not in x]
+        #else:
+        #    point_list = list(get_cross_product(gridPointCoordsAsStripes))
+        ###########
+
+        for i in range(M):
+            hats = self.get_neighbors(data[i], gridPointCoordsAsStripes)
+            #test = self.get_neighboring_grid_points(data[i], gridPointCoordsAsStripes)
+            #if (hats != test):
+            #    print('look here')
+            #for t in range(len(point_list)):
+            #    naive_b[point_list.index(point_list[t])] += self.hat_function_non_symmetric(point_list[t], self.get_hat_domain(point_list[t], gridPointCoordsAsStripes), data[i])
+            sign = 1.0
+            if self.classes is not None:
+                sign = self.classes[i]
+            if self.debug:
+                for j in range(len(hats)):
+                    b[point_list.index(hats[j])] += \
+                        (self.hat_function_non_symmetric(hats[j], self.get_hat_domain(hats[j], gridPointCoordsAsStripes), data[i]) * sign)
+            else:
+                for h in hats:
+                    b[point_list.index(h)] += \
+                        (self.hat_function_non_symmetric(h, self.get_hat_domain(h, gridPointCoordsAsStripes), data[i]) * sign)
+
+        b *= (1 / M)
+
+        #naive_b *= (1 / M)
+        # if np.array_equal(b, naive_b):
+        #     print('b and naive_b equal')
+        # else:
+        #     print('b and naive_b NOT equal')
+        if self.print_output:
+            print("B vector: ", b)
+        return b
+        #scale to [0.0,1.0]
+        #return b / np.max(np.abs(b))
+
+    def calculate_surpluses_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid) -> Sequence[float]:
+        """
+        Calculates the surpluses of the component grid for the specified dataset
+        :param levelvec: Levelvector of the component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+        numGridCoord = sum((len(l) for l in gridPointCoordsAsStripes))
+        r0 = time.time_ns()
+        R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+        r1 = time.time_ns()
+        print('OP: build_R_matrix_dimension_wise time taken: ', r1 - r0)
+        b0 = time.time_ns()
+        b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes)
+        b1 = time.time_ns()
+        print('OP: calculate_B_dimension_wise time taken: ', b1 - b0)
+        cg0 = time.time_ns()
+        alphas, info = cg(R, b)
+        cg1 = time.time_ns()
+        print('OP: conjugate_gradient time taken: ', cg1 - cg0)
+        if self.print_output:
+            print("Alphas: ", component_grid.levelvector, alphas)
+            print("-" * 100)
+        return alphas
+        # normalize
+        #return alphas / np.max(np.abs(alphas))
+
+    def calculate_L2_scalarproduct(self, point_i: Tuple[int, ...], domain_i: Sequence[Tuple[int, int]],
+                                   point_j: Tuple[int, ...], domain_j: Sequence[Tuple[int, int]]) \
+            -> Tuple[float, float]:
+        """
+        This method calculates the L2-scalarproduct of the two hat functions
+        :param ivec: Index of the first hat function
+        :param jvec: Index of the second hat function
+        :param lvec: Levelvector of the component grid
+        :return: L2-scalarproduct of the two hat functions plus the error of the calculation
+        """
+        if not (len(point_i) == len(point_j) == len(domain_i) == len(domain_j)):
+            print('error in calculate_L2_scalarproduct: dimensionality of the points i,j or their domains differ')
+        # check adjacency
+        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(domain_i)))):
+            dim = len(domain_i)
+            f = lambda *x: (self.hat_function_non_symmetric(point_i, domain_i, [*x]) * self.hat_function_non_symmetric(point_j, domain_j, [*x]))
+            start = [min(domain_i[d][0], domain_j[d][0]) for d in range(dim)]
+            end = [max(domain_i[d][1], domain_j[d][1]) for d in range(dim)]
+            if self.print_output:
+                print("-" * 100)
+                print("Calculating")
+                print("Gridpoints: ", point_i, point_j)
+                print("Domain: ", start, end)
+            return nquad(f, [[start[d], end[d]] for d in range(dim)],
+                         opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
+        else:
+            ### check if the adjacency check is correct
+            # dim = len(domain_i)
+            # f = lambda *x: (self.hat_function_non_symmetric(point_i, domain_i, [*x]) * self.hat_function_non_symmetric(point_j, domain_j, [*x]))
+            # start = [min(min(domain_i[d]), min(domain_j[d])) for d in range(dim)]
+            # end = [max(max(domain_i[d]), max(domain_j[d])) for d in range(dim)]
+            # res = nquad(f, [[start[d], end[d]] for d in range(dim)],
+            #              opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
+            # if (res[0] != 0.0):
+            #     print('adjacency check error')
+            ### endCheck
+            return (0, 0)
+
+    def hat_function_non_symmetric(self, point, domain, x):
+        """
+        This method calculates the hat function value of the given coordinates with the given parameters
+        :param : d-dimensional center point of the hat function
+        :param : d-dimensional list of 2-dimensional tuples that describe the start and end values of the domain of the hat function
+        :param : d-dimensional coordinates whose function value are to be calculated
+        :return: value of the function at the coordinates given by x
+        """
+        assert len(point) == len(x) == len(domain)   # sanity check
+        result = 1.0
+        for dim in range(len(x)):
+            if x[dim] >= point[dim]:
+                # result is linear interpolation between middle and domain end
+                result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+            elif x[dim] < point[dim]:
+                result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+        return result
+
 
     def build_R_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
         """
@@ -389,7 +742,12 @@ class DensityEstimation(AreaOperation):
         grid_size = self.grid.get_num_points()
         R = np.zeros((grid_size, grid_size))
         dim = len(levelvec)
+
+        #if not self.grid.is_global():
         index_list = self.grid.get_indexlist()
+        #else:
+        #    index_list = self.get_existing_indices(levelvec)
+
 
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
         R[np.diag_indices_from(R)] += (diag_val + self.lambd)
@@ -410,8 +768,8 @@ class DensityEstimation(AreaOperation):
                         if index_ik == index_jk:
                             res *= 1 / (2 ** (levelvec[k] - 1) * 3)
                         # basis function do not overlap
-                        elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) >= min((index_ik + 1) * 2 ** (levelvec[k] - 1),
-                                                                                                                          (index_jk + 1) * 2 ** (levelvec[k] - 1)):
+                        elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
+                                >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
                             res = 0
                             break
                         # basis functions overlap partly
@@ -457,7 +815,11 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = self.grid.get_num_points()
         b = np.zeros(N)
+
+        #if not self.grid.is_global():
         index_list = self.grid.get_indexlist()
+        #else:
+        #    index_list = self.get_existing_indices(levelvec)
 
         for i in range(M):
             hats = self.get_hats_in_support(levelvec, data[i])
@@ -531,7 +893,7 @@ class DensityEstimation(AreaOperation):
 
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         # reset fontsize to default so it does not affect other figures
         plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
@@ -551,7 +913,23 @@ class DensityEstimation(AreaOperation):
         X, Y = np.meshgrid(X, Y)
         Z = combiObject.interpolate_points(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())), component_grid)
         Z = Z.reshape((100, 100))
+        t = cm.coolwarm
+        tt = colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1])
         grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, norm=colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1]))
+
+    def print_evaluation_output(self, refinement):
+        combi_surpluses = self.surpluses
+        if len(combi_surpluses) == 1:
+            combi_surpluses = combi_surpluses[0]
+        #print("combisurpluses:", combi_surpluses)
+
+    def get_global_error_estimate(self, refinement_container, norm):
+        if self.reference_solution is None:
+            return None
+        elif LA.norm(self.reference_solution) == 0.0:
+            return LA.norm(abs(self.surpluses), norm)
+        else:
+            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm)
 
 
 from scipy.interpolate import interpn

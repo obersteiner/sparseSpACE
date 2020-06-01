@@ -3,15 +3,17 @@ import numpy as np
 import abc
 import logging
 from numpy import linalg as LA
+from math import copysign
 
 # This class is the general interface of an error estimator currently used by the algorithm
 class ErrorCalculator(object):
     # initialization
     def __init__(self):
         self.log = logging.getLogger(__name__)
+        self.is_global = False
 
     # calculates error for the function f and the integral information that was computed by the algorithm
-    # this information contians the area specification and the approximated integral
+    # this information contains the area specification and the approximated integral
     # current form is (approxIntegral,start,end)
     @abc.abstractmethod
     def calc_error(self, refine_object, norm):
@@ -63,3 +65,46 @@ class ErrorCalculatorSingleDimVolumeGuidedPunishedDepth(ErrorCalculator):
         # pagoda-volume
         volume = LA.norm(refineObj.volume * (width), norm)
         return abs(volume)
+
+class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
+    def __init__(self, is_global=False):
+        super().__init__()
+        self.is_global = is_global
+
+    def calc_error(self, refine_object, norm, volume_weights=None):
+        volumes = refine_object.volume
+        if volume_weights is None:
+            #return LA.norm(abs(volumes), norm)
+            return abs(volumes)
+        # Normalized volumes
+        #return LA.norm(abs(volumes * volume_weights), norm)
+        return abs(volumes * volume_weights)
+
+class ErrorCalculatorSingleDimMisclassification(ErrorCalculator):
+    def calc_error(self, refine_object, norm, volume_weights=None):
+        volumes = refine_object.volume
+        if volume_weights is None:
+            #return LA.norm(abs(volumes), norm)
+            return abs(volumes)
+        # Normalized volumes
+        #return LA.norm(abs(volumes * volume_weights), norm)
+        return abs(volumes * volume_weights)
+
+    def calc_global_error(self, data, grid_scheme):
+        test = self.interpolate_points([data[0]], component_grid)
+        f = lambda x: grid_scheme(x)
+        for d in range(0, grid_scheme.dim):
+            refinement_dim = grid_scheme.refinement.get_refinement_container_for_dim(d)
+            for refinement_obj in refinement_dim.refinementObjects:
+                # get the misclassification rate between start and end of refinement_obj
+                hits = sum((1 for i in range(0, len(data))
+                            if refinement_obj.start <= data[i][d] <= refinement_obj.end
+                            and copysign(1.0, f(data[i])) == copysign(1.0, self.operation.classes[i])))
+                misses = sum((1 for i in range(0, len(data))
+                              if refinement_obj.start <= data[i][d] <= refinement_obj.end
+                              and copysign(1.0, f(data[i])) != copysign(1.0, self.operation.classes[i])))
+                if hits + misses > 0:
+                    refinement_obj.add_volume(np.array(misses / (hits + misses)))
+                else:
+                    # no data points were in this area
+                    refinement_obj.add_volume(np.zeros(1))
