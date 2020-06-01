@@ -25,7 +25,8 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
 
 
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
-                                minTol=-1, doDimAdaptive=False, max_evaluations=10**7, evaluation_points=None):
+                                minTol=-1, doDimAdaptive=False, max_evaluations=10**7, evaluation_points=None,
+                                save_with_name=None):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -158,5 +159,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     plt.legend(bbox_to_anchor=(3, 1), loc="upper right")
     plt.xlabel('Number of points')
     plt.ylabel('Approximation error')
-    plt.savefig('convergence.pdf', bbox_inches='tight')
+
+    if save_with_name is not None:
+        plt.savefig("{}.pdf".format(save_with_name), bbox_inches='tight')
     plt.show()

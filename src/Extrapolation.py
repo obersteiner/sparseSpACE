@@ -801,7 +801,7 @@ class RombergGridSliceContainer:
 
 class GridBinaryTree:
     class __GridBinaryTree:
-        def __init__(self, use_caching=True, print_debug=False):
+        def __init__(self, use_caching=False, print_debug=False):
             self.grid = None
             self.grid_levels = None
             self.a = None

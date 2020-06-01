@@ -3,28 +3,24 @@ from GridOperation import *
 
 # Spatially adaptive single dimension
 # dimension of the problem
-dim = 2
+dim = 3
 
 # define integration domain boundaries
 a = np.zeros(dim)
 b = np.ones(dim)
 
 # Smooth functions
-# dim = 2
 # coeffs = np.ones(dim)
 # midpoint = np.ones(dim) * 0.5
 # f = GenzProductPeak(coeffs, midpoint)
 
-# dim = 2
 # coeffs = np.ones(dim)
 # f = GenzCornerPeak(coeffs=coeffs)
 
-# dim = 2
 # coeffs = np.ones(dim)
 # offset = 1
 # f = GenzOszillatory(coeffs, offset)
 
-# dim = 2
 # coeffs = np.ones(dim)
 # midpoint = np.ones(dim) * 0.5
 # f = GenzGaussian(coeffs, midpoint)
@@ -36,7 +32,7 @@ f = GenzDiscontinious(border=midpoint,coeffs=coefficients)
 
 # plot function
 # f.plot(np.ones(dim)*a,np.ones(dim)*b)
-reference_solution = f.getAnalyticSolutionIntegral(a,b)
+reference_solution = f.getAnalyticSolutionIntegral(a, b)
 errorOperator = ErrorCalculatorSingleDimVolumeGuided()
 
 # Grids
@@ -53,6 +49,7 @@ adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions2(np.ones(dim)
                                                                     force_full_binary_tree_grid=True)
 
 # performing the spatially adaptive refinement with the SingleDim method
-adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator, 10**-2, do_plot=True)
+adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator,
+                                                       10**-3, do_plot=True)
 
 print("Number of points used in refinement:", adaptiveCombiInstanceSingleDim.get_total_num_points())
