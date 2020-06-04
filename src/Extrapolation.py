@@ -65,11 +65,12 @@ class ExtrapolationCoefficientsFactory:
 
         return coefficient
 
+    # TODO Consider constant remainder terms in error expansion
     def get_trapezoidal_slice_coefficient(self, max_level, j):
         coefficient = 1
-        x_left, x_right = self.support_sequence[-1]
+        slice_boundary_left, slice_boundary_right = self.support_sequence[-1]
 
-        midpoint = (x_left + x_right) / 2
+        midpoint = (slice_boundary_left + slice_boundary_right) / 2
         assert max_level == len(self.support_sequence) - 1
 
         left_j, right_j = self.support_sequence[j]
@@ -82,17 +83,18 @@ class ExtrapolationCoefficientsFactory:
                 left_prev, right_prev = self.support_sequence[i - 1]
             else:
                 left_prev = None
-                right_prev = None
 
             H_i = right_i - left_i
 
             if left_i == left_prev and left_prev is None:
-                coefficient *= (H_j) / (H_j - H_i) if i != j else 1
+                # Coefficient for refinement of b_i (right support)
+                coefficient *= H_j / (H_j - H_i) if i != j else 1
             else:
-                d_j = H_j / (left_j - midpoint)
-                d_i = H_i / (left_i - midpoint)
+                d_j = H_j / (left_j - midpoint) ** 2
+                d_i = H_i / (left_i - midpoint) ** 2
 
-                coefficient *= (d_j) / (d_j - d_i) if i != j else 1
+                # Coefficient for refinement of a_i (left support)
+                coefficient *= d_j / (d_j - d_i) if i != j else 1
 
         return coefficient
 
@@ -899,6 +901,53 @@ class GridBinaryTree:
             if self.use_caching:
                 self.__cache_grid()
 
+        # Method for numerical experiments and testing
+        # This method initialises a perfect binary tee (each node has two children, all leafs are on max_level)
+        def init_perfect_tree_with_max_level(self, a, b, max_level):
+            queue = []
+
+            self.a = a
+            self.b = b
+
+            root_point = (b - a) / 2
+            self.root_node = GridBinaryTree.__GridBinaryTree.Node(root_point)
+            queue.append(self.root_node)
+
+            # Boundary points are already created before
+            for i in range(1, max_level):
+                queue = self.__increment_level_in_each_subtree(queue)
+
+            assert self.root_node is not None
+
+        # This method creates two new children for each leaf node
+        #   => level of each subtree is increased by one
+        # Note: This works for each tree type (default, full, perfect)
+        # Important: non-leaf nodes (e.g. nodes with one children) are not considered!!!
+        def increment_level_in_each_subtree(self):
+            leafs = self.__get_leafs()
+
+            self.__increment_level_in_each_subtree(leafs)
+
+        def __increment_level_in_each_subtree(self, node_queue=[]):
+            new_queue = []
+            H = self.b - self.a
+
+            while len(node_queue) > 0:
+                node = node_queue.pop(0)
+
+                node.set_left_child(GridBinaryTree.__GridBinaryTree.Node(
+                    node.point - H / (2 ** (node.level + 1))
+                ))
+
+                node.set_right_child(GridBinaryTree.__GridBinaryTree.Node(
+                    node.point + H / (2 ** (node.level + 1))
+                ))
+
+                new_queue.append(node.get_left_child())
+                new_queue.append(node.get_right_child())
+
+            return new_queue
+
         # Return grid with boundary points
         def get_grid(self):
             if not self.use_caching:
@@ -932,6 +981,20 @@ class GridBinaryTree:
         def __get_grid_levels(self):
             return [0] + self.root_node.get_grid_levels() + [0]
 
+        def __get_leafs(self):
+            if self.root_node is None:
+                return []
+
+            nodes = self.root_node.get_nodes_using_dfs_in_order()
+
+            leafs = []
+            for node in nodes:
+                if node.is_leaf():
+                    leafs.append(node)
+
+            return leafs
+
+        # Caching
         def __is_cached(self, grid):
             dict_key = self.__get_dict_key(grid)
 
@@ -1052,6 +1115,12 @@ class GridBinaryTree:
 
     def force_full_tree_invariant(self):
         self.instance.force_full_tree_invariant()
+
+    def init_perfect_tree_with_max_level(self, a, b, max_level):
+        self.instance.init_perfect_tree_with_max_level(a, b, max_level)
+
+    def increment_level_in_each_subtree(self):
+        self.instance.increment_level_in_each_subtree()
 
     def get_grid(self):
         return self.instance.get_grid()

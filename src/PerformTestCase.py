@@ -1,4 +1,5 @@
 from DimAdaptiveCombi import *
+import matplotlib.cm as mplcm
 
 
 def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, evaluation_points):
@@ -26,7 +27,7 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
 
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
                                 minTol=-1, doDimAdaptive=False, max_evaluations=10**7, evaluation_points=None,
-                                save_with_name=None):
+                                save_with_name=None, calc_standard_schemes=True):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -37,8 +38,18 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     numNaive = []
     numIdeal = []
     numFEvalIdeal = []
-    interpolation_error_arrayL2 = []
-    interpolation_error_arrayMax = []
+    # interpolation_error_arrayL2 = []
+    # interpolation_error_arrayMax = []
+
+    # https://stackoverflow.com/questions/8389636/creating-over-20-unique-legend-colors-using-matplotlib
+    NUM_COLORS = len(adaptiveAlgorithmVector) * 2  # surplus error and number of evaluations
+
+    cm = plt.get_cmap('hsv')  # alternative: gist_rainbow
+    cNorm = colors.Normalize(vmin=0, vmax=NUM_COLORS - 1)
+    scalarMap = mplcm.ScalarMappable(norm=cNorm, cmap=cm)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_prop_cycle('color', [scalarMap.to_rgba(i) for i in range(NUM_COLORS)])
 
     # calculate refinements for different tolerance values
     for algorithm in adaptiveAlgorithmVector:
@@ -108,39 +119,43 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     xArrayStandard = []
     xFEvalArrayStandard = []
     errorArrayStandard = []
-    interpolation_error_standardL2 = []
-    interpolation_error_standardMax = []
+    # interpolation_error_standardL2 = []
+    # interpolation_error_standardMax = []
 
-    for i in range(minLmin, maxLmin):
-        xArrayStandardTest, xFEvalArrayStandardTest, errorArrayStandardTest, interpolation_errorL2, interpolation_errorMax = performTestStandard(f, a, b, grid, i,
-                                                                                                  maxLmax - (i - 1) * (
-                                                                                                          dim - 1) + i - 1,
-                                                                                                  dim,
-                                                                                                  reference_solution, evaluation_points=evaluation_points)
-        xArrayStandard.append(xArrayStandardTest)
-        xFEvalArrayStandard.append(xFEvalArrayStandardTest)
-        errorArrayStandard.append(errorArrayStandardTest)
-        # interpolation_error_standardL2.append(interpolation_errorL2)
-        # interpolation_error_standardMax.append(interpolation_errorMax)
+    if calc_standard_schemes:
+        for i in range(minLmin, maxLmin):
+            xArrayStandardTest, xFEvalArrayStandardTest, errorArrayStandardTest, interpolation_errorL2, interpolation_errorMax = performTestStandard(f, a, b, grid, i,
+                                                                                                      maxLmax - (i - 1) * (
+                                                                                                              dim - 1) + i - 1,
+                                                                                                      dim,
+                                                                                                      reference_solution, evaluation_points=evaluation_points)
+            xArrayStandard.append(xArrayStandardTest)
+            xFEvalArrayStandard.append(xFEvalArrayStandardTest)
+            errorArrayStandard.append(errorArrayStandardTest)
+            # interpolation_error_standardL2.append(interpolation_errorL2)
+            # interpolation_error_standardMax.append(interpolation_errorMax)
     # plot
-    for i in range(maxLmin - minLmin):
-        print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + minLmin))
-        print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evals Standard lmin= " + str(i + minLmin))
-        # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
-        # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
+    if calc_standard_schemes:
+        for i in range(maxLmin - minLmin):
+            print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + minLmin))
+            print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evals Standard lmin= " + str(i + minLmin))
+            # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
+            # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
-        plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
-        plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
-                  label='standardCombination distinct f evals lmin=' + str(i + minLmin))
+            ax.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
+            ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
+                      label='standardCombination distinct f evals lmin=' + str(i + minLmin))
 
-        # plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-        #            label='standardCombination L2 lmin=' + str(i + minLmin))
-        # plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-        #            label='standardCombination Linf lmin=' + str(i + minLmin))
+            # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+            #            label='standardCombination L2 lmin=' + str(i + minLmin))
+            # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+            #            label='standardCombination Linf lmin=' + str(i + minLmin))
+
     if doDimAdaptive:
         print("numPoints =", numFEvalIdealDimAdaptive)
         print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
-        plt.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
+        ax.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
+
     for i in range(len(adaptiveAlgorithmVector)):
         # print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
         # print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
@@ -149,17 +164,18 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # print(numFEvalIdeal[i],interpolation_error_arrayL2[i], adaptiveAlgorithmVector[i][4] + ' L2 interpolation error')
         # print(numFEvalIdeal[i], interpolation_error_arrayMax[i], adaptiveAlgorithmVector[i][4] + ' Linf interpolation error')
 
-        # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
-        # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
-        # plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
-        # plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
-        plt.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
+        # ax.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
+        # ax.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
+        ax.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
+        # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
+        ax.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
 
-    plt.legend(bbox_to_anchor=(3, 1), loc="upper right")
-    plt.xlabel('Number of points')
-    plt.ylabel('Approximation error')
+    ax.legend(bbox_to_anchor=(3, 1), loc="upper right")
+    ax.set_xlabel('Number of points')
+    ax.set_ylabel('Approximation error')
 
     if save_with_name is not None:
-        plt.savefig("{}.pdf".format(save_with_name), bbox_inches='tight')
-    plt.show()
+        ax.figure.savefig("{}.pdf".format(save_with_name), bbox_inches='tight')
+
+    ax.figure.show()
