@@ -52,7 +52,7 @@ def plot_dataset(d, dim, filename: str = None):
 
     elif dim == 3:
         ax = fig.add_subplot(1, 1, 1, projection='3d')
-        x, y, z = zip(*self.data)
+        x, y, z = zip(*data)
         ax.scatter(x, y, z, s=125)
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -70,7 +70,7 @@ def plot_dataset(d, dim, filename: str = None):
 
 
 # dimension of the problem
-dim = 2
+dim = 3
 print('data set dimension: ', dim)
 # define number of samples
 size = 500
@@ -83,7 +83,7 @@ b = np.ones(dim)
 # choose data set type
 data_sets = ['floats', 'std exponential', 'std normal', 'multi normal', 'line', 'cross', 'moon', 'circle',
              'multi normal class', 'moon class', 'checkerboard class']
-data_set = data_sets[-2]
+data_set = data_sets[-3]
 print('chosen data set:', data_set)
 scale = [0.0000000001, 1.0]
 print('chosen scaling: ', scale)
@@ -228,14 +228,13 @@ print("### Dimension wise evaluation begins here ###")
 print("### Dimension wise evaluation begins here ###")
 print("### Dimension wise evaluation begins here ###")
 ############# 2D
-dim = 2
-
 timings = {}  # pass this dict to the operation and grid scheme to collect execution time information
 
 newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=False, boundary=False)
 
-#errorOperator = ErrorCalculatorSingleDimVolumeGuided()
-errorOperator = ErrorCalculatorSingleDimMisclassification()
+errorOperator = ErrorCalculatorSingleDimVolumeGuided()
+#errorOperator = ErrorCalculatorSingleDimMisclassification()
+#errorOperator = ErrorCalculatorSingleDimMisclassificationGlobal()
 #errorOperatorPD = ErrorCalculatorSingleDimVolumeGuidedPunishedDepth()
 #errorOperatorSC = ErrorCalculatorSurplusCell()
 

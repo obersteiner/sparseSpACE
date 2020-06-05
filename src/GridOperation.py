@@ -873,20 +873,20 @@ class DensityEstimation(AreaOperation):
         fig = plt.figure(figsize=(10, 10))
         if self.dim == 2:
             ax = fig.add_subplot(1, 1, 1)
-            x, y = zip(*self.data)
+            x, y = zip(*self.data[:, :self.dim])
             ax.scatter(x, y, s=125)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title("M = %d" % len(self.data))
+            ax.set_title("M = %d" % len(self.data[:, :self.dim]))
 
         elif self.dim == 3:
             ax = fig.add_subplot(1, 1, 1, projection='3d')
-            x, y, z = zip(*self.data)
+            x, y, z = zip(*self.data[:, :self.dim])
             ax.scatter(x, y, z, s=125)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             ax.set_zlabel('z')
-            ax.set_title("#points = %d" % len(self.data))
+            ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
 
         else:
             print("Cannot print data of dimension > 2")
