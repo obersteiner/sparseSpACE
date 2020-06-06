@@ -6,7 +6,7 @@ import numpy.polynomial.hermite as hermite
 import math
 from math import isclose, isinf
 from BasisFunctions import *
-from Extrapolation import RombergGrid, RombergGridVersion, ExtrapolationCoefficientVersion
+from Extrapolation import RombergGrid, SliceGrouping, SliceVersion, SliceContainerVersion
 from Utils import *
 from ComponentGridInfo import *
 from typing import Callable, Tuple, Sequence
@@ -1135,9 +1135,9 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
-                 grid_version=RombergGridVersion.UNIT_SLICES,
-                 coefficient_version=ExtrapolationCoefficientVersion.ROMBERG,
-                 optimized_container_splitting=False):
+                 slice_grouping=SliceGrouping.UNIT,
+                 slice_version=SliceVersion.ROMBERG_DEFAULT,
+                 container_version=SliceContainerVersion.ROMBERG_DEFAULT):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGridScalarProduct(self)
         self.a = a
@@ -1147,9 +1147,9 @@ class GlobalRombergGrid(GlobalGrid):
         self.modified_basis = modified_basis
         assert not(modified_basis) or not(boundary)
 
-        self.grid_version = grid_version
-        self.coefficient_version = coefficient_version
-        self.optimized_container_splitting = optimized_container_splitting
+        self.slice_grouping = slice_grouping
+        self.slice_version = slice_version
+        self.container_version = container_version
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
                                 grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
@@ -1158,9 +1158,9 @@ class GlobalRombergGrid(GlobalGrid):
         # print("Grid:   {}".format(grid_1D))
         # print("Levels: {}".format(grid_levels_1D))
 
-        romberg_grid = RombergGrid(grid_version=self.grid_version,
-                                   coefficient_version=self.coefficient_version,
-                                   optimized_container_splitting=self.optimized_container_splitting)
+        romberg_grid = RombergGrid(slice_grouping=self.slice_grouping,
+                                   slice_version=self.slice_version,
+                                   container_version=self.container_version)
         romberg_grid.set_grid(grid_1D, grid_levels_1D)
 
         return romberg_grid.get_weights()
