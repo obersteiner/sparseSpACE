@@ -28,9 +28,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                  chebyshev_points=False, use_volume_weighting=False, force_full_binary_tree_grid: bool=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
-        # TODO change to argument grid
-        # self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
-        self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True, modified_basis=False)
+        self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+        # Global Trapezoidal Grid breaks UQ test
+        # self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True, modified_basis=False)
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
         self.version = version
