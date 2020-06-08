@@ -664,7 +664,7 @@ class StandardCombi(object):
             grid.plot(x_array, y_array, 'o', markersize=markersize, color=color)
 
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False, additional_points=[]):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False, additional_points=[], fontsize: int=60):
         """This method prints the resulting sparse grid obtained by the combination technique.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -677,7 +677,7 @@ class StandardCombi(object):
         :param show_border: If set the borders of plot will be plotted.
         :return: Matplotlib figure.
         """
-        plt.rcParams.update({'font.size': 60})
+        plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
