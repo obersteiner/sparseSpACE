@@ -269,7 +269,9 @@ class StandardCombi(object):
         if dim != 2:
             print("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
+        ncols = self.lmax[0] - self.lmin[0] + 1
+        nrows = self.lmax[1] - self.lmin[1] + 1
+        fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -390,6 +392,34 @@ class StandardCombi(object):
                     coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
                     grid.text(0.55, 0.55, coefficient,
                           fontsize=fontsize * 2, ha='center', color="blue")
+                if True:
+                    #fig, overax = plt.subplots()
+                    #overax = SubplotZero(fig, 111)
+                    #fig.add_subplot(overax)
+
+                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
+                    overax.patch.set_alpha(0)
+                    #overax.axis('off')
+                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
+                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
+                    overax.set_xticks([],[])
+                    overax.set_yticks([],[])
+                    overax.set_xlabel("$l_1$")
+                    overax.set_ylabel("$l_2$")
+                    #plt.rcParams['axes.linewidth'] = 1
+                    for direction in ["left", "bottom"]:
+                        # adds arrows at the ends of each axis
+                        #overax.spines[direction].set_axisline_style("-|>")
+
+                        # adds X and Y-axis from the origin
+                        overax.spines[direction].set_visible(True)
+                    for direction in ["right", "top"]:
+                        # hides borders
+                        overax.spines[direction].set_visible(False)
+                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
                 if operation is not None:
@@ -403,7 +433,8 @@ class StandardCombi(object):
 
         plt.show()
         # reset fontsize to default so it does not affect other figures
-        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        plt.rcdefaults()
         return fig
 
     def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
@@ -540,7 +571,7 @@ class StandardCombi(object):
                 # filter points from grid downwards (y-1)
                 levelvector_y_1 = list(levelvector)
                 if levelvector_y_1[1] > self.lmin[1]:
-                    levelvector_y_1[0] -= 1
+                    levelvector_y_1[1] -= 1
                     points_y1 = self.get_points_component_grid(levelvector_y_1)
                     points_not_null = set(points_not_null) - set(points_y1)
                     points = set(points) - set(points_y1)
@@ -574,6 +605,37 @@ class StandardCombi(object):
                     grid.axis('off')
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+
+                if True:
+                    #fig, overax = plt.subplots()
+                    #overax = SubplotZero(fig, 111)
+                    #fig.add_subplot(overax)
+
+                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
+                    overax.patch.set_alpha(0)
+                    #overax.axis('off')
+                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
+                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
+                    overax.set_xticks([],[])
+                    overax.set_yticks([],[])
+                    overax.set_xlabel("$l_1$")
+                    overax.set_ylabel("$l_2$")
+                    #plt.rcParams['axes.linewidth'] = 1
+                    for direction in ["left", "bottom"]:
+                        # adds arrows at the ends of each axis
+                        #overax.spines[direction].set_axisline_style("-|>")
+
+                        # adds X and Y-axis from the origin
+                        overax.spines[direction].set_visible(True)
+                    for direction in ["right", "top"]:
+                        # hides borders
+                        overax.spines[direction].set_visible(False)
+                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
+                    length_includes_head= True, clip_on = False)
+
+
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
         # ax1 = fig.add_subplot(111, alpha=0)
@@ -582,8 +644,8 @@ class StandardCombi(object):
         #plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-
         plt.show()
+        plt.rcdefaults()
         return fig
 
     def plot_points(self, points, grid, markersize, color="black", fill_boundary="False"):
@@ -602,7 +664,7 @@ class StandardCombi(object):
             grid.plot(x_array, y_array, 'o', markersize=markersize, color=color)
 
     def print_resulting_sparsegrid(self, filename: str=None, show_fig: bool=True, add_refinement: bool=True, markersize: int=30,
-                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False):
+                                   linewidth: float=2.5, ticks: bool=True, color: str="black", show_border: bool=False, figsize: float=20, fill_boundary_points: bool=False, additional_points=[], fontsize: int=60):
         """This method prints the resulting sparse grid obtained by the combination technique.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -615,7 +677,7 @@ class StandardCombi(object):
         :param show_border: If set the borders of plot will be plotted.
         :return: Matplotlib figure.
         """
-        plt.rcParams.update({'font.size': 60})
+        plt.rcParams.update({'font.size': fontsize})
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
@@ -623,9 +685,16 @@ class StandardCombi(object):
             return None
         if dim == 2:
             fig, ax = plt.subplots(figsize=(figsize, figsize))
+            xArray = [p[0] for p in additional_points]
+            yArray = [p[1] for p in additional_points]
+            plt.plot(xArray, yArray, 'o', markersize=markersize, color="blue")
         if dim == 3:
             fig = plt.figure(figsize=(20, 20))
             ax = fig.add_subplot(111, projection='3d')
+            xArray = [p[0] for p in additional_points]
+            yArray = [p[1] for p in additional_points]
+            zArray = [p[2] for p in additional_points]
+            plt.plot(xArray, yArray, zArray, 'o', markersize=markersize, color=color)
 
         inf_bounds = any([math.isinf(x) for x in np.concatenate([self.a, self.b])])
         if inf_bounds:
@@ -702,7 +771,8 @@ class StandardCombi(object):
         if show_fig:
             plt.show()
         # reset fontsize to default so it does not affect other figures
-        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        plt.rcdefaults()
+        #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         return fig
 
     # check if combischeme is right; assertion is thrown if not
