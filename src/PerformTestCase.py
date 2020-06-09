@@ -15,12 +15,13 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
         errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
-        interpolated_values = np.asarray(standardCombi(evaluation_points))
-        real_values = np.asarray([f.eval(point) for point in evaluation_points])
-        diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
-        # print(interpolated_values, diff)
-        interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
-        interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
+        if evaluation_points is not None:
+            interpolated_values = np.asarray(standardCombi(evaluation_points))
+            real_values = np.asarray([f.eval(point) for point in evaluation_points])
+            diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
+            # print(interpolated_values, diff)
+            interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
+            interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
     return pointArray, distinctFEvalArray, errorArrayStandard, interpolation_errorL2, interpolation_errorMax
 
 
