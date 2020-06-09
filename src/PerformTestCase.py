@@ -130,12 +130,12 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
         # plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
-        #plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
-        #           label='standardCombination distinct f evals lmin=' + str(i + minLmin))
+        plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
+                   label='standardCombination distinct f evals lmin=' + str(i + minLmin))
 
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+        #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
                    label='standardCombination L2 lmin=' + str(i + minLmin))
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+        #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
                    label='standardCombination Linf lmin=' + str(i + minLmin))
     if doDimAdaptive:
         print("numPoints =", numFEvalIdealDimAdaptive)
@@ -151,9 +151,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
 
         # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        #plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
+        plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        #plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
+        #plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
         plt.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
 
     plt.legend(bbox_to_anchor=(3, 1), loc="upper right")
