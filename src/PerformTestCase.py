@@ -134,9 +134,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
                    label='standardCombination distinct f evals lmin=' + str(i + minLmin))
 
         #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-                   label='standardCombination L2 lmin=' + str(i + minLmin))
+        #           label='standardCombination L2 lmin=' + str(i + minLmin))
         #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-                   label='standardCombination Linf lmin=' + str(i + minLmin))
+        #           label='standardCombination Linf lmin=' + str(i + minLmin))
     if doDimAdaptive:
         print("numPoints =", numFEvalIdealDimAdaptive)
         print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
