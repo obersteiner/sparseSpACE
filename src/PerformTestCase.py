@@ -102,8 +102,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         operation = Integration(f, grid, dim, reference_solution)
         dimAdaptiveCombi = DimAdaptiveCombi(a, b, operation=operation)
         scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 1, f,
-                                                                                                                10 ** -maxtol,
-                                                                                                                reference_solution=reference_solution, max_number_of_points=max_evaluations)
+                                                                                                                10 ** -maxtol, max_number_of_points=max_evaluations)
 
     # calculate different standard combination scheme results
     xArrayStandard = []
