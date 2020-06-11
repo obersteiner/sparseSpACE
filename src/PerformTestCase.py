@@ -27,7 +27,8 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
 
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
                                 minTol=-1, doDimAdaptive=False, max_evaluations=10 ** 7, evaluation_points=None,
-                                save_with_name=None, calc_standard_schemes=True, standard_combi_grid_name=""):
+                                save_with_name=None, calc_standard_schemes=True, standard_combi_grid_name="",
+                                legend_title=""):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -44,7 +45,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     # https://stackoverflow.com/questions/8389636/creating-over-20-unique-legend-colors-using-matplotlib
     NUM_COLORS = len(adaptiveAlgorithmVector) + (maxLmin - minLmin) + 1
 
-    cm = plt.get_cmap('gist_rainbow')  # alternative: gist_rainbow, hsv
+    cm = plt.get_cmap('hsv')  # alternative: gist_rainbow, hsv
     cNorm = colors.Normalize(vmin=0, vmax=NUM_COLORS - 1)
     scalarMap = mplcm.ScalarMappable(norm=cNorm, cmap=cm)
     fig = plt.figure(num=None, figsize=(8, 6), dpi=100, facecolor='w', edgecolor='w')
@@ -107,6 +108,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         numFEvalIdeal.append(numFEvalIdealAlgorithm)
         # interpolation_error_arrayL2.append(interpolation_errorL2)
         # interpolation_error_arrayMax.append(interpolation_errorMax)
+
+        # Spacing in console
+        print("\n\n-----------------------------------------------------------------------------------------------\n\n")
 
     if doDimAdaptive:
         dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
@@ -180,7 +184,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # ax.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
 
     ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
-               ncol=1, mode="expand", borderaxespad=0.)
+               ncol=1, mode="expand", borderaxespad=0., title=legend_title)
     ax.set_xlabel('Number of points')
     ax.set_ylabel('Approximation error')
 
