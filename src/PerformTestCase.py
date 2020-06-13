@@ -189,6 +189,6 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     ax.set_ylabel('Approximation error')
 
     if save_with_name is not None:
-        ax.figure.savefig("{}.pdf".format(save_with_name), bbox_inches='tight')
+        ax.figure.savefig("{}.pdf".format(save_with_name), bbox_inches='tight', dpi=300)
 
     # ax.figure.show()

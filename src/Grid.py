@@ -1163,6 +1163,8 @@ class GlobalRombergGrid(GlobalGrid):
                                    container_version=self.container_version)
         romberg_grid.set_grid(grid_1D, grid_levels_1D)
 
+        # TODO add weight cache
+
         return romberg_grid.get_weights()
 
 
