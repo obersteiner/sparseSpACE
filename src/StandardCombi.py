@@ -184,8 +184,9 @@ class StandardCombi(object):
 
         # initializtation
         self.set_combi_parameters(lmin, lmax)
-        self.operation.initialize()
-
+        points,weights=self.get_points_and_weights()   
+        self.operation.initialize(points)
+        
         # iterate over all component_grids and perform operation
         for component_grid in self.scheme:  # iterate over component grids
             self.operation.evaluate_levelvec(component_grid)

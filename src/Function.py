@@ -8,11 +8,19 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set, Tuple
 
+from os import path as ospath
+from os import mkdir as osmkdir
+from subprocess import Popen 
+from write_config import *
+import time
+from mpi4py import MPI
+import json
 # The function class is used to define several functions for testing the algorithm
 # it defines the basic interface that is used by the algorithm
 class Function(object):
     # initialization if necessary
     def __init__(self):
+        self.name=None
         self.log = logging.getLogger(__name__)
         self.f_dict = {}
         self.old_f_dict = {}
@@ -791,3 +799,133 @@ class FunctionGeneralizedNormal(Function):
                     sqPiHalve * scipy.special.erf(
                 np.sqrt(self.coefficients[d]) * (start[d] - self.midpoints[d]))) / np.sqrt(self.coefficients[d])
         return result
+
+    
+    
+class VadereSimulation(Function):
+    def __init__(self, path_to_java = "/usr/lib/jvm/java-11-openjdk-amd64/bin/java", path_to_executable = "vadere-console.jar"):
+   
+        super().__init__()
+        self.name="CampusUtilisation" 
+        self.path_to_java = path_to_java
+        self.path_to_executable = path_to_executable
+        if(not (ospath.exists('output'))):  
+            osmkdir('output')   
+        if(not (ospath.exists('scenarios_master'))):  
+            osmkdir('scenarios_master')       
+        comm=MPI.COMM_WORLD
+        rank=comm.Get_rank()
+        self.rank=rank
+        
+            
+    def __call__(self, coordinates: Tuple[float, ...]) -> Sequence[float]:
+        f_value = None
+        coords = tuple(coordinates)
+        if self.do_cache:
+            #coords = tuple(coordinates)
+            f_value = self.f_dict.get(coords, None)
+            if f_value is None:
+                f_value = self.old_f_dict.get(coords, None)
+                if f_value is not None:
+                    self.f_dict[coords] = f_value
+                                    
+                              
+        if f_value is None:
+          
+            pathToEval='output/CampusUtilisation.'+str(coords[0])+"," + str(coords[1]) + "," + str(coords[2]) + "," + str(coords[3])+"/timesteps.txt"
+            if ospath.exists(pathToEval): 
+                f_value=self.get_calculated_eval(pathToEval,use_counter=True)
+                if (len(f_value)==0):
+                    f_value = self.eval(coords)
+            else:    
+                f_value = self.eval(coords)
+            if self.do_cache:
+                self.f_dict[coords] = f_value
+        if np.isscalar(f_value):
+            f_value = [f_value]
+       
+        assert len(f_value) == self.output_length(), "Wrong output_length()! Adjust the output length in your function!"
+        return np.array(f_value)   
+                
+    def eval(self, coordinates):
+              
+        scenario=Scenario(coordinates, str(coordinates[0])+"," + str(coordinates[1]) + "," + str(coordinates[2]) + "," + str(coordinates[3]))
+        
+        scenario.printScenario(scenario.config["name"])
+        name=scenario.config["name"]
+                        
+        self.check_file_written('scenario',"scenarios_master/" + name + ".scenario",scenario.config)   
+    
+        proc = Popen(
+           [
+             str(self.path_to_java)+ " -Xmx4096m -jar " + str(self.path_to_executable)+ " scenario-run -f scenarios_master/" + name + ".scenario"],shell=True)
+        
+    
+        proc.wait()                                                
+        self.check_file_written('timesteps',"output/"+name+"/timesteps.txt")              
+        data2=self.get_calculated_eval("output/"+name+"/timesteps.txt")                    
+        return data2
+    
+    def output_length(self):
+        return 10017
+      
+    def get_calculated_eval(self,path,use_counter=False):
+        
+        counter=0
+        while True:            
+            if (use_counter and counter>5):
+                    return []
+            try: 
+                resultFile = open(path, 'r')
+                data = np.genfromtxt(resultFile, delimiter=" ", skip_header=1)
+                resultFile.close()
+                
+                return ((data[:,1:]).flatten())
+            except ValueError:
+                     time.sleep(1)
+                     counter+=1   
+        
+       
+            except IndexError:
+                     time.sleep(1)
+                     counter+=1 
+        
+        
+        
+    def check_file_written(self,mode,namefile,ScenarioConfig=None):
+        
+        while not(ospath.exists(namefile)):  
+                time.sleep(1)
+     
+        if mode=='timesteps':
+            wait=False
+            while (True):
+                points=self.get_calculated_eval(namefile)
+               
+                if not(len(points)==self.output_length()):
+                    time.sleep(1)
+                    wait=True
+                else:
+                    for point in points:
+                        if not (point>=0 and point <=200):
+                            time.sleep(1)
+                            wait=True
+                        if not(isinstance(point,np.float64)):
+                            time.sleep(1)
+                            wait=True   
+                if not (wait): break
+                else: wait=False
+        if mode=='scenario':
+           
+            
+            while (True):
+                try:
+                    ScenarioWritten= json.loads(open(namefile,'r').read())
+                    if not(ScenarioWritten==ScenarioConfig):                                                 
+                        time.sleep(1)
+                    else:break
+                except ValueError:
+                       time.sleep(1)
+                      
+                except json.JSONDecodeError:        
+                       time.sleep(1)    

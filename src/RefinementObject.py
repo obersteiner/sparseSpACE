@@ -17,6 +17,8 @@ class RefinementObject(object):
     def set_evaluations(self, evaluations):
         self.evaluations = evaluations
 
+    def set_errorVector(self,errorVector):  
+        self.errorVector=errorVector     
     # refine this object and return newly created objects
     @abc.abstractmethod
     def refine(self):
