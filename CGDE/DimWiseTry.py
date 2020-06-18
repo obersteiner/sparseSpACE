@@ -70,7 +70,7 @@ def plot_dataset(d, dim, filename: str = None):
 
 
 # dimension of the problem
-dim = 3
+dim = 2
 print('data set dimension: ', dim)
 # define number of samples
 size = 500
@@ -83,15 +83,24 @@ b = np.ones(dim)
 # choose data set type
 data_sets = ['floats', 'std exponential', 'std normal', 'multi normal', 'line', 'cross', 'moon', 'circle',
              'multi normal class', 'moon class', 'checkerboard class']
-data_set = data_sets[-3]
+data_set = data_sets[-2]
 print('chosen data set:', data_set)
 scale = [0.0000000001, 1.0]
 print('chosen scaling: ', scale)
 
 ###################### choose grid parameters
 # define lambda
-lambd = 0.01
+lambd = 0.02
 print('DensityEstimation lambda:', lambd)
+# use modified basis function
+modified_basis = False
+print('modified_basis:', modified_basis)
+# put points on the boundary
+boundary = True
+print('points on boundary:', boundary)
+# reuse older R matrix values
+reuse_old_values = True
+print('reuse old values: ', reuse_old_values)
 # define level of standard combigrid
 minimum_level, maximum_level = 1, 4
 print('max level of standard combirid:', minimum_level, ' : ', maximum_level)
@@ -103,9 +112,10 @@ tolerance = 0.1
 print('error tolerance:', tolerance)
 # error margin
 margin = 0.5
-# maximum amount of grid_points
-max_evaluations = 100
-print('max grid_points for dimWise:', max_evaluations)
+print('error margin: ', margin)
+# maximum amount of new grid_points
+max_evaluations = 256
+print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
 do_plot = True
 print('refinement plotting:', do_plot)
@@ -195,30 +205,31 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 ########### GRID EVALUATIONS
 
 ### Standard Combi
-for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
-    maximum_level = i
-    # define operation to be performed
-    operation = DensityEstimation(data, dim, lambd=lambd)
+# for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
+#     maximum_level = i
+#     # define operation to be performed
+#     operation = DensityEstimation(data, dim, lambd=lambd)
+#
+#     # create the combiObject and initialize it with the operation
+#     combiObject = StandardCombi(a, b, operation=operation)
+#
+#     if do_plot:
+#         print("Plot of dataset:")
+#         operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
+#     # perform the density estimation operation, has to be done before the printing and plotting
+#     combiObject.perform_operation(minimum_level, maximum_level)
+#     if do_plot:
+#         print("Combination Scheme:")
+#         # when you pass the operation the function also plots the contour plot of each component grid
+#         combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
+#     if do_plot:
+#         print("Sparse Grid:")
+#         combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
+#     if do_plot:
+#         print("Plot of density estimation")
+#         # when contour = True, the contour plot is shown next to the 3D plot
+#         combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
 
-    # create the combiObject and initialize it with the operation
-    combiObject = StandardCombi(a, b, operation=operation)
-
-    # if do_plot:
-    #     print("Plot of dataset:")
-    #     operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
-    # # perform the density estimation operation, has to be done before the printing and plotting
-    # combiObject.perform_operation(minimum_level, maximum_level)
-    # if do_plot:
-    #     print("Combination Scheme:")
-    #     # when you pass the operation the function also plots the contour plot of each component grid
-    #     combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
-    # if do_plot:
-    #     print("Sparse Grid:")
-    #     combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
-    # if do_plot:
-    #     print("Plot of density estimation")
-    #     # when contour = True, the contour plot is shown next to the 3D plot
-    #     combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
     # print("Plot of comparison between sparseSpACE and SG++")
     # plot comparison between sparseSpACE and SG++ result if path to SG++ values is given
     # plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level, maximum_level=maximum_level, lambd=lambd, pointsPerDim=100)
@@ -227,19 +238,20 @@ for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
 print("### Dimension wise evaluation begins here ###")
 print("### Dimension wise evaluation begins here ###")
 print("### Dimension wise evaluation begins here ###")
-############# 2D
+#############
 timings = {}  # pass this dict to the operation and grid scheme to collect execution time information
 
-newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=False, boundary=False)
+newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=modified_basis, boundary=boundary)
 
-errorOperator = ErrorCalculatorSingleDimVolumeGuided()
-#errorOperator = ErrorCalculatorSingleDimMisclassification()
-#errorOperator = ErrorCalculatorSingleDimMisclassificationGlobal()
-#errorOperatorPD = ErrorCalculatorSingleDimVolumeGuidedPunishedDepth()
-#errorOperatorSC = ErrorCalculatorSurplusCell()
+if 'class' in data_set:
+    # errorOperator = ErrorCalculatorSingleDimMisclassification()
+    errorOperator = ErrorCalculatorSingleDimMisclassificationGlobal()
+else:
+    errorOperator = ErrorCalculatorSingleDimVolumeGuided()
+
 
 # define operation to be performed
-op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs)
+op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs, reuse_old_values=reuse_old_values)
 # create the combiObject and initialize it with the operation
 SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, timings=timings, rebalancing=False)
 if do_plot:
@@ -251,6 +263,16 @@ SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluatio
 # print the execution times
 for k in timings.keys():
     print(k, timings[k])
+
+if reuse_old_values and op.debug:
+    print('reuse abs_diffs: ', op.reuse_abs_diff)
+    print('reuse avg abs_diffs: ', sum([x[1] for x in op.reuse_abs_diff]) / len(op.reuse_abs_diff))
+    print('reuse abs avg abs_diffs: ', sum([abs(x[1]) for x in op.reuse_abs_diff]) / len(op.reuse_abs_diff))
+    print('reuse max min abs_diffs: ', max([x[1] for x in op.reuse_abs_diff]), min([x[1] for x in op.reuse_abs_diff]))
+    print('reuse rel_diffs: ', op.reuse_rel_diff)
+    print('reuse avg rel_diffs: ', sum([x[1] for x in op.reuse_rel_diff]) / len(op.reuse_rel_diff))
+    print('reuse abs avg rel_diffs: ', sum([abs(x[1]) for x in op.reuse_rel_diff]) / len(op.reuse_rel_diff))
+    print('reuse max min rel_diffs: ', max([x[1] for x in op.reuse_rel_diff]), min([x[1] for x in op.reuse_rel_diff]))
 
 op.post_processing()
 if do_plot:
