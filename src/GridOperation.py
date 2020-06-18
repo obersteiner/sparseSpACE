@@ -260,7 +260,7 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None):
+    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, reuse_old_values=False):
         self.data = data
         self.dim = dim
         if grid is None:
@@ -276,6 +276,10 @@ class DensityEstimation(AreaOperation):
         self.reference_solution = None
         self.debug = False
         self.classes = classes
+        self.reuse_old_values = reuse_old_values
+        self.old_R = {} # only used if reuse_old_values is true
+        self.reuse_abs_diff = []
+        self.reuse_rel_diff = []
         print('DensityEstimation debug: ', self.debug)
 
     def initialize(self):
@@ -350,7 +354,8 @@ class DensityEstimation(AreaOperation):
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
         return surpluses
 
-    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                           grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo):
         """This method is used to compute the operation in the dimension-wise refinement strategy.
 
         :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
@@ -414,7 +419,7 @@ class DensityEstimation(AreaOperation):
         values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
         return values.reshape((len(values), 1))
 
-    def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
+    def get_point_values_component_grid(self, points: Sequence[float], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # TODO
         """This method returns the values in the component grid at the given points.
 
@@ -495,10 +500,10 @@ class DensityEstimation(AreaOperation):
         else:
             return []
 
-    def get_neighbors(self, point, gridPointCoordsAsStripes):
+    def get_neighbors(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) -> Sequence[Tuple[float, float]]:
         """
         This method
-        :param point: d-dimensional tuple containing the coordinates of the grid point
+        :param point: d-dimensional Sequence containing the coordinates of the grid point
         :param gridPointCoordsAsStripes:
         :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
         """
@@ -522,7 +527,7 @@ class DensityEstimation(AreaOperation):
             neighbors = (neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim)
             return neighbors
 
-    def get_hat_domain(self, point, gridPointCoordsAsStripes):
+    def get_hat_domain(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]):
         """
         This method
         :param point: d-dimensional tuple containing the indices of the point
@@ -546,12 +551,43 @@ class DensityEstimation(AreaOperation):
                 domain.append(element)
         return domain
 
-    def build_R_matrix_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels) -> Sequence[Sequence[float]]:
+    def get_domain_overlap_width(self, point_i: Sequence[float], domain_i: Sequence[Tuple[float, float]],
+                                 point_j: Sequence[float], domain_j: Sequence[Tuple[float, float]]) \
+            -> Tuple[Sequence[float], Sequence[float]]:
+        """
+        This method calculates the width of the overlap between the domains of points i and j in each dimension.
+        :param point_i:  d-dimensional sequence of coordinates
+        :param domain_i: d=dimensional sequence of 2-element tuples with the start and end value of the domain 
+        :param point_j:  d-dimensional sequence of coordinates
+        :param domain_j: d=dimensional sequence of 2-element tuples with the start and end value of the domain 
+        :return: d-dimensional sequence of that describe the width of the overlap between domains and the distance of the points
+        """
+        # sanity check
+        assert len(point_i) == len(point_j) == len(domain_i) == len(domain_j)
+        # check adjacency
+        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(domain_i)))):
+            widths = []
+            distances = []
+            for d in range(0, len(point_i)):
+                lower = max(domain_i[d][0], domain_j[d][0])
+                upper = min(domain_i[d][1], domain_j[d][1])
+                widths.append(abs(upper - lower))
+                distances.append(abs(point_i[d] - point_j[d]))
+            widths.sort()
+            distances.sort()
+            return (widths, distances)
+        else:
+            return ([0 for d in range(0, len(point_i))], [0 for d in range(0, len(point_i))])
+
+    def build_R_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                      grid_point_levels: Sequence[Sequence[int]]) \
+            -> Sequence[Sequence[float]]:
         """
         This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
         non-equidistant grids (usually used adaptive schemes)
-        :param xxx:
-        :param xxx:
+        :param gridPointCoordsAsStripes: d-dimensional sequence of coordinate lists. the lists include coordinates at
+                                         the domain boundary, even if there are no boundary points.
+        :param grid_point_levels: d-dimensional sequence of integer lists
         :return: R matrix of the component grid specified by the levelvector
         """
         test = list(get_cross_product(gridPointCoordsAsStripes))
@@ -562,38 +598,96 @@ class DensityEstimation(AreaOperation):
 
         grid_size = len(point_list)
         R = np.zeros((grid_size, grid_size))
-        # TODO
 
         if self.print_output:
             print("Point list: ", point_list)
             print("Point levels: ", grid_point_levels)
-        # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
-        for i in range(0, len(point_list)):
-            for j in range(i, len(point_list)):
-                res = self.calculate_L2_scalarproduct(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
-                                                      point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
-                R[i][j] = res[0]
-                R[j][i] = res[0]
+        if self.reuse_old_values:
+            # get overlap of domains between points in each dimension in sequence; sort sequence;
+            # the string of the sequence
+            if not self.masslumping:
+                for i in range(0, len(point_list)):
+                    for j in range(i, len(point_list)):
+                        overlap = self.get_domain_overlap_width(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                                point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                        #overlap.sort()
+                        if str(overlap) in self.old_R:
+                            res = self.old_R[str(overlap)]
+                        else:
+                            res = self.calculate_L2_scalarproduct(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                                  point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                            res = res[0]
+                            self.old_R[str(overlap)] = res
+                            #print('old_R update with points: ', point_list[i], point_list[j], 'value: ', res)
+                            #print('old_R update with domains: ', self.get_hat_domain(point_list[i], gridPointCoordsAsStripes), self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                            #print('old_R update with overlap: ', overlap)
 
-        ###########
-        #naive_R = np.zeros((grid_size, grid_size))
-        #for i in range(0, len(point_list)):
-        #    for j in range(0, len(point_list)):
-        #        res = self.calculate_L2_scalarproduct(point_list[i], self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
-        #                                              point_list[j], self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
-        #        naive_R[i][j] = res[0]
-        ###########
+                        R[i][j] = res
+                        R[j][i] = res
+        else:
+            # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
+            if not self.masslumping:
+                for i in range(0, len(point_list)):
+                    for j in range(i, len(point_list)):
+                        res = self.calculate_L2_scalarproduct(point_list[i],
+                                                              self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                              point_list[j],
+                                                              self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                        R[i][j] = res[0]
+                        R[j][i] = res[0]
+            else:
+                #only calculate the diagonal
+                for i in range(0, len(point_list)):
+                    j = i
+                    res = self.calculate_L2_scalarproduct(point_list[i],
+                                                          self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                          point_list[j],
+                                                          self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                    R[i][j] = res[0]
+                    R[j][i] = res[0]
 
-        # if np.array_equal(R, naive_R):
-        #     print('R and naive_R equal')
-        # else:
-        #     print('R and naive_R NOT equal')
+        if self.reuse_old_values and self.debug:
+            R_control = np.zeros((grid_size, grid_size))
+            for i in range(0, len(point_list)):
+                for j in range(i, len(point_list)):
+                    res = self.calculate_L2_scalarproduct(point_list[i],
+                                                          self.get_hat_domain(point_list[i], gridPointCoordsAsStripes),
+                                                          point_list[j],
+                                                          self.get_hat_domain(point_list[j], gridPointCoordsAsStripes))
+                    R_control[i][j] = res[0]
+                    R_control[j][i] = res[0]
+
+                    overlap = self.get_domain_overlap_width(point_list[i], self.get_hat_domain(point_list[i],
+                                                                                               gridPointCoordsAsStripes),
+                                                            point_list[j], self.get_hat_domain(point_list[j],
+                                                                                               gridPointCoordsAsStripes))
+                    #overlap.sort()
+                    old_res = self.old_R[str(overlap)]
+                    if (abs(res[0] - old_res) > 0.001):
+                        point_i = point_list[i]
+                        point_j = point_list[j]
+                        print('high reuse diff: ', res[0] - old_res, ' for: ', point_i, point_j, ' in grid: ', [max(x) for x in grid_point_levels], 'out of: ', sum([len(x) for x in grid_point_levels]))
+                        print('high reuse diff domains: ', self.get_hat_domain(point_i, gridPointCoordsAsStripes), self.get_hat_domain(point_j, gridPointCoordsAsStripes))
+                        print('high reuse diff vals: ', res[0], old_res, 'old_R key: ', overlap)
+                        overlap = self.get_domain_overlap_width(point_list[i], self.get_hat_domain(point_list[i],
+                                                                                                   gridPointCoordsAsStripes),
+                                                                point_list[j], self.get_hat_domain(point_list[j],
+                                                                                                   gridPointCoordsAsStripes))
+
+            non_zeros = np.count_nonzero(R_control)
+            R_diff = R - R_control
+            control_abs_diff = np.sum(R_diff) / non_zeros
+            control_rel_diff = np.sum(np.true_divide(R_diff, R_control)) / non_zeros
+            print('reuse old values abs_diffs: ', control_abs_diff)
+            print('reuse old values rel_diffs: ', control_abs_diff)
+            self.reuse_abs_diff.append(([max(x) for x in grid_point_levels], control_abs_diff))
+            self.reuse_rel_diff.append(([max(x) for x in grid_point_levels], control_rel_diff))
+
 
         return R
-        #normalize
-        #return R / np.max(np.abs(R))
 
-    def calculate_B_dimension_wise(self, data, gridPointCoordsAsStripes) -> Sequence[float]:
+    def calculate_B_dimension_wise(self, data: Sequence[Sequence[float]], gridPointCoordsAsStripes: Sequence[Sequence[float]]) \
+            -> Sequence[float]:
         """
         This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
         :param data: dataset specified for the operation
@@ -609,14 +703,6 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = len(point_list)
         b = np.zeros(N)
-        #naive_b = np.zeros(N)
-
-        ########### for naive_b
-        #if not self.grid.boundary:
-        #    point_list = [x for x in list(get_cross_product(gridPointCoordsAsStripes)) if 0.0 not in x and 1.0 not in x]
-        #else:
-        #    point_list = list(get_cross_product(gridPointCoordsAsStripes))
-        ###########
 
         for i in range(M):
             hats = self.get_neighbors(data[i], gridPointCoordsAsStripes)
@@ -638,37 +724,30 @@ class DensityEstimation(AreaOperation):
                         (self.hat_function_non_symmetric(h, self.get_hat_domain(h, gridPointCoordsAsStripes), data[i]) * sign)
 
         b *= (1 / M)
-
-        #naive_b *= (1 / M)
-        # if np.array_equal(b, naive_b):
-        #     print('b and naive_b equal')
-        # else:
-        #     print('b and naive_b NOT equal')
         if self.print_output:
             print("B vector: ", b)
         return b
-        #scale to [0.0,1.0]
-        #return b / np.max(np.abs(b))
 
-    def calculate_surpluses_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid) -> Sequence[float]:
+    def calculate_surpluses_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo) \
+            -> Sequence[float]:
         """
         Calculates the surpluses of the component grid for the specified dataset
         :param levelvec: Levelvector of the component grid
         :return: Surpluses of the component grid for the specified dataset
         """
-        numGridCoord = sum((len(l) for l in gridPointCoordsAsStripes))
+        #numGridCoord = sum((len(l) for l in gridPointCoordsAsStripes))
         r0 = time.time_ns()
         R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
         r1 = time.time_ns()
-        print('OP: build_R_matrix_dimension_wise time taken: ', r1 - r0)
+        print('OP: build_R_matrix_dimension_wise time taken: ', (r1 - r0) / 1000000)
         b0 = time.time_ns()
         b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes)
         b1 = time.time_ns()
-        print('OP: calculate_B_dimension_wise time taken: ', b1 - b0)
+        print('OP: calculate_B_dimension_wise time taken: ', (b1 - b0) / 1000000)
         cg0 = time.time_ns()
         alphas, info = cg(R, b)
         cg1 = time.time_ns()
-        print('OP: conjugate_gradient time taken: ', cg1 - cg0)
+        print('OP: conjugate_gradient time taken: ', (cg1 - cg0) / 1000000)
         if self.print_output:
             print("Alphas: ", component_grid.levelvector, alphas)
             print("-" * 100)
@@ -714,7 +793,8 @@ class DensityEstimation(AreaOperation):
             ### endCheck
             return (0, 0)
 
-    def hat_function_non_symmetric(self, point, domain, x):
+    def hat_function_non_symmetric(self, point: Sequence[float], domain: Sequence[float], x: Sequence[float]) \
+            -> float:
         """
         This method calculates the hat function value of the given coordinates with the given parameters
         :param : d-dimensional center point of the hat function
@@ -724,13 +804,30 @@ class DensityEstimation(AreaOperation):
         """
         assert len(point) == len(x) == len(domain)   # sanity check
         result = 1.0
-        for dim in range(len(x)):
-            if x[dim] >= point[dim]:
-                # result is linear interpolation between middle and domain end
-                result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
-            elif x[dim] < point[dim]:
-                result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
-        return result
+        if not self.grid.modified_basis:
+            for dim in range(len(x)):
+                if x[dim] >= point[dim]:
+                    # result is linear interpolation between middle and domain end
+                    result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+                elif x[dim] < point[dim]:
+                    result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+            return result
+        else:
+            for dim in range(len(x)):
+                # if the domain reaches the boundary, we extrapolate with the same slope that's to the neighboring point
+                boundary_check = lambda x: x == 0.0 or x == 1.0
+                if x[dim] >= point[dim]:
+                    # result is linear interpolation between middle and domain end
+                    if boundary_check(domain[dim][1]):
+                        result *= (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+                elif x[dim] < point[dim]:
+                    if boundary_check(domain[dim][0]):
+                        result *= (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+            return result
 
 
     def build_R_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
