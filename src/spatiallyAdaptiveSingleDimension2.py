@@ -24,7 +24,7 @@ class NodeInfo(object):
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True,
-                 version: int=3, operation: GridOperation=None, margin: float=None, rebalancing: bool=True,
+                 version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True,
                  chebyshev_points=False, use_volume_weighting=False, force_full_binary_tree_grid: bool=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
