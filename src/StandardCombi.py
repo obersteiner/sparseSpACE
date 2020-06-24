@@ -296,7 +296,7 @@ class StandardCombi(object):
                 combischeme_full.init_full_grid(self.lmax[0], self.lmin[0])
                 component_grids_full =  []
                 for levelvector in combischeme_full.get_index_set():
-                    component_grids_full.append(ComponentGridInfo(levelvector, 0.0))
+                    component_grids_full.append(ComponentGridInfo(levelvector, 0))
                 scheme = component_grids_full + scheme
             for component_grid in scheme:
                 grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), (component_grid.levelvector[0] - lmin[0])]
@@ -304,7 +304,7 @@ class StandardCombi(object):
                                                 linewidth, markersize, operation, show_border, ticks)
                 if show_levelvec:
                     grid.set_title(str(tuple(component_grid.levelvector)))
-                if component_grid.coefficient != 0.0:
+                if component_grid.coefficient != 0:
                     if add_refinement:
                         self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
                     if show_coefficient:
