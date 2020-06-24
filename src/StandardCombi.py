@@ -248,7 +248,7 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth=2.0, show_levelvec=True, show_coefficient=False, fontsize: int=40, figsize=10, fill_boundary_points=False, consider_not_null=False, operation=None):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border: bool=True, linewidth: float=2.0, show_levelvec: bool=True, show_coefficient: bool=False, fontsize: int=40, figsize: float=10, fill_boundary_points: bool=False, consider_not_null: bool=False, operation: GridOperation=None, add_complete_full_grid_space: bool=False):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -277,49 +277,11 @@ class StandardCombi(object):
         #    spine.set_visible(False)
         # get points of each component grid and plot them individually
         if lmax == lmin:
-            ax.xaxis.set_ticks_position('none')
-            ax.yaxis.set_ticks_position('none')
-            ax.set_xlim([self.a[0] - 0.05, self.b[0] + 0.05])
-            ax.set_ylim([self.a[1] - 0.05, self.b[1] + 0.05])
-            points = self.get_points_component_grid(lmax)
-            x_array = [p[0] for p in points]
-            y_array = [p[1] for p in points]
-            if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
-                offsetx = 0.04 * (max(x_array) - min(x_array))
-                offsety = 0.04 * (max(y_array) - min(y_array))
-                ax.set_xlim([min(x_array) - offsetx, max(x_array) + offsetx])
-                ax.set_ylim([min(y_array) - offsety, max(y_array) + offsety])
-            else:
-                offsetx = 0.04 * (self.b[0] - self.a[0])
-                offsety = 0.04 * (self.b[1] - self.a[1])
-                ax.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
-                ax.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
-            self.plot_points(points=points, grid=ax, markersize=markersize, color="black",
-                             fill_boundary=fill_boundary_points)
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
+            component_grid = scheme[0]
+            self.plot_points_component_grid(component_grid, consider_not_null, fill_boundary_points, ax,
+                                            linewidth, markersize, operation, show_border, ticks)
             if show_levelvec:
                 ax.set_title(str(tuple(self.lmax)))
-            if show_border and operation is None:
-                startx = self.a[0]
-                starty = self.a[1]
-                endx = self.b[0]
-                endy = self.b[1]
-                facecolor = "green"
-                ax.add_patch(
-                    patches.Rectangle(
-                        (startx, starty),
-                        endx - startx,
-                        endy - starty,
-                        fill=True,  # remove background,
-                        alpha=0.5,
-                        linewidth=linewidth, visible=True, facecolor=facecolor, edgecolor='black'
-                    )
-                )
-            if not ticks:
-                ax.axis('off')
             if add_refinement:
                 self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
             if operation is not None:
@@ -329,101 +291,32 @@ class StandardCombi(object):
             for i in range(lmax[0] - lmin[0] + 1):
                 for j in range(lmax[1] - lmin[1] + 1):
                     ax[j, i].axis('off')
-
+            if add_complete_full_grid_space:
+                combischeme_full = CombiScheme(self.dim)
+                combischeme_full.init_full_grid(self.lmax[0], self.lmin[0])
+                component_grids_full =  []
+                for levelvector in combischeme_full.get_index_set():
+                    component_grids_full.append(ComponentGridInfo(levelvector, 0.0))
+                scheme = component_grids_full + scheme
             for component_grid in scheme:
-                points = self.get_points_component_grid(component_grid.levelvector)
-                points_not_null = self.get_points_component_grid_not_null(component_grid.levelvector)
-                x_array = [p[0] for p in points]
-                y_array = [p[1] for p in points]
-                x_array_not_null = [[p[0] for p in points_not_null]]
-                y_array_not_null = [[p[1] for p in points_not_null]]
                 grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), (component_grid.levelvector[0] - lmin[0])]
-                grid.axis('on')
-                for axdir in ("x", "y"):
-                    grid.tick_params(axis=axdir, labelcolor='#345040')
-                grid.xaxis.set_ticks_position('none')
-                grid.yaxis.set_ticks_position('none')
-                if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
-                    offsetx = 0.04 * (max(x_array) - min(x_array))
-                    offsety = 0.04 * (max(y_array) - min(y_array))
-                    startx = min(x_array) - offsetx
-                    starty = min(y_array) - offsety
-                    endx = max(x_array) + offsetx
-                    endy =  max(y_array) + offsety
-                    grid.set_xlim([startx, endx])
-                    grid.set_ylim([starty,endy])
-                else:
-                    startx = self.a[0]
-                    starty = self.a[1]
-                    endx = self.b[0]
-                    endy =  self.b[1]
-                    offsetx = 0.04 * (self.b[0] - self.a[0])
-                    offsety = 0.04 * (self.b[1] - self.a[1])
-                    grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
-                    grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
-                if consider_not_null:
-                    self.plot_points(points=points, grid=grid, markersize=markersize, color="red", fill_boundary=fill_boundary_points)
-                    self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color="black", fill_boundary=fill_boundary_points)
-                else:
-                    self.plot_points(points=points, grid=grid, markersize=markersize, color="black", fill_boundary=fill_boundary_points)
-                grid.spines['top'].set_visible(False)
-                grid.spines['right'].set_visible(False)
-                grid.spines['bottom'].set_visible(False)
-                grid.spines['left'].set_visible(False)
+                self.plot_points_component_grid(component_grid, consider_not_null, fill_boundary_points, grid,
+                                                linewidth, markersize, operation, show_border, ticks)
                 if show_levelvec:
                     grid.set_title(str(tuple(component_grid.levelvector)))
-                if show_border and operation is None:
-                    facecolor = 'limegreen' if component_grid.coefficient == 1 else 'orange'
-                    grid.add_patch(
-                        patches.Rectangle(
-                            (startx, starty),
-                            endx - startx,
-                            endy - starty,
-                            fill=True,  # remove background,
-                            #alpha=0.5,
-                            linewidth=linewidth, visible=True, facecolor=facecolor, edgecolor='black'
-                        )
-                    )
-                if not ticks:
-                    grid.axis('off')
-                if add_refinement:
-                    self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
-                if show_coefficient:
-                    coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
-                    grid.text(0.55, 0.55, coefficient,
-                          fontsize=fontsize * 2, ha='center', color="blue")
-                if True:
-                    #fig, overax = plt.subplots()
-                    #overax = SubplotZero(fig, 111)
-                    #fig.add_subplot(overax)
-
-                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
-                    overax.patch.set_alpha(0)
-                    #overax.axis('off')
-                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
-                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
-                    overax.set_xticks([],[])
-                    overax.set_yticks([],[])
-                    overax.set_xlabel("$l_1$")
-                    overax.set_ylabel("$l_2$")
-                    #plt.rcParams['axes.linewidth'] = 1
-                    for direction in ["left", "bottom"]:
-                        # adds arrows at the ends of each axis
-                        #overax.spines[direction].set_axisline_style("-|>")
-
-                        # adds X and Y-axis from the origin
-                        overax.spines[direction].set_visible(True)
-                    for direction in ["right", "top"]:
-                        # hides borders
-                        overax.spines[direction].set_visible(False)
-                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
-                    length_includes_head= True, clip_on = False)
-                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
-                    length_includes_head= True, clip_on = False)
+                if component_grid.coefficient != 0.0:
+                    if add_refinement:
+                        self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+                    if show_coefficient:
+                        coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
+                        grid.text(0.55, 0.55, coefficient,
+                              fontsize=fontsize * 2, ha='center', color="blue")
                 # for axis in ['top', 'bottom', 'left', 'right']:
                 #    grid.spines[axis].set_visible(False)
                 if operation is not None:
                     operation.plot_component_grid(self, component_grid, grid)
+            if True:
+                self.plot_outer_axis(fig, linewidth)
         # ax1 = fig.add_subplot(111, alpha=0)
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
@@ -436,6 +329,97 @@ class StandardCombi(object):
         #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
         plt.rcdefaults()
         return fig
+
+    def plot_outer_axis(self, fig, linewidth):
+        # fig, overax = plt.subplots()
+        # overax = SubplotZero(fig, 111)
+        # fig.add_subplot(overax)
+        overax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
+        overax.patch.set_alpha(0)
+        # overax.axis('off')
+        # overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
+        # overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
+        overax.set_xticks([], [])
+        overax.set_yticks([], [])
+        overax.set_xlabel("$l_1$")
+        overax.set_ylabel("$l_2$")
+        # plt.rcParams['axes.linewidth'] = 1
+        for direction in ["left", "bottom"]:
+            # adds arrows at the ends of each axis
+            # overax.spines[direction].set_axisline_style("-|>")
+
+            # adds X and Y-axis from the origin
+            overax.spines[direction].set_visible(True)
+        for direction in ["right", "top"]:
+            # hides borders
+            overax.spines[direction].set_visible(False)
+        overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw=linewidth, head_width=linewidth / 100, head_length=linewidth / 100,
+                     overhang=0.3,
+                     length_includes_head=True, clip_on=False)
+        overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw=linewidth, head_width=linewidth / 100,
+                     head_length=linewidth / 100, overhang=0.3,
+                     length_includes_head=True, clip_on=False)
+
+    def plot_points_component_grid(self, component_grid, consider_not_null, fill_boundary_points, grid, linewidth,
+                                   markersize, operation, show_border, ticks):
+        points = self.get_points_component_grid(component_grid.levelvector)
+        points_not_null = self.get_points_component_grid_not_null(component_grid.levelvector)
+        x_array = [p[0] for p in points]
+        y_array = [p[1] for p in points]
+        x_array_not_null = [[p[0] for p in points_not_null]]
+        y_array_not_null = [[p[1] for p in points_not_null]]
+        grid.axis('on')
+        for axdir in ("x", "y"):
+            grid.tick_params(axis=axdir, labelcolor='#345040')
+        grid.xaxis.set_ticks_position('none')
+        grid.yaxis.set_ticks_position('none')
+        if any([math.isinf(x) for x in np.concatenate([self.a, self.b])]):
+            offsetx = 0.04 * (max(x_array) - min(x_array))
+            offsety = 0.04 * (max(y_array) - min(y_array))
+            startx = min(x_array) - offsetx
+            starty = min(y_array) - offsety
+            endx = max(x_array) + offsetx
+            endy = max(y_array) + offsety
+            grid.set_xlim([startx, endx])
+            grid.set_ylim([starty, endy])
+        else:
+            startx = self.a[0]
+            starty = self.a[1]
+            endx = self.b[0]
+            endy = self.b[1]
+            offsetx = 0.04 * (self.b[0] - self.a[0])
+            offsety = 0.04 * (self.b[1] - self.a[1])
+            grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
+            grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
+        if consider_not_null:
+            self.plot_points(points=points, grid=grid, markersize=markersize, color="red",
+                             fill_boundary=fill_boundary_points)
+            self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color="black",
+                             fill_boundary=fill_boundary_points)
+        else:
+            self.plot_points(points=points, grid=grid, markersize=markersize, color="black",
+                             fill_boundary=fill_boundary_points)
+        grid.spines['top'].set_visible(False)
+        grid.spines['right'].set_visible(False)
+        grid.spines['bottom'].set_visible(False)
+        grid.spines['left'].set_visible(False)
+        if show_border and operation is None:
+            if component_grid.coefficient != 0:
+                facecolor = 'limegreen' if component_grid.coefficient == 1 else 'orange'
+            else:
+                facecolor = None
+            grid.add_patch(
+                patches.Rectangle(
+                    (startx, starty),
+                    endx - startx,
+                    endy - starty,
+                    fill=facecolor is not None,  # remove background,
+                    # alpha=0.5,
+                    linewidth=linewidth, visible=True, facecolor=facecolor, edgecolor='black'
+                )
+            )
+        if not ticks:
+            grid.axis('off')
 
     def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
         """This method plots the the subspaces of the generated sparse grid. It might not plot them exactly for adaptive sparse grids.
