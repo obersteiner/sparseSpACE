@@ -665,7 +665,7 @@ class LejaGrid1D(Grid1d):
 
         weights = np.linalg.inv(V)[0, :]
 
-        return weights
+        return weights[self.lowerBorder:self.upperBorder]
 
     def __minimize_function(self, func, a, b):
 
@@ -746,7 +746,7 @@ class LejaGrid1D(Grid1d):
         sorted_points[0] = left_bound
         sorted_points[-1] = right_bound
 
-        return sorted_points
+        return sorted_points[self.lowerBorder:self.upperBorder]
 
 
 # this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
