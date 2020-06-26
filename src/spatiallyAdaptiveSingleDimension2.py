@@ -25,7 +25,7 @@ class NodeInfo(object):
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True,
                  version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True,
-                 chebyshev_points=False, use_volume_weighting=False, force_full_binary_tree_grid: bool=False):
+                 chebyshev_points=False, use_volume_weighting=False, force_balanced_refinement_tree: bool=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
         self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
@@ -51,7 +51,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.use_volume_weighting = use_volume_weighting
 
         # If set to true, all grid points have either 0 or two children
-        self.force_full_binary_tree_grid = force_full_binary_tree_grid
+        self.force_balanced_refinement_tree = force_balanced_refinement_tree
         self.grid_binary_tree = GridBinaryTree()
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -163,7 +163,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         points_level_dim.append(refineObj.levels[1])
 
             # Force full binary tree (each non-boundary grid point should have either 0 or 2 children)
-            if self.force_full_binary_tree_grid:
+            if self.force_balanced_refinement_tree:
                 points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim)
 
             # Compute children indices

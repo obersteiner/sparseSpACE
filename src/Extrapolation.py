@@ -4,6 +4,9 @@ from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
+from scipy.interpolate import interp1d
+from sympy import *
+import sympy as sym
 
 
 class Function(ABC):
@@ -540,7 +543,7 @@ class RombergGrid:
     :param slice_grouping: Specifies which type of grouping is used for the slices (e.g. UNIT, or GROUPED).
     :param slice_version: This parameters specifies the type of extrapolation within a slice.
     :param container_version: Specifies the extrapolation type within a container.
-    :param force_full_binary_tree_grid: If enabled, the provided grid will be extended to a full binary grid
+    :param force_balanced_refinement_tree: If enabled, the provided grid will be extended to a full binary grid
             (each point, except the boundary points, has two children).
     :param print_debug: Print output to console.
     """
@@ -548,7 +551,7 @@ class RombergGrid:
                  slice_grouping: SliceGrouping = SliceGrouping.UNIT,
                  slice_version: SliceVersion = SliceVersion.ROMBERG_DEFAULT,
                  container_version: SliceContainerVersion = SliceContainerVersion.ROMBERG_DEFAULT,
-                 force_full_binary_tree_grid=False,
+                 force_balanced_refinement_tree=False,
                  print_debug=False):
         self.print_debug = print_debug
 
@@ -565,7 +568,7 @@ class RombergGrid:
         self.slice_grouping = slice_grouping
         self.slice_version = slice_version
         self.container_version = container_version
-        self.force_full_binary_tree_grid = force_full_binary_tree_grid
+        self.force_balanced_refinement_tree = force_balanced_refinement_tree
 
         # Factories
         self.slice_factory = ExtrapolationGridSliceFactory(self.slice_version)
@@ -624,7 +627,7 @@ class RombergGrid:
         self.grid_levels = grid_levels
         self.weights = None
 
-        if self.force_full_binary_tree_grid:
+        if self.force_balanced_refinement_tree:
             print("Forcing the grid to its closest full binary tree")
             tree = GridBinaryTree(print_debug=self.print_debug)
             tree.init_tree(grid, grid_levels)
@@ -949,6 +952,116 @@ class RombergGrid:
         plt.title("RombergGrid Slices")
 
         plt.show()
+
+    def plot_support_sequence_for_each_slice(self, filename=None):
+        """
+        This method plots the support sequence for each slice slices.
+
+        :returns: void.
+        """
+        assert self.function is not None
+        grid = self.get_grid()
+
+        x = np.array(grid)
+        y = np.array([self.function.evaluate_at(xi) for xi in x])
+
+        # X and Y values for plotting y=f(x)
+        X = np.linspace(self.a, self.b, 100)
+        Y = np.array([self.function.evaluate_at(xi) for xi in X])
+
+        i = 0
+        for container in self.slice_containers:
+            for slice in container.slices:
+                for j, (left_supp, right_supp) in enumerate(slice.support_sequence):
+                    plt.plot(X, Y)
+
+                    y_left_supp = self.function.evaluate_at(left_supp)
+                    y_right_supp = self.function.evaluate_at(right_supp)
+
+                    p = interp1d([left_supp, right_supp], [y_left_supp, y_right_supp],
+                                 kind="linear", fill_value="extrapolate")
+
+                    y_left_supp = p(left_supp) if p(left_supp) > y_left_supp else y_left_supp
+                    y_right_supp = p(right_supp) if p(right_supp) > y_right_supp else y_right_supp
+
+                    # Plot interpolation through support points
+                    plt.plot([left_supp, right_supp], [y_left_supp, y_right_supp], '-', color="red")
+                    plt.text(left_supp + 0.05, y_left_supp + 0.5, "p", color="red")
+
+                    # Grid lines
+                    for point in grid:
+                        if point == slice.left_point or point == slice.right_point:
+                            y_p = p(point)
+                        else:
+                            y_p = self.function.evaluate_at(point)
+
+                        plt.plot([point, point], [0, y_p], '--', color="grey")
+
+                    xs = [slice.left_point, slice.left_point, slice.right_point, slice.right_point]
+                    ys = [0, p(slice.left_point), p(slice.right_point), 0]
+                    plt.fill(xs, ys, 'b', edgecolor='b', color="pink", alpha=0.6)
+                    plt.text(x[-1] - 0.05, y[-1] - 0.7, "f", color="blue")
+                    plt.title("Slice [{}, {}] with support ({}, {})".format(slice.left_point, slice.right_point,
+                                                                            left_supp, right_supp))
+
+                    if filename is not None:
+                        plt.savefig("{}_slice_{}_support_{}".format(filename, i, j), bbox_inches='tight', dpi=300)
+
+                    plt.show()
+                i += 1
+
+    def plot_slice_refinement_levels(self, filename=None):
+        """
+        This method plots the support sequence for each slice slices.
+
+        :returns: void.
+        """
+        assert self.function is not None
+        grid = self.get_grid()
+
+        x = np.array(grid)
+        y = np.array([self.function.evaluate_at(xi) for xi in x])
+
+        # X and Y values for plotting y=f(x)
+        X = np.linspace(self.a, self.b, 100)
+        Y = np.array([self.function.evaluate_at(xi) for xi in X])
+
+        for i in range(max(self.grid_levels) + 1):
+            plt.plot(X, Y)
+
+            for container in self.slice_containers:
+                for slice in container.slices:
+                    left_supp, right_supp = slice.support_sequence[min(i, slice.max_level)]
+                    y_left_supp = self.function.evaluate_at(left_supp)
+                    y_right_supp = self.function.evaluate_at(right_supp)
+
+                    p = interp1d([left_supp, right_supp], [y_left_supp, y_right_supp],
+                                 kind="linear", fill_value="extrapolate")
+
+                    # Plot interpolation through support points
+                    plt.plot([left_supp, right_supp], [y_left_supp, y_right_supp], '-', color="red")
+
+                    # Grid lines
+                    point = slice.left_point
+                    y_p = p(point)
+                    plt.plot([point, point], [0, y_p], '--', color="grey")
+
+                    plt.text(x[-1] - 0.05, y[-1] - 0.7, "f", color="blue")
+                    plt.text(x[0] + 0.05, y[0] + 0.3, "p", color="red")
+
+                    # Plot interpolation point
+                    plt.plot([left_supp], [y_left_supp], marker='o', markersize=5, color="green")
+
+                    plt.title("Level {}".format(i))
+
+            # Plot interpolation point
+            plt.plot([grid[-1], grid[-1]], [0, self.function.evaluate_at(grid[-1])], '--', color="grey")
+            plt.plot([grid[-1]], [self.function.evaluate_at(grid[-1])], marker='o', markersize=5, color="green")
+
+            if filename is not None:
+                plt.savefig("{}_slice_refinement_level_{}".format(filename, i), bbox_inches='tight', dpi=300)
+
+            plt.show()
 
 
 class ExtrapolationGridSlice(ABC):
@@ -1293,11 +1406,15 @@ class RombergGridSlice(ExtrapolationGridSlice):
     :param function: for error computation.
     """
     def __init__(self, interval, levels, support_sequence,
-                 extrapolation_version: ExtrapolationVersion, function: Function = None):
+                 extrapolation_version: ExtrapolationVersion, function: Function = None,
+                 subtract_constants=False):
         super(RombergGridSlice, self).__init__(interval, levels, support_sequence, function)
 
         self.extrapolation_version = extrapolation_version
         self.coefficient_factory = ExtrapolationCoefficientsFactory(self.extrapolation_version)
+
+        # TODO Remove
+        self.subtract_constants = subtract_constants
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Weights
@@ -1354,6 +1471,14 @@ class RombergGridSlice(ExtrapolationGridSlice):
 
             weight_dictionary[left_point].append(left_weight)
             weight_dictionary[right_point].append(right_weight)
+
+        # TODO Add enum option for this or a separate slice class
+        if self.subtract_constants:
+            constants = SlicedRombergConstants(self)
+            constant_dict = constants.get_final_constant_weights_for_right_refinement()
+
+            for point, weight in sorted(constant_dict.items()):
+                weight_dictionary[point].append(weight)
 
         # Update dictionary of extrapolated weights
         self.extrapolated_weights_dict = weight_dictionary
@@ -1504,3 +1629,267 @@ class ExtrapolationGridSliceContainerFactory:
             return RombergGridSliceContainer(function)
         else:
             raise RuntimeError("Wrong ContainerVersion provided.")
+
+
+class ExtrapolationConstants:
+    """
+    This class approximates the constants that have to be subtracted in the extrapolation process
+    :param slice: the extrapolated slice
+    """
+    def __init__(self, slice: ExtrapolationGridSlice):
+        self.slice = slice
+        self.midpoint = (self.slice.left_point + self.slice.right_point) / 2
+
+    def get_nth_derivative_approximation(self, support_points, max_level):
+        assert 0 <= max_level <= self.slice.max_level + 1
+
+        variable = symbols('t')
+        lagrange_weights = self.get_lagrange_interpolation_weights(support_points, variable)
+
+        assert len(support_points) == len(lagrange_weights)
+
+        # Compute (max_level)-th derivative of the lagrange weights
+        lagrange_weights_derivative = list(lagrange_weights)
+        for i in range(max_level):
+            lagrange_weights_derivative = self.differentiate_symbolic_factors(lagrange_weights_derivative, variable)
+
+        return lagrange_weights_derivative
+
+    @staticmethod
+    def get_interpolation_support_points(support_sequence, max_level):
+        support_points = []
+
+        # Iterate over the reversed support sequence (so that the slice boundaries are the first element)
+        for i, element in enumerate(reversed(support_sequence)):
+            if i >= max_level:
+                break
+
+            left_point, right_point = element
+            support_points.append(left_point)
+            support_points.append(right_point)
+
+        # Remove duplicates and sort support points
+        support_points = list(set(support_points))
+        support_points.sort()
+
+        return support_points
+
+    @staticmethod
+    def get_lagrange_interpolation_weights(support_points, variable=None):
+        """
+        This methods computes the symbolic factors for each support point through lagrange interpolation.
+
+        :param support_points: an symbolic index based array of support points for the lagrange interpolation.
+        :param variable: a SymPy symbol, that is the variable of the lagrange polynomial.
+        :return: an array of lagrange weight factors.
+        """
+        assert len(support_points)
+
+        if variable is None:
+            variable = sym.symbols('t')
+
+        factors = []
+
+        for k in range(len(support_points)):
+            factor = 1
+
+            for j in range(len(support_points)):
+                if j != k:
+                    factor = factor * ((variable - support_points[j]) / (support_points[k] - support_points[j]))
+
+            factors.append(factor)
+
+        return factors
+
+    @staticmethod
+    def differentiate_symbolic_factors(factors, variable):
+        """
+        This method partially differentiates the given symbolic factor array one time.
+
+        :param factors: an array of symbolic factors.
+        :param variable: the variable we derive from.
+        :return: an array of first derivatives.
+        """
+        return list(map(lambda factor: sym.diff(factor, variable), factors))
+
+    @staticmethod
+    def append_constants_dict(dictionary, points, constant):
+        for i, point in enumerate(points):
+            dictionary[point].append(constant[i])
+
+
+class SlicedRombergConstants(ExtrapolationConstants):
+    """
+    These constants have been formally proved by a Taylor expansion of the slice trapezoidal rule followed by
+    extrapolation steps.
+    """
+    def __init__(self, slice: ExtrapolationGridSlice):
+        super(SlicedRombergConstants, self).__init__(slice)
+
+        # Initialize derivatives
+        self.derivatives = []
+        self.support_points_for_derivatives = []
+        for k in range(1, self.slice.max_level + 2):
+            support_points = self.get_interpolation_support_points(self.slice.support_sequence, k)
+            derivative = np.array(self.get_nth_derivative_approximation(support_points, k))
+
+            self.derivatives.append(derivative)
+            self.support_points_for_derivatives.append(support_points)
+
+    def get_final_constant_weights_for_right_refinement(self):
+        """
+        This method returns a dictionary that maps grid points to their summarized constants.
+        (Only constants for right boundary refinement)
+
+        :return: a dictionary that maps grid points to their summarized constants
+        """
+        constant_weights_dict = defaultdict(list)
+
+        self.__add_new_constants_weights_for_right_refinement_rec(constant_weights_dict)
+
+        # Sum constant weights for each support point together
+        constant_weights = {}
+
+        for point, weights in sorted(constant_weights_dict.items()):
+            constant_weights[point] = sum(weights)
+
+        return constant_weights
+
+    def __add_new_constants_weights_for_right_refinement_rec(self, constant_weights_dict, k=0):
+        """
+        Recursively adds new constants weights to the dictionary.
+        e.g. Extrapolation with a support sequence of length 3 => max_level = 2. In the first extrapolation step
+        we combine eq. 1 with 2 and eq. 2 with 3. These two new equations are then be combined in the second
+        extrapolation step.
+
+        For each of those extrapolations we have to add/subtract new constants weights to the dictionary.
+
+        :param constant_weights_dict: dictionary that contains all constant weights
+        :param k: max_level
+        :return: void
+        """
+        if k > self.slice.max_level:
+            return
+
+        for i in range(self.slice.max_level - k):
+            self.__add_constants_for_one_extrapolation_step(constant_weights_dict, k + 1)
+
+        self.__add_new_constants_weights_for_right_refinement_rec(constant_weights_dict, k + 1)
+
+    def __add_constants_for_one_extrapolation_step(self, constant_weights_dictionary, k):
+        # There is no extrapolation (=> no constants) for k = 0
+        if k < 1:
+            return constant_weights_dictionary
+
+        # TODO edge case: derivative is not a constant. Should not happen
+
+        # - C_{1,k}
+        support_points, constant_1_1 = self.get_first_constant_weights_right(k)
+        self.append_constants_dict(constant_weights_dictionary, support_points, - constant_1_1)
+
+        # - C_{3,k}
+        support_points, constant_3_1 = self.get_third_constant_weights_right(k)
+        self.append_constants_dict(constant_weights_dictionary, support_points, - constant_3_1)
+
+        # - C_{1,k + 1}
+        support_points, constant_1_2 = self.get_first_constant_weights_right(k + 1)
+        self.append_constants_dict(constant_weights_dictionary, support_points, - constant_1_2)
+
+        # - C_{3, k + 1}
+        support_points, constant_3_2 = self.get_third_constant_weights_right(k + 1)
+        seq = self.slice.support_sequence
+        a_max, b_max = seq[k]
+        a_prev, b_prev = seq[k - 1]
+        H_max = b_max - a_max
+        H_prev = b_prev - a_prev
+        m = self.midpoint
+        factor_3_2 = ((b_max - m) ** (k + 1) - (b_prev - m) ** (k + 1)) / (H_prev - H_max)
+        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_3_2 * constant_3_2)
+
+        # + C_{k + 1} with TODO validate and force (k + 1) % 2 = 0
+        if k % 2 == 0:
+            new_level = k
+        else:
+            new_level = k + 1
+        support_points, integration_constant = self.get_integration_constant_weights(new_level)
+        self.append_constants_dict(constant_weights_dictionary, support_points, integration_constant)
+
+    def get_first_constant_weights_right(self, k):
+        """
+        Computes C_{1,k} for right refinement extrapolation step
+
+        :param k: numpy array
+        :return: support_points, constant_weights
+        """
+        assert k >= 1
+
+        slice = self.slice
+        support_points = self.support_points_for_derivatives[k-1]
+        derivative_factors = self.derivatives[k-1]
+
+        derivative_step = slice.width * (derivative_factors / math.factorial(k))
+        constant_weights = derivative_step * ((slice.left_point - self.midpoint) ** k)
+
+        assert len(support_points) == len(constant_weights)
+
+        return support_points, constant_weights
+
+    def get_second_constant_weights_right(self, k):
+        """
+        Computes C_{2,k} for a right refinement extrapolation step
+
+        :param k: numpy array
+        :return: C_{1,k}
+        """
+        assert k >= 1
+
+        slice = self.slice
+        support_points = self.support_points_for_derivatives[k-1]
+        derivative_factors = self.derivatives[k-1]
+
+        derivative_step = slice.width * (derivative_factors / math.factorial(k))
+        constant_weights = derivative_step * (slice.left_point - self.midpoint) ** (k + 1)
+
+        assert len(support_points) == len(constant_weights)
+
+        return support_points, constant_weights
+
+    def get_third_constant_weights_right(self, k):
+        """
+        Computes C_{3,k} for a right refinement extrapolation step
+
+        :param k: numpy array
+        :return: C_{1,k}
+        """
+        assert k >= 1
+
+        slice = self.slice
+        support_points = self.support_points_for_derivatives[k-1]
+        derivative_factors = self.derivatives[k-1]
+
+        derivative_step = slice.width * (derivative_factors / math.factorial(k))
+        constant_weights = derivative_step * (slice.left_point - self.midpoint)
+
+        assert len(support_points) == len(constant_weights)
+
+        return support_points, constant_weights
+
+    def get_integration_constant_weights(self, k):
+        """
+
+        :param derivative_factors: numpy array
+        :return:
+        """
+        support_points = self.support_points_for_derivatives[k-1]
+        derivative_factors = self.derivatives[k-1]
+
+        step_width = self.slice.width
+
+        numerator = (step_width ** (k + 1))
+        denominator = int(math.pow(2, k)) * int(math.factorial(k + 1))
+        constant_weights = derivative_factors * (numerator / denominator)
+
+        return support_points, constant_weights
+
+    def get_first_constant_weights_left(self):
+        pass
