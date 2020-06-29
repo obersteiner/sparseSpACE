@@ -21,6 +21,9 @@ from SGppCompare import plot_comparison
 
 from sklearn.neighbors import KernelDensity
 
+import cProfile
+import pstats
+
 
 def scale_data(data, dim, scale):
     scaler = preprocessing.MinMaxScaler(feature_range=(scale[0], scale[1]))
@@ -73,7 +76,7 @@ def plot_dataset(d, dim, filename: str = None):
 dim = 2
 print('data set dimension: ', dim)
 # define number of samples
-size = 500
+size = 5000
 print('data set size: ', size)
 
 # define boundaries
@@ -96,19 +99,22 @@ print('DensityEstimation lambda:', lambd)
 modified_basis = False
 print('modified_basis:', modified_basis)
 # put points on the boundary
-boundary = True
+boundary = False
 print('points on boundary:', boundary)
 # reuse older R matrix values
 reuse_old_values = True
 print('reuse old values: ', reuse_old_values)
+# choose between numeric and analytic calculation
+numeric_calculation = False
+print('numeric_calculation: ', numeric_calculation)
 # define level of standard combigrid
 minimum_level, maximum_level = 1, 4
 print('max level of standard combirid:', minimum_level, ' : ', maximum_level)
 # define starting level of dimension wise combigrid
-lmin, lmax = 1, 2
+lmin, lmax = 2, 3
 print('lim/lmax of dimWise grid: ', lmin, ' : ', lmax)
 # error tolerance
-tolerance = 0.1
+tolerance = 0.01
 print('error tolerance:', tolerance)
 # error margin
 margin = 0.5
@@ -251,14 +257,18 @@ else:
 
 
 # define operation to be performed
-op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs, reuse_old_values=reuse_old_values)
+op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs, reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
 # create the combiObject and initialize it with the operation
 SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, timings=timings, rebalancing=False)
 if do_plot:
     print("Plot of dataset:")
     op.plot_dataset(filename='dimWise_'+data_set+'_dataSet')
 # perform the density estimation operation, has to be done before the printing and plotting
-SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=max_evaluations, do_plot=do_plot)
+cProfile.run('SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=max_evaluations, do_plot=do_plot)',
+             filename='DimWiseAdaptivProfile.txt')
+p = pstats.Stats('DimWiseAdaptivProfile.txt')
+
+
 
 # print the execution times
 for k in timings.keys():
@@ -443,3 +453,6 @@ if ref_vals is not None:
     print('Pearsson corr ground - kde:', scipy.stats.pearsonr(ref_vals, kde_vals))
 if kde_vals is not None:
     print('Pearsson corr kde - grid:', scipy.stats.pearsonr(grid_vals, kde_vals))
+
+
+p.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
