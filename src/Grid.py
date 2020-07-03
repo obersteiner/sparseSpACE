@@ -1137,6 +1137,7 @@ from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceC
 
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
+                 do_cache=True,
                  slice_grouping=SliceGrouping.UNIT,
                  slice_version=SliceVersion.ROMBERG_DEFAULT,
                  container_version=SliceContainerVersion.ROMBERG_DEFAULT):
@@ -1147,6 +1148,7 @@ class GlobalRombergGrid(GlobalGrid):
         self.dim = len(a)
         self.length = np.array(b) - np.array(a)
         self.modified_basis = modified_basis
+        self.do_cache = do_cache
 
         assert not(modified_basis)
         assert boundary
@@ -1155,12 +1157,15 @@ class GlobalRombergGrid(GlobalGrid):
         self.slice_version = slice_version
         self.container_version = container_version
 
+        self.weight_cache = {}
+
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
                                 grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
-        # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
 
-        # print("Grid:   {}".format(grid_1D))
-        # print("Levels: {}".format(grid_levels_1D))
+        key = tuple([tuple(grid_1D), tuple(grid_levels_1D)])
+
+        if self.do_cache and key in self.weight_cache:
+            return self.weight_cache[key]
 
         romberg_grid = ExtrapolationGrid(slice_grouping=self.slice_grouping,
                                          slice_version=self.slice_version,
@@ -1168,7 +1173,9 @@ class GlobalRombergGrid(GlobalGrid):
 
         romberg_grid.set_grid(grid_1D, grid_levels_1D)
         weights = romberg_grid.get_weights()
-        # TODO add weight cache
+
+        if self.do_cache:
+            self.weight_cache[key] = weights
 
         return weights
 

@@ -46,7 +46,7 @@ coeffs = np.array([np.float64(i) for i in range(1, dim + 1)])
 f_genz_disc = GenzDiscontinious(border=border,coeffs=coeffs)
 
 # Set function
-f = f_genz_corner
+f = f_genz_cont
 
 # plot function
 # f.plot(np.ones(dim)*a,np.ones(dim)*b)
@@ -54,11 +54,11 @@ reference_solution = f.getAnalyticSolutionIntegral(a, b)
 errorOperator = ErrorCalculatorSingleDimVolumeGuided()
 
 # Grids
-grid=GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=True)
-# grid = GlobalRombergGrid(a=a, b=b, modified_basis=False, boundary=True,
-#                          slice_grouping=SliceGrouping.UNIT,
-#                          slice_version=SliceVersion.ROMBERG_DEFAULT,
-#                          container_version=SliceContainerVersion.ROMBERG_DEFAULT)
+# grid=GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=True)
+grid = GlobalRombergGrid(a=a, b=b, modified_basis=False, boundary=True,
+                         slice_grouping=SliceGrouping.UNIT,
+                         slice_version=SliceVersion.ROMBERG_DEFAULT,
+                         container_version=SliceContainerVersion.ROMBERG_DEFAULT)
 
 operation = Integration(f=f, grid=grid, dim=dim, reference_solution=reference_solution)
 
@@ -71,6 +71,6 @@ adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions2(a, b,
 adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator,
                                                        max_tol,
                                                        max_evaluations=max_evaluations,
-                                                       do_plot=True)
+                                                       do_plot=False)
 
 print("Number of points used in refinement:", adaptiveCombiInstanceSingleDim.get_total_num_points())
