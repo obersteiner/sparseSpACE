@@ -6,7 +6,6 @@ import numpy.polynomial.hermite as hermite
 import math
 from math import isclose, isinf
 from BasisFunctions import *
-from Extrapolation import RombergGrid, SliceGrouping, SliceVersion, SliceContainerVersion
 from Utils import *
 from ComponentGridInfo import *
 from typing import Callable, Tuple, Sequence
@@ -1133,6 +1132,9 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
 
 
+from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion
+
+
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
                  slice_grouping=SliceGrouping.UNIT,
@@ -1145,7 +1147,9 @@ class GlobalRombergGrid(GlobalGrid):
         self.dim = len(a)
         self.length = np.array(b) - np.array(a)
         self.modified_basis = modified_basis
-        assert not(modified_basis) or not(boundary)
+
+        assert not(modified_basis)
+        assert boundary
 
         self.slice_grouping = slice_grouping
         self.slice_version = slice_version
@@ -1158,14 +1162,15 @@ class GlobalRombergGrid(GlobalGrid):
         # print("Grid:   {}".format(grid_1D))
         # print("Levels: {}".format(grid_levels_1D))
 
-        romberg_grid = RombergGrid(slice_grouping=self.slice_grouping,
-                                   slice_version=self.slice_version,
-                                   container_version=self.container_version)
-        romberg_grid.set_grid(grid_1D, grid_levels_1D)
+        romberg_grid = ExtrapolationGrid(slice_grouping=self.slice_grouping,
+                                         slice_version=self.slice_version,
+                                         container_version=self.container_version)
 
+        romberg_grid.set_grid(grid_1D, grid_levels_1D)
+        weights = romberg_grid.get_weights()
         # TODO add weight cache
 
-        return romberg_grid.get_weights()
+        return weights
 
 
 class GlobalBasisGrid(GlobalGrid):

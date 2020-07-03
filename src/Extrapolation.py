@@ -516,7 +516,7 @@ class SliceGrouping(Enum):
     """
     UNIT = 1  # Only unit slices (no grouping)
     GROUPED = 2  # Group slices if size 2^k, split into unit containers otherwise
-    GROUPED_OPTIMIZED = 3   # Group slices until container size is the max possible 2^k
+    GROUPED_OPTIMIZED = 3  # Group slices until container size is the max possible 2^k
 
 
 class SliceVersion(Enum):
@@ -533,9 +533,10 @@ class SliceContainerVersion(Enum):
     This enum specifies the available slice types.
     """
     ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers
+    LAGRANGE_ROMBERG = 2  # Important missing grid points are interpolated with Lagrange
 
 
-class RombergGrid:
+class ExtrapolationGrid:
     """
     This is the main extrapolation class. It initializes the containers and slices.
     Collects their (extrapolated) weights and returns the weights for each grid point.
@@ -547,6 +548,7 @@ class RombergGrid:
             (each point, except the boundary points, has two children).
     :param print_debug: Print output to console.
     """
+
     def __init__(self,
                  slice_grouping: SliceGrouping = SliceGrouping.UNIT,
                  slice_version: SliceVersion = SliceVersion.ROMBERG_DEFAULT,
@@ -573,6 +575,9 @@ class RombergGrid:
         # Factories
         self.slice_factory = ExtrapolationGridSliceFactory(self.slice_version)
         self.container_factory = ExtrapolationGridSliceContainerFactory(self.container_version)
+
+    def interpolation_is_enabled(self):
+        return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG
 
     # Integration
     def integrate(self, function: Function = None):
@@ -684,29 +689,14 @@ class RombergGrid:
                 function=self.function
             )
 
-            # Group  >= 1 slices into a container, which spans a partial full grid
-            #   Create a new container...
-            #   ... if this is the first iteration or
-            #   ... if the step width changes or
-            #   ... the version of this grid is defined to be unit slices (then each container holds only one slice)
-            if (step_width_buffer is None) \
-                    or (step_width != step_width_buffer) \
-                    or (self.slice_grouping == SliceGrouping.UNIT):
-
-                container = self.container_factory.get_grid_slice_container(function=self.function)
-                container.append_slice(grid_slice)
-
-                self.slice_containers.append(container)
-
-            #   Append to previous container if the step width hasn't changed
-            elif step_width == step_width_buffer:
-                self.slice_containers[-1].append_slice(grid_slice)
+            # Initialize containers based on the inherited class
+            self.initialize_containers_with_slices(step_width, step_width_buffer, grid_slice)
 
             # Update buffer
             step_width_buffer = step_width
 
-        # Split containers if necessary into unit slices (Each container should contain 2^k slices for k > 0)
-        self.adjust_containers()
+        # Enable possibility for inheriting classes to do a postprocessing step
+        self.grid_init_post_processing()
 
     def compute_support_sequence(self, final_slice_start_index, final_slice_stop_index):
         """
@@ -760,6 +750,115 @@ class RombergGrid:
                                                                                  final_slice_start_index,
                                                                                  final_slice_stop_index)
 
+    def initialize_containers_with_slices(self, step_width, step_width_buffer, grid_slice):
+        """
+        Group  >= 1 slices into a container, which spans a partial full grid
+
+        :param step_width: current step width
+        :param step_width_buffer: previous step width
+        :param grid_slice: current slice
+
+        :return: void
+        """
+
+        if self.interpolation_is_enabled():
+            self.__initialize_containers_with_interpolated_slices(step_width, step_width_buffer, grid_slice)
+        else:
+            self.__initialize_default_containers(step_width, step_width_buffer, grid_slice)
+
+    def __initialize_containers_with_interpolated_slices(self, step_width, step_width_buffer, grid_slice):
+        """
+        Group  >= 1 slices into a container, which spans a partial full grid
+
+        :param step_width: current step width
+        :param step_width_buffer: previous step width
+        :param grid_slice: current slice
+
+        :return: void
+        """
+        is_first_container = step_width_buffer is None
+
+        # Create a new container...
+        #    ... if this is the first container
+        #    ... the step widths are to different (then there are to many points to interpolate)
+        if is_first_container:
+            container = self.container_factory.get_grid_slice_container(function=self.function)
+            container.append_slice(grid_slice)
+            self.slice_containers.append(container)
+            return
+
+        # TODO: allow bigger deltas for grouping
+        container = self.slice_containers[-1]
+        correct_step_width_delta = (((step_width_buffer / 2) == step_width) and container.minimal_step_width in [
+            step_width * 2, step_width / 2]) \
+                                   or ((step_width_buffer * 2) == step_width and container.minimal_step_width in [
+            step_width * 2, step_width / 2])
+
+        # Append to previous container
+        if step_width_buffer == step_width or correct_step_width_delta:
+            container.append_slice(grid_slice)
+            return
+
+        # Create new container
+        container = self.container_factory.get_grid_slice_container(function=self.function)
+        container.append_slice(grid_slice)
+        self.slice_containers.append(container)
+
+    def __initialize_default_containers(self, step_width, step_width_buffer, grid_slice):
+        """
+        Group  >= 1 slices into a container, which spans a partial full grid
+
+        :param step_width: current step width
+        :param step_width_buffer: previous step width
+        :param grid_slice: current slice
+
+        :return: void
+        """
+
+        # Create a new container...
+        #    ... if this is the first iteration or
+        #    ... if the step width changes or
+        #    ... the version of this grid is defined to be unit slices (then each container holds only one slice)
+        if (step_width_buffer is None) \
+                or (step_width != step_width_buffer) \
+                or (self.slice_grouping == SliceGrouping.UNIT):
+            container = self.container_factory.get_grid_slice_container(function=self.function)
+            container.append_slice(grid_slice)
+
+            self.slice_containers.append(container)
+            return
+
+        # Append to previous container
+        if step_width == step_width_buffer:
+            container = self.slice_containers[-1]
+            container.append_slice(grid_slice)
+
+    def grid_init_post_processing(self):
+        """
+        This method executes post processing steps
+
+        :return: void
+        """
+        # Replace slices where one point ist missing with two interpolating slices
+        if self.interpolation_is_enabled():
+            self.insert_interpolating_slices()
+
+        self.adjust_containers()
+
+        # Add information about all containers to the left & right for each container
+        self.set_adjacent_containers_for_all_slice_containers()
+
+    def insert_interpolating_slices(self):
+        """
+        This method computes missing grid points and updates the container accordingly
+
+        :return: void
+        """
+        assert self.interpolation_is_enabled()
+
+        for container in self.slice_containers:
+            container.insert_interpolating_slices()
+
     def adjust_containers(self):
         """
         Split containers if necessary into unit slices. Each container should contain 2^k slices for k > 0.
@@ -776,43 +875,46 @@ class RombergGrid:
             # Split container if size != 2^k for k >= 0 (<=> log_2(size) isn't an integer)
             #   Split until size is the next closest power of 2
             if not (math.log(size, 2)).is_integer():
-                # Find closest power of 2
-                closest_power_below = self.__find_closest_power_below(size, 2)
+                # Optimized container splitting: Split multiple containers with power 2
+                if self.slice_grouping == SliceGrouping.GROUPED_OPTIMIZED:
+                    split_containers = container.split_into_containers_with_power_two_sizes()
+                    new_containers.extend(split_containers)
 
                 # Default grouping: Create new container for each slice
-                if self.slice_grouping != SliceGrouping.GROUPED_OPTIMIZED:
+                else:
                     for slice in container.slices:
                         container = self.container_factory.get_grid_slice_container(function=self.function)
                         container.append_slice(slice)
-                        self.__assert_container_size(container)
+                        self.assert_container_size(container)
 
                         new_containers.append(container)
-                # Optimized container splitting. Split remainders slices until container size is 2^k
-                else:
-                    new_containers.append(container)
-                    new_index = len(new_containers) - 1
-
-                    for (j, slice) in enumerate(container.slices):
-                        # Create new container for each slice whose index exceeds the closest power below (2^k)
-                        if j >= closest_power_below:
-                            container = self.container_factory.get_grid_slice_container(function=self.function)
-                            container.append_slice(slice)
-                            self.__assert_container_size(container)
-
-                            new_containers.append(container)
-
-                    # Remove slices from initial container that have been split into a new unit container
-                    new_containers[new_index].slices = \
-                        new_containers[new_index].slices[0:closest_power_below]
-                    self.__assert_container_size(new_containers[new_index])
             else:
                 new_containers.append(container)
-                self.__assert_container_size(container)
+                self.assert_container_size(container)
 
         self.slice_containers = new_containers
 
+    def set_adjacent_containers_for_all_slice_containers(self):
+        """
+        This method determines for each slice container all (indirect) adjacent containers to the left and right
+        of the container.
+
+        It reverses the list, since the containers should be provided from closest first to farthest away.
+
+        :return: void
+        """
+
+        containers = self.slice_containers
+
+        for i, container in enumerate(self.slice_containers):
+            containers_to_left = containers[0:i]
+            containers_to_right = containers[(i + 1):]
+
+            container.set_adjacent_containers(left=list(reversed(containers_to_left)),
+                                              right=containers_to_right)
+
     @staticmethod
-    def __assert_container_size(container):
+    def assert_container_size(container):
         """
         This method assures that the container has a size of 2^k (Assert).
 
@@ -821,24 +923,6 @@ class RombergGrid:
         """
 
         assert (math.log(container.size(), 2)).is_integer()
-
-    @staticmethod
-    def __find_closest_power_below(n, base=2):
-        """
-        This method determines the closest power below a given number for a given base and returns it.
-
-        :param n: upper bound.
-        :param base: base for exponentiation.
-        :returns: closest 2^k below given number n.
-        """
-        for i in range(n):
-            left_pow = math.pow(base, i)
-            right_pow = math.pow(base, i + 1)
-
-            if left_pow < n < right_pow:
-                return int(left_pow)
-
-        return 1
 
     def update_weights(self):
         """
@@ -1073,7 +1157,11 @@ class ExtrapolationGridSlice(ABC):
     :param support_sequence: A sequence of refined support points for extrapolation.
     :param function: for error computation.
     """
-    def __init__(self, interval, levels, support_sequence, function: Function = None):
+
+    def __init__(self, interval, levels, support_sequence,
+                 extrapolation_version: ExtrapolationVersion = None,
+                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+                 function: Function = None):
         assert interval[0] < interval[1]
 
         self.left_point = interval[0]
@@ -1083,11 +1171,15 @@ class ExtrapolationGridSlice(ABC):
         self.max_level = max(levels)
         self.levels = levels
 
-        assert self.max_level == len(support_sequence) - 1
+        assert support_sequence is None or self.max_level == len(support_sequence) - 1
         self.support_sequence = support_sequence
 
         # Weights
         self.extrapolated_weights_dict = None
+
+        # Interpolation
+        self.left_point_is_interpolated = left_point_is_interpolated
+        self.right_point_is_interpolated = right_point_is_interpolated
 
         # Analytical function for comparison
         self.function = None
@@ -1208,11 +1300,20 @@ class ExtrapolationGridSlice(ABC):
         else:
             self.analytical_solution = None
 
+    def is_interpolated(self):
+        return self.left_point_is_interpolated or self.right_point_is_interpolated
+
+    def is_left_point_interpolated(self):
+        return self.left_point_is_interpolated
+
+    def is_right_point_interpolated(self):
+        return self.right_point_is_interpolated
+
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
     def to_string(self, name="ExtrapolationGridSlice"):
-        return "{}} [{}, {}]".format(name, self.left_point, self.right_point)
+        return "{} [{}, {}]".format(name, self.left_point, self.right_point)
 
 
 class ExtrapolationGridSliceContainer(ABC):
@@ -1223,15 +1324,21 @@ class ExtrapolationGridSliceContainer(ABC):
 
     :param function: for error computation.
     """
+
     def __init__(self, function: Function = None):
         self.slices = []
         self.left_point = None
         self.right_point = None
+        self.minimal_step_width = None
 
         # Determination of step width by min and max level
         self.max_level = None  # This max_level is not shifted!!
 
         self.extrapolated_weights_dict = None
+
+        # Store all adjacent containers of the global grid to the left and right of this container
+        self.adjacent_containers_left = None
+        self.adjacent_containers_right = None
 
         # Analytical function for comparison
         self.function = None
@@ -1254,6 +1361,11 @@ class ExtrapolationGridSliceContainer(ABC):
         self.right_point = slice.right_point
         self.max_level = max(self.max_level, slice.max_level) if self.max_level is not None else slice.max_level
 
+        if self.minimal_step_width is not None:
+            self.minimal_step_width = min(self.minimal_step_width, slice.right_point - slice.left_point)
+        else:
+            self.minimal_step_width = slice.right_point - slice.left_point
+
         self.slices.append(slice)
 
     @abstractmethod
@@ -1268,7 +1380,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
     def get_grid(self):
         """
-        This method returns all grid points in this container.
+        This method returns all grid points in this container (interpolated ones included).
 
         :returns: the grid of this container as array
         """
@@ -1277,22 +1389,52 @@ class ExtrapolationGridSliceContainer(ABC):
 
     def get_grid_levels(self):
         """
-        This method returns all grid levels in this container.
+        This method returns all grid levels in this container (interpolated ones included).
 
         :returns: the grid levels of this container as array
         """
 
         return list(map(lambda s: s.levels[0], self.slices)) + [self.slices[-1].levels[1]]
 
+    def get_grid_without_interpolated_points(self):
+        """
+        This method returns only grid points that have not been interpolated.
+
+        :returns: the grid of this container as array
+        """
+        grid = self.get_grid()
+        interpolation_indicator = self.get_interpolated_grid_points_indicator()
+
+        truncated_grid = [grid[i] for i, indicator in enumerate(interpolation_indicator) if not indicator]
+
+        return truncated_grid
+
+    def get_grid_levels_without_interpolated_points(self):
+        """
+        This method returns all grid levels in this container (without interpolated grid levels).
+
+        :returns: the grid levels of this container as array
+        """
+        grid_levels = self.get_grid_levels()
+        interpolation_indicator = self.get_interpolated_grid_points_indicator()
+
+        truncated_grid_levels = [grid_levels[i] for i, indicator in enumerate(interpolation_indicator) if not indicator]
+
+        return truncated_grid_levels
+
     def get_normalized_grid_levels(self):
         """
-        This method normalizes the grid levels
+        This method normalizes the grid levels (with interpolated levels)
+
         E.g. Given a full Romberg grid [0, 0.5, 0.625, 0.75, 1]
                              with levels [0, 1, 3, 2, 0]
         The container grid is [0.5, 0.625, 0.75]
              with grid levels [1, 3, 2]
 
         => normalized grid levels [0, 1, 0].
+
+        :param grid: determines which grid shall be normalized.
+                     If grid=None the interpolated grid is normalized by default.
 
         :returns: the normalized grid levels of this container.
         """
@@ -1303,7 +1445,7 @@ class ExtrapolationGridSliceContainer(ABC):
         if len(grid) == 2:
             return self.get_grid_levels()
 
-        # The container grid must contain and odd number of grid points
+        # The container grid must contain an odd number of grid points
         assert len(grid) % 2 == 1
         assert len(grid) >= 3
         # Assert that the there are 2^k slices
@@ -1323,6 +1465,32 @@ class ExtrapolationGridSliceContainer(ABC):
         right_levels = self.__get_normalized_grid_levels(middle + 1, stop, level + 1)
 
         return left_levels + [level] + right_levels
+
+    def get_normalized_non_interpolated_grid_levels(self):
+        """
+        This method normalizes the grid levels while skipping the level of an interpolated grid point
+
+        :returns: the normalized grid levels (without interpolated levels)
+        """
+        normalized_levels = self.get_normalized_grid_levels()
+        interpolation_indicator = self.get_interpolated_grid_points_indicator()
+
+        truncated_normalized_levels = [normalized_levels[i] for i, indicator in enumerate(interpolation_indicator)
+                                       if not indicator]
+
+        return truncated_normalized_levels
+
+    def get_interpolated_grid_points_indicator(self):
+        """
+        This method computes an indicator for interpolated grid points as array.
+        If the i-th element in this array is true, the corresponding grid point at this index is interpolated
+
+        :return: boolean array
+        """
+        indicator = list(map(lambda s: s.is_left_point_interpolated(), self.slices))
+        indicator.append(self.slices[-1].is_right_point_interpolated())
+
+        return indicator
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Errors
@@ -1362,6 +1530,10 @@ class ExtrapolationGridSliceContainer(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Getter & Setter
 
+    def set_adjacent_containers(self, left, right):
+        self.adjacent_containers_left = left
+        self.adjacent_containers_right = right
+
     def set_function(self, function):
         self.function = function
 
@@ -1384,6 +1556,74 @@ class ExtrapolationGridSliceContainer(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
+    def split_into_containers_with_power_two_sizes(self):
+        """
+        This method implements a optimized container splitting.
+        The size of the container is considered as a sum of powers of 2.
+        This implementation enables maximal partial full grid groups (of size 2^k) for the default Romberg.
+
+        :return:
+        """
+        container_type = type(self)
+        size = self.size()
+        split_containers = []
+
+        while size > 0:
+            new_container_size = self.find_closest_power_below(size)
+            new_container = container_type(self.function)
+
+            for i in range(new_container_size):
+                new_container.append_slice(self.slices.pop(0))
+
+            self.assert_container_size(new_container)
+
+            size -= new_container_size
+            split_containers.append(new_container)
+
+        return split_containers
+
+    @staticmethod
+    def find_closest_power_below(n, base=2):
+        """
+        This method determines the closest power below a given number for a given base and returns it.
+
+        :param n: upper bound.
+        :param base: base for exponentiation.
+        :returns: closest 2^k below given number n.
+        """
+        for i in range(n):
+            left_pow = math.pow(base, i)
+            right_pow = math.pow(base, i + 1)
+
+            if n == right_pow:
+                return int(right_pow)
+
+            if left_pow < n < right_pow:
+                return int(left_pow)
+
+        return 1
+
+    @staticmethod
+    def assert_container_size(container):
+        """
+        This method assures that the container has a size of 2^k (Assert).
+
+        :param container: Extrapolation container with slices.
+        :returns: void.
+        """
+
+        assert (math.log(container.size(), 2)).is_integer()
+
+    def update_container_information(self):
+        self.left_point = self.slices[0].left_point
+        self.right_point = self.slices[-1].right_point
+        self.max_level = max(self.get_grid_levels())
+
+        if self.minimal_step_width is not None:
+            self.minimal_step_width = min(list([
+                self.slices[i].right_point - self.slices[i].left_point for i in range(len(self.slices))
+            ]))
+
     def to_string(self, name="SliceContainer"):
         str_builder = "{} [{}, {}] with the slices: \n".format(name, self.left_point, self.right_point)
 
@@ -1405,10 +1645,16 @@ class RombergGridSlice(ExtrapolationGridSlice):
     :param support_sequence: A sequence of refined support points for extrapolation.
     :param function: for error computation.
     """
+
     def __init__(self, interval, levels, support_sequence,
-                 extrapolation_version: ExtrapolationVersion, function: Function = None,
+                 extrapolation_version: ExtrapolationVersion,
+                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+                 function: Function = None,
                  subtract_constants=False):
-        super(RombergGridSlice, self).__init__(interval, levels, support_sequence, function)
+        super(RombergGridSlice, self).__init__(interval, levels, support_sequence,
+                                               extrapolation_version,
+                                               left_point_is_interpolated, right_point_is_interpolated,
+                                               function)
 
         self.extrapolation_version = extrapolation_version
         self.coefficient_factory = ExtrapolationCoefficientsFactory(self.extrapolation_version)
@@ -1472,7 +1718,7 @@ class RombergGridSlice(ExtrapolationGridSlice):
             weight_dictionary[left_point].append(left_weight)
             weight_dictionary[right_point].append(right_weight)
 
-        # TODO Add enum option for this or a separate slice class
+        # TODO make default if it is working
         if self.subtract_constants:
             constants = SlicedRombergConstants(self)
             constant_dict = constants.get_final_constant_weights_for_right_refinement()
@@ -1499,10 +1745,14 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
     This class groups >= 1 grid slices that are adjacent and span a full grid of equidistant step width together.
     If the slice count is > 1 a (default or custom) Romberg is executed in this full grid.
     Else the unit slice is extrapolated based on its own extrapolation type.
-
-    :param function: for error computation.
     """
+
     def __init__(self, function: Function = None):
+        """
+            Constructor of this class.
+
+            :param function: for error computation.
+        """
         super(RombergGridSliceContainer, self).__init__(function)
 
     def get_final_weights(self):
@@ -1543,6 +1793,397 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
         return super().to_string("RombergGridSliceContainer")
 
 
+class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
+    """
+        This class interpolates as many missing points as possible inside the container and executes a default
+        Romberg method on this interpolated partial full grid.
+
+        For the interpolation we use the closest points to the left and right of this container.
+    """
+
+    def __init__(self, function: Function = None):
+        """
+            Constructor of this class.
+
+            :param function: for error computation.
+        """
+        super(LagrangeRombergGridSliceContainer, self).__init__(function)
+
+    def insert_interpolating_slices(self):
+        """
+        This method inserts interpolation slices into the container.
+        This implementation works only for insertion of one interpolation point.
+
+        :return: void.
+        """
+        #
+        interpolation_points = self.get_interpolation_points()
+
+        # No interpolation points have to be inserted
+        if len(interpolation_points) == 0:
+            return
+
+        container_grid = self.get_grid()
+        container_grid_levels = self.get_grid_levels()
+
+        new_slices = []
+
+        for i in range(len(container_grid) - 1):
+            # Add last slices that have no interpolation points
+            if len(interpolation_points) == 0:
+                new_slices.extend(self.slices[i:])
+                break
+
+            factory = ExtrapolationGridSliceFactory(ExtrapolationGridSliceFactory.get_slice_version(self.slices[i]))
+
+            point = interpolation_points[0]  # Peek at the first interpolation point
+
+            if point is None:
+                break
+
+            # Replace slice with two interpolating slices
+            if container_grid[i] < point < container_grid[i + 1]:
+                point_level = max(container_grid_levels[i], container_grid_levels[i + 1]) + 1
+
+                support_sequence = self.slices[i].support_sequence + [(container_grid[i], point)]
+                left_interpolated_slice = factory.get_grid_slice(
+                    [container_grid[i], point],
+                    [container_grid_levels[i], point_level],
+                    support_sequence=support_sequence,
+                    right_point_is_interpolated=True,
+                    function=self.function
+                )
+
+                assert left_interpolated_slice.is_right_point_interpolated() is True
+
+                support_sequence = self.slices[i].support_sequence + [(point, container_grid[i + 1])]
+                right_interpolated_slice = factory.get_grid_slice(
+                    [point, container_grid[i + 1]],
+                    [point_level, container_grid_levels[i + 1]],
+                    support_sequence=support_sequence,
+                    left_point_is_interpolated=True,
+                    function=self.function
+                )
+
+                assert right_interpolated_slice.is_left_point_interpolated() is True
+
+                # Exchange slice with two interpolated slices
+                new_slices.append(left_interpolated_slice)
+                new_slices.append(right_interpolated_slice)
+
+                # Pop queue
+                interpolation_points.pop(0)
+            else:
+                new_slices.append(self.slices[i])
+
+        self.slices = new_slices
+
+    def get_interpolation_points(self):
+        """
+        This methods returns the interpolated grid points as a list of points.
+
+        :return: list of interpolated grid points.
+        """
+        container_grid = self.get_grid_without_interpolated_points()
+        step_width = self.minimal_step_width
+        interpolation_points = []
+
+        current_point = container_grid[0]
+        while current_point < container_grid[-1]:
+            current_point += step_width
+
+            if current_point not in container_grid:
+                interpolation_points.append(current_point)
+
+        return interpolation_points
+
+    def get_support_points_for_interpolation_by_levels(self, max_point_count):
+        """
+        This method computes support points that are used in the interpolation of grid points.
+        The support points are distributed to the left containers, middle container and right containers.
+        The points in the middle container a computed level wise
+
+        :param max_point_count: determines how much interpolation support points should be used (>= 2).
+        :return: get optimal distributed support points
+        """
+        assert max_point_count >= 2
+
+        left_containers = self.adjacent_containers_left
+        right_containers = self.adjacent_containers_right
+
+        has_left_containers = len(left_containers) > 0
+        has_right_containers = len(right_containers) > 0
+
+        points_left = []
+        points_right = []
+
+        if has_left_containers:
+            for container in left_containers:
+                points_left.extend(container.get_grid_without_interpolated_points()[0:-1])
+
+        if has_right_containers:
+            for container in right_containers:
+                # TODO handle edge case with one point on the right
+                points_right.extend(container.get_grid_without_interpolated_points()[1:])
+
+        points_middle = self.get_grid_without_interpolated_points()
+        levels_middle = self.get_grid_levels_without_interpolated_points()
+
+        support_points = []
+
+        # Determine how much points should be used to the left and right of this container
+        #   as well as within the container itself.
+        max_left, max_middle, max_right = self.get_interpolation_support_point_count(len(points_left),
+                                                                                     len(points_middle),
+                                                                                     len(points_right),
+                                                                                     max_point_count)
+
+        if max_left > 0:
+            support_points.extend(points_left[-min(max_left, len(points_left)):])
+
+        support_points.extend(self.get_grid_with_max_point_count(points_middle, levels_middle, max_middle))
+
+        if max_right > 0:
+            support_points.extend(points_right[0:min(max_right, len(points_right))])
+
+        return support_points
+
+    @staticmethod
+    def get_interpolation_support_point_count(max_count_left, max_count_middle, max_count_right, max_count_total):
+        max_iter = max_count_left + max_count_middle + max_count_right
+        i = 0
+
+        total_count = 0
+        left_count = 0
+        middle_count = 0
+        right_count = 0
+
+        if max_count_middle >= 2 and max_count_total >= 2:
+            total_count = 2
+            left_count = 0
+            middle_count = 2
+
+        while total_count < max_count_total and i < max_iter:
+            if middle_count < max_count_middle:
+                middle_count += 1
+                total_count += 1
+
+            if left_count < max_count_left and total_count < max_count_total:
+                left_count += 1
+                total_count += 1
+
+            if right_count < max_count_right and total_count < max_count_total:
+                right_count += 1
+                total_count += 1
+
+            i += 1
+
+        return left_count, middle_count, right_count
+
+    @staticmethod
+    def get_grid_with_max_point_count(grid, grid_levels, count):
+        """
+        This method computes a truncated grid with <= count points. Points of a level are only added to the truncated
+        grid if all available points on this level (+ previous points) fit below the point count.
+
+        :param grid: grid points as array
+        :param grid_levels: grid levels as array
+        :param count: maximal point count
+        :return: truncated grid with max. "count" points
+        """
+
+        assert count >= 0
+        assert len(grid) == len(grid_levels)
+
+        if count >= len(grid):
+            return grid
+
+        current_level = min(grid_levels)
+        current_grid = []
+
+        while True:
+            current_grid_tmp = []
+            for i in range(len(grid)):
+                if grid_levels[i] <= current_level:
+                    current_grid_tmp.append(grid[i])
+
+                # TODO return if len(current_grid_tmp) > count
+
+            if len(current_grid_tmp) > count:
+                return current_grid
+
+            current_grid = current_grid_tmp
+            current_level += 1
+
+    def get_support_points_for_interpolation_geometrically(self, interp_point, max_point_count, adaptive=True):
+        """
+        This method computes support points that are used in the interpolation of grid points.
+        The algorithms chooses the geometrical closest neighbours first.
+
+        :param interp_point: the point around which the support points are selected.
+        :param max_point_count: determines how much interpolation support points should be used (>= 2).
+        :return: geometrically closest support points
+        """
+        assert max_point_count >= 2
+
+        # Get non interpolated global grid
+        non_interpolated_global_grid = []
+
+        for container in list(reversed(self.adjacent_containers_left)):
+            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
+
+        non_interpolated_global_grid.extend(self.get_grid_without_interpolated_points())
+
+        for i, container in enumerate(self.adjacent_containers_right):
+            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
+
+        # Remove duplicates
+        non_interpolated_global_grid = list(dict.fromkeys(non_interpolated_global_grid))
+
+        # Find closest non-interpolated neighbours
+        left_index = None
+        right_index = None
+
+        for i in range(len(non_interpolated_global_grid) - 1):
+            left = non_interpolated_global_grid[i]
+            right = non_interpolated_global_grid[i+1]
+
+            if left < interp_point < right:
+                left_index = i
+                right_index = i+1
+                break
+
+        # Determine geometrically closest support points
+        support_points = []
+
+        points_left_exist = left_index is not None and left_index >= 0
+        points_right_exist = right_index is not None and right_index < len(non_interpolated_global_grid)
+
+        while(len(support_points) < max_point_count) and (points_left_exist or points_right_exist):
+            new_left = False
+            new_right = False
+
+            if points_left_exist:
+                new_support_point = non_interpolated_global_grid[left_index]
+                support_points.insert(0, new_support_point)
+                left_index -= 1
+                new_left = True
+
+            if points_right_exist and len(support_points) < max_point_count:
+                new_support_point = non_interpolated_global_grid[right_index]
+                support_points.append(new_support_point)
+                right_index += 1
+                new_right = True
+
+            # Break if many negative lagrange weights occur
+            negative_counter = 0
+
+            if adaptive and len(support_points) > 2:
+                for support_point in support_points:
+                    weight = self.get_langrange_basis(support_points,
+                                                      support_point, interp_point)
+
+                    if weight < 0:
+                        negative_counter += 1
+
+                    if negative_counter > len(support_points)/2:
+                        if new_left:
+                            support_points.pop(0)
+
+                        if new_right and len(support_points) > 2:
+                            support_points.pop(-1)
+
+                        break
+
+            points_left_exist = left_index >= 0
+            points_right_exist = right_index < len(non_interpolated_global_grid)
+
+        if len(support_points) < 2:
+            assert len(support_points) >= 2, "There are to few support points, for an interpolation."
+
+        return support_points
+
+    @staticmethod
+    def get_langrange_basis(support_points, basis_point, evaluation_point):
+        """
+        This method computes a lambda expression for the lagrange basis function at basis_point.
+        Specifically: Let support_points = [x_0, x_1, ... , x_n]
+        L = product( (evaluation_point - x_k) / (basis_point - x_k) )
+
+        :param support_points: an array of support points for the interpolation
+        :param basis_point: determines basis_point of this lagrange basis function
+        :param evaluation_point: determines at which point the basis is evaluated
+        :return: the evaluated basis function L
+        """
+
+        evaluated_basis = 1
+
+        for point in support_points:
+            if point != basis_point:
+                evaluated_basis *= (evaluation_point - point) / (basis_point - point)
+
+        return evaluated_basis
+
+    def get_final_weights(self):
+        assert len(self.slices) > 0
+
+        if len(self.slices) == 1 and not self.slices[0].is_interpolated():
+            return self.slices[0].get_final_weights()
+
+        # This container has >= 2 slices
+        # Execute default Romberg on this container
+        factory = RombergWeightFactory(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_DEFAULT)
+        weight_dictionary = defaultdict(list)
+
+        # Non-interpolated grid points
+        self.populate_non_interpolated_point_weights(factory, weight_dictionary)
+
+        # Interpolated grid points
+        self.populate_interpolated_point_weights(factory, weight_dictionary)
+
+        # Update pointer to dictionary
+        self.extrapolated_weights_dict = weight_dictionary
+
+        return weight_dictionary
+
+    def populate_non_interpolated_point_weights(self, factory, weight_dictionary):
+        grid = self.get_grid_without_interpolated_points()
+        normalized_grid_levels = self.get_normalized_non_interpolated_grid_levels()
+        normalized_max_level = max(normalized_grid_levels)
+
+        # Extrapolate weights on this container
+        for i, point in enumerate(grid):
+            if (i == 0) or (i == len(grid) - 1):
+                weight = factory.get_boundary_point_weight(normalized_max_level)
+            else:
+                weight = factory.get_inner_point_weight(normalized_grid_levels[i],
+                                                        normalized_max_level)
+
+            weight_dictionary[point].append(weight)
+
+    def populate_interpolated_point_weights(self, factory, weight_dictionary):
+        indicator = self.get_interpolated_grid_points_indicator()
+        grid = [point for i, point in enumerate(self.get_grid()) if indicator[i]]
+        normalized_grid_levels = [level for i, level in enumerate(self.get_normalized_grid_levels())
+                                    if indicator[i]]
+        normalized_max_level = max(self.get_normalized_non_interpolated_grid_levels())
+
+        for i, interp_point in enumerate(grid):
+            level = normalized_grid_levels[i]
+            support_points = self.get_support_points_for_interpolation_geometrically(interp_point, 5, adaptive=True)
+
+            if level == 0:
+                weight = factory.get_boundary_point_weight(normalized_max_level)
+            else:
+                weight = factory.get_inner_point_weight(normalized_grid_levels[i],
+                                                        normalized_max_level)
+
+            for support_point in support_points:
+                interpolated_extrapolated_weight = weight * self.get_langrange_basis(support_points, support_point,
+                                                                                     interp_point)
+                weight_dictionary[support_point].append(interpolated_extrapolated_weight)
+
+
 class TrapezoidalGridSlice(ExtrapolationGridSlice):
     """
      This type of GridSlice executes no extrapolation. It produces default trapezoidal weights.
@@ -1552,8 +2193,14 @@ class TrapezoidalGridSlice(ExtrapolationGridSlice):
      :param support_sequence: A sequence of refined support points for extrapolation.
      :param function: for error computation.
      """
-    def __init__(self, interval, levels, support_sequence, function: Function = None):
-        super(TrapezoidalGridSlice, self).__init__(interval, levels, support_sequence, function)
+
+    def __init__(self, interval, levels, support_sequence,
+                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+                 function: Function = None):
+        super(TrapezoidalGridSlice, self).__init__(interval, levels, support_sequence,
+                                                   left_point_is_interpolated=left_point_is_interpolated,
+                                                   right_point_is_interpolated=right_point_is_interpolated,
+                                                   function=function)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Weights
@@ -1561,7 +2208,7 @@ class TrapezoidalGridSlice(ExtrapolationGridSlice):
     # See thesis, for the derivation of this weights
     # This methods computes the weights for the support points, that correspond to the area of this slice
     def get_weight_for_left_and_right_support_point(self, left_support_point, right_support_point):
-        return self.width/2, self.width/2
+        return self.width / 2, self.width / 2
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Final weights
@@ -1596,23 +2243,43 @@ class ExtrapolationGridSliceFactory:
 
      :param slice_version: Determines which type of slice has to be created.
      """
+
     def __init__(self, slice_version: SliceVersion):
         self.slice_version = slice_version
 
-    def get_grid_slice(self, interval, levels, support_sequence, function: Function = None) -> ExtrapolationGridSlice:
+    def get_grid_slice(self, interval, levels, support_sequence,
+                       left_point_is_interpolated=False, right_point_is_interpolated=False,
+                       function: Function = None) -> ExtrapolationGridSlice:
         if self.slice_version == SliceVersion.ROMBERG_DEFAULT:
             return RombergGridSlice(interval, levels, support_sequence,
-                                    ExtrapolationVersion.ROMBERG_DEFAULT, function)
+                                    ExtrapolationVersion.ROMBERG_DEFAULT,
+                                    left_point_is_interpolated, right_point_is_interpolated,
+                                    function)
 
         elif self.slice_version == SliceVersion.ROMBERG_SLICED:
             return RombergGridSlice(interval, levels, support_sequence,
-                                    ExtrapolationVersion.ROMBERG_SLICED, function)
+                                    ExtrapolationVersion.ROMBERG_SLICED,
+                                    left_point_is_interpolated, right_point_is_interpolated, function)
 
         elif self.slice_version == SliceVersion.TRAPEZOID:
-            return TrapezoidalGridSlice(interval, levels, support_sequence, function)
+            return TrapezoidalGridSlice(interval, levels, support_sequence,
+                                        left_point_is_interpolated, right_point_is_interpolated,
+                                        function)
 
         else:
             raise RuntimeError("Wrong SliceVersion provided.")
+
+    @staticmethod
+    def get_slice_version(slice):
+        if isinstance(slice, RombergGridSlice):
+            if slice.extrapolation_version == ExtrapolationVersion.ROMBERG_DEFAULT:
+                return SliceVersion.ROMBERG_DEFAULT
+            elif slice.extrapolation_version == ExtrapolationVersion.ROMBERG_SLICED:
+                return SliceVersion.ROMBERG_SLICED
+        elif isinstance(slice, TrapezoidalGridSlice):
+            return SliceVersion.TRAPEZOID
+
+        raise RuntimeError("Cannot detect slice version")
 
 
 class ExtrapolationGridSliceContainerFactory:
@@ -1621,12 +2288,15 @@ class ExtrapolationGridSliceContainerFactory:
 
      :param slice_container_version: Determines which type of slice container has to be created.
      """
+
     def __init__(self, slice_container_version: SliceContainerVersion):
         self.slice_container_version = slice_container_version
 
     def get_grid_slice_container(self, function: Function = None) -> ExtrapolationGridSliceContainer:
         if self.slice_container_version == SliceContainerVersion.ROMBERG_DEFAULT:
             return RombergGridSliceContainer(function)
+        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG:
+            return LagrangeRombergGridSliceContainer(function)
         else:
             raise RuntimeError("Wrong ContainerVersion provided.")
 
@@ -1636,6 +2306,7 @@ class ExtrapolationConstants:
     This class approximates the constants that have to be subtracted in the extrapolation process
     :param slice: the extrapolated slice
     """
+
     def __init__(self, slice: ExtrapolationGridSlice):
         self.slice = slice
         self.midpoint = (self.slice.left_point + self.slice.right_point) / 2
@@ -1723,6 +2394,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
     These constants have been formally proved by a Taylor expansion of the slice trapezoidal rule followed by
     extrapolation steps.
     """
+
     def __init__(self, slice: ExtrapolationGridSlice):
         super(SlicedRombergConstants, self).__init__(slice)
 
@@ -1824,8 +2496,8 @@ class SlicedRombergConstants(ExtrapolationConstants):
         assert k >= 1
 
         slice = self.slice
-        support_points = self.support_points_for_derivatives[k-1]
-        derivative_factors = self.derivatives[k-1]
+        support_points = self.support_points_for_derivatives[k - 1]
+        derivative_factors = self.derivatives[k - 1]
 
         derivative_step = slice.width * (derivative_factors / math.factorial(k))
         constant_weights = derivative_step * ((slice.left_point - self.midpoint) ** k)
@@ -1844,8 +2516,8 @@ class SlicedRombergConstants(ExtrapolationConstants):
         assert k >= 1
 
         slice = self.slice
-        support_points = self.support_points_for_derivatives[k-1]
-        derivative_factors = self.derivatives[k-1]
+        support_points = self.support_points_for_derivatives[k - 1]
+        derivative_factors = self.derivatives[k - 1]
 
         derivative_step = slice.width * (derivative_factors / math.factorial(k))
         constant_weights = derivative_step * (slice.left_point - self.midpoint) ** (k + 1)
@@ -1864,8 +2536,8 @@ class SlicedRombergConstants(ExtrapolationConstants):
         assert k >= 1
 
         slice = self.slice
-        support_points = self.support_points_for_derivatives[k-1]
-        derivative_factors = self.derivatives[k-1]
+        support_points = self.support_points_for_derivatives[k - 1]
+        derivative_factors = self.derivatives[k - 1]
 
         derivative_step = slice.width * (derivative_factors / math.factorial(k))
         constant_weights = derivative_step * (slice.left_point - self.midpoint)
@@ -1880,8 +2552,8 @@ class SlicedRombergConstants(ExtrapolationConstants):
         :param derivative_factors: numpy array
         :return:
         """
-        support_points = self.support_points_for_derivatives[k-1]
-        derivative_factors = self.derivatives[k-1]
+        support_points = self.support_points_for_derivatives[k - 1]
+        derivative_factors = self.derivatives[k - 1]
 
         step_width = self.slice.width
 
