@@ -1,5 +1,6 @@
 from DimAdaptiveCombi import *
 import matplotlib.cm as mplcm
+import matplotlib, numpy as np, matplotlib.pyplot as plt
 
 
 def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, evaluation_points):
@@ -27,8 +28,9 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
 
 def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
                                 minTol=-1, doDimAdaptive=False, max_evaluations=10 ** 7, evaluation_points=None,
-                                save_with_name=None, calc_standard_schemes=True, standard_combi_grid_name="",
-                                legend_title=""):
+                                calc_standard_schemes=True, standard_combi_grid_name="",
+                                legend_title="",
+                                filepath="./Results/", filename=None, save_plot=False, save_csv=False,):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -43,14 +45,17 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     # interpolation_error_arrayMax = []
 
     # https://stackoverflow.com/questions/8389636/creating-over-20-unique-legend-colors-using-matplotlib
-    NUM_COLORS = len(adaptiveAlgorithmVector) + (maxLmin - minLmin) + 1
+    NUM_COLORS = len(adaptiveAlgorithmVector) + (maxLmin - minLmin)
 
-    cm = plt.get_cmap('hsv')  # alternative: gist_rainbow, hsv
-    cNorm = colors.Normalize(vmin=0, vmax=NUM_COLORS - 1)
-    scalarMap = mplcm.ScalarMappable(norm=cNorm, cmap=cm)
+    # cm = plt.get_cmap('tab20')  # alternative: gist_rainbow, hsv, tab20
+    # cNorm = colors.Normalize(vmin=0, vmax=NUM_COLORS - 1)
+    # scalarMap = mplcm.ScalarMappable(norm=cNorm, cmap=cm)
     fig = plt.figure(num=None, figsize=(8, 6), dpi=100, facecolor='w', edgecolor='w')
     ax = fig.add_subplot(111)
-    ax.set_prop_cycle('color', [scalarMap.to_rgba(i) for i in range(NUM_COLORS)])
+    # ax.set_prop_cycle('color', [scalarMap.to_rgba((4 * i + 2) % NUM_COLORS) for i in range(NUM_COLORS)])
+    from_list = matplotlib.colors.LinearSegmentedColormap.from_list
+    cm = from_list('Set1', plt.cm.Set1(range(0, NUM_COLORS)), NUM_COLORS)
+    # plt.set_cmap(cm)
 
     # calculate refinements for different tolerance values
     for algorithm in adaptiveAlgorithmVector:
@@ -125,6 +130,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     # interpolation_error_standardL2 = []
     # interpolation_error_standardMax = []
 
+    # Export array
+    export_data = []
+
     if calc_standard_schemes:
         for i in range(minLmin, maxLmin):
             xArrayStandardTest, \
@@ -153,8 +161,11 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
             # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
             # ax.loglog(xArrayStandard[i], errorArrayStandard[i], label='standardCombination lmin=' + str(i + minLmin))
-            ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
-                      label="{} (Standard Combi) distinct f evals lmin={}".format(standard_combi_grid_name, str(i + minLmin)))
+            name = "{} (Standard Combi) lmin={}".format(standard_combi_grid_name, str(i + minLmin))
+            ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i], "--", label=name + " distinct f evals")
+
+            # Export Data to csv
+            export_data.append((name, xFEvalArrayStandard[i], errorArrayStandard[i]))
 
             # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
             #            label='standardCombination L2 lmin=' + str(i + minLmin))
@@ -166,7 +177,14 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
         ax.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
 
+    line = '-'
+
     for i in range(len(adaptiveAlgorithmVector)):
+        # if line == '-':
+        #     line = '--'
+        # elif line == '--':
+        #     line = '-'
+
         # print(numNaive[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' Naive evaluation')
         # print(numIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' total points')
         print(numFEvalIdeal[i], errorArray[i], adaptiveAlgorithmVector[i][4] + ' error (distinct f evals)')
@@ -177,7 +195,12 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
 
         # ax.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # ax.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        ax.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' error (distinct f evals)')
+        name = adaptiveAlgorithmVector[i][4]
+        ax.loglog(numFEvalIdeal[i], errorArray[i], line, label=name + ' error (distinct f evals)')
+
+        # Export Data to csv
+        export_data.append((name, numFEvalIdeal[i], errorArray[i]))
+
         # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
         # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
 
@@ -188,7 +211,21 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     ax.set_xlabel('Number of points')
     ax.set_ylabel('Approximation error')
 
-    if save_with_name is not None:
-        ax.figure.savefig("{}.pdf".format(save_with_name), bbox_inches='tight', dpi=300)
+    if save_plot:
+        ax.figure.savefig("{}{}.pdf".format(filepath, filename), bbox_inches='tight', dpi=300)
+
+    if save_csv:
+        export_to_csv(filepath, filename, export_data)
 
     # ax.figure.show()
+
+
+def export_to_csv(filepath, filename, export_data):
+    with open("{}{}.csv".format(filepath, filename), 'w') as out:
+        csv_out = csv.writer(out, delimiter="|", quoting=csv.QUOTE_NONNUMERIC)
+
+        for name, num_points, error in export_data:
+            csv_out.writerow(["name", name])
+            csv_out.writerow(["num_points"] + num_points)
+            csv_out.writerow(["error"] + error)
+            csv_out.writerow([])
