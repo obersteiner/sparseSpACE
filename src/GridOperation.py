@@ -267,6 +267,7 @@ class DensityEstimation(AreaOperation):
         self.masslumping = masslumping
         self.surpluses = {}
         self.initialized = False
+        self.scaled = False
         self.extrema = None
         self.print_output = print_output
 
@@ -289,16 +290,21 @@ class DensityEstimation(AreaOperation):
                 for row in reader:
                     dataCSV.append([float(i) for i in row])
                 scaler.fit(dataCSV)
-                self.data = scaler.transform(dataCSV)
-                self.initialized = True
+                if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                    self.data = scaler.transform(dataCSV)
+                    self.scaled = True
         elif (isinstance(self.data, tuple)):
-            scaler.fit(self.data[0])
-            self.data = scaler.transform(self.data[0])
-            self.initialized = True
+            self.data = self.data[0]
+            scaler.fit(self.data)
+            if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
         else:
             scaler.fit(self.data)
-            self.data = scaler.transform(self.data)
-            self.initialized = True
+            if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
+        self.initialized = True
 
     def post_processing(self):
         """
