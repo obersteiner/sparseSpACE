@@ -86,7 +86,7 @@ b = np.ones(dim)
 # choose data set type
 data_sets = ['floats', 'std exponential', 'std normal', 'multi normal', 'line', 'cross', 'moon', 'circle',
              'multi normal class', 'moon class', 'checkerboard class']
-data_set = data_sets[-2]
+data_set = data_sets[7]
 print('chosen data set:', data_set)
 scale = [0.0000000001, 1.0]
 print('chosen scaling: ', scale)
@@ -111,10 +111,10 @@ print('numeric_calculation: ', numeric_calculation)
 minimum_level, maximum_level = 1, 4
 print('max level of standard combirid:', minimum_level, ' : ', maximum_level)
 # define starting level of dimension wise combigrid
-lmin, lmax = 2, 3
+lmin, lmax = 1, 2
 print('lim/lmax of dimWise grid: ', lmin, ' : ', lmax)
 # error tolerance
-tolerance = 0.01
+tolerance = 0.00
 print('error tolerance:', tolerance)
 # error margin
 margin = 0.5
@@ -123,7 +123,7 @@ print('error margin: ', margin)
 max_evaluations = 256
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
-do_plot = True
+do_plot = False
 print('refinement plotting:', do_plot)
 
 # kde parameters
@@ -266,7 +266,7 @@ if do_plot:
 # perform the density estimation operation, has to be done before the printing and plotting
 cProfile.run('SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=max_evaluations, do_plot=do_plot)',
              filename='DimWiseAdaptivProfile.txt')
-p = pstats.Stats('DimWiseAdaptivProfile.txt')
+p_stat = pstats.Stats('DimWiseAdaptivProfile.txt')
 
 
 
@@ -455,4 +455,4 @@ if kde_vals is not None:
     print('Pearsson corr kde - grid:', scipy.stats.pearsonr(grid_vals, kde_vals))
 
 
-p.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
+p_stat.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
