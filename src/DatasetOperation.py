@@ -7,7 +7,7 @@ from StandardCombi import StandardCombi
 from GridOperation import DensityEstimation
 from sklearn import datasets, preprocessing
 from sklearn.utils import shuffle
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Iterable
 
 
 class DataSet:
@@ -47,7 +47,10 @@ class DataSet:
         return str(self.__data)
 
     def copy(self) -> 'DataSet':
-        return DataSet(self.__data, "%s_copy" % self.__name)
+        copied = DataSet(self.__data)
+        copied.__dict__.update(self.__dict__)
+        copied.set_name("%s_copy" % self.get_name())
+        return copied
 
     def set_name(self, name: str) -> None:
         self.__name = name
@@ -135,6 +138,55 @@ class DataSet:
         else:
             raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
 
+    def __update_internal(self, to_update: 'DataSet') -> 'DataSet':
+        """Update all internal attributes which can normally only be changed through DataSet methods.
+
+        Mainly used to keep scaling of DataSets after methods that change the internal data.
+
+        :param to_update: DataSet whose internal attributes need to updated
+        :return: Input DataSet with updated internal attributes
+        """
+        to_update.__shuffled = self.__shuffled
+        to_update.__scaled = self.__scaled
+        to_update.__scaling_range = self.__scaling_range
+        to_update.__scaling_factor = self.__scaling_factor
+        if self.__scaled:
+            to_update.__original_min = self.__original_min.copy()
+            to_update.__original_max = self.__original_max.copy()
+        else:
+            to_update.__original_min = self.__original_min
+            to_update.__original_max = self.__original_max
+        return to_update
+
+    def same_scaling(self, to_check: 'DataSet') -> bool:
+        """Check whether self and to_check have the same scaling.
+
+        Compares the scaling range and factor of self and to_check and returns False if anything doesn't match.
+
+        :param to_check: DataSet whose internal scaling should be compared to self's internal scaling
+        :return: Boolean value which indicates whether the internal scaling of input DataSet and self are completely equal
+        """
+        if not self.__scaled == to_check.__scaled:
+            return False
+        if not self.__scaled and not to_check.__scaled:
+            return True
+        assert(self.__scaled == to_check.__scaled)
+        if not (isinstance(self.__scaling_range[0], Iterable) != isinstance(to_check.__scaling_range[0], Iterable)):
+            if isinstance(self.__scaling_range[0], Iterable):
+                scaling_range = all([(x[0] == y[0]) and (x[1] == y[1]) for x, y in zip(self.__scaling_range, to_check.__scaling_range)])
+            else:
+                scaling_range = all([x == y for x, y in zip(self.__scaling_range, to_check.__scaling_range)])
+        else:
+            return False
+        if not (isinstance(self.__scaling_factor, Iterable) != isinstance(to_check.__scaling_factor, Iterable)):
+            if isinstance(self.__scaling_factor, Iterable):
+                scaling_factor = all([x == y for x, y in zip(self.__scaling_factor, to_check.__scaling_factor)])
+            else:
+                scaling_factor = self.__scaling_factor == to_check.__scaling_factor
+        else:
+            return False
+        return scaling_range and scaling_factor
+
     def remove_samples(self, indices: List[int]) -> 'DataSet':
         """Remove samples of DataSet at specified indices.
 
@@ -152,17 +204,14 @@ class DataSet:
     def scale_range(self, scaling_range: Tuple[float, float], /, override_scaling: bool = False) -> None:
         """Scale DataSet to a specified range.
 
-        If overriding previous scaling (if available) is prohibited or new scaling range is the same as old scaling range, a warning is issued and
-        no scaling is performed.
+        If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
+        specified by the input parameter is applied.
 
         :param scaling_range: Range to which all samples should be scaled
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if ((not override_scaling) and self.__scaled) or (self.__scaling_range == scaling_range):
-            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
-            warnings.warn("Didn't override scaling. Either new scaling was equal to old one or overriding was prohibited.", stacklevel=3)
-        else:
+        if not self.__scaled or override_scaling:
             scaler = preprocessing.MinMaxScaler(feature_range=scaling_range)
             scaler.fit(self.__data[0])
             self.__data = tuple([scaler.transform(self.__data[0]), np.array([c for c in self.__data[1]])])
@@ -171,49 +220,61 @@ class DataSet:
             self.__scaling_factor = scaler.scale_
             self.__original_min = scaler.data_min_
             self.__original_max = scaler.data_max_
+        else:
+            scaler = preprocessing.MinMaxScaler(feature_range=scaling_range)
+            scaler.fit(self.__data[0])
+            self.__data = tuple([scaler.transform(self.__data[0]), np.array([c for c in self.__data[1]])])
+            self.__scaling_range = scaling_range
+            self.__scaling_factor *= scaler.scale_
 
-    def scale_factor(self, scaling_factor: float, /, override_scaling: bool = False) -> None:
+    def scale_factor(self, scaling_factor: Union[float, np.ndarray], /, override_scaling: bool = False) -> None:
         """Scale DataSet by a specified factor.
 
-        If overriding previous scaling (if available) is prohibited or new scaling range is the same as old scaling range, a warning is issued and
-        no scaling is performed.
+        If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
+        specified by the input parameter is applied.
 
-        :param scaling_factor: Factor by which all samples should be scaled
+        :param scaling_factor: Factor by which all samples should be scaled. Can either be a float value for general scaling or np.ndarray with
+        dimension self.__dim to scale each dimension individually
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if (not override_scaling) and self.__scaled:
-            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
-            warnings.warn("Didn't override scaling, because overriding was prohibited.", stacklevel=3)
-        else:
+        if not self.__scaled or override_scaling:
             self.__original_min = self.get_min_data()
             self.__original_max = self.get_max_data()
             self.__data = tuple([np.array(list(map(lambda x: x * scaling_factor, self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0]), np.amax(self.__data[0]))
+            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
             self.__scaling_factor = scaling_factor
             self.__scaled = True
+        else:
+            if isinstance(scaling_factor, np.ndarray) and len(scaling_factor) != self.__dim:
+                raise ValueError("Multidimensional scaling factor needs to have the same dimension as DataSet it is applied to.")
+            self.__data = tuple([np.array(list(map(lambda x: x * scaling_factor, self.__data[0]))), self.__data[1]])
+            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
+            self.__scaling_factor *= scaling_factor
 
     def shift_value(self, shift_val: Union[float, np.ndarray], /, override_scaling: bool = False) -> None:
         """Shift DataSet by a specified value.
 
-        If overriding previous scaling (if available) is prohibited or new scaling range is the same as old scaling range, a warning is issued and
-        no scaling is performed.
+        If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
+        specified by the input parameter is applied.
 
         :param shift_val: Value by which all samples should be shifted. Can either be a float value for general shifting or np.ndarray with
         dimension self.__dim to shift each dimension individually
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if (not override_scaling) and self.__scaled:
-            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
-            warnings.warn("Didn't override scaling, because overriding was prohibited.", stacklevel=3)
-        else:
+        if not self.__scaled or override_scaling:
             self.__original_min = self.get_min_data()
             self.__original_max = self.get_max_data()
             self.__data = tuple([np.array(list(map(lambda x: (x + shift_val), self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0]), np.amax(self.__data[0]))
+            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
             self.__scaling_factor = 1.0
             self.__scaled = True
+        else:
+            if isinstance(shift_val, np.ndarray) and len(shift_val) != self.__dim:
+                raise ValueError("Multidimensional shifting value needs to have the same dimension as DataSet it is applied to.")
+            self.__data = tuple([np.array(list(map(lambda x: (x + shift_val), self.__data[0]))), self.__data[1]])
+            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
 
     def shuffle(self) -> None:
         """Shuffle DataSet randomly.
@@ -242,7 +303,12 @@ class DataSet:
                 raise ValueError("DataSets must have the same dimensions for concatenation.")
         values = np.concatenate((self.__data[0], other_dataset[0]), axis=0)
         classes = np.concatenate((self.__data[1], other_dataset[1]))
-        return DataSet((values, classes))
+        concatenated_set = DataSet((values, classes))
+        self.__update_internal(concatenated_set)
+        equal_scaling = self.same_scaling(concatenated_set)
+        if not equal_scaling:
+            raise ValueError("Can't concatenate DataSets with different scaling")
+        return concatenated_set
 
     @staticmethod
     def list_concatenate(list_datasets: List['DataSet']) -> 'DataSet':
@@ -271,7 +337,9 @@ class DataSet:
         set_classes = []
         for j in self.get_classes():
             current_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == j])
-            current_set = DataSet(tuple([current_values, np.array(([j] * len(current_values)), dtype=np.int64)]))
+            current_class = np.array(([j] * len(current_values)), dtype=np.int64)
+            current_set = DataSet(tuple([current_values, current_class]))
+            self.__update_internal(current_set)
             set_classes.append(current_set)
         return set_classes
 
@@ -288,6 +356,8 @@ class DataSet:
         classfull_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] >= 0])
         set_classless = DataSet(classless_values)
         set_classfull = DataSet(tuple([classfull_values, np.array([c for c in self.__data[1] if c >= 0], dtype=np.int64)]))
+        self.__update_internal(set_classless)
+        self.__update_internal(set_classfull)
         return set_classless, set_classfull
 
     def split_pieces(self, percentage: float) -> Tuple['DataSet', 'DataSet']:
@@ -305,6 +375,8 @@ class DataSet:
                               self.__data[1][:(round(self.get_length() * percentage))]]))
         set1 = DataSet(tuple([np.array(self.__data[0][(round(self.get_length() * percentage)):]),
                               self.__data[1][(round(self.get_length() * percentage)):]]))
+        self.__update_internal(set0)
+        self.__update_internal(set1)
         return set0, set1
 
     def remove_classes(self, percentage: float) -> None:
@@ -336,6 +408,22 @@ class DataSet:
         for i, x in enumerate(indices):
             self.__data[0][[i, x]] = self.__data[0][[x, i]]
             self.__data[1][[i, x]] = self.__data[1][[x, i]]
+
+    def revert_scaling(self) -> None:
+        """Revert this DataSet's data to its original scaling.
+
+        Scaling is applied in reverse to this DataSet's data and scaling attributes are returned to their initial setting.
+
+        :return:
+        """
+        self.shift_value(-self.__scaling_range[0], override_scaling=False)
+        self.scale_factor(1.0 / self.__scaling_factor, override_scaling=False)
+        self.shift_value(self.__original_min, override_scaling=False)
+        self.__scaled = False
+        self.__scaling_range = None
+        self.__scaling_factor = None
+        self.__original_min = None
+        self.__original_max = None
 
     def density_estimation(self, /,
                            masslumping: bool = True,
@@ -389,7 +477,7 @@ class DataSet:
         """
         plt.rc('font', size=30)
         plt.rc('axes', titlesize=40)
-        plt.rc('figure', figsize=(12.5, 10.25))
+        plt.rc('figure', figsize=(12.0, 12.0))
         fig, ax = plt.subplots()
         ax.set_title(self.__name)
         ax.title.set_position([0.5, 1.025])
@@ -474,7 +562,7 @@ class Classification:
         self.__performed_classification = False
         self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly)
 
-    def __call__(self, data_to_evaluate: 'DataSet', /, print_removed: bool = True, internal_scaling: bool = True) -> 'DataSet':
+    def __call__(self, data_to_evaluate: 'DataSet', /, print_removed: bool = True) -> 'DataSet':
         """Evaluate classes for samples in input data and create a new DataSet from those same samples and classes.
 
         When this method is called, classification needs to already be performed. If it is not, an AttributeError is raised.
@@ -484,15 +572,13 @@ class Classification:
 
         :param data_to_evaluate: Data whose samples are to be classified
         :param print_removed: Optional. Conditional parameter which specifies whether during scaling removed samples should be printed
-        :param internal_scaling: Optional. Conditional parameter which specifies whether test data should be internally scaled (recommended to set
-        to False if testing data was already scaled once). Default True
         :return: New DataSet which consists of samples from input DataSet and for those samples computed classes
         """
         if not self.__performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if data_to_evaluate.is_empty():
             raise ValueError("Can't classificate empty dataset.")
-        evaluate = self.__internal_scaling(data_to_evaluate, print_removed=print_removed, internal_scaling=internal_scaling)
+        evaluate = self.__internal_scaling(data_to_evaluate, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
@@ -612,7 +698,7 @@ class Classification:
         max_density_per_point = np.amax(density_data, axis=1)
         return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
 
-    def __internal_scaling(self, data_to_check: 'DataSet', /, print_removed: bool = False, internal_scaling: bool = True) -> 'DataSet':
+    def __internal_scaling(self, data_to_check: 'DataSet', /, print_removed: bool = False) -> 'DataSet':
         """Scale data with the same factors as the original data (self.__data) was scaled.
 
         If the input data is already scaled, it is assumed that its scaling matches that of the original data.
@@ -622,24 +708,21 @@ class Classification:
 
         :param data_to_check: DataSet which needs to be checked for scaling and scaled if necessary
         :param print_removed: Optional. Conditional parameter which indicates whether any during scaling removed samples should be printed
-        :param internal_scaling: Optional. Conditional parameter which specifies whether test data should be internally scaled (recommended to set
-        to False if testing data was already scaled once). Default True
         :return: Scaled input dataset without samples out of bounds
         """
         warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
         if data_to_check.is_scaled():
-            warnings.warn("Provided DataSet '%s' is already scaled. Skip internal scaling." % data_to_check.get_name(), stacklevel=3)
-        elif not internal_scaling:
-            print("Skipped internal scaling.")
+            if not self.__data.same_scaling(data_to_check):
+                raise ValueError("Provided DataSet's scaling doesn't match the internal scaling of Classification object.")
         else:
-            data_to_check.shift_value(-self.__data_range[0], override_scaling=True)
-            data_to_check.scale_factor(self.__scale_factor, override_scaling=True)
-            data_to_check.shift_value(0.005, override_scaling=True)
+            data_to_check.shift_value(-self.__data_range[0], override_scaling=False)
+            data_to_check.scale_factor(self.__scale_factor, override_scaling=False)
+            data_to_check.shift_value(0.005, override_scaling=False)
         remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.005) for y in x]) or any([(y > 0.995) for y in x])]
         removed_samples = data_to_check.remove_samples(remove_indices)
         if not removed_samples.is_empty():
-            warnings.warn("During internal scale checking some samples were removed due to them being out of bounds of classificators in "
-                          "range(0.005, 0.995).", stacklevel=3)
+            warnings.warn("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators "
+                          "in range(0.005, 0.995)." % data_to_check.get_name(), stacklevel=3)
             if print_removed:
                 print("---------------------------------------------------------------------------------------------------------------------"
                       "-----------")
@@ -769,8 +852,7 @@ class Classification:
 
     def test_data(self, new_testing_data: 'DataSet', /,
                   print_output: bool = True,
-                  print_removed: bool = True,
-                  internal_scaling: bool = True) -> 'DataSet':
+                  print_removed: bool = True) -> 'DataSet':
         """Test new data with the classificators of a Classification object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -784,17 +866,15 @@ class Classification:
         :param new_testing_data: Test DataSet for which classificators should be tested
         :param print_output: Optional. Conditional parameter which specifies whether results of testing should be printed. Default True
         :param print_removed: Optional. Conditional parameter which specifies whether during scaling removed samples should be printed. Default True
-        :param internal_scaling: Optional. Conditional parameter which specifies whether test data should be internally scaled (recommended to set
-        to False if testing data was already scaled once). Default True
         :return: DataSet which contains all classless samples that were omitted
         """
         if not self.__performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
-        evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed, internal_scaling=internal_scaling)
+        evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
-            raise ValueError("All given samples for classification were out of bounds. Please only test samples in unscaled range: "
+            raise ValueError("All given samples for testing were out of bounds. Please only test samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
         omitted_data, used_data = evaluate.split_without_classes()
@@ -809,23 +889,6 @@ class Classification:
         if print_output:
             self.__print_evaluation(used_data, calculated_new_testclasses)
         return omitted_data
-
-    def revert_scaling(self, data_to_revert: 'DataSet') -> 'DataSet':
-        """Revert the scaling of input data with the factors the original data (self.__data) was scaled.
-
-        As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
-        AttributeError is raised.
-        Scale input data with factors of the original data in reversed order with reversed values.
-
-        :param data_to_revert: Scaled data whose scaling should be reversed
-        :return: Input DataSet with reversed scaling
-        """
-        if not self.__performed_classification:
-            raise AttributeError("Classification needs to be performed on this object first.")
-        data_to_revert.shift_value(-0.005, override_scaling=True)
-        data_to_revert.scale_factor(1.0 / self.__scale_factor, override_scaling=True)
-        data_to_revert.shift_value(self.__data_range[0], override_scaling=True)
-        return data_to_revert
 
 
 class Clustering:
@@ -879,17 +942,16 @@ if __name__ == "__main__":
     classification.print_evaluation()
 
     # we can also add more testing data and print the results immediately
-    classification.test_data(with_classes, print_output=True, internal_scaling=False)
+    classification.test_data(with_classes, print_output=True)
 
     # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-    evaluation = classification(without_classes, internal_scaling=False)
+    data_copy.remove_classes(1.0)
+    calcult_classes = classification(data_copy)
 
-    # because we used 2D datasets we can plot the results to easily see which samples were classified correctly and which not
+    # because we used 2D datasets before we can plot the results to easily see which samples were classified correctly and which not
     correct_classes = data.copy()
     correct_classes.scale_range((0.005, 0.995))
-    unmodified_part = classification.get_learning_data().concatenate(with_classes)
-    calcult_classes = unmodified_part.concatenate(evaluation)
     correct_classes.set_name('Correct_Classes')
     calcult_classes.set_name('Calculated_Classes')
     correct_classes.plot()
-    calcult_classes.plot()  # TODO something wrong with the output here
+    calcult_classes.plot()
