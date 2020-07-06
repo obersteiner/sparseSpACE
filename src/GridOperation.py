@@ -283,7 +283,7 @@ class DensityEstimation(AreaOperation):
         self.old_grid_coord = {}  # for reuse_old_values; keys are a list of the max levels for each dimension
         self.new_grid_coord = {}
         self.sorted_data = []  # for reuse_old_values; keys are the dimensions
-        self.data_bins = {}
+        self.data_bins = [{} for d in range(dim)]
         self.max_levels = []
         self.numeric_calculation = numeric_calculation
         print('DensityEstimation debug: ', self.debug)
@@ -342,7 +342,7 @@ class DensityEstimation(AreaOperation):
 
             self.new_B = {}
             self.new_grid_coord = {}
-            self.create_new_data_bins()
+            #self.create_new_data_bins()
 
         surpluses = np.concatenate(list(self.get_result().values()))
         max = np.max(surpluses)
@@ -352,84 +352,75 @@ class DensityEstimation(AreaOperation):
         self.extrema = (min, max)
         return self.extrema
 
-    def create_new_data_bins(self):
-        if len(self.max_levels) == 0:
-            for l in range(1, max(self.lmax)):
-                for d in range(self.dim):
-                    if d in self.data_bins.keys():
-                        bins = self.data_bins[d]
-                    else:
-                        bins = {}
-                    max_level = l
-                    step_size = 1.0 / 2 ** max_level
-                    lower = 0.0
-                    upper = step_size
-
-                    while upper <= 1.0:
-                        # check if we have an enclosing bin, so we don't have to search the entire data set
-                        enclosing_bin = None
-                        extract_list = lambda x: list(map(float, x[1:-1].split(',')))
-                        if len(bins) > 0:
-                            enclosing_bin_keys = [extract_list(key_string) for key_string in bins.keys()]
-                            enclosing_bins = [x for x in enclosing_bin_keys if x[0] <= lower and x[1] >= upper]
-                            if len(enclosing_bins) > 0:
-                                enclosing_bin = bins[str(enclosing_bins[0])]
-
-                        indices = self.sorted_data[d]
-                        start_index = enclosing_bin[0] if enclosing_bin is not None else 0
-                        end_index = enclosing_bin[1] if enclosing_bin is not None else len(indices)
-
-                        infimum = len(indices)
-                        supremum = 0
-                        # find the highest and lowest values' index within the range
-                        for i in range(start_index, end_index):
-                            if self.data[indices[i]][d] >= lower and i < infimum:
-                                infimum = i
-                            if i > supremum and self.data[indices[i]][d] <= upper:
-                                supremum = i
-                        bin = (infimum, supremum)
-                        bins[str([lower, upper])] = bin
-                        lower += step_size
-                        upper += step_size
-                    self.data_bins[d] = bins
-        else :
-            for d in range(self.dim):
-                if d in self.data_bins.keys():
-                    bins = self.data_bins[d]
-                else:
-                    bins = {}
-                max_level = self.max_levels[d]
-                step_size = 1.0 / 2 ** max_level
-                lower = 0.0
-                upper = step_size
-
-                while upper <= 1.0:
-                    # check if we have an enclosing bin, so we don't have to search the entire data set
-                    enclosing_bin = None
-                    extract_list = lambda x: list(map(float, x[1:-1].split(',')))
-                    if len(bins) > 0:
-                        enclosing_bin_keys = [extract_list(key_string) for key_string in bins.keys()]
-                        enclosing_bins = [x for x in enclosing_bin_keys if x[0] <= lower and x[1] >= upper]
-                        if len(enclosing_bins) > 0:
-                            enclosing_bin = bins[str(enclosing_bins[0])]
-
-                    indices = self.sorted_data[d]
-                    start_index = enclosing_bin[0] if enclosing_bin is not None else 0
-                    end_index = enclosing_bin[1] if enclosing_bin is not None else len(indices)
-
-                    infimum = len(indices)
-                    supremum = 0
-                    # find the highest and lowest values' index within the range
-                    for i in range(start_index, end_index):
-                        if self.data[indices[i]][d] >= lower and i < infimum:
-                            infimum = i
-                        if i > supremum and self.data[indices[i]][d] <= upper:
-                            supremum = i
-                    bin = (infimum, supremum)
-                    bins[str([lower, upper])] = bin
-                    lower += step_size
-                    upper += step_size
-                self.data_bins[d] = bins
+    # def create_new_data_bins(self):
+    #     if len(self.max_levels) == 0:
+    #         for l in range(1, max(self.lmax)):
+    #             for d in range(self.dim):
+    #                 if d in self.data_bins.keys():
+    #                     bins = self.data_bins[d]
+    #                 else:
+    #                     bins = {}
+    #                 max_level = l
+    #                 step_size = 1.0 / 2 ** max_level
+    #                 lower = 0.0
+    #                 upper = step_size
+    #
+    #                 while upper <= 1.0:
+    #                     indices = self.sorted_data[d]
+    #                     start_index = enclosing_bin[0] if enclosing_bin is not None else 0
+    #                     end_index = enclosing_bin[1] if enclosing_bin is not None else len(indices)
+    #
+    #                     infimum = len(indices)
+    #                     supremum = 0
+    #                     # find the highest and lowest values' index within the range
+    #                     for i in range(start_index, end_index):
+    #                         if self.data[indices[i]][d] >= lower and i < infimum:
+    #                             infimum = i
+    #                         if i > supremum and self.data[indices[i]][d] <= upper:
+    #                             supremum = i
+    #                     bin = (infimum, supremum)
+    #                     bins[str([lower, upper])] = bin
+    #                     lower += step_size
+    #                     upper += step_size
+    #                 self.data_bins[d] = bins
+    #     else:
+    #         for d in range(self.dim):
+    #             if d in self.data_bins.keys():
+    #                 bins = self.data_bins[d]
+    #             else:
+    #                 bins = {}
+    #             max_level = self.max_levels[d]
+    #             step_size = 1.0 / 2 ** max_level
+    #             lower = 0.0
+    #             upper = step_size
+    #
+    #             while upper <= 1.0:
+    #                 # check if we have an enclosing bin, so we don't have to search the entire data set
+    #                 enclosing_bin = None
+    #                 extract_list = lambda x: list(map(float, x[1:-1].split(',')))
+    #                 if len(bins) > 0:
+    #                     enclosing_bin_keys = [extract_list(key_string) for key_string in bins.keys()]
+    #                     enclosing_bins = [x for x in enclosing_bin_keys if x[0] <= lower and x[1] >= upper]
+    #                     if len(enclosing_bins) > 0:
+    #                         enclosing_bin = bins[str(enclosing_bins[0])]
+    #
+    #                 indices = self.sorted_data[d]
+    #                 start_index = enclosing_bin[0] if enclosing_bin is not None else 0
+    #                 end_index = enclosing_bin[1] if enclosing_bin is not None else len(indices)
+    #
+    #                 infimum = len(indices)
+    #                 supremum = 0
+    #                 # find the highest and lowest values' index within the range
+    #                 for i in range(start_index, end_index):
+    #                     if self.data[indices[i]][d] >= lower and i < infimum:
+    #                         infimum = i
+    #                     if i > supremum and self.data[indices[i]][d] <= upper:
+    #                         supremum = i
+    #                 bin = (infimum, supremum)
+    #                 bins[str([lower, upper])] = bin
+    #                 lower += step_size
+    #                 upper += step_size
+    #             self.data_bins[d] = bins
 
     def get_result(self) -> Dict[Sequence[int], Sequence[float]]:
         return self.surpluses
@@ -492,8 +483,8 @@ class DensityEstimation(AreaOperation):
         # TODO
         refinement_container.value = np.zeros(1)
         self.sorted_data = [np.argsort(self.data[:,d]) for d in range(self.data.shape[1])]
-        if self.reuse_old_values:
-            self.create_new_data_bins()
+        #if self.reuse_old_values:
+        #    self.create_new_data_bins()
         self.max_levels = [max(self.lmax) for x in range(self.dim)]
 
     # def get_existing_indices(self, levelvec):
@@ -772,49 +763,6 @@ class DensityEstimation(AreaOperation):
 
         M = len(data)
         N = len(point_list)
-
-        # data_used = [[] for x in range(N)]
-        #
-        # naive_b = np.zeros(N)
-        # for i in range(M):
-        #     hats = self.get_neighbors(data[i], gridPointCoordsAsStripes)
-        #     sign = 1.0
-        #     if self.classes is not None:
-        #         sign = self.classes[i]
-        #     for h in hats:
-        #         data_used[point_list.index(h)].append(i)
-        #         naive_b[point_list.index(h)] += \
-        #             (self.hat_function_non_symmetric(h, self.get_hat_domain(h, gridPointCoordsAsStripes),
-        #                                              data[i]) * sign)
-        # naive_b *= (1 / M)
-
-        # #
-        # binned_b = np.zeros(N)
-        # for i in range(len(binned_b)):
-        #     if binned_b[i] == 0:
-        #         # get the data within the domain of the point
-        #         domain = self.get_hat_domain(point_list[i], gridPointCoordsAsStripes)
-        #         data_indices_in_domain, data_ranges = self.find_data_in_domain(domain)
-        #         # go through all the data points in the intersection set
-        #         for x in data_indices_in_domain:
-        #             hat = point_list[i]
-        #             sign = 1.0
-        #             if self.classes is not None:
-        #                 sign = self.classes[x]
-        #             binned_b[i] += (self.hat_function_non_symmetric(hat, domain, data[x]) * sign)
-        # # compare naive and binned b
-        # bin_comp = naive_b - binned_b
-        # print('naive bin comp: ', bin_comp)
-        # naive_b *= (1 / M)
-        # binned_b *= (1 / M)
-        # bin_comp_2 = naive_b - binned_b
-        # print('naive bin comp: ', bin_comp_2)
-        # if np.sum(bin_comp_2) != 0 or np.sum(bin_comp) != 0:
-        #     print('stop')
-        #     #assert 1 == 2
-
-
-        ##################
         b = np.zeros(N)
 
         if self.reuse_old_values:
@@ -846,17 +794,13 @@ class DensityEstimation(AreaOperation):
                     #b[p] = old_b[old_point_list.index(point_list[p])]
                     b[p] = old_b[domain_match[p]]
 
-            # debug: compare b and naive_b
-            #comp_b = (naive_b - b) * M
-            #print('b naive_b comp 1: ', comp_b)
-
             # calculate all b points that haven't been copied over (the new points)
             for i in range(len(b)):
                 if b[i] == 0:
                     # get the data within the domain of the point
                     #print('recalc b i', i)
                     domain = self.get_hat_domain(point_list[i], gridPointCoordsAsStripes)
-                    data_indices_in_domain, data_ranges = self.find_data_in_domain(domain)
+                    data_indices_in_domain = self.find_data_in_domain(domain)
                     # go through all the data points in the intersection set
                     for x in data_indices_in_domain:
                         hat = point_list[i]
@@ -865,16 +809,6 @@ class DensityEstimation(AreaOperation):
                             sign = self.classes[x]
                         b[i] += (self.hat_function_non_symmetric(hat, domain, data[x]) * sign)
                     b[i] *= (1 / M)
-            # debug: compare b and naive_b
-            # comp_b_2 = (naive_b - b) * M
-            # if len(old_b) == len(naive_b):
-            #     print('stop here')
-            # print('len, old_b  :', len(old_b), old_b)
-            # print('len, naive_b: ', len(naive_b),  naive_b)
-            # print('len, vec___b: ', len(b), b)
-            # if np.sum(comp_b_2) != 0.0:
-            #     print('stop here')
-            # print('b naive_b comp 2\n',  comp_b_2)
         else:
             for i in range(M):
                 hats = self.get_neighbors(data[i], gridPointCoordsAsStripes)
@@ -1122,30 +1056,68 @@ class DensityEstimation(AreaOperation):
 
         return closest_match_key#, range_indices, new_points
 
-    def find_data_in_domain(self, domain):
+
+    def find_enclosing_bin(self, domain: Tuple[float, float], dim: int):
+        """
+        This function looks for indices in the bins for the given dimension that are the closest to the given domain.
+        (Only relevant for reuse of old B vectors)
+        domain: 2-dimensional Sequence; Domain for which the closest indices should be found in the sorted data
+        dim:    The dimension for which the enclosing bin should be found
+        :return: 2-dimensional Sequence; Closest indices to the given domain, in the given dimension within the sorted data
+        """
+        enclosing_bin = [0, len(self.sorted_data[dim] - 1)]
+        # check for available bins
+        if domain[0] == 0.0 and domain[1] == 1.0:
+            return enclosing_bin
+        if dim in self.data_bins:
+            bins = self.data_bins[dim]
+        else:
+            return enclosing_bin
+        if len(bins) == 0:
+            return enclosing_bin
+        # check if we have an enclosing bin, so we don't have to search the entire data set
+        extract_list = lambda x: list(map(float, x[1:-1].split(',')))
+        enclosing_bin_keys = [extract_list(key_string) for key_string in bins.keys()]
+
+        lower_end = min([x for x in enclosing_bin_keys if x[0] <= domain[0]], key=lambda t: abs(t[0] - domain[0]))[0]
+        higher_end = min([x for x in enclosing_bin_keys if x[1] >= domain[1]], key=lambda t: abs(t[1] - domain[1]))[1]
+
+        enclosing_bin = [lower_end, higher_end]
+        return enclosing_bin
+
+    def find_data_in_domain(self, domain: Sequence[Tuple[float, float]]):
+        """
+        This method finds all data points
+        domain:
+        :return:
+        """
         data_ranges = []
 
-        for d in range(self.dim):
+        for d in range(len(domain)):
             data_ranges.append([])
             # check if we have a data bin for the domain, otherwise create the bin
             key = str([domain[d][0], domain[d][1]])
-            # if key in self.data_bins[d]:
-            #     data_ranges[d] = [self.data_bins[d][key][0], self.data_bins[d][key][1]]
-            #else:
-            if True:
+            if key in self.data_bins[d]:
+                data_ranges[d] = [self.data_bins[d][key][0], self.data_bins[d][key][1]]
+            else:
+                enclosing_bin = self.find_enclosing_bin(domain[d], d)
                 lower = len(self.sorted_data[d])
                 upper = 0
                 # find the lowest min and highest max within the domain
-                for i in range(len(self.sorted_data[d])):
+                for i in range(enclosing_bin[0], min(enclosing_bin[1]+1, len(self.sorted_data[d]))):
                     if self.data[self.sorted_data[d][i]][d] >= domain[d][0] and i < lower:
                         lower = i
                     if self.data[self.sorted_data[d][i]][d] <= domain[d][1] and i > upper:
                         upper = i
                 data_ranges[d] = [max(lower-1, 0), min(upper+1, len(self.sorted_data[d])-1)]
+        # save the data ranges as bins
+        for d in range(len(data_ranges)):
+            self.data_bins[d][str([domain[d][0], domain[d][1]])] = data_ranges[d]
+
         domain_data = self.sorted_data[0][data_ranges[0][0]:data_ranges[0][1]]
         for d in range(self.dim):
             domain_data = np.intersect1d(domain_data, self.sorted_data[d][data_ranges[d][0]:data_ranges[d][1]])
-        return domain_data, data_ranges
+        return domain_data
 
     def build_R_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
         """
