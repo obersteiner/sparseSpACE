@@ -429,6 +429,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         for area in areas:
             self.operation.area_postprocessing(area)
 
+        self.operation.post_processing()
+
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
             self.refinement.set_evaluations(i, evaluation_array[k])
