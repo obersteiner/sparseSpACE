@@ -28,17 +28,19 @@ class DataSet:
         :param name: Optional. Name of this DataSet
         """
         self.__name = name
-        self.__data = self.__initialize(raw_data)
-        assert(isinstance(self.__data, tuple) and len(self.__data) == 2 and
-               isinstance(self.__data[0], np.ndarray) and isinstance(self.__data[1], np.ndarray))
-        self.__dim = self.__data[0].ndim
-        self.__shape = self.__data[0].shape
+        self.__data = None
+        self.__dim = None
+        self.__shape = None
         self.__shuffled = False
         self.__scaled = False
         self.__scaling_range = None
         self.__scaling_factor = None
         self.__original_min = None
         self.__original_max = None
+        self.__initialize(raw_data)
+        assert((self.__data is not None) and (self.__dim is not None) and (self.__shape is not None))
+        assert(isinstance(self.__data, tuple) and len(self.__data) == 2 and
+               isinstance(self.__data[0], np.ndarray) and isinstance(self.__data[1], np.ndarray))
 
     def __getitem__(self, item: int) -> np.ndarray:
         return self.__data[item]
@@ -80,7 +82,9 @@ class DataSet:
         return self.__original_max
 
     def get_length(self) -> int:
-        return len(self.__data[0])
+        length = round(self.__data[0].size / self.__dim) if (self.__dim != 0) else 0
+        assert((length * self.__dim) == self.__data[0].size)
+        return length
 
     def get_dim(self) -> int:
         return self.__dim
@@ -95,7 +99,7 @@ class DataSet:
         return -1 in self.__data[1]
 
     def is_empty(self) -> bool:
-        return len(self.__data[0]) == 0
+        return self.__data[0].size == 0
 
     def is_shuffled(self) -> bool:
         return self.__shuffled
@@ -109,32 +113,41 @@ class DataSet:
     def get_scaling_factor(self) -> float:
         return self.__scaling_factor
 
-    @staticmethod
-    def __initialize(raw_data: Union[Tuple[np.ndarray, np.ndarray], np.ndarray, str]) -> Tuple[np.ndarray, ...]:
+    def __initialize(self, raw_data: Union[Tuple[np.ndarray, np.ndarray], np.ndarray, str]) -> None:
         """Private initialization method for DataSet.
 
         Provides several checks of the input parameter raw_data of the constructor and raises an error if raw_data can't be converted to
         appropriate form.
 
         :param raw_data: Samples (and corresponding classes) of this DataSet. Can be a tuple of samples and classes, only classless samples, CSV file.
-        :return: Initialized raw data
+        :return: None
         """
         if isinstance(raw_data, str):
             # raw_data = read_csv_file()
             pass  # TODO implement DataSet csv reader
         if isinstance(raw_data, np.ndarray):
-            return raw_data, np.array(([-1] * len(raw_data)), dtype=np.int64)
+            if raw_data.size == 0:
+                self.__dim = 0
+                self.__shape = 0
+                raw_data = np.reshape(raw_data, 0)
+            else:
+                self.__dim = round(raw_data.size / len(raw_data))
+                self.__shape = (len(raw_data), self.__dim)
+                assert ((len(raw_data) * self.__dim) == raw_data.size)
+                raw_data = np.reshape(raw_data, self.__shape)
+            self.__data = raw_data, np.array(([-1] * len(raw_data)), dtype=np.int64)
         elif isinstance(raw_data, tuple) and (len(raw_data) == 2):
-            if raw_data[1].size == 1:
-                raw_data = tuple([np.reshape(raw_data[0], (1, raw_data[0].size)), raw_data[1]])
-                return raw_data
-            if raw_data[1].ndim == 1 and not any([x < -1 for x in list(set(raw_data[1]))]):
-                if len(raw_data[0]) == len(raw_data[1]):
-                    return raw_data
-                elif len(raw_data[0]) < len(raw_data[1]):
-                    return raw_data[0], raw_data[1][:len(raw_data[0])]
-                else:
-                    return raw_data[0], np.concatenate((raw_data[1], np.array(([-1] * (len(raw_data[0]) - len(raw_data[1]))), dtype=np.int64)))
+            if raw_data[0].size == 0:
+                self.__dim = 0
+                self.__shape = 0
+                self.__data = tuple([np.reshape(raw_data[0], 0), raw_data[1]])
+            elif raw_data[1].ndim == 1 and not any([x < -1 for x in list(set(raw_data[1]))]) and (len(raw_data[0]) == len(raw_data[1])):
+                self.__dim = round(raw_data[0].size / len(raw_data[0]))
+                self.__shape = (len(raw_data[0]), self.__dim)
+                assert((len(raw_data[0]) * self.__dim) == raw_data[0].size)
+                self.__data = tuple([np.reshape(raw_data[0], self.__shape), raw_data[1]])
+            else:
+                raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
         else:
             raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
 
@@ -197,7 +210,7 @@ class DataSet:
         """
         if any([(i < 0) or (i > self.get_length()) for i in indices]):
             raise ValueError("Can't remove samples out of bounds of DataSet.")
-        removed_samples = [DataSet((self.__data[0][i], np.array([self.__data[1][i]]))) for i in indices]
+        removed_samples = [self.__update_internal(DataSet((np.array([self.__data[0][i]]), np.array([self.__data[1][i]])))) for i in indices]
         self.__data = DataSet(tuple([np.delete(self.__data[0], indices, axis=0), np.delete(self.__data[1], indices, axis=0)]))
         return DataSet.list_concatenate(removed_samples)
 
@@ -392,8 +405,12 @@ class DataSet:
         indices = rnd.sample(range(0, classfull.get_length()), round((percentage if (1 > percentage >= 0) else 1.0) * classfull.get_length()))
         classes = classfull.__data[1]
         classes[indices] = -1
-        self.__data = tuple([classfull.__data[0], classes]) if classless.is_empty() \
-            else tuple([np.concatenate((classfull.__data[0], classless.__data[0])), np.concatenate((classes, classless.__data[1]))])
+        if classless.is_empty():
+            self.__data = tuple([classfull.__data[0], classes])
+        elif classfull.is_empty():
+            self.__data = tuple([classless.__data[0], classless.__data[1]])
+        else:
+            self.__data = tuple([np.concatenate((classfull.__data[0], classless.__data[0])), np.concatenate((classes, classless.__data[1]))])
 
     def move_boundaries_to_front(self) -> None:
         """Move samples with lowest and highest value in each dimension to the front of this DataSet's data.
@@ -578,7 +595,10 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if data_to_evaluate.is_empty():
             raise ValueError("Can't classificate empty dataset.")
+        print("Evaluating classes of %s DataSet..." % data_to_evaluate.get_name())
         evaluate = self.__internal_scaling(data_to_evaluate, print_removed=print_removed)
+        print("_________________________________________________________________________________________________________________________________")
+        print("---------------------------------------------------------------------------------------------------------------------------------")
         if evaluate.is_empty():
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
@@ -613,7 +633,7 @@ class Classification:
         If percentage is 1, all of the original data is used as learning data.
         Any classless samples in the original dataset are removed and stored in self.__omitted_data first.
         Scaling to range (0.005, 0.995) is performed either simply based on boundary samples (default) or by the original data range (if
-        specified by the user in the constructor). If the latter, samples out of bounds are removed, printed to stdout and a warning is issued.
+        specified by the user in the constructor). If the latter, samples out of bounds are removed, printed to stdout and the user is notified.
         Before splitting the data, it is shuffled to ensure random splitting and the boundary samples are moved to the front to guarantee that
         they are in the learning dataset.
 
@@ -638,9 +658,7 @@ class Classification:
             self.__data_range = (self.__data.get_original_min(), self.__data.get_original_max())
             self.__scale_factor = self.__data.get_scaling_factor()
         if not self.__omitted_data.is_empty():
-            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
-            warnings.warn("Omitted some classless samples during initialization and added them to omitted sample collection of this object.",
-                          stacklevel=3)
+            print("Omitted some classless samples during initialization and added them to omitted sample collection of this object.")
             self.__omitted_data.shift_value(-self.__data_range[0], override_scaling=True)
             self.__omitted_data.scale_factor(self.__scale_factor, override_scaling=True)
             self.__omitted_data.shift_value(0.005, override_scaling=True)
@@ -684,6 +702,8 @@ class Classification:
         self.__classificators = [x[0] for x in operation_list]
         self.__de_objects = [x[1] for x in operation_list]
         print("Performed Classification of '%s' DataSet." % self.__data.get_name())
+        print("_________________________________________________________________________________________________________________________________")
+        print("---------------------------------------------------------------------------------------------------------------------------------")
 
     def __classificate(self, data_to_classificate: 'DataSet') -> List[int]:
         """Calculate classes for samples of input data.
@@ -704,13 +724,12 @@ class Classification:
         If the input data is already scaled, it is assumed that its scaling matches that of the original data.
         If that's not the case, the user should first revert the scaling of all input data before applying it to a Classification object.
         If not already scaled, the input data will be scaled with the same factors the original data was.
-        Any samples out of bounds after scaling are removed, printed to stdout if print_removed is True and a warning is issued.
+        Any samples out of bounds after scaling are removed, printed to stdout if print_removed is True and a the user is notified.
 
         :param data_to_check: DataSet which needs to be checked for scaling and scaled if necessary
         :param print_removed: Optional. Conditional parameter which indicates whether any during scaling removed samples should be printed
         :return: Scaled input dataset without samples out of bounds
         """
-        warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
         if data_to_check.is_scaled():
             if not self.__data.same_scaling(data_to_check):
                 raise ValueError("Provided DataSet's scaling doesn't match the internal scaling of Classification object.")
@@ -718,21 +737,17 @@ class Classification:
             data_to_check.shift_value(-self.__data_range[0], override_scaling=False)
             data_to_check.scale_factor(self.__scale_factor, override_scaling=False)
             data_to_check.shift_value(0.005, override_scaling=False)
-        remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.005) for y in x]) or any([(y > 0.995) for y in x])]
+        remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.0049) for y in x]) or any([(y > 0.9951) for y in x])]
         removed_samples = data_to_check.remove_samples(remove_indices)
         if not removed_samples.is_empty():
-            warnings.warn("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators "
-                          "in range(0.005, 0.995)." % data_to_check.get_name(), stacklevel=3)
+            print("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators."
+                  % data_to_check.get_name())
             if print_removed:
-                print("---------------------------------------------------------------------------------------------------------------------"
-                      "-----------")
                 print("Points removed during scale checking:")
                 for i, x in enumerate(removed_samples[0]):
                     print(i, end=": ")
                     print(x, end=" | class: ")
                     print(removed_samples[1][i])
-                print("---------------------------------------------------------------------------------------------------------------------"
-                      "-----------")
         return data_to_check
 
     def __print_evaluation(self, testing_data: 'DataSet', calculated_classes: List[int]) -> None:
@@ -746,8 +761,8 @@ class Classification:
         :param calculated_classes: Input calculated classes for specified testing data
         :return: None
         """
-        warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
         if testing_data.is_empty():
+            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; input test dataset is empty.", stacklevel=3)
             return
         if testing_data.get_length() != len(calculated_classes):
@@ -755,25 +770,25 @@ class Classification:
         density_testdata = [x(testing_data[0]) for x in self.__classificators]
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
-        print("--------------------------------------------------------------------------------------------------------------------------------")
+        print("Evaluation:")
         print("Number of wrong mappings:", end=" ")
         print(number_wrong)
         print("Number of total mappings:", end=" ")
         print(len(calculated_classes))
         print("Percentage of correct mappings:", end=" ")
         print("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))
-        print("--------------------------------------------------------------------------------------------------------------------------------")
-        print("Points mapped incorrectly:")
-        for i, wr in enumerate(indices_wrong):
-            print(i, end=": ")
-            print(testing_data[0][wr], end=" | correct class: ")
-            print(testing_data[1][wr], end=", calculated class: ")
-            print(calculated_classes[wr], end=" | ")
-            for j, x in enumerate(density_testdata):
-                print("density_class%d" % j, end=": ")
-                print(x[wr], end=", ")
-            print()
-        print("--------------------------------------------------------------------------------------------------------------------------------")
+        if number_wrong != 0:
+            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+            print("Points mapped incorrectly:")
+            for i, wr in enumerate(indices_wrong):
+                print(i, end=": ")
+                print(testing_data[0][wr], end=" | correct class: ")
+                print(testing_data[1][wr], end=", calculated class: ")
+                print(calculated_classes[wr], end=" | ")
+                for j, x in enumerate(density_testdata):
+                    print("density_class%d" % j, end=": ")
+                    print(x[wr], end=", ")
+                print()
 
     def perform_classification(self, /,
                                masslumping: bool = True,
@@ -815,6 +830,8 @@ class Classification:
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
         self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset)
+        print("_________________________________________________________________________________________________________________________________")
+        print("---------------------------------------------------------------------------------------------------------------------------------")
 
     def plot(self, /,
              plot_class_dataset: bool = True,
@@ -872,6 +889,7 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
+        print("Testing classes of %s DataSet..." % new_testing_data.get_name())
         evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for testing were out of bounds. Please only test samples in unscaled range: "
@@ -879,15 +897,17 @@ class Classification:
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
         omitted_data, used_data = evaluate.split_without_classes()
         if not omitted_data.is_empty():
-            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
-            warnings.warn("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
+            print("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
         self.__omitted_data.concatenate(omitted_data)
         self.__data.concatenate(used_data)
         self.__testing_data.concatenate(used_data)
         calculated_new_testclasses = self.__classificate(used_data)
         self.__calculated_classes_testset += calculated_new_testclasses
         if print_output:
+            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
             self.__print_evaluation(used_data, calculated_new_testclasses)
+            print("_________________________________________________________________________________________________________________________________")
+            print("---------------------------------------------------------------------------------------------------------------------------------")
         return omitted_data
 
 
@@ -897,12 +917,16 @@ class Clustering:
 
 if __name__ == "__main__":
     import sys
-
     sys.path.append('../src/')
 
-    # generate a Circle-Dataset of size with the sklearn library
+    # generate a dataset of size with the sklearn library
     size = 500
-    sklearn_dataset = datasets.make_circles(size, noise=0.05)
+    sklearn_dataset = datasets.make_circles(n_samples=size, noise=0.05)
+    # sklearn_dataset = datasets.make_moons(n_samples=size, noise=0.3)
+    # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+    # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+    # sklearn_dataset = datasets.make_blobs(n_samples=size, n_features=2, centers=6)
+    # sklearn_dataset = datasets.make_gaussian_quantiles(n_samples=size, n_features=2, n_classes=6)
 
     # now we can transform this dataset into a DataSet object and give it an appropriate name
     data = DataSet(sklearn_dataset, name='Testset')
@@ -942,6 +966,7 @@ if __name__ == "__main__":
     classification.print_evaluation()
 
     # we can also add more testing data and print the results immediately
+    with_classes.set_name("Test_new_data")
     classification.test_data(with_classes, print_output=True)
 
     # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
