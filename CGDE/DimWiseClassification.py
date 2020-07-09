@@ -312,7 +312,10 @@ data_copy.plot()                                                     # plotted
 classification = do.Classification(data, split_percentage=0.8, split_evenly=True)
 
 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-classification.perform_classification_dimension_wise(masslumping=True, lambd=0.0, minimum_level=1, maximum_level=5)
+classification.perform_classification_dimension_wise(_masslumping=False, _lambd=lambd, _minimum_level=1, _maximum_level=5,
+                                                     _reuse_old_values=True, _numeric_calculation=False,
+                                                     _boundary=boundary, _modified_basis=modified_basis,
+                                                     _tolerance=tolerance, _margin=margin, _max_evaluations=max_evaluations)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # now we can perform some other operations on this classification object

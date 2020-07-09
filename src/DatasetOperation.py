@@ -498,6 +498,8 @@ class DataSet:
                                           margin: float = 0.5,
                                           tolerance: float = 0.01,
                                           max_evaluations: int = 256,
+                                          modified_basis: bool = False,
+                                          boundary: bool = False,
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
@@ -526,7 +528,7 @@ class DataSet:
         """
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
-        grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=False)
+        grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=modified_basis, boundary=boundary)
         de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
         error_calculator = ErrorCalculatorSingleDimVolumeGuided()
         combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
@@ -770,7 +772,12 @@ class Classification:
                                                 _minimum_level: int,
                                                 _maximum_level: int,
                                                 _reuse_old_values: bool = False,
-                                                _numeric_calculation: bool = True) -> None:
+                                                _numeric_calculation: bool = True,
+                                                _margin: float = 0.5,
+                                                _tolerance: float = 0.01,
+                                                _max_evaluations: int = 256,
+                                                _modified_basis: bool = False,
+                                                _boundary: bool = False,) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -788,6 +795,8 @@ class Classification:
         operation_list = [x.density_estimation_dimension_wise(
             masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
             reuse_old_values=_reuse_old_values, numeric_calculation=_numeric_calculation,
+            margin=_margin, tolerance=_tolerance, max_evaluations=_max_evaluations,
+            modified_basis=_modified_basis, boundary=_boundary,
             plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
@@ -906,12 +915,17 @@ class Classification:
             raise ValueError("Can't perform classification for the same object twice.")
 
     def perform_classification_dimension_wise(self,
-                               masslumping: bool = True,
-                               lambd: float = 0.0,
-                               minimum_level: int = 1,
-                               maximum_level: int = 5,
-                               reuse_old_values: bool = False,
-                               numeric_calculation: bool = True) -> None:
+                                              _masslumping: bool = True,
+                                              _lambd: float = 0.0,
+                                              _minimum_level: int = 1,
+                                              _maximum_level: int = 5,
+                                              _reuse_old_values: bool = False,
+                                              _numeric_calculation: bool = True,
+                                              _margin: float = 0.5,
+                                              _tolerance: float = 0.01,
+                                              _max_evaluations: int = 256,
+                                              _modified_basis: bool = False,
+                                              _boundary: bool = False) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
         Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
@@ -924,7 +938,17 @@ class Classification:
         :return: None
         """
         if not self.__performed_classification:
-            self.__perform_classification_dimension_wise(masslumping, lambd, minimum_level, maximum_level, reuse_old_values, numeric_calculation)
+            self.__perform_classification_dimension_wise(_masslumping=_masslumping,
+                                                         _lambd=_lambd,
+                                                         _minimum_level=_minimum_level,
+                                                         _maximum_level=_maximum_level,
+                                                         _margin=_margin,
+                                                         _tolerance=_tolerance,
+                                                         _max_evaluations=_max_evaluations,
+                                                         _modified_basis=_modified_basis,
+                                                         _boundary=_boundary,
+                                                         _reuse_old_values=_reuse_old_values,
+                                                         _numeric_calculation=_numeric_calculation)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
