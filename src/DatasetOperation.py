@@ -9,6 +9,10 @@ from sklearn import datasets, preprocessing
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
+from src.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
+from src.Grid import GlobalTrapezoidalGrid
+from src.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+
 
 class DataSet:
     """Type of datasets on which to perform DensityEstimation, Classification and Clustering.
@@ -18,7 +22,7 @@ class DataSet:
     Unknown classes are labelled with -1.
     """
 
-    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], /, name: str = 'unknown'):
+    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown'):
         """Constructor of DataSet.
 
         Takes raw data and optionally a name as parameter and initializes raw data to the form of a tuple with length 2.
@@ -214,7 +218,7 @@ class DataSet:
         self.__data = DataSet(tuple([np.delete(self.__data[0], indices, axis=0), np.delete(self.__data[1], indices, axis=0)]))
         return DataSet.list_concatenate(removed_samples)
 
-    def scale_range(self, scaling_range: Tuple[float, float], /, override_scaling: bool = False) -> None:
+    def scale_range(self, scaling_range: Tuple[float, float], override_scaling: bool = False) -> None:
         """Scale DataSet to a specified range.
 
         If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
@@ -240,7 +244,7 @@ class DataSet:
             self.__scaling_range = scaling_range
             self.__scaling_factor *= scaler.scale_
 
-    def scale_factor(self, scaling_factor: Union[float, np.ndarray], /, override_scaling: bool = False) -> None:
+    def scale_factor(self, scaling_factor: Union[float, np.ndarray], override_scaling: bool = False) -> None:
         """Scale DataSet by a specified factor.
 
         If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
@@ -265,7 +269,7 @@ class DataSet:
             self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
             self.__scaling_factor *= scaling_factor
 
-    def shift_value(self, shift_val: Union[float, np.ndarray], /, override_scaling: bool = False) -> None:
+    def shift_value(self, shift_val: Union[float, np.ndarray], override_scaling: bool = False) -> None:
         """Shift DataSet by a specified value.
 
         If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
@@ -442,7 +446,7 @@ class DataSet:
         self.__original_min = None
         self.__original_max = None
 
-    def density_estimation(self, /,
+    def density_estimation(self,
                            masslumping: bool = True,
                            lambd: float = 0.0,
                            minimum_level: int = 1,
@@ -469,7 +473,7 @@ class DataSet:
         """
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
-        de_object = DensityEstimation(self.__data, self.__dim, masslumping, lambd)
+        de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
@@ -484,7 +488,62 @@ class DataSet:
             combi_object.print_resulting_sparsegrid(markersize=20)
         return combi_object, de_object
 
-    def plot(self, /, plot_classes: bool = True) -> plt.Figure:
+    def density_estimation_dimension_wise(self,
+                                          masslumping: bool = True,
+                                          lambd: float = 0.0,
+                                          minimum_level: int = 1,
+                                          maximum_level: int = 5,
+                                          reuse_old_values: bool = False,
+                                          numeric_calculation: bool = True,
+                                          margin: float = 0.5,
+                                          tolerance: float = 0.01,
+                                          max_evaluations: int = 256,
+                                          plot_de_dataset: bool = True,
+                                          plot_density_estimation: bool = True,
+                                          plot_combi_scheme: bool = True,
+                                          plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
+        """Perform the GridOperation DensityEstimation on this DataSet.
+
+        Also is able to plot the DensityEstimation results directly.
+        For more information on DensityEstimation refer to the class DensityEstimation in the GridOperation module.
+
+        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param margin: Optional.
+        :param numeric_calculation: Optional.
+        :param reuse_old_values: Optional.
+        :param plot_de_dataset: Optional. Conditional Parameter which indicates whether this DataSet should be plotted for DensityEstimation
+        :param plot_density_estimation: Optional. Conditional Parameter which indicates whether results of DensityEstimation should be plotted
+        :param plot_combi_scheme: Optional. Conditional Parameter which indicates whether resulting combi scheme of DensityEstimation should be
+        plotted
+        :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
+        :return:
+
+        Parameters
+        ----------
+        """
+        a = np.zeros(self.__dim)
+        b = np.ones(self.__dim)
+        grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=False)
+        de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
+        error_calculator = ErrorCalculatorSingleDimVolumeGuided()
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
+        combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme)
+        if plot_de_dataset:
+            if de_object.scaled:
+                self.scale_range((0, 1), override_scaling=True)
+            self.plot(plot_classes=False)
+        if plot_density_estimation:
+            combi_object.plot(contour=True)
+        if plot_combi_scheme:
+            combi_object.print_resulting_combi_scheme(operation=de_object)
+        if plot_sparsegrid:
+            combi_object.print_resulting_sparsegrid(markersize=20)
+        return combi_object, de_object
+
+    def plot(self, plot_classes: bool = True) -> plt.Figure:
         """Plot DataSet.
 
         Plotting is only available for dimensions 2 and 3.
@@ -541,7 +600,7 @@ class Classification:
     """
 
     def __init__(self,
-                 raw_data: 'DataSet', /,
+                 raw_data: 'DataSet',
                  data_range: Tuple[np.ndarray, np.ndarray] = None,
                  split_percentage: float = 1.0,
                  split_evenly: bool = True):
@@ -579,7 +638,7 @@ class Classification:
         self.__performed_classification = False
         self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly)
 
-    def __call__(self, data_to_evaluate: 'DataSet', /, print_removed: bool = True) -> 'DataSet':
+    def __call__(self, data_to_evaluate: 'DataSet', print_removed: bool = True) -> 'DataSet':
         """Evaluate classes for samples in input data and create a new DataSet from those same samples and classes.
 
         When this method is called, classification needs to already be performed. If it is not, an AttributeError is raised.
@@ -705,6 +764,38 @@ class Classification:
         print("_________________________________________________________________________________________________________________________________")
         print("---------------------------------------------------------------------------------------------------------------------------------")
 
+    def __perform_classification_dimension_wise(self,
+                                                _masslumping: bool,
+                                                _lambd: float,
+                                                _minimum_level: int,
+                                                _maximum_level: int,
+                                                _reuse_old_values: bool = False,
+                                                _numeric_calculation: bool = True) -> None:
+        """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
+
+        This method is only called once.
+        First the learning dataset is split into its classes in separate DataSets and then the DataSet.density_estimation() function is called for
+        each of the single-class-DataSets.
+        The DensityEstimation objects are mainly used for plotting the combi scheme.
+
+        :param _masslumping: Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param _lambd: Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param _minimum_level: Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :return: None
+        """
+        learning_data_classes = self.__learning_data.split_classes()
+        operation_list = [x.density_estimation_dimension_wise(
+            masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
+            reuse_old_values=_reuse_old_values, numeric_calculation=_numeric_calculation,
+            plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
+                          for x in learning_data_classes]
+        self.__classificators = [x[0] for x in operation_list]
+        self.__de_objects = [x[1] for x in operation_list]
+        print("Performed Classification of '%s' DataSet." % self.__data.get_name())
+        print("_________________________________________________________________________________________________________________________________")
+        print("---------------------------------------------------------------------------------------------------------------------------------")
+
     def __classificate(self, data_to_classificate: 'DataSet') -> List[int]:
         """Calculate classes for samples of input data.
 
@@ -718,7 +809,7 @@ class Classification:
         max_density_per_point = np.amax(density_data, axis=1)
         return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
 
-    def __internal_scaling(self, data_to_check: 'DataSet', /, print_removed: bool = False) -> 'DataSet':
+    def __internal_scaling(self, data_to_check: 'DataSet', print_removed: bool = False) -> 'DataSet':
         """Scale data with the same factors as the original data (self.__data) was scaled.
 
         If the input data is already scaled, it is assumed that its scaling matches that of the original data.
@@ -790,7 +881,7 @@ class Classification:
                     print(x[wr], end=", ")
                 print()
 
-    def perform_classification(self, /,
+    def perform_classification(self,
                                masslumping: bool = True,
                                lambd: float = 0.0,
                                minimum_level: int = 1,
@@ -808,6 +899,32 @@ class Classification:
         """
         if not self.__performed_classification:
             self.__perform_classification(masslumping, lambd, minimum_level, maximum_level)
+            self.__performed_classification = True
+            if not self.__testing_data.is_empty():
+                self.__calculated_classes_testset = self.__classificate(self.__testing_data)
+        else:
+            raise ValueError("Can't perform classification for the same object twice.")
+
+    def perform_classification_dimension_wise(self,
+                               masslumping: bool = True,
+                               lambd: float = 0.0,
+                               minimum_level: int = 1,
+                               maximum_level: int = 5,
+                               reuse_old_values: bool = False,
+                               numeric_calculation: bool = True) -> None:
+        """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
+
+        Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
+        If this method is called a second time, a ValueError is raised.
+
+        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :return: None
+        """
+        if not self.__performed_classification:
+            self.__perform_classification_dimension_wise(masslumping, lambd, minimum_level, maximum_level, reuse_old_values, numeric_calculation)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
@@ -833,7 +950,7 @@ class Classification:
         print("_________________________________________________________________________________________________________________________________")
         print("---------------------------------------------------------------------------------------------------------------------------------")
 
-    def plot(self, /,
+    def plot(self,
              plot_class_dataset: bool = True,
              plot_class_density_estimation: bool = True,
              plot_class_combi_scheme: bool = True,
@@ -867,7 +984,7 @@ class Classification:
             for x in self.__classificators:
                 x.print_resulting_sparsegrid(markersize=20)
 
-    def test_data(self, new_testing_data: 'DataSet', /,
+    def test_data(self, new_testing_data: 'DataSet',
                   print_output: bool = True,
                   print_removed: bool = True) -> 'DataSet':
         """Test new data with the classificators of a Classification object.
