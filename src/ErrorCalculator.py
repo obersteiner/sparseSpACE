@@ -33,10 +33,10 @@ class ErrorCalculatorSurplusCell(ErrorCalculator):
 
 
 class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
-    def calc_error(self, refine_object, volume_weights=None):
+    def calc_error(self, refine_object, norm, volume_weights=None):
         lower_bounds = np.array(refine_object.start)
         upper_bounds = np.array(refine_object.end)
-        error = self.calc_area_error(refine_object.sub_integrals)
+        error = LA.norm(self.calc_area_error(refine_object.sub_integrals), norm)
         return max(error * np.prod(upper_bounds - lower_bounds))
 
 

@@ -15,12 +15,13 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
         errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
-        interpolated_values = np.asarray(standardCombi(evaluation_points))
-        real_values = np.asarray([f.eval(point) for point in evaluation_points])
-        diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
-        # print(interpolated_values, diff)
-        interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
-        interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
+        if evaluation_points is not None:
+            interpolated_values = np.asarray(standardCombi(evaluation_points))
+            real_values = np.asarray([f.eval(point) for point in evaluation_points])
+            diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
+            # print(interpolated_values, diff)
+            interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
+            interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
     return pointArray, distinctFEvalArray, errorArrayStandard, interpolation_errorL2, interpolation_errorMax
 
 
@@ -98,10 +99,10 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
 
 
     if doDimAdaptive:
-        dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
-        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
-                                                                                                                10 ** -maxtol,
-                                                                                                                reference_solution=reference_solution)
+        operation = Integration(f, grid, dim, reference_solution)
+        dimAdaptiveCombi = DimAdaptiveCombi(a, b, operation=operation)
+        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 1,
+                                                                                                                10 ** -maxtol, max_number_of_points=max_evaluations)
 
     # calculate different standard combination scheme results
     xArrayStandard = []
@@ -129,13 +130,13 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
         # plt.loglog(xArrayStandard[i],errorArrayStandard[i],label='standardCombination lmin='+ str(i+minLmin))
-        #plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
-        #           label='standardCombination distinct f evals lmin=' + str(i + minLmin))
+        plt.loglog(xFEvalArrayStandard[i], errorArrayStandard[i],
+                   label='standardCombination distinct f evals lmin=' + str(i + minLmin))
 
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-                   label='standardCombination L2 lmin=' + str(i + minLmin))
-        plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-                   label='standardCombination Linf lmin=' + str(i + minLmin))
+        #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+        #           label='standardCombination L2 lmin=' + str(i + minLmin))
+        #plt.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+        #           label='standardCombination Linf lmin=' + str(i + minLmin))
     if doDimAdaptive:
         print("numPoints =", numFEvalIdealDimAdaptive)
         print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
@@ -150,9 +151,9 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
 
         # plt.loglog(numNaive[i],errorArray[i],label= adaptiveAlgorithmVector[i][3] +' Naive evaluation')
         # plt.loglog(numIdeal[i],errorArray[i],label=adaptiveAlgorithmVector[i][3] +' total points')
-        #plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
-        plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
+        plt.loglog(numFEvalIdeal[i], errorArray[i], label=adaptiveAlgorithmVector[i][4] + ' distinct f evals')
+        #plt.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
+        #plt.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
         plt.loglog(numFEvalIdeal[i], surplusErrorArray[i], '--', label=adaptiveAlgorithmVector[i][4] + ' surplus error')
 
     plt.legend(bbox_to_anchor=(3, 1), loc="upper right")

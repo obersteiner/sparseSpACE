@@ -271,6 +271,7 @@ class DensityEstimation(AreaOperation):
         self.masslumping = masslumping
         self.surpluses = {}
         self.initialized = False
+        self.scaled = False
         self.extrema = None
         self.print_output = print_output
         self.reference_solution = None
@@ -295,34 +296,33 @@ class DensityEstimation(AreaOperation):
         It gets called in the perform_operation function of StandardCombi
         :return:
         """
-        scaler = preprocessing.MinMaxScaler(feature_range=(0.0, 1.0))
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        if (isinstance(self.data, str)):
+            dataCSV = []
+            with open(self.data, "r", newline="") as file:
+                has_header = csv.Sniffer().has_header(file.read(2048))
+                file.seek(0)
+                reader = csv.reader(file)
+                if has_header:
+                    next(reader)
+                for row in reader:
+                    dataCSV.append([float(i) for i in row])
+                scaler.fit(dataCSV)
+                if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                    self.data = scaler.transform(dataCSV)
+                    self.scaled = True
+        elif (isinstance(self.data, tuple)):
+            self.data = self.data[0]
+            scaler.fit(self.data)
+            if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
+        else:
+            scaler.fit(self.data)
+            if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
         self.initialized = True
-
-        # if (isinstance(self.data, str)):
-        #     dataCSV = []
-        #     with open(self.data, "r", newline="") as file:
-        #         has_header = csv.Sniffer().has_header(file.read(2048))
-        #         file.seek(0)
-        #         reader = csv.reader(file)
-        #         if has_header:
-        #             next(reader)
-        #         for row in reader:
-        #             dataCSV.append([float(i) for i in row])
-        #         scaler.fit(dataCSV)
-        #         self.data = scaler.transform(dataCSV)
-        #         self.initialized = True
-        # elif (isinstance(self.data, tuple)):
-        #     scaler.fit(self.data[0])
-        #     self.data = scaler.transform(self.data[0])
-        #     self.initialized = True
-        # else:
-        #     # if (self.dim > 1):
-        #     #     scaler.fit(self.data)
-        #     # else:
-        #     #     self.data = self.data.reshape(-1, 1)
-        #     #     scaler.fit(self.data)
-        #     # self.data = scaler.transform(self.data)
-        #     self.initialized = True
 
     def post_processing(self):
         """
