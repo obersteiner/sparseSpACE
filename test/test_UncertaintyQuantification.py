@@ -34,7 +34,8 @@ class TestUncertaintyQuantification(unittest.TestCase):
         op.set_expectation_variance_Function()
         # Initialize the adaptive refinement instance and refine the grid until
         # it has at least 200 points
-        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2, use_volume_weighting=True)
+        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2, use_volume_weighting=True,
+                                                           grid_surplusses=op.get_grid())
         lmax = 2
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         combiinstance.performSpatiallyAdaptiv(1, lmax,
@@ -63,7 +64,8 @@ class TestUncertaintyQuantification(unittest.TestCase):
         # The grid needs to be refined for the PCE coefficient calculation
         op.set_PCE_Function(polynomial_degree_max)
 
-        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2)
+        combiinstance = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, norm=2,
+                                                           grid_surplusses=op.get_grid())
         lmax = 2
         error_operator = ErrorCalculatorSingleDimVolumeGuided()
         combiinstance.performSpatiallyAdaptiv(1, lmax,
