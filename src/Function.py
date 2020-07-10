@@ -542,6 +542,57 @@ class FunctionPolynomial(Function):
         return result
 
 
+class LambdaFunction(Function):
+    def __init__(self, function, anti_derivative):
+        super().__init__()
+        self.function = function
+        self.anti_derivative = anti_derivative
+
+    def eval(self, coordinates):
+        return self.function(coordinates)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        anti_derivative_value_left = self.anti_derivative(start)
+        anti_derivative_value_right = self.anti_derivative(end)
+
+        return anti_derivative_value_right - anti_derivative_value_left
+
+
+class Polynomial1d(Function):
+    """
+    This class stores generic polynomials of the form
+    p(x) = c_0 * x^0 + c_1 * x^1 +  ... + c_(n-1) * x^(n-1) + c_n * x^n
+    """
+    def __init__(self, coefficients):
+        super().__init__()
+        self.coefficients = coefficients
+
+        self.anti_derivative_coefficients = [0.0] * (len(coefficients) + 1)
+
+        # c_0 is 0 by default
+        for i in range(1, len(self.coefficients) + 1):
+            self.anti_derivative_coefficients[i] = self.coefficients[i - 1] * 1 / i
+
+    def getAnalyticSolutionIntegral(self, start: float, end: float):
+        return self.eval_anti_derivative(end) - self.eval_anti_derivative(start)
+
+    def eval(self, coordinates: float):
+        value = 0
+
+        for i in range(len(self.coefficients)):
+            value += self.coefficients[i] * (coordinates ** i)
+
+        return value
+
+    def eval_anti_derivative(self, coordinates: float):
+        value = 0
+
+        for i in range(len(self.anti_derivative_coefficients)):
+            value += self.anti_derivative_coefficients[i] * (coordinates ** i)
+
+        return value
+
+
 # This Function represents the corner Peak f the genz test functions
 class GenzCornerPeak(Function):
     def __init__(self, coeffs):
