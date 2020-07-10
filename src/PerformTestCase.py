@@ -26,9 +26,10 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
     return pointArray, distinctFEvalArray, errorArrayStandard, interpolation_errorL2, interpolation_errorMax
 
 
-def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grid=None, minLmin=1, maxLmin=3,
+def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, maxLmax, grids=None,
+                                minLmin=1, maxLmin=3,
                                 minTol=-1, doDimAdaptive=False, max_evaluations=10 ** 7, evaluation_points=None,
-                                calc_standard_schemes=True, standard_combi_grid_name="",
+                                calc_standard_schemes=True, grid_names=None,
                                 legend_title="",
                                 filepath="./Results/", filename=None, save_plot=False, save_csv=False,):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
@@ -119,65 +120,74 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # Spacing in console
         print("\n\n\n\n\n\n-----------------------------------------------------------------------------------------------\n\n\n\n\n\n")
 
-    if doDimAdaptive:
-        dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
-        scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
-                                                                                                                10 ** -maxtol,
-                                                                                                                reference_solution=reference_solution)
+    errorArrayDimAdaptiveArray = []
+    numFEvalIdealDimAdaptiveArray = []
 
-    # calculate different standard combination scheme results
-    xArrayStandard = []
-    xFEvalArrayStandard = []
-    errorArrayStandard = []
-    # interpolation_error_standardL2 = []
-    # interpolation_error_standardMax = []
+    if doDimAdaptive:
+        for grid in grids:
+            dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
+            _, _, _, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
+                                                                                                      10 ** -maxtol,
+                                                                                                      reference_solution=reference_solution)
+            errorArrayDimAdaptiveArray.append(errorArrayDimAdaptive)
+            numFEvalIdealDimAdaptiveArray.append(numFEvalIdealDimAdaptive)
 
     # Export array
     export_data = []
 
+    # calculate different standard combination scheme results
     if calc_standard_schemes:
-        for i in range(minLmin, maxLmin):
-            xArrayStandardTest, \
-            xFEvalArrayStandardTest, \
-            errorArrayStandardTest, \
-            interpolation_errorL2, \
-            interpolation_errorMax = performTestStandard(f, a, b, grid, i,
-                                                         maxLmax - (i - 1) * (
-                                                                 dim - 1) + i - 1,
-                                                         dim,
-                                                         reference_solution, evaluation_points=evaluation_points)
+        for k, grid in enumerate(grids):
+            xArrayStandard = []
+            xFEvalArrayStandard = []
+            errorArrayStandard = []
+            # interpolation_error_standardL2 = []
+            # interpolation_error_standardMax = []
 
-            xArrayStandard.append(xArrayStandardTest)
-            xFEvalArrayStandard.append(xFEvalArrayStandardTest)
-            errorArrayStandard.append(errorArrayStandardTest)
-            # interpolation_error_standardL2.append(interpolation_errorL2)
-            # interpolation_error_standardMax.append(interpolation_errorMax)
+            for i in range(minLmin, maxLmin):
+                xArrayStandardTest, \
+                xFEvalArrayStandardTest, \
+                errorArrayStandardTest, \
+                interpolation_errorL2, \
+                interpolation_errorMax = performTestStandard(f, a, b, grid, i,
+                                                             maxLmax - (i - 1) * (
+                                                                     dim - 1) + i - 1,
+                                                             dim,
+                                                             reference_solution, evaluation_points=evaluation_points)
 
-        # plot
-        print(maxLmin)
-        print(minLmin)
-        for i in range(maxLmin - minLmin):
-            print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + minLmin))
-            print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evals Standard lmin= " + str(i + minLmin))
-            # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
-            # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
+                xArrayStandard.append(xArrayStandardTest)
+                xFEvalArrayStandard.append(xFEvalArrayStandardTest)
+                errorArrayStandard.append(errorArrayStandardTest)
+                # interpolation_error_standardL2.append(interpolation_errorL2)
+                # interpolation_error_standardMax.append(interpolation_errorMax)
 
-            # ax.loglog(xArrayStandard[i], errorArrayStandard[i], label='standardCombination lmin=' + str(i + minLmin))
-            name = "{} (Standard Combi) lmin={}".format(standard_combi_grid_name, str(i + minLmin))
-            ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i], "--", label=name + " distinct f evals")
+            # plot
+            print(maxLmin)
+            print(minLmin)
+            for i in range(maxLmin - minLmin):
+                print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + minLmin))
+                print(xFEvalArrayStandard[i], errorArrayStandard[i], "Distinct f evals Standard lmin= " + str(i + minLmin))
+                # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + minLmin))
+                # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + minLmin))
 
-            # Export Data to csv
-            export_data.append((name, xFEvalArrayStandard[i], errorArrayStandard[i]))
+                # ax.loglog(xArrayStandard[i], errorArrayStandard[i], label='standardCombination lmin=' + str(i + minLmin))
+                name = "{} (Standard Combi) lmin={}".format(grid_names[k], str(i + minLmin))
+                ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i], "--", label=name + " distinct f evals")
 
-            # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-            #            label='standardCombination L2 lmin=' + str(i + minLmin))
-            # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-            #            label='standardCombination Linf lmin=' + str(i + minLmin))
+                # Export Data to csv
+                export_data.append((name, xFEvalArrayStandard[i], errorArrayStandard[i]))
+
+                # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+                #            label='standardCombination L2 lmin=' + str(i + minLmin))
+                # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+                #            label='standardCombination Linf lmin=' + str(i + minLmin))
 
     if doDimAdaptive:
-        print("numPoints =", numFEvalIdealDimAdaptive)
-        print("error=", errorArrayDimAdaptive, "Number of Points DimAdaptive lmin= 1")
-        ax.loglog(numFEvalIdealDimAdaptive, errorArrayDimAdaptive, label="Number of Points DimAdaptive lmin= 1")
+        for i in range(len(numFEvalIdealDimAdaptiveArray)):
+            name = "{}: Number of Points DimAdaptive lmin= 1".format(grid_names[i])
+            print("numPoints =", numFEvalIdealDimAdaptiveArray[i])
+            print("error=", errorArrayDimAdaptiveArray[i], name)
+            ax.loglog(numFEvalIdealDimAdaptiveArray[i], errorArrayDimAdaptiveArray[i], label=name)
 
     line = '-'
 
