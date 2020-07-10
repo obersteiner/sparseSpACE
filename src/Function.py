@@ -19,7 +19,8 @@ class Function(object):
         self.do_cache = True  # indicates whether function values should be cached
 
     def reset_dictionary(self) -> None:
-        self.old_f_dict = {**self.old_f_dict, **self.f_dict}
+        # self.old_f_dict = {**self.old_f_dict, **self.f_dict}
+        self.old_f_dict = {}
         self.f_dict = {}
 
     def __call__(self, coordinates: Tuple[float, ...]) -> Sequence[float]:

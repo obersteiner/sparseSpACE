@@ -1245,3 +1245,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     child_info.left_refinement_object.add_volume(volume/2.0)
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
                 '''
+
+    def initialize_grid(self):
+        # Reinitialize grid
+        self.grid.initialize_grid()

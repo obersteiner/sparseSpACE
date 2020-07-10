@@ -196,6 +196,10 @@ class Grid(object):
     def check_stability_of_quadrature_rule(self, weights_1D: Sequence[float]) -> bool:
         return not(all([w >= 0 for w in weights_1D]))
 
+    @abc.abstractmethod
+    def initialize_grid(self):
+        pass
+
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
 
@@ -1137,7 +1141,7 @@ from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceC
 
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
-                 do_cache=False,
+                 do_cache=True,
                  slice_grouping=SliceGrouping.UNIT,
                  slice_version=SliceVersion.ROMBERG_DEFAULT,
                  container_version=SliceContainerVersion.ROMBERG_DEFAULT):
@@ -1158,6 +1162,18 @@ class GlobalRombergGrid(GlobalGrid):
         self.container_version = container_version
 
         self.weight_cache = {}
+
+    def initialize_grid(self):
+        # Reset weight cache
+        if len(self.weight_cache) > 50:
+            print()
+            print()
+            print()
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Reinit")
+            print()
+            print()
+            print()
+            self.weight_cache = {}
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
                                 grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
