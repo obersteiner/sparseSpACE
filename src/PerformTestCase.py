@@ -58,6 +58,10 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     cm = from_list('Set1', plt.cm.Set1(range(0, NUM_COLORS)), NUM_COLORS)
     # plt.set_cmap(cm)
 
+    # Clear CSV
+    if save_csv:
+        clear_csv(filepath, filename)
+
     print("\n\n\n\n\n\n -------------------------- Start {} -------------------------- \n\n\n\n\n\n".format(legend_title))
 
     # calculate refinements for different tolerance values
@@ -117,6 +121,10 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # interpolation_error_arrayL2.append(interpolation_errorL2)
         # interpolation_error_arrayMax.append(interpolation_errorMax)
 
+        # Export Data to csv
+        if save_csv:
+            export_to_csv(filepath, filename, [(algorithm[4], numFEvalIdealAlgorithm, errorArrayAlgorithm)])
+
         # Spacing in console
         print("\n\n\n\n\n\n-----------------------------------------------------------------------------------------------\n\n\n\n\n\n")
 
@@ -124,7 +132,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     numFEvalIdealDimAdaptiveArray = []
 
     if doDimAdaptive:
-        for grid in grids:
+        for i, grid in enumerate(grids):
             dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
             _, _, _, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
                                                                                                       10 ** -maxtol,
@@ -132,8 +140,10 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
             errorArrayDimAdaptiveArray.append(errorArrayDimAdaptive)
             numFEvalIdealDimAdaptiveArray.append(numFEvalIdealDimAdaptive)
 
-    # Export array
-    export_data = []
+            # Export Data to csv
+            if save_csv:
+                name = "{}: Number of Points DimAdaptive lmin= 1".format(grid_names[i])
+                export_to_csv(filepath, filename, [(name, numFEvalIdealDimAdaptive, errorArrayDimAdaptive)])
 
     # calculate different standard combination scheme results
     if calc_standard_schemes:
@@ -175,7 +185,8 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
                 ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i], "--", label=name + " distinct f evals")
 
                 # Export Data to csv
-                export_data.append((name, xFEvalArrayStandard[i], errorArrayStandard[i]))
+                if save_csv:
+                    export_to_csv(filepath, filename, [(name, xFEvalArrayStandard[i], errorArrayStandard[i])])
 
                 # ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
                 #            label='standardCombination L2 lmin=' + str(i + minLmin))
@@ -210,9 +221,6 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         name = adaptiveAlgorithmVector[i][4]
         ax.loglog(numFEvalIdeal[i], errorArray[i], line, label=name + ' error (distinct f evals)')
 
-        # Export Data to csv
-        export_data.append((name, numFEvalIdeal[i], errorArray[i]))
-
         # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayL2[i], label=adaptiveAlgorithmVector[i][4] + ' L2')
         # ax.loglog(numFEvalIdeal[i], interpolation_error_arrayMax[i], label=adaptiveAlgorithmVector[i][4] + ' Linf')
 
@@ -226,14 +234,19 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     if save_plot:
         ax.figure.savefig("{}{}.pdf".format(filepath, filename), bbox_inches='tight', dpi=300)
 
-    if save_csv:
-        export_to_csv(filepath, filename, export_data)
-
     # ax.figure.show()
 
 
+def clear_csv(filepath, filename):
+    file = "{}{}.csv".format(filepath, filename)
+    print("Clearing {}".format(file))
+
+    f = open(file, "w+")
+    f.close()
+
+
 def export_to_csv(filepath, filename, export_data):
-    with open("{}{}.csv".format(filepath, filename), 'w') as out:
+    with open("{}{}.csv".format(filepath, filename), 'a') as out:
         csv_out = csv.writer(out, delimiter="|", quoting=csv.QUOTE_NONNUMERIC)
 
         for name, num_points, error in export_data:
