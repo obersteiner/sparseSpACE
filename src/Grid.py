@@ -1137,7 +1137,7 @@ from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceC
 
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
-                 do_cache=True,
+                 do_cache=False,
                  slice_grouping=SliceGrouping.UNIT,
                  slice_version=SliceVersion.ROMBERG_DEFAULT,
                  container_version=SliceContainerVersion.ROMBERG_DEFAULT):

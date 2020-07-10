@@ -57,6 +57,8 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     cm = from_list('Set1', plt.cm.Set1(range(0, NUM_COLORS)), NUM_COLORS)
     # plt.set_cmap(cm)
 
+    print("\n\n\n\n\n\n -------------------------- Start {} -------------------------- \n\n\n\n\n\n".format(legend_title))
+
     # calculate refinements for different tolerance values
     for algorithm in adaptiveAlgorithmVector:
         errorArrayAlgorithm = []
@@ -115,7 +117,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         # interpolation_error_arrayMax.append(interpolation_errorMax)
 
         # Spacing in console
-        print("\n\n-----------------------------------------------------------------------------------------------\n\n")
+        print("\n\n\n\n\n\n-----------------------------------------------------------------------------------------------\n\n\n\n\n\n")
 
     if doDimAdaptive:
         dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)

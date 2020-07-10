@@ -509,7 +509,6 @@ class GridBinaryTree:
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Romberg Grid
 
-
 class SliceGrouping(Enum):
     """
     This enum specifies the available options for slice grouping.
@@ -576,6 +575,10 @@ class ExtrapolationGrid:
         self.slice_factory = ExtrapolationGridSliceFactory(self.slice_version)
         self.container_factory = ExtrapolationGridSliceContainerFactory(self.container_version)
 
+        # Interpolation
+        # TODO: allow bigger deltas for grouping
+        self.max_interpolation_step_width_delta = 2 ** 1
+
     def interpolation_is_enabled(self):
         return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG
 
@@ -611,7 +614,7 @@ class ExtrapolationGrid:
 
         value = 0
         for i in range(len(self.grid)):
-            value += self.weights[i] * self.function.evaluate_at(self.grid[i])
+            value += self.weights[i] * self.function.eval(self.grid[i])
 
         self.integral_approximation = value
 
@@ -787,12 +790,12 @@ class ExtrapolationGrid:
             self.slice_containers.append(container)
             return
 
-        # TODO: allow bigger deltas for grouping
+        max_delta = self.max_interpolation_step_width_delta
         container = self.slice_containers[-1]
-        correct_step_width_delta = (((step_width_buffer / 2) == step_width) and container.minimal_step_width in [
-            step_width * 2, step_width / 2]) \
-                                   or ((step_width_buffer * 2) == step_width and container.minimal_step_width in [
-            step_width * 2, step_width / 2])
+        min_step_width = container.minimal_step_width
+        correct_step_width_delta = min_step_width/max_delta <= step_width <= min_step_width*max_delta
+        # correct_step_width_delta = (container.minimal_step_width in [step_width*max_delta, step_width/max_delta]) \
+        #             and (step_width_buffer/max_delta == step_width or (step_width_buffer*max_delta) == step_width)
 
         # Append to previous container
         if step_width_buffer == step_width or correct_step_width_delta:
@@ -998,7 +1001,7 @@ class ExtrapolationGrid:
         if actual_result is None:
             actual_result = self.integrate()
 
-        return abs(actual_result - self.function.get_analytical_solution(self.a, self.b))
+        return abs(actual_result - self.function.getAnalyticSolutionIntegral(self.a, self.b))
 
     def get_step_width(self, level):
         return (self.b - self.a) / (2 ** level)
@@ -1016,20 +1019,20 @@ class ExtrapolationGrid:
         grid = self.get_grid()
 
         x = np.array(grid)
-        y = np.array([self.function.evaluate_at(xi) for xi in x])
+        y = np.array([self.function.eval(xi) for xi in x])
 
         # X and Y values for plotting y=f(x)
         X = np.linspace(self.a, self.b, 100)
-        Y = np.array([self.function.evaluate_at(xi) for xi in X])
+        Y = np.array([self.function.eval(xi) for xi in X])
         plt.plot(X, Y)
 
         for i in range(len(x) - 1):
             xs = [x[i], x[i], x[i + 1], x[i + 1]]
-            plt.plot([x[i]], [self.function.evaluate_at(x[i])], marker='o', markersize=3, color="red")
-            ys = [0, self.function.evaluate_at(x[i]), self.function.evaluate_at(x[i + 1]), 0]
+            plt.plot([x[i]], [self.function.eval(x[i])], marker='o', markersize=3, color="red")
+            ys = [0, self.function.eval(x[i]), self.function.eval(x[i + 1]), 0]
             plt.fill(xs, ys, 'b', edgecolor='b', alpha=0.2)
 
-        plt.plot([x[-1]], [self.function.evaluate_at(x[-1])], marker='o', markersize=3, color="red")
+        plt.plot([x[-1]], [self.function.eval(x[-1])], marker='o', markersize=3, color="red")
         # plt.xticks(list(range(len(grid))), grid)
 
         plt.text(x[-1] + 0.15, y[-1], "f")
@@ -1047,11 +1050,11 @@ class ExtrapolationGrid:
         grid = self.get_grid()
 
         x = np.array(grid)
-        y = np.array([self.function.evaluate_at(xi) for xi in x])
+        y = np.array([self.function.eval(xi) for xi in x])
 
         # X and Y values for plotting y=f(x)
         X = np.linspace(self.a, self.b, 100)
-        Y = np.array([self.function.evaluate_at(xi) for xi in X])
+        Y = np.array([self.function.eval(xi) for xi in X])
 
         i = 0
         for container in self.slice_containers:
@@ -1059,8 +1062,8 @@ class ExtrapolationGrid:
                 for j, (left_supp, right_supp) in enumerate(slice.support_sequence):
                     plt.plot(X, Y)
 
-                    y_left_supp = self.function.evaluate_at(left_supp)
-                    y_right_supp = self.function.evaluate_at(right_supp)
+                    y_left_supp = self.function.eval(left_supp)
+                    y_right_supp = self.function.eval(right_supp)
 
                     p = interp1d([left_supp, right_supp], [y_left_supp, y_right_supp],
                                  kind="linear", fill_value="extrapolate")
@@ -1077,7 +1080,7 @@ class ExtrapolationGrid:
                         if point == slice.left_point or point == slice.right_point:
                             y_p = p(point)
                         else:
-                            y_p = self.function.evaluate_at(point)
+                            y_p = self.function.eval(point)
 
                         plt.plot([point, point], [0, y_p], '--', color="grey")
 
@@ -1104,11 +1107,11 @@ class ExtrapolationGrid:
         grid = self.get_grid()
 
         x = np.array(grid)
-        y = np.array([self.function.evaluate_at(xi) for xi in x])
+        y = np.array([self.function.eval(xi) for xi in x])
 
         # X and Y values for plotting y=f(x)
         X = np.linspace(self.a, self.b, 100)
-        Y = np.array([self.function.evaluate_at(xi) for xi in X])
+        Y = np.array([self.function.eval(xi) for xi in X])
 
         for i in range(max(self.grid_levels) + 1):
             plt.plot(X, Y)
@@ -1116,8 +1119,8 @@ class ExtrapolationGrid:
             for container in self.slice_containers:
                 for slice in container.slices:
                     left_supp, right_supp = slice.support_sequence[min(i, slice.max_level)]
-                    y_left_supp = self.function.evaluate_at(left_supp)
-                    y_right_supp = self.function.evaluate_at(right_supp)
+                    y_left_supp = self.function.eval(left_supp)
+                    y_right_supp = self.function.eval(right_supp)
 
                     p = interp1d([left_supp, right_supp], [y_left_supp, y_right_supp],
                                  kind="linear", fill_value="extrapolate")
@@ -1139,8 +1142,8 @@ class ExtrapolationGrid:
                     plt.title("Level {}".format(i))
 
             # Plot interpolation point
-            plt.plot([grid[-1], grid[-1]], [0, self.function.evaluate_at(grid[-1])], '--', color="grey")
-            plt.plot([grid[-1]], [self.function.evaluate_at(grid[-1])], marker='o', markersize=5, color="green")
+            plt.plot([grid[-1], grid[-1]], [0, self.function.eval(grid[-1])], '--', color="grey")
+            plt.plot([grid[-1]], [self.function.eval(grid[-1])], marker='o', markersize=5, color="green")
 
             if filename is not None:
                 plt.savefig("{}_slice_refinement_level_{}".format(filename, i), bbox_inches='tight', dpi=300)
@@ -1253,7 +1256,7 @@ class ExtrapolationGridSlice(ABC):
         slice_approximation_value = 0
 
         for (point, weight) in point_weight_pairs:
-            slice_approximation_value += weight * self.function.evaluate_at(point)
+            slice_approximation_value += weight * self.function.eval(point)
 
         return abs(slice_approximation_value - self.analytical_solution)
 
@@ -1275,7 +1278,7 @@ class ExtrapolationGridSlice(ABC):
         # Compute value
         slice_approximation_value = 0
         for grid_point, weights in weight_dict.items():
-            slice_approximation_value += sum(weights) * self.function.evaluate_at(grid_point)
+            slice_approximation_value += sum(weights) * self.function.eval(grid_point)
 
         return abs(slice_approximation_value - self.analytical_solution)
 
@@ -1296,7 +1299,7 @@ class ExtrapolationGridSlice(ABC):
         self.function = function
 
         if function is not None:
-            self.analytical_solution = function.get_analytical_solution(self.left_point, self.right_point)
+            self.analytical_solution = function.getAnalyticSolutionIntegral(self.left_point, self.right_point)
         else:
             self.analytical_solution = None
 
@@ -1513,7 +1516,7 @@ class ExtrapolationGridSliceContainer(ABC):
         # Compute value
         slice_approximation_value = 0
         for grid_point, weights in weight_dict.items():
-            slice_approximation_value += sum(weights) * self.function.evaluate_at(grid_point)
+            slice_approximation_value += sum(weights) * self.function.eval(grid_point)
 
         return abs(slice_approximation_value - self.analytical_solution)
 
@@ -1538,7 +1541,7 @@ class ExtrapolationGridSliceContainer(ABC):
         self.function = function
 
         if function is not None and self.left_point is not None and self.right_point is not None:
-            self.analytical_solution = function.get_analytical_solution(self.left_point, self.right_point)
+            self.analytical_solution = function.getAnalyticSolutionIntegral(self.left_point, self.right_point)
         else:
             self.analytical_solution = None
 
@@ -1808,6 +1811,7 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
             :param function: for error computation.
         """
         super(LagrangeRombergGridSliceContainer, self).__init__(function)
+        self.max_interpolation_support_points = 7
 
     def insert_interpolating_slices(self):
         """
@@ -2022,6 +2026,9 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
         :param interp_point: the point around which the support points are selected.
         :param max_point_count: determines how much interpolation support points should be used (>= 2).
+        :param adaptive: If enabled, the algorithm does increase the support points
+                            when many negative weights occur while interpolating
+
         :return: geometrically closest support points
         """
         assert max_point_count >= 2
@@ -2076,7 +2083,7 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
                 new_right = True
 
             # Break if many negative lagrange weights occur
-            negative_counter = 0
+            negative_sum = 0
 
             if adaptive and len(support_points) > 2:
                 for support_point in support_points:
@@ -2084,9 +2091,9 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
                                                       support_point, interp_point)
 
                     if weight < 0:
-                        negative_counter += 1
+                        negative_sum += weight
 
-                    if negative_counter > len(support_points)/2:
+                    if negative_sum > 1 / self.max_interpolation_support_points:
                         if new_left:
                             support_points.pop(0)
 
@@ -2170,7 +2177,7 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
         for i, interp_point in enumerate(grid):
             level = normalized_grid_levels[i]
-            support_points = self.get_support_points_for_interpolation_geometrically(interp_point, 5, adaptive=True)
+            support_points = self.get_support_points_for_interpolation_geometrically(interp_point, self.max_interpolation_support_points, adaptive=True)
 
             if level == 0:
                 weight = factory.get_boundary_point_weight(normalized_max_level)
