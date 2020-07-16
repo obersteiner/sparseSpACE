@@ -13,6 +13,8 @@ from src.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
 from src.Grid import GlobalTrapezoidalGrid
 from src.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
+from src.Utils import *
+
 
 class DataSet:
     """Type of datasets on which to perform DensityEstimation, Classification and Clustering.
@@ -474,7 +476,7 @@ class DataSet:
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
-        combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
+        combi_object = StandardCombi(a, b, operation=de_object, print_output=True)
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
             if de_object.scaled:
@@ -850,7 +852,9 @@ class Classification:
                     print(removed_samples[1][i])
         return data_to_check
 
-    def __print_evaluation(self, testing_data: 'DataSet', calculated_classes: List[int]) -> None:
+    def __print_evaluation(self, testing_data: 'DataSet',
+                           calculated_classes: List[int],
+                           print_incorrect_points: bool = False) -> None:
         """Print the results of some specified testing data to stdout.
 
         Only prints evaluation if input is valid.
@@ -877,7 +881,8 @@ class Classification:
         print(len(calculated_classes))
         print("Percentage of correct mappings:", end=" ")
         print("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))
-        if number_wrong != 0:
+        log_info("Percentage of correct mappings: " + ("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)))
+        if number_wrong != 0 and print_incorrect_points:
             print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
             print("Points mapped incorrectly:")
             for i, wr in enumerate(indices_wrong):
@@ -955,7 +960,8 @@ class Classification:
         else:
             raise ValueError("Can't perform classification for the same object twice.")
 
-    def print_evaluation(self) -> None:
+    def print_evaluation(self,
+                         print_incorrect_points: bool = False) -> None:
         """Print results of all testing data that was evaluated with this object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -970,7 +976,7 @@ class Classification:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
-        self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset)
+        self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset, print_incorrect_points)
         print("_________________________________________________________________________________________________________________________________")
         print("---------------------------------------------------------------------------------------------------------------------------------")
 

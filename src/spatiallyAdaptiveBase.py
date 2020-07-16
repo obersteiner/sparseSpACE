@@ -6,6 +6,7 @@ from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
 from GridOperation import GridOperation
+from src.Utils import *
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
@@ -317,7 +318,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         #if self.print_output:
         print("Number of refinements", self.refinements)
         print("Number of distinct points used during the refinement", self.get_total_num_points())
+        log_info("Number of distinct points used during the refinement: " + str(self.get_total_num_points()))
         print("Time used (s):", time.time() - start_time)
+        log_info("Time used (s):" + str(time.time() - start_time))
         print("Final error:", error)
         if self.test_scheme:
             self.check_combi_scheme()

@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from combiScheme import *
@@ -5,6 +7,7 @@ from GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from src.Utils import *
 
 
 class StandardCombi(object):
@@ -180,6 +183,7 @@ class StandardCombi(object):
         :param lmax: Maximum level of combination technique.
         :return: Combination scheme, error, and combination result.
         """
+        start_time = time.time()
         assert self.operation is not None
 
         # initializtation
@@ -208,7 +212,8 @@ class StandardCombi(object):
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-
+        print("Time used (s):", time.time() - start_time)
+        log_info("Time used (s):" + str(time.time() - start_time))
         # return results
         if reference_solution is not None:
             if self.print_output:

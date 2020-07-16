@@ -23,6 +23,7 @@ from sklearn.neighbors import KernelDensity
 
 import cProfile
 import pstats
+import logging
 
 
 def scale_data(data, dim, scale):
@@ -76,7 +77,7 @@ def plot_dataset(d, dim, filename: str = None):
 dim = 2
 print('data set dimension: ', dim)
 # define number of samples
-size = 5000
+size = 50000
 print('data set size: ', size)
 
 # define boundaries
@@ -120,10 +121,10 @@ print('error tolerance:', tolerance)
 margin = 0.5
 print('error margin: ', margin)
 # maximum amount of new grid_points
-max_evaluations = 256
+max_evaluations = 1000
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
-do_plot = False
+do_plot = True
 print('refinement plotting:', do_plot)
 
 # kde parameters
