@@ -211,7 +211,7 @@ class DataSet:
         if any([(i < 0) or (i > self.get_length()) for i in indices]):
             raise ValueError("Can't remove samples out of bounds of DataSet.")
         removed_samples = [self.__update_internal(DataSet((np.array([self.__data[0][i]]), np.array([self.__data[1][i]])))) for i in indices]
-        self.__data = DataSet(tuple([np.delete(self.__data[0], indices, axis=0), np.delete(self.__data[1], indices, axis=0)]))
+        self.__data = tuple([np.delete(self.__data[0], indices, axis=0), np.delete(self.__data[1], indices, axis=0)])
         return DataSet.list_concatenate(removed_samples)
 
     def scale_range(self, scaling_range: Tuple[float, float], /, override_scaling: bool = False) -> None:
@@ -495,14 +495,10 @@ class DataSet:
         plt.rc('font', size=30)
         plt.rc('axes', titlesize=40)
         plt.rc('figure', figsize=(12.0, 12.0))
-        fig, ax = plt.subplots()
-        ax.set_title(self.__name)
-        ax.title.set_position([0.5, 1.025])
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.grid(True)
+        fig = plt.figure()
 
         if self.__dim == 2:
+            ax = fig.add_subplot(111)
             if plot_classes:
                 if self.has_classless_samples():
                     data_classless, data_classfull = self.split_without_classes()
@@ -519,8 +515,35 @@ class DataSet:
                 fig.set_figwidth(10.0)
                 x, y = zip(*self.__data[0])
                 ax.scatter(x, y, s=125)
+            ax.set_title(self.__name)
+            ax.title.set_position([0.5, 1.025])
+            ax.grid(True)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
         elif self.__dim == 3:
-            pass  # TODO implement DataSet 3d plotting
+            ax = fig.add_subplot(111, projection='3d')
+            if plot_classes:
+                if self.has_classless_samples():
+                    data_classless, data_classfull = self.split_without_classes()
+                    list_classes = data_classfull.split_classes()
+                    x, y, z = zip(*data_classless[0])
+                    ax.scatter(x, y, z, s=125, label='class_?', c='gray')
+                else:
+                    list_classes = self.split_classes()
+                for i, v in enumerate(list_classes):
+                    x, y, z = zip(*v[0])
+                    ax.scatter(x, y, z, s=125, label='class_%d' % i)
+                ax.legend(fontsize=22, loc='upper left', borderaxespad=0.0, bbox_to_anchor=(1.05, 1))
+            else:
+                fig.set_figwidth(10.0)
+                x, y, z = zip(*self.__data[0])
+                ax.scatter(x, y, z, s=125)
+            ax.set_title(self.__name)
+            ax.title.set_position([0.5, 1.025])
+            ax.grid(True)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
         else:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
@@ -574,6 +597,7 @@ class Classification:
         self.__data_range = data_range
         self.__scale_factor = None
         self.__calculated_classes_testset = []
+        self.__densities_testset = []
         self.__classificators = []
         self.__de_objects = []
         self.__performed_classification = False
@@ -603,19 +627,30 @@ class Classification:
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
-        return DataSet(tuple([evaluate[0], np.array(self.__classificate(evaluate))]), name="%s_evaluated_classes" % data_to_evaluate.get_name())
+        evaluated_data = DataSet(tuple([evaluate[0], np.array(self.__classificate(evaluate))]), name="%s_evaluated_classes" %
+                                                                                                     data_to_evaluate.get_name())
+        del self.__densities_testset[(len(self.__densities_testset) - data_to_evaluate.get_length()):]
+        return evaluated_data
 
     def get_data(self) -> 'DataSet':
-        return self.__data
+        ret_val = self.__data.copy()
+        ret_val.set_name(self.__data.get_name())
+        return ret_val
 
     def get_omitted_data(self) -> 'DataSet':
-        return self.__omitted_data
+        ret_val = self.__omitted_data.copy()
+        ret_val.set_name(self.__omitted_data.get_name())
+        return ret_val
 
     def get_learning_data(self) -> 'DataSet':
-        return self.__learning_data
+        ret_val = self.__learning_data.copy()
+        ret_val.set_name(self.__learning_data.get_name())
+        return ret_val
 
     def get_testing_data(self) -> 'DataSet':
-        return self.__testing_data
+        ret_val = self.__testing_data.copy()
+        ret_val.set_name(self.__testing_data.get_name())
+        return ret_val
 
     def get_dataset_range(self) -> Tuple[np.ndarray, np.ndarray]:
         return self.__data_range
@@ -624,7 +659,7 @@ class Classification:
         return self.__scale_factor
 
     def get_calculated_classes_testset(self) -> List[int]:
-        return self.__calculated_classes_testset
+        return self.__calculated_classes_testset.copy()
 
     def __initialize(self, percentage: float, split_evenly: bool) -> None:
         """Initialize data for performing classification.
@@ -715,8 +750,9 @@ class Classification:
         :return: List of computed classes in the same order as their corresponding samples
         """
         density_data = list(zip(*[x(data_to_classificate[0]) for x in self.__classificators]))
+        self.__densities_testset += density_data
         max_density_per_point = np.amax(density_data, axis=1)
-        return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
+        return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]  # TODO dynamic classes
 
     def __internal_scaling(self, data_to_check: 'DataSet', /, print_removed: bool = False) -> 'DataSet':
         """Scale data with the same factors as the original data (self.__data) was scaled.
@@ -750,7 +786,7 @@ class Classification:
                     print(removed_samples[1][i])
         return data_to_check
 
-    def __print_evaluation(self, testing_data: 'DataSet', calculated_classes: List[int]) -> None:
+    def __print_evaluation(self, testing_data: 'DataSet', calculated_classes: List[int], density_testdata: List[np.ndarray]) -> None:
         """Print the results of some specified testing data to stdout.
 
         Only prints evaluation if input is valid.
@@ -767,7 +803,6 @@ class Classification:
             return
         if testing_data.get_length() != len(calculated_classes):
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
-        density_testdata = [x(testing_data[0]) for x in self.__classificators]
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
         print("Evaluation:")
@@ -785,9 +820,9 @@ class Classification:
                 print(testing_data[0][wr], end=" | correct class: ")
                 print(testing_data[1][wr], end=", calculated class: ")
                 print(calculated_classes[wr], end=" | ")
-                for j, x in enumerate(density_testdata):
+                for j, x in enumerate(density_testdata[wr]):
                     print("density_class%d" % j, end=": ")
-                    print(x[wr], end=", ")
+                    print(x, end=", ")
                 print()
 
     def perform_classification(self, /,
@@ -829,7 +864,9 @@ class Classification:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
-        self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset)
+        print("Printing evaluation of all current testing data...")
+        print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+        self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset, self.__densities_testset)
         print("_________________________________________________________________________________________________________________________________")
         print("---------------------------------------------------------------------------------------------------------------------------------")
 
@@ -905,14 +942,31 @@ class Classification:
         self.__calculated_classes_testset += calculated_new_testclasses
         if print_output:
             print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            self.__print_evaluation(used_data, calculated_new_testclasses)
+            self.__print_evaluation(used_data, calculated_new_testclasses, self.__densities_testset[(len(self.__densities_testset) -
+                                                                                                     new_testing_data.get_length()):])
             print("_________________________________________________________________________________________________________________________________")
             print("---------------------------------------------------------------------------------------------------------------------------------")
         return omitted_data
 
 
 class Clustering:
-    pass    # TODO implement Clustering class
+    pass  # TODO implement Clustering class
+
+    def __init__(self):
+        # initialize Clustering class: input parameter. type of clustering. number of clusters. DE input parameter. etc...
+        pass
+
+    def __call__(self):
+        pass
+
+    def __perform_clustering(self):
+        pass
+
+    def __internal_scaling(self):
+        pass
+
+    def plot(self):
+        pass
 
 
 if __name__ == "__main__":
@@ -924,7 +978,7 @@ if __name__ == "__main__":
     sklearn_dataset = datasets.make_circles(n_samples=size, noise=0.05)
     # sklearn_dataset = datasets.make_moons(n_samples=size, noise=0.3)
     # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
-    # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+    # sklearn_dataset = datasets.make_classification(size, n_features=3, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=4)
     # sklearn_dataset = datasets.make_blobs(n_samples=size, n_features=2, centers=6)
     # sklearn_dataset = datasets.make_gaussian_quantiles(n_samples=size, n_features=2, n_classes=6)
 
@@ -945,7 +999,7 @@ if __name__ == "__main__":
     data_copy.plot()  # plotted
 
     # and of course we can perform a regular density estimation on a DataSet object:
-    de_retval = data_copy.density_estimation(plot_de_dataset=False, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
+    de_retval = data_copy.density_estimation(plot_de_dataset=True, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
 
     # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
     # distributed classes
