@@ -73,7 +73,7 @@ class Grid(object):
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
         if get_cross_product_list(self.weights) == []:
             return []
-        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1))
+        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1), dtype=np.float64)
 
     def get_num_points(self):
         return np.prod(self.numPoints)
@@ -1166,13 +1166,6 @@ class GlobalRombergGrid(GlobalGrid):
     def initialize_grid(self):
         # Reset weight cache
         if len(self.weight_cache) > 50:
-            print()
-            print()
-            print()
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  Reinit")
-            print()
-            print()
-            print()
             self.weight_cache = {}
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
@@ -1194,6 +1187,7 @@ class GlobalRombergGrid(GlobalGrid):
             self.weight_cache[key] = weights
 
         return weights
+        # return np.asarray(weights, dtype=np.float64)
 
 
 class GlobalBasisGrid(GlobalGrid):
