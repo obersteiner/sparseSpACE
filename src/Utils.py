@@ -24,7 +24,7 @@ def get_cross_product_range_list(one_d_arrays: Sequence[Sequence[int]]) -> List[
     return get_cross_product_list([range(one_d_array) for one_d_array in one_d_arrays])
 
 
-log_filename = 'log'
+log_filename = 'log_sg'
 logging.basicConfig(filename=log_filename,
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s :: %(message)s',
