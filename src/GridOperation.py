@@ -571,7 +571,7 @@ class DensityEstimation(AreaOperation):
         :return: All the hat functions in whose support the data point x lies
         """
         if self.grid.point_not_zero(x) and ((x >= 0).all() and (x <= 1).all()):
-            meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
+            meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(self.dim)]
             numb_points = self.grid.levelToNumPoints(levelvec)
             index_set = []
             for i in range(len(x)):
@@ -658,7 +658,7 @@ class DensityEstimation(AreaOperation):
         # sanity check
         assert len(point_i) == len(point_j) == len(domain_i) == len(domain_j)
         # check adjacency
-        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(domain_i)))):
+        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(self.dim))):
             widths = []
             distances = []
             for d in range(0, len(point_i)):
@@ -876,24 +876,23 @@ class DensityEstimation(AreaOperation):
         if not (len(point_i) == len(point_j) == len(domain_i) == len(domain_j)):
             print('error in calculate_L2_scalarproduct: dimensionality of the points i,j or their domains differ')
         # check adjacency
-        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(domain_i)))):
-            dim = len(domain_i)
+        if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(self.dim))):
             f = lambda *x: (self.hat_function_non_symmetric(point_i, domain_i, [*x]) * self.hat_function_non_symmetric(point_j, domain_j, [*x]))
-            start = [min(domain_i[d][0], domain_j[d][0]) for d in range(dim)]
-            end = [max(domain_i[d][1], domain_j[d][1]) for d in range(dim)]
+            start = [min(domain_i[d][0], domain_j[d][0]) for d in range(self.dim)]
+            end = [max(domain_i[d][1], domain_j[d][1]) for d in range(self.dim)]
             if self.print_output:
                 print("-" * 100)
                 print("Calculating")
                 print("Gridpoints: ", point_i, point_j)
                 print("Domain: ", start, end)
-            return nquad(f, [[start[d], end[d]] for d in range(dim)],
+            return nquad(f, [[start[d], end[d]] for d in range(self.dim)],
                          opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
         else:
             return (0, 0)
 
     def calculate_R_value_analytically(self, point_i, domain_i, point_j, domain_j):
         # check adjacency
-        if not all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(domain_i)))):
+        if not all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(self.dim))):
             return 0.0
         res = 1.0
         for d in range(0, len(point_i)):
@@ -1003,7 +1002,7 @@ class DensityEstimation(AreaOperation):
             old_coordinates = self.old_grid_coord[key]
             key_list.append(key)
             new_coordinates_indices = []
-            for d in range(len(gridPointCoordinatesAsStripes)):
+            for d in range(self.dim):
                 new_coordinates_indices.append([])
                 for i in range(len(gridPointCoordinatesAsStripes[d])):
                     if gridPointCoordinatesAsStripes[d][i] not in old_coordinates[d]:
@@ -1025,7 +1024,7 @@ class DensityEstimation(AreaOperation):
 
         new_ranges = [[(safe_get(gridPointCoordinatesAsStripes, d, i-1), safe_get(gridPointCoordinatesAsStripes, d, i+1))
                        for i in range(len(new_coordinates_indices[d]))]
-                      for d in range(len(new_coordinates_indices))]
+                      for d in range(self.dim)]
 
         # find the indices in the sorted data matching the new ranges
         range_indices = []
@@ -1045,9 +1044,9 @@ class DensityEstimation(AreaOperation):
         #         range_indices[d].append((lower, upper))
 
         # get the new points as list
-        new_coordinates = [[gridPointCoordinatesAsStripes[d][x] for x in new_coordinates_indices[d]] for d in range(len(gridPointCoordinatesAsStripes))]
+        new_coordinates = [[gridPointCoordinatesAsStripes[d][x] for x in new_coordinates_indices[d]] for d in range(self.dim)]
         new_points = []
-        for d in range(len(new_coordinates)):
+        for d in range(self.dim):
             if len(new_coordinates[d]) > 0:
                 coords = [gridPointCoordinatesAsStripes[x] if x == d else new_coordinates[x] for x in range(len(gridPointCoordinatesAsStripes))]
                 points = list(get_cross_product(coords))
@@ -1093,7 +1092,7 @@ class DensityEstimation(AreaOperation):
         """
         data_ranges = []
 
-        for d in range(len(domain)):
+        for d in range(self.dim):
             data_ranges.append([])
             # check if we have a data bin for the domain, otherwise create the bin
             key = str([domain[d][0], domain[d][1]])
@@ -1111,7 +1110,7 @@ class DensityEstimation(AreaOperation):
                         upper = i
                 data_ranges[d] = [max(lower-1, 0), min(upper+1, len(self.sorted_data[d])-1)]
         # save the data ranges as bins
-        for d in range(len(data_ranges)):
+        for d in range(self.dim):
             self.data_bins[d][str([domain[d][0], domain[d][1]])] = data_ranges[d]
 
         domain_data = self.sorted_data[0][data_ranges[0][0]:data_ranges[0][1]]
