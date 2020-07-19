@@ -975,7 +975,7 @@ class Integration(AreaOperation):
             assert (factor >= 0)
             integral += self.f(current_point) * factor
         return integral
-
+    
 
 class Interpolation(Integration):
     # interpolates mesh_points_grid at the given  evaluation_points using bilinear interpolation
