@@ -24,6 +24,21 @@ from sklearn.neighbors import KernelDensity
 import cProfile
 import pstats
 
+def prev_level(l, d):
+    if l - 2 <= 0:
+        return 1
+    else:
+        return (2**(l-2) - 1) * d + prev_level(l-2, d)
+# dim = 2
+# test1 = 1
+# test2 = ((2**2) - 1) * dim - (dim - 1) + (2**dim) * prev_level(3, dim)
+# test3 = ((2**3) - 1) * dim - (dim - 1) + (2**dim) * prev_level(4, dim)
+# test4 = ((2**4) - 1) * dim - (dim - 1) + (2**dim) * prev_level(5, dim)
+# test5 = ((2**5) - 1) * dim - (dim - 1) + (2**dim) * prev_level(5, dim)
+# max_eval = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
+# print('stop')
+
+
 
 def scale_data(data, dim, scale):
     scaler = preprocessing.MinMaxScaler(feature_range=(scale[0], scale[1]))
@@ -77,7 +92,7 @@ log_info('--- DimWiseClassification begin ---')
 dim = 2
 print('data set dimension: ', dim)
 # define number of samples
-size = 5000
+size = 500
 print('data set size: ', size)
 
 # define boundaries
@@ -242,16 +257,18 @@ import DatasetOperation as do
 
 
 # generate a Circle-Dataset of size with the sklearn library
-size = 50000
-dim = 3
+size = 10000
+dim = 2
+one_vs_others = True
 log_info('data size: ' + str(size))
 log_info('data dimension: ' + str(dim))
+log_info('one vs others: ' + str(one_vs_others))
 # sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
 # sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
-#sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
-sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+# sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+# sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
 # sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)
-# sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
+sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
 
 log_info('used data set: ' + 'do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
 
@@ -280,16 +297,16 @@ data_copy.plot()                                                     # plotted
 classification = do.Classification(data, split_percentage=0.8, split_evenly=True)
 
 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-max_level = 5
+max_level = 6
 print('classification max_level', max_level)
 log_info('classification standardCombi max_level: ' + str(max_level))
-classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level)
+classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # now we can perform some other operations on this classification object
 
 # we could e.g. plot its classificators and corresponding density estimations
-classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
+classification.plot(plot_class_sparsegrid=True, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
 
 # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
 classification.print_evaluation()
@@ -319,20 +336,22 @@ retfig1 = calcult_classes.plot()
 # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
 # distributed classes
 classification_dimwise = do.Classification(data, split_percentage=0.8, split_evenly=True)
-max_evals = (((2**max_level) - 1) * dim)
+
+#max_evals = (((2**max_level) - 1) * dim)
+max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
 print('classification max_evaluations', max_evals)
 log_info('classification dimwise max_evaluations: ' + str(max_evals))
 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=2,
+classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=3,
                                                      _reuse_old_values=True, _numeric_calculation=False,
-                                                     _boundary=boundary, _modified_basis=modified_basis,
+                                                     _boundary=boundary, _modified_basis=modified_basis, _one_vs_others=True,
                                                      _tolerance=tolerance, _margin=margin, _max_evaluations=max_evals)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # now we can perform some other operations on this classification object
 
 # we could e.g. plot its classificators and corresponding density estimations
-classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
+classification_dimwise.plot(plot_class_sparsegrid=True, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=True)
 
 # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
 classification_dimwise.print_evaluation()

@@ -77,7 +77,7 @@ def plot_dataset(d, dim, filename: str = None):
 dim = 2
 print('data set dimension: ', dim)
 # define number of samples
-size = 50000
+size = 10000
 print('data set size: ', size)
 
 # define boundaries
@@ -87,7 +87,7 @@ b = np.ones(dim)
 # choose data set type
 data_sets = ['floats', 'std exponential', 'std normal', 'multi normal', 'line', 'cross', 'moon', 'circle',
              'multi normal class', 'moon class', 'checkerboard class']
-data_set = data_sets[7]
+data_set = data_sets[-2]
 print('chosen data set:', data_set)
 scale = [0.0000000001, 1.0]
 print('chosen scaling: ', scale)
@@ -109,19 +109,19 @@ print('reuse old values: ', reuse_old_values)
 numeric_calculation = False
 print('numeric_calculation: ', numeric_calculation)
 # define level of standard combigrid
-minimum_level, maximum_level = 1, 4
+minimum_level, maximum_level = 1, 5
 print('max level of standard combirid:', minimum_level, ' : ', maximum_level)
 # define starting level of dimension wise combigrid
-lmin, lmax = 1, 2
+lmin, lmax = 1, 3
 print('lim/lmax of dimWise grid: ', lmin, ' : ', lmax)
 # error tolerance
-tolerance = 0.00
+tolerance = 0.01
 print('error tolerance:', tolerance)
 # error margin
 margin = 0.5
 print('error margin: ', margin)
 # maximum amount of new grid_points
-max_evaluations = 1000
+max_evaluations = 256
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
 do_plot = True
@@ -212,30 +212,30 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 ########### GRID EVALUATIONS
 
 ### Standard Combi
-# for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
-#     maximum_level = i
-#     # define operation to be performed
-#     operation = DensityEstimation(data, dim, lambd=lambd)
-#
-#     # create the combiObject and initialize it with the operation
-#     combiObject = StandardCombi(a, b, operation=operation)
-#
-#     if do_plot:
-#         print("Plot of dataset:")
-#         operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
-#     # perform the density estimation operation, has to be done before the printing and plotting
-#     combiObject.perform_operation(minimum_level, maximum_level)
-#     if do_plot:
-#         print("Combination Scheme:")
-#         # when you pass the operation the function also plots the contour plot of each component grid
-#         combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
-#     if do_plot:
-#         print("Sparse Grid:")
-#         combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
-#     if do_plot:
-#         print("Plot of density estimation")
-#         # when contour = True, the contour plot is shown next to the 3D plot
-#         combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
+for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
+    maximum_level = i
+    # define operation to be performed
+    operation = DensityEstimation(data, dim, lambd=lambd)
+
+    # create the combiObject and initialize it with the operation
+    combiObject = StandardCombi(a, b, operation=operation)
+
+    if do_plot:
+        print("Plot of dataset:")
+        operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
+    # perform the density estimation operation, has to be done before the printing and plotting
+    combiObject.perform_operation(minimum_level, maximum_level)
+    if do_plot:
+        print("Combination Scheme:")
+        # when you pass the operation the function also plots the contour plot of each component grid
+        combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
+    if do_plot:
+        print("Sparse Grid:")
+        combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
+    if do_plot:
+        print("Plot of density estimation")
+        # when contour = True, the contour plot is shown next to the 3D plot
+        combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
 
     # print("Plot of comparison between sparseSpACE and SG++")
     # plot comparison between sparseSpACE and SG++ result if path to SG++ values is given
