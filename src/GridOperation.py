@@ -1201,21 +1201,88 @@ class DensityEstimation(AreaOperation):
         N = self.grid.get_num_points()
         b = np.zeros(N)
 
-        #if not self.grid.is_global():
         index_list = self.grid.get_indexlist()
-        #else:
-        #    index_list = self.get_existing_indices(levelvec)
 
+        naive_b = np.zeros(N)
         for i in range(M):
             hats = self.get_hats_in_support(levelvec, data[i])
             for j in range(len(hats)):
                 sign = 1.0
                 if self.classes is not None:
                     sign = -1.0 if self.classes[i] < 1 else 1.0
-                b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
-        b *= (1 / M)
-        if self.print_output:
-            print("B vector: ", b)
+                naive_b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
+        naive_b *= (1 / M)
+
+
+        if self.reuse_old_values:
+            get_point_list = lambda x: list(get_cross_product(x))
+            gridPointCoordsAsStripes = [[(1 / (2**levelvec[d])) * (i+1) for i in range((2**levelvec[d])-1)] for d in range(self.dim)]
+
+            if not self.grid.boundary:
+                point_list = [x for x in get_point_list(gridPointCoordsAsStripes) if 0.0 not in x and 1.0 not in x]
+            else:
+                point_list = get_point_list(gridPointCoordsAsStripes)
+
+            max_levels = levelvec
+            old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes, max_levels)
+
+        if self.reuse_old_values and old_b_key is not None:
+            # copy the old values
+            old_b = self.old_B[old_b_key]
+            old_point_list = [x for x in get_point_list(self.old_grid_coord[old_b_key]) if 0.0 not in x and 1.0 not in x]
+
+            # new_points = [p for p in point_list if p not in old_point_list]
+            # new_point_neighbors = [self.get_neighbors(p, gridPointCoordsAsStripes) for p in new_points]
+            # affected_points = new_points
+            # for l in new_point_neighbors:
+            #     affected_points += l
+
+            point_domains = [self.get_hat_domain(p, gridPointCoordsAsStripes) for p in point_list]
+            old_point_domains = [self.get_hat_domain(p, self.old_grid_coord[old_b_key]) for p in old_point_list]
+            domain_match = []
+            for i in range(len(point_domains)):
+                a = [sum([point_domains[i][d][0] == old[d][0] and point_domains[i][d][1] == old[d][1] for d in range(self.dim)]) == self.dim for old in old_point_domains]
+                if True in a:
+                    domain_match.append(a.index(True))
+                else:
+                    domain_match.append(-1)
+            for p in range(len(point_list)):
+                if point_list[p] in old_point_list and point_list[p] and domain_match[p] != -1:
+                    #b[p] = old_b[old_point_list.index(point_list[p])]
+                    b[p] = old_b[domain_match[p]]
+
+            # calculate all b points that haven't been copied over (the new points)
+            for i in range(len(b)):
+                if b[i] == 0:
+                    # get the data within the domain of the point
+                    #print('recalc b i', i)
+                    domain = self.get_hat_domain(point_list[i], gridPointCoordsAsStripes)
+                    data_indices_in_domain = self.find_data_in_domain(domain)
+                    # go through all the data points in the intersection set
+                    for x in data_indices_in_domain:
+                        hat = point_list[i]
+                        sign = 1.0
+                        if self.classes is not None:
+                            sign = -1.0 if self.classes[x] < 1 else 1.0
+                        b[i] += (self.hat_function_non_symmetric(hat, domain, data[x]) * sign)
+                    b[i] *= (1 / M)
+        else:
+            for i in range(M):
+                hats = self.get_hats_in_support(levelvec, data[i])
+                for j in range(len(hats)):
+                    sign = 1.0
+                    if self.classes is not None:
+                        sign = -1.0 if self.classes[i] < 1 else 1.0
+                    b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
+            b *= (1 / M)
+            if self.print_output:
+                print("B vector: ", b)
+
+        if self.reuse_old_values:
+            test = (naive_b - b) * M
+            print('reuse b diff: ', test)
+            print('reuse b diff sum: ', np.sum(test) * M)
+
         return b
 
     def hat_function(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:

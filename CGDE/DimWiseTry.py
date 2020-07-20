@@ -215,7 +215,7 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
     maximum_level = i
     # define operation to be performed
-    operation = DensityEstimation(data, dim, lambd=lambd)
+    operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)
 
     # create the combiObject and initialize it with the operation
     combiObject = StandardCombi(a, b, operation=operation)
