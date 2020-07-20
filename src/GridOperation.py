@@ -806,7 +806,7 @@ class DensityEstimation(AreaOperation):
                         hat = point_list[i]
                         sign = 1.0
                         if self.classes is not None:
-                            sign = self.classes[x]
+                            sign = -1.0 if self.classes[x] < 1 else 1.0
                         b[i] += (self.hat_function_non_symmetric(hat, domain, data[x]) * sign)
                     b[i] *= (1 / M)
         else:
@@ -819,7 +819,7 @@ class DensityEstimation(AreaOperation):
                 #    naive_b[point_list.index(point_list[t])] += self.hat_function_non_symmetric(point_list[t], self.get_hat_domain(point_list[t], gridPointCoordsAsStripes), data[i])
                 sign = 1.0
                 if self.classes is not None:
-                    sign = self.classes[i]
+                    sign = -1.0 if self.classes[i] < 1 else 1.0
                 if self.debug:
                     for j in range(len(hats)):
                         b[point_list.index(hats[j])] += \
@@ -1209,7 +1209,10 @@ class DensityEstimation(AreaOperation):
         for i in range(M):
             hats = self.get_hats_in_support(levelvec, data[i])
             for j in range(len(hats)):
-                b[index_list.index(hats[j])] += self.hat_function(hats[j], levelvec, data[i])
+                sign = 1.0
+                if self.classes is not None:
+                    sign = -1.0 if self.classes[i] < 1 else 1.0
+                b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
         b *= (1 / M)
         if self.print_output:
             print("B vector: ", b)
