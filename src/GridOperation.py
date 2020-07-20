@@ -1203,17 +1203,6 @@ class DensityEstimation(AreaOperation):
 
         index_list = self.grid.get_indexlist()
 
-        naive_b = np.zeros(N)
-        for i in range(M):
-            hats = self.get_hats_in_support(levelvec, data[i])
-            for j in range(len(hats)):
-                sign = 1.0
-                if self.classes is not None:
-                    sign = -1.0 if self.classes[i] < 1 else 1.0
-                naive_b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
-        naive_b *= (1 / M)
-
-
         if self.reuse_old_values:
             get_point_list = lambda x: list(get_cross_product(x))
             gridPointCoordsAsStripes = [[(1 / (2**levelvec[d])) * (i+1) for i in range((2**levelvec[d])-1)] for d in range(self.dim)]
@@ -1277,11 +1266,6 @@ class DensityEstimation(AreaOperation):
             b *= (1 / M)
             if self.print_output:
                 print("B vector: ", b)
-
-        if self.reuse_old_values:
-            test = (naive_b - b) * M
-            print('reuse b diff: ', test)
-            print('reuse b diff sum: ', np.sum(test) * M)
 
         return b
 
