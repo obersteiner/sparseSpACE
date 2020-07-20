@@ -23,52 +23,77 @@ from sklearn.neighbors import KernelDensity
 import cProfile
 import pstats
 
+from shutil import copyfile
+import os
+
 
 from sys import path
 path.append('../src/')
 import DatasetOperation as do
+
+def prev_level(l, d):
+    if l - 2 <= 0:
+        return 1
+    else:
+        return (2**(l-2) - 1) * d + prev_level(l-2, d)
+
+clear_log()
 
 log_info('--- Classification_eval start ---')
 for data_set in range(6):
     log_info('~~~~~~~~~~~~~~~~~~~~~~')
     log_info('~~~ DataSet Change ~~~')
     log_info('~~~~~~~~~~~~~~~~~~~~~~')
-    for dimension in [2, 3, 4]:
+    for dimension in [4]:
         log_info('||||||||||||||||||||||||')
         log_info('||| Dimension Change |||')
         log_info('||||||||||||||||||||||||')
+
+        # generate a Circle-Dataset of size with the sklearn library
+        size = 100000
+        dim = dimension
+        if data_set == 0:
+            sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
+        elif data_set == 1:
+            sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
+        elif data_set == 2:
+            sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+        elif data_set == 3:
+            sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+        elif data_set == 4:
+            sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=6)
+        elif data_set == 5:
+            sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
+
+
+        # now we can transform this dataset into a DataSet object and give it an appropriate name
+        data = do.DataSet(sklearn_dataset, name='Testset')
+
+                                          # plotted
+
+
         for level_max in [2,3,4,5,6]:
             log_info('########################')
             log_info('### Max Level Change ###')
             log_info('########################')
-            for repeats in range(5):
-                # generate a Circle-Dataset of size with the sklearn library
-                size = 10000
-                dim = dimension
-                log_info('data size: ' + str(size))
-                log_info('data dimension: ' + str(dim))
+            for repeats in range(1):
+
                 if data_set == 0:
-                    sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
                     log_info('do.datasets.make_circles(n_samples=size, noise=0.05)')
                 elif data_set == 1:
-                    sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
                     log_info('do.datasets.make_moons(n_samples=size, noise=0.3)')
                 elif data_set == 2:
-                    sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
                     log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)')
                 elif data_set == 3:
-                    sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
                     log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
                 elif data_set == 4:
-                    sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=6)
                     log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)')
                 elif data_set == 5:
-                    sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
                     log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)')
 
+                log_info('data size: ' + str(size))
+                log_info('data dimension: ' + str(data.get_dim()))
 
-                # now we can transform this dataset into a DataSet object and give it an appropriate name
-                data = do.DataSet(sklearn_dataset, name='Testset')
 
                 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                 # now let's look at some functions of the DataSet class
@@ -81,7 +106,8 @@ for data_set in range(6):
                 # data_copy.set_name('2nd_Set')                                        # renamed
                 # data_copy.remove_classes(0.2)                                        # freed of some class assignments to samples
                 without_classes, with_classes = data_copy.split_without_classes()    # seperated into samples with and without classes
-                # data_copy.plot()                                                     # plotted
+                # data_copy.plot()
+
 
                 # and of course we can perform a regular density estimation on a DataSet object:
                 #de_retval = data_copy.density_estimation(plot_de_dataset=False, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
@@ -92,7 +118,7 @@ for data_set in range(6):
                 classification = do.Classification(data, split_percentage=0.8, split_evenly=True)
 
                 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-                max_level = 5
+                max_level = level_max
                 print('classification max_level', max_level)
                 log_info('classification standardCombi max_level: ' + str(max_level))
                 classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level)
@@ -131,14 +157,16 @@ for data_set in range(6):
                 # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
                 # distributed classes
                 classification_dimwise = do.Classification(data, split_percentage=0.8, split_evenly=True)
-                max_evals = (((2**max_level) - 1) * dim)
+                #max_evals = (((2**(max_level-1)) - 1) * dim)
+
+                max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
                 print('classification max_evaluations', max_evals)
                 log_info('classification dimwise max_evaluations: ' + str(max_evals))
                 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
                 classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=2,
                                                                      _reuse_old_values=True, _numeric_calculation=False,
                                                                      _boundary=False, _modified_basis=False,
-                                                                     _tolerance=0.0, _margin=0.5, _max_evaluations=max_evals)
+                                                                     _tolerance=0.05, _margin=0.5, _max_evaluations=max_evals)
 
                 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                 # now we can perform some other operations on this classification object
@@ -166,3 +194,9 @@ for data_set in range(6):
                 #retfig1 = calcult_classes_dimwise.plot()
 
 log_info('--- Classification_eval end ---')
+
+# make a backup of the log without overwriting old ones
+log_backup = 'log_backup'
+while os.path.isfile(log_backup):
+    log_backup = log_backup + '+'
+copyfile('log', log_backup)
