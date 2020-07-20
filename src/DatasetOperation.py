@@ -9,7 +9,7 @@ from sklearn import datasets, preprocessing
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
-from src.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
+from src.ErrorCalculator import *
 from src.Grid import GlobalTrapezoidalGrid
 from src.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
@@ -362,6 +362,16 @@ class DataSet:
             set_classes.append(current_set)
         return set_classes
 
+    def split_one_vs_others(self):
+        set_classes = []
+        for j in self.get_classes():
+            values = np.array([x for i, x in enumerate(self.__data[0])])
+            labels = np.array([1 if self.__data[1][i] == j else -1 for i, x in enumerate(self.__data[0])])
+            current_set = DataSet(tuple([values, labels]))
+            self.__update_internal(current_set)
+            set_classes.append(current_set)
+        return set_classes
+
     def split_without_classes(self) -> Tuple['DataSet', 'DataSet']:
         """Separates samples without classes from samples with classes.
 
@@ -453,6 +463,7 @@ class DataSet:
                            lambd: float = 0.0,
                            minimum_level: int = 1,
                            maximum_level: int = 5,
+                           one_vs_others: bool = False,
                            plot_de_dataset: bool = True,
                            plot_density_estimation: bool = True,
                            plot_combi_scheme: bool = True,
@@ -475,7 +486,10 @@ class DataSet:
         """
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
-        de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
+        if one_vs_others:
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, classes=self.__data[1])
+        else:
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=True)
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
@@ -502,10 +516,11 @@ class DataSet:
                                           max_evaluations: int = 256,
                                           modified_basis: bool = False,
                                           boundary: bool = False,
+                                          one_vs_others: bool = True,
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
-                                          plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
+                                          plot_sparsegrid: bool = True,) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation on this DataSet.
 
         Also is able to plot the DensityEstimation results directly.
@@ -531,8 +546,15 @@ class DataSet:
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=modified_basis, boundary=boundary)
-        de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
-        error_calculator = ErrorCalculatorSingleDimVolumeGuided()
+        if one_vs_others:
+            de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd,
+                                          classes=self.__data[1],
+                                          reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
+            error_calculator = ErrorCalculatorSingleDimMisclassificationGlobal()
+        else:
+            de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd,
+                                          reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
+            error_calculator = ErrorCalculatorSingleDimVolumeGuided()
         combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
         combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme)
         if plot_de_dataset:
@@ -607,7 +629,8 @@ class Classification:
                  raw_data: 'DataSet',
                  data_range: Tuple[np.ndarray, np.ndarray] = None,
                  split_percentage: float = 1.0,
-                 split_evenly: bool = True):
+                 split_evenly: bool = True,
+                 one_vs_others: bool = False):
         """Constructor of Classification.
 
         Takes raw_data as necessary parameter and some more optional parameters which are specified below.
@@ -639,8 +662,9 @@ class Classification:
         self.__calculated_classes_testset = []
         self.__classificators = []
         self.__de_objects = []
+        self.__one_vs_others_labels = [] # only used if one_vs_others is true
         self.__performed_classification = False
-        self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly)
+        self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly, one_vs_others)
 
     def __call__(self, data_to_evaluate: 'DataSet', print_removed: bool = True) -> 'DataSet':
         """Evaluate classes for samples in input data and create a new DataSet from those same samples and classes.
@@ -689,7 +713,7 @@ class Classification:
     def get_calculated_classes_testset(self) -> List[int]:
         return self.__calculated_classes_testset
 
-    def __initialize(self, percentage: float, split_evenly: bool) -> None:
+    def __initialize(self, percentage: float, split_evenly: bool, one_vs_others: bool = False) -> None:
         """Initialize data for performing classification.
 
         Calculates which parts of the original data (self.__data) should be used as learning and testing data.
@@ -744,7 +768,8 @@ class Classification:
                                  _masslumping: bool,
                                  _lambd: float,
                                  _minimum_level: int,
-                                 _maximum_level: int) -> None:
+                                 _maximum_level: int,
+                                 _one_vs_others: bool = False) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -758,8 +783,11 @@ class Classification:
         :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
         :return: None
         """
-        learning_data_classes = self.__learning_data.split_classes()
-        operation_list = [x.density_estimation(masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
+        if _one_vs_others:
+            learning_data_classes = self.__data.split_one_vs_others()
+        else:
+            learning_data_classes = self.__learning_data.split_classes()
+        operation_list = [x.density_estimation(masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level, one_vs_others=_one_vs_others,
                                                plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
@@ -779,7 +807,8 @@ class Classification:
                                                 _tolerance: float = 0.01,
                                                 _max_evaluations: int = 256,
                                                 _modified_basis: bool = False,
-                                                _boundary: bool = False,) -> None:
+                                                _boundary: bool = False,
+                                                _one_vs_others: bool = False) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -793,12 +822,16 @@ class Classification:
         :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
         :return: None
         """
-        learning_data_classes = self.__learning_data.split_classes()
+        if _one_vs_others:
+            learning_data_classes = self.__data.split_one_vs_others()
+        else:
+            learning_data_classes = self.__learning_data.split_classes()
+
         operation_list = [x.density_estimation_dimension_wise(
             masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
             reuse_old_values=_reuse_old_values, numeric_calculation=_numeric_calculation,
             margin=_margin, tolerance=_tolerance, max_evaluations=_max_evaluations,
-            modified_basis=_modified_basis, boundary=_boundary,
+            modified_basis=_modified_basis, boundary=_boundary, one_vs_others=_one_vs_others,
             plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
@@ -899,7 +932,8 @@ class Classification:
                                masslumping: bool = True,
                                lambd: float = 0.0,
                                minimum_level: int = 1,
-                               maximum_level: int = 5) -> None:
+                               maximum_level: int = 5,
+                               one_vs_others: bool = False) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
         Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
@@ -912,7 +946,7 @@ class Classification:
         :return: None
         """
         if not self.__performed_classification:
-            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level)
+            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level, _one_vs_others=one_vs_others)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
@@ -930,7 +964,8 @@ class Classification:
                                               _tolerance: float = 0.01,
                                               _max_evaluations: int = 256,
                                               _modified_basis: bool = False,
-                                              _boundary: bool = False) -> None:
+                                              _boundary: bool = False,
+                                              _one_vs_others: bool = False) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
         Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
@@ -953,7 +988,8 @@ class Classification:
                                                          _modified_basis=_modified_basis,
                                                          _boundary=_boundary,
                                                          _reuse_old_values=_reuse_old_values,
-                                                         _numeric_calculation=_numeric_calculation)
+                                                         _numeric_calculation=_numeric_calculation,
+                                                         _one_vs_others=_one_vs_others)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
