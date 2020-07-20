@@ -766,19 +766,12 @@ class DensityEstimation(AreaOperation):
         b = np.zeros(N)
 
         if self.reuse_old_values:
-            max_levels = [max(x) for x in grid_point_levels]
-            old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes, max_levels)
+            old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes)
 
         if self.reuse_old_values and old_b_key is not None:
             # copy the old values
             old_b = self.old_B[old_b_key]
             old_point_list = [x for x in get_point_list(self.old_grid_coord[old_b_key]) if 0.0 not in x and 1.0 not in x]
-
-            # new_points = [p for p in point_list if p not in old_point_list]
-            # new_point_neighbors = [self.get_neighbors(p, gridPointCoordsAsStripes) for p in new_points]
-            # affected_points = new_points
-            # for l in new_point_neighbors:
-            #     affected_points += l
 
             point_domains = [self.get_hat_domain(p, gridPointCoordsAsStripes) for p in point_list]
             old_point_domains = [self.get_hat_domain(p, self.old_grid_coord[old_b_key]) for p in old_point_list]
@@ -798,7 +791,6 @@ class DensityEstimation(AreaOperation):
             for i in range(len(b)):
                 if b[i] == 0:
                     # get the data within the domain of the point
-                    #print('recalc b i', i)
                     domain = self.get_hat_domain(point_list[i], gridPointCoordsAsStripes)
                     data_indices_in_domain = self.find_data_in_domain(domain)
                     # go through all the data points in the intersection set
@@ -812,11 +804,6 @@ class DensityEstimation(AreaOperation):
         else:
             for i in range(M):
                 hats = self.get_neighbors(data[i], gridPointCoordsAsStripes)
-                #test = self.get_neighboring_grid_points(data[i], gridPointCoordsAsStripes)
-                #if (hats != test):
-                #    print('look here')
-                #for t in range(len(point_list)):
-                #    naive_b[point_list.index(point_list[t])] += self.hat_function_non_symmetric(point_list[t], self.get_hat_domain(point_list[t], gridPointCoordsAsStripes), data[i])
                 sign = 1.0
                 if self.classes is not None:
                     sign = -1.0 if self.classes[i] < 1 else 1.0
@@ -928,8 +915,6 @@ class DensityEstimation(AreaOperation):
                 integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (integral_2(c, m2, p) - integral_2(p, m2, p))
 
                 res *= integral
-        #compare = self.calculate_L2_scalarproduct(point_i, domain_i, point_j, domain_j)
-        #diff = abs(compare[0] - res)
         return res
 
     def hat_function_non_symmetric(self, point: Sequence[float], domain: Sequence[float], x: Sequence[float]) \
@@ -968,7 +953,7 @@ class DensityEstimation(AreaOperation):
                         result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
             return result
 
-    def find_closest_old_B(self, gridPointCoordinatesAsStripes, max_levels):
+    def find_closest_old_B(self, gridPointCoordinatesAsStripes):
         """
         This method looks for the closest match of old B vectors for the current grid and returns it, along with
         a range of indices that need to be changed/updated
@@ -980,17 +965,6 @@ class DensityEstimation(AreaOperation):
         -------
 
         """
-        # # look for the vector(s) with the lowest max level distance
-        extract_list = lambda x: list(map(int, x[1:-1].split(',')))
-        # keys = [extract_list(key_sequence) for key_sequence in self.old_B.keys()]
-        # # hamming_distances = [[max_levels[d] - key[d] for d in range(len(key))] for key in keys]
-        # weighted_distance_sums = [sum((max_levels[d] - key[d] + ((max_levels[d] - key[d]) / max_levels[d]) for d in range(len(key)))) for key in keys]
-        # if weighted_distance_sums:
-        #     weighted_distance_sums = [99 if s < 0.0 else s for s in weighted_distance_sums]
-        #     closest_match_key = keys[weighted_distance_sums.index(min(weighted_distance_sums))]
-        #     closest_match = self.old_B[str(closest_match_key)]
-        # else:
-        #     return None, None
 
         if len(self.old_B) == 0:
             return None
@@ -1014,35 +988,6 @@ class DensityEstimation(AreaOperation):
         new_coordinates_indices = new_coordinate_sets[differences.index(min(differences))]
         closest_match_key = key_list[differences.index(min(differences))]
 
-        def safe_get(sequence, dim, index):
-            if (index < len(sequence[dim])):
-                return 0.0
-            elif (index > len(sequence[dim])):
-                return 1.0
-            else:
-                return sequence[dim][index]
-
-        new_ranges = [[(safe_get(gridPointCoordinatesAsStripes, d, i-1), safe_get(gridPointCoordinatesAsStripes, d, i+1))
-                       for i in range(len(new_coordinates_indices[d]))]
-                      for d in range(self.dim)]
-
-        # find the indices in the sorted data matching the new ranges
-        range_indices = []
-        # for d in range(len(new_ranges)):
-        #     indices = self.sorted_data[d]
-        #     range_indices.append([])
-        #     range_indices[d] = []
-        #     for r in new_ranges[d]:
-        #         lower = len(indices)
-        #         upper = 0
-        #         # find the highest min and lowest max index
-        #         for i in range(len(indices)):
-        #             if self.data[indices[i]][d] < lower and self.data[indices[i]][d] >= r[0]:
-        #                 lower = self.data[indices[i]][d]
-        #             if self.data[indices[i]][d] > upper and self.data[indices[i]][d] <= r[0]:
-        #                 upper = self.data[indices[i]][d]
-        #         range_indices[d].append((lower, upper))
-
         # get the new points as list
         new_coordinates = [[gridPointCoordinatesAsStripes[d][x] for x in new_coordinates_indices[d]] for d in range(self.dim)]
         new_points = []
@@ -1053,7 +998,7 @@ class DensityEstimation(AreaOperation):
                 new_points.append(points)
 
 
-        return closest_match_key#, range_indices, new_points
+        return closest_match_key
 
 
     def find_enclosing_bin(self, domain: Tuple[float, float], dim: int):
@@ -1212,8 +1157,7 @@ class DensityEstimation(AreaOperation):
             else:
                 point_list = get_point_list(gridPointCoordsAsStripes)
 
-            max_levels = levelvec
-            old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes, max_levels)
+            old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes)
 
         if self.reuse_old_values and old_b_key is not None:
             # copy the old values
