@@ -464,6 +464,7 @@ class DataSet:
                            minimum_level: int = 1,
                            maximum_level: int = 5,
                            one_vs_others: bool = False,
+                           reuse_old_values: bool = False,
                            plot_de_dataset: bool = True,
                            plot_density_estimation: bool = True,
                            plot_combi_scheme: bool = True,
@@ -487,9 +488,9 @@ class DataSet:
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         if one_vs_others:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, classes=self.__data[1])
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, classes=self.__data[1])
         else:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=True)
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
@@ -769,6 +770,7 @@ class Classification:
                                  _lambd: float,
                                  _minimum_level: int,
                                  _maximum_level: int,
+                                 _reuse_old_values: bool = False,
                                  _one_vs_others: bool = False) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
@@ -787,7 +789,7 @@ class Classification:
             learning_data_classes = self.__data.split_one_vs_others()
         else:
             learning_data_classes = self.__learning_data.split_classes()
-        operation_list = [x.density_estimation(masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level, one_vs_others=_one_vs_others,
+        operation_list = [x.density_estimation(masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level, one_vs_others=_one_vs_others, reuse_old_values=_reuse_old_values,
                                                plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
@@ -933,6 +935,7 @@ class Classification:
                                lambd: float = 0.0,
                                minimum_level: int = 1,
                                maximum_level: int = 5,
+                               reuse_old_values: bool = False,
                                one_vs_others: bool = False) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
@@ -946,7 +949,7 @@ class Classification:
         :return: None
         """
         if not self.__performed_classification:
-            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level, _one_vs_others=one_vs_others)
+            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level, _one_vs_others=one_vs_others, _reuse_old_values=reuse_old_values)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
