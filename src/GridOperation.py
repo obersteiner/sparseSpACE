@@ -144,7 +144,7 @@ class GridOperation(object):
         :param evaluation_points: Points at which we want to evaluate. List of points.
         :return:
         """
-        return Interpolation.interpolate_points(self.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary), self.dim, self.grid, mesh_points_grid, evaluation_points)
+        return Interpolation.interpolate_points(self.get_component_grid_values(component_grid, mesh_points_grid), self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
@@ -1648,7 +1648,7 @@ class Integration(AreaOperation):
                 points, weights = self.grid.get_points_and_weights()
 
                 # bilinear interpolation
-                interpolated_values = self.interpolate_points(self.get_component_grid_values(componentgrid_info, mesh_points_grid), mesh_points_grid,
+                interpolated_values = self.interpolate_points_component_grid(componentgrid_info, mesh_points_grid,
                                                               points)
 
                 integral += np.inner(interpolated_values.T, weights)
@@ -1714,7 +1714,8 @@ class Integration(AreaOperation):
         end_cell = cell.end
         subcell_points = list(zip(*[g.ravel() for g in np.meshgrid(*[[start_subcell[d], end_subcell[d]] for d in range(self.dim)])]))
         corner_points_grid = [[start_cell[d], end_cell[d]] for d in range(self.dim)]
-        interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
+        #interpolated_values = self.interpolate_points(self.get_mesh_values(corner_points_grid), corner_points_grid, subcell_points)
+        interpolated_values = Interpolation.interpolate_points(self.get_mesh_values(corner_points_grid), self.dim, self.grid, corner_points_grid, subcell_points)
         width = np.prod(np.array(end_subcell) - np.array(start_subcell))
         factor = 0.5 ** self.dim * width
         integral = 0.0
