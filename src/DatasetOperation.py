@@ -9,11 +9,11 @@ from sklearn import datasets, preprocessing
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
-from src.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
-from src.Grid import GlobalTrapezoidalGrid
-from src.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+from ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
+from Grid import GlobalTrapezoidalGrid
+from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
-from src.Utils import *
+from Utils import *
 
 
 class DataSet:
@@ -816,9 +816,10 @@ class Classification:
         :param data_to_classificate: DataSet whose samples are to be classified
         :return: List of computed classes in the same order as their corresponding samples
         """
-        density_data = list(zip(*[x(data_to_classificate[0]) for x in self.__classificators]))
-        max_density_per_point = np.amax(density_data, axis=1)
-        return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
+        density_data = np.array([x(data_to_classificate[0]) for x in self.__classificators])
+        return np.argmax(density_data, axis=0)
+        #max_density_per_point = np.amax(density_data, axis=1)
+        #return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
 
     def __internal_scaling(self, data_to_check: 'DataSet', print_removed: bool = False) -> 'DataSet':
         """Scale data with the same factors as the original data (self.__data) was scaled.
@@ -871,7 +872,7 @@ class Classification:
             return
         if testing_data.get_length() != len(calculated_classes):
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
-        density_testdata = [x(testing_data[0]) for x in self.__classificators]
+        #density_testdata = [x(testing_data[0]) for x in self.__classificators]
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
         print("Evaluation:")
