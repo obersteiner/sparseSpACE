@@ -4,6 +4,7 @@ from Grid import *
 from BasisFunctions import *
 from RefinementContainer import RefinementContainer
 from RefinementObject import RefinementObject
+from bisect import bisect_left
 
 import time
 
@@ -324,6 +325,31 @@ class DensityEstimation(AreaOperation):
                 self.scaled = True
         self.initialized = True
 
+    def interpolate_points_component_grid(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]],
+                           evaluation_points: Sequence[Tuple[float, ...]]):
+        if self.grid.boundary:
+            result1 = super().interpolate_points_component_grid(component_grid, mesh_points_grid, evaluation_points)
+            return result1
+        else:
+            interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
+            surplus_values = self.surpluses[tuple(component_grid.levelvector)]
+            num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
+            offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
+            hat_support_cache = {}
+            for i, p in enumerate(evaluation_points):
+                hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
+                supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
+                for j, hat in enumerate(hats):
+                    hat_support_cache[hat] = supports[j]
+                evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
+                for hat, hat_position, j in zip(hats, indices, range(len(hats))):
+                    hat_index = np.inner(np.array(hat_position) - 1,offsets)
+                    interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
+
+            result2 = interpolated_values
+            return result2
+        # print("difference:", result1 - result2, sum(result1-result2))
+
     def post_processing(self):
         """
         This method is used to compute the minimum and maximum surplus of the component grid
@@ -570,26 +596,26 @@ class DensityEstimation(AreaOperation):
         :param x: datapoint
         :return: All the hat functions in whose support the data point x lies
         """
-        if self.grid.point_not_zero(x) and ((x >= 0).all() and (x <= 1).all()):
-            meshsize = [2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
-            numb_points = self.grid.levelToNumPoints(levelvec)
+        if ((x >= 0).all() and (x <= 1).all()):
+            levelvec = np.asarray(levelvec)
+            meshsize = 2.0**-levelvec#[2 ** (-float(list(levelvec)[d])) for d in range(len(levelvec))]
+            numb_points = self.grid.numPoints
             index_set = []
-            for i in range(len(x)):
-                lower = math.floor(x[i] / meshsize[i])
-                upper = math.ceil(x[i] / meshsize[i])
-                if (lower > 0 and lower <= numb_points[i]) and (upper > 0 and upper <= numb_points[i]):
-                    index_set.append((lower, upper))
-                elif (lower < 1 or lower > numb_points[i]):
-                    index_set.append((upper,))
-                elif (upper < 1 or upper > numb_points[i]):
-                    index_set.append((lower,))
-            #test = list(set(product(*index_set)))
-            #if not self.grid.is_global():
-            return list(set(product(*index_set)))
-            #else:
-            #    existing_indices = self.get_existing_indices(levelvec)
-            #    result = list(filter(lambda p: p in existing_indices, list(set(product(*index_set)))))
-            #    return result
+            x = np.asarray(x)
+            #for i in range(len(x)):
+            #    lower = math.floor(x[i] / meshsize[i])
+            #    upper = math.ceil(x[i] / meshsize[i])
+            #    if (lower > 0 and lower <= numb_points[i]) and (upper > 0 and upper <= numb_points[i]):
+            #        index_set.append((lower, upper))
+            #    elif (lower < 1 or lower > numb_points[i]):
+            #        index_set.append((upper,))
+            #    elif (upper < 1 or upper > numb_points[i]):
+            #        index_set.append((lower,))
+            lower = np.floor(x/meshsize)
+            upper = np.ceil(x/meshsize)
+            supports = zip(lower,upper)
+            supports = [list(set([s for s in sup_dim if s > 0 and s <= numb_points[d]])) for d, sup_dim in enumerate(supports)]
+            return get_cross_product_list(supports)
         else:
             return []
 
@@ -620,6 +646,23 @@ class DensityEstimation(AreaOperation):
             neighbors = (neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim)
             return neighbors
 
+    def get_neighbors_optimized(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) -> Tuple[Sequence[Tuple[float, ...]], Sequence[Tuple[int, ...]]]:
+        """
+        This method
+        :param point: d-dimensional Sequence containing the coordinates of the grid point
+        :param gridPointCoordsAsStripes:
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the nrighbouring points in support + an array with their indices
+        """
+        # create a tuple for each point whose elements are the coordinates that are within the domain
+        point_domain, indices_point = self.get_grid_points_with_support(point, gridPointCoordsAsStripes, return_boundary=self.grid.boundary)
+        # d-dimensional coordinates of neighbours in support
+        neighbors = get_cross_product_list(point_domain)
+        # d-dim indices of neighbours in support
+        indices = get_cross_product_list(indices_point)
+        # sanity check
+        assert len(neighbors) == len(indices)
+        return neighbors, indices
+
     def get_hat_domain(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]):
         """
         This method
@@ -643,6 +686,51 @@ class DensityEstimation(AreaOperation):
                            min((coord for coord in gridPointCoordsAsStripes[d] if coord > point[d]), default=1.0))
                 domain.append(element)
         return domain
+
+    def get_grid_points_with_support(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]], skip_equal_point:bool=False, return_boundary=True):
+        hats = []
+        indices = []
+        for d in range(self.dim):
+            if len(gridPointCoordsAsStripes[d]) == 3 and not return_boundary:
+                    hats_d = [gridPointCoordsAsStripes[d][1]]
+                    indices_d = [1]
+            else:
+                hats_d, indices_d = self.take_closest(gridPointCoordsAsStripes[d], point[d], skip_equal_point)
+                if not return_boundary:
+                    indices_d = [i for (i,h) in zip(indices_d, hats_d) if h!= 0 and h != 1]
+                    hats_d = [h for h in hats_d if h != 0 and h != 1]
+            hats.append(hats_d)
+            indices.append(indices_d)
+            assert(len(hats) == len(indices))
+        return hats, indices
+
+    def take_closest(self, grid_points: Sequence[float], point:float, skip_equal_point:bool = False) -> Tuple[Tuple[float,float], Tuple[int,int]]:
+        """
+        Assumes gridPoints is sorted. Returns closest two values + indices to point.
+        """
+        pos = bisect_left(grid_points, point)
+        if pos == 0:
+            pos = 1
+        if pos == len(grid_points):
+            # should not happen as point needs to be within the domain
+            assert False
+        before = grid_points[pos - 1]
+        after = grid_points[pos]
+        position_before = pos - 1
+        position_after = pos
+        if skip_equal_point and before == point and position_before != 0:
+            points = [grid_points[pos-2]]
+            indices = [pos-2]
+        else:
+            points = [before]
+            indices = [position_before]
+        if skip_equal_point and after == point and position_after != len(grid_points) - 1:
+            points.append(grid_points[pos+1])
+            indices.append(pos+1)
+        else:
+            points.append(after)
+            indices.append(position_after)
+        return points, indices
 
     def get_domain_overlap_width(self, point_i: Sequence[float], domain_i: Sequence[Tuple[float, float]],
                                  point_j: Sequence[float], domain_j: Sequence[Tuple[float, float]]) \
@@ -969,6 +1057,58 @@ class DensityEstimation(AreaOperation):
                         result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
             return result
 
+    def hat_function_non_symmetric_vectorized(self, points: Sequence[float], domain: Sequence[float], x: Sequence[float]) \
+            -> float:
+        """
+        This method calculates the hat function value of the given coordinates with the given parameters
+        :param : d-dimensional center point of the hat function
+        :param : d-dimensional list of 2-dimensional tuples that describe the start and end values of the domain of the hat function
+        :param : d-dimensional coordinates whose function value are to be calculated
+        :return: value of the function at the coordinates given by x
+        """
+        points = np.asarray(points)
+        x = np.asarray(x)
+        domain = np.asarray(domain)
+        assert len(points[0]) == len(x) == len(domain[0])   # sanity check
+        result = np.ones(len(points))
+        if not self.grid.modified_basis:
+            if self.debug:
+                factor2 = np.ones(len(points))
+                for i, point in enumerate(points):
+                    for dim in range(len(x)):
+                        if x[dim] >= point[dim]:
+                            # result is linear interpolation between middle and domain end
+                            factor_part = max(0.0, 1.0 - (1.0 / (domain[i][dim][1] - point[dim])) * (x[dim] - point[dim]))
+                        elif x[dim] < point[dim]:
+                            factor_part = max(0.0, 1.0 - (1.0 / (point[dim] - domain[i][dim][0])) * (point[dim] - x[dim]))
+                        factor2[i] *= factor_part
+            domain = domain.T
+            value1 = (1.0 - (x - points) / (domain[1].T - points)) * np.ceil(x - points + 10**-30)
+            value2 = (1.0 - (points - x) / (points - domain[0].T)) * np.ceil(points - x)
+            factor = np.prod(value1 + value2, axis=1)
+            if self.debug:
+                assert np.all(factor == factor2)
+            result *= factor
+            return result
+        else:
+            # not yet implemented
+            assert False
+            for dim in range(len(x)):
+                # if the domain reaches the boundary, we extrapolate with the same slope that's to the neighboring point
+                boundary_check = lambda x: x == 0.0 or x == 1.0
+                if x[dim] >= point[dim]:
+                    # result is linear interpolation between middle and domain end
+                    if boundary_check(domain[dim][1]):
+                        result *= (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+                elif x[dim] < point[dim]:
+                    if boundary_check(domain[dim][0]):
+                        result *= (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+            return result
+
     def find_closest_old_B(self, gridPointCoordinatesAsStripes, max_levels):
         """
         This method looks for the closest match of old B vectors for the current grid and returns it, along with
@@ -1184,12 +1324,28 @@ class DensityEstimation(AreaOperation):
         :return: Surpluses of the component grid for the specified dataset
         """
         R = self.build_R_matrix(levelvec)
-        b = self.calculate_B(self.data, levelvec)
-        alphas, info = cg(R, b)
+        # scaling ensures that matrix values are not too small for cg tolerance
+        scale_value = 1/np.amax(R)
+        R = R * scale_value
+        b = self.calculate_B(self.data, levelvec) * scale_value
+        if self.masslumping and not self.grid.boundary and not self.grid.modified_basis:
+            # with mass lumping and without boundary points and without modified basis R is identity
+            alphas = b
+        else:
+            alphas, info = cg(R, b)
         if self.print_output:
             print("Alphas: ", levelvec, alphas)
             print("-" * 100)
-        return alphas
+        # normalize integral of density
+        points, weights = self.grid.get_points_and_weights()
+        integral = np.inner(alphas, weights)
+        if integral == 0 or self.debug:
+            # integral should not be zero!
+            print("Matrix", R)
+            print("b Vector", b)
+            print("surplus_values", alphas)
+            print("Weights", weights)
+        return alphas/integral
 
     def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
         """
@@ -1206,11 +1362,20 @@ class DensityEstimation(AreaOperation):
         index_list = self.grid.get_indexlist()
         #else:
         #    index_list = self.get_existing_indices(levelvec)
-
+        index_cache = {}
         for i in range(M):
             hats = self.get_hats_in_support(levelvec, data[i])
+            result = self.hat_function_in_support_vectorized(np.array(hats, dtype=int), np.array(levelvec, dtype=int), data[i])
             for j in range(len(hats)):
-                b[index_list.index(hats[j])] += self.hat_function(hats[j], levelvec, data[i])
+                if hats[j] in index_cache:
+                    index = index_cache[hats[j]]
+                else:
+                    index = index_list.index(hats[j])
+                    index_cache[hats[j]] = index
+                b[index] = result[j]
+            # old version
+            #for j in range(len(hats)):
+            #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
         b *= (1 / M)
         if self.print_output:
             print("B vector: ", b)
@@ -1228,6 +1393,35 @@ class DensityEstimation(AreaOperation):
         result = 1.0
         for d in range(dim):
             result *= max((1 - abs(2 ** lvec[d] * x[d] - ivec[d])), 0)
+        return result
+
+    def hat_function_in_support(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:
+        """
+        This method calculates the value of the hat function at the point x (guaranteed in support otherwise error!)
+        :param ivec: Index of the hat function
+        :param lvec: Levelvector of the component grid
+        :param x: datapoint
+        :return: Value of the hat function at x
+        """
+        dim = len(lvec)
+        result = np.prod(1 - abs(2 ** lvec * x - ivec))
+        assert result >= 0
+        return result
+
+    def hat_function_in_support_vectorized(self, ivecs: Sequence[Sequence[int]], lvec: Sequence[int], x: Sequence[float]) -> float:
+        """
+        This method calculates the value of the hat function at the point x (guaranteed in support of hats otherwise error!)
+        :param ivecs: Vector with indeces of the hat functions
+        :param lvec: Levelvector of the component grid
+        :param x: datapoint
+        :return: Value of the hat function at x
+        """
+        dim = len(lvec)
+        result = np.prod(1 - abs(2 ** lvec * x - ivecs), axis=1)
+        if self.debug:
+            for j in range(len(ivecs)):
+                assert(np.prod(1 - abs(2 ** lvec * x - ivecs[j])) == result[j])
+        assert np.all(result >= 0)
         return result
 
     def weighted_basis_function(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> float:
