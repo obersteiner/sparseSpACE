@@ -580,16 +580,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            calc0 = time.time_ns()
+            calc0 = timing()
             self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
-            calc1 = time.time_ns()
+            calc1 = timing()
             print('DIM: calculate_operation_dimension_wise time taken: ', (calc1 - calc0) / 1000000)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             if not self.errorEstimator.is_global:
-                err0 = time.time_ns()
+                err0 = timing()
                 self.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
-                err1 = time.time_ns()
+                err1 = timing()
                 print('DIM: compute_error_estimates_dimension_wise time taken: ', (err1 - err0) / 1000000)
 
             # save the number of evaluations used per d-1 dimensional slice
