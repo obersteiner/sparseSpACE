@@ -35,7 +35,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     # call default d-linear interpolation based on points in grid
                     # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
                     self.grid.setCurrentArea(start=area.start, end=area.end, levelvec=coarsened_levelvector)
-                    interpolated_values = self.operation.interpolate_points(component_grid, self.grid.coordinate_array, contained_points)
+                    interpolated_values = self.operation.interpolate_points_component_grid(component_grid, self.grid.coordinate_array, contained_points)
                 for p, value in zip(contained_points, interpolated_values):
                     dict_point_interpolation_values[tuple(p)] = value
             else:
