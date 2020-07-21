@@ -1357,7 +1357,6 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = self.grid.get_num_points()
         b = np.zeros(N)
-
         #if not self.grid.is_global():
         index_list = self.grid.get_indexlist()
         #else:
@@ -1365,14 +1364,17 @@ class DensityEstimation(AreaOperation):
         index_cache = {}
         for i in range(M):
             hats = self.get_hats_in_support(levelvec, data[i])
-            result = self.hat_function_in_support_vectorized(np.array(hats, dtype=int), np.array(levelvec, dtype=int), data[i])
+            if len(hats) != 0:
+                result = self.hat_function_in_support_vectorized(np.array(hats, dtype=int), np.array(levelvec, dtype=int), data[i])
+            else:
+                result = 0.0
             for j in range(len(hats)):
                 if hats[j] in index_cache:
                     index = index_cache[hats[j]]
                 else:
                     index = index_list.index(hats[j])
                     index_cache[hats[j]] = index
-                b[index] = result[j]
+                b[index] += result[j]
             # old version
             #for j in range(len(hats)):
             #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
