@@ -14,20 +14,21 @@ class DataSet:
     """Type of datasets on which to perform DensityEstimation, Classification and Clustering.
 
     All DataSets have data in form of a tuple of length 2 with one ndarray each:
-    The samples in arbitrary dimension, then the corresponding classes in dimension 1.
-    Unknown classes are labelled with -1.
+    The samples in arbitrary dimension, then the corresponding labels in dimension 1.
+    Unknown labels are labelled with -1.
     """
 
-    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], /, name: str = 'unknown'):
+    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], /, name: str = 'unknown', label: str = 'class'):
         """Constructor of DataSet.
 
         Takes raw data and optionally a name as parameter and initializes raw data to the form of a tuple with length 2.
         Scaling attributes are unassigned until scaling occurs.
 
-        :param raw_data: Samples (and corresponding classes) of this DataSet. Can be a tuple of samples and classes, only classless samples, CSV file.
+        :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
         :param name: Optional. Name of this DataSet
         """
         self.__name = name
+        self.__label = label
         self.__data = None
         self.__dim = None
         self.__shape = None
@@ -57,8 +58,14 @@ class DataSet:
     def set_name(self, name: str) -> None:
         self.__name = name
 
+    def set_label(self, label: str) -> None:
+        self.__label = label
+
     def get_name(self) -> str:
         return self.__name
+
+    def get_label(self) -> str:
+        return self.__label
 
     def get_data(self) -> Tuple[np.ndarray, ...]:
         return self.__data
@@ -89,13 +96,13 @@ class DataSet:
     def get_dim(self) -> int:
         return self.__dim
 
-    def get_number_classes(self) -> int:
+    def get_number_labels(self) -> int:
         return len([x for x in set(self.__data[1]) if x >= 0])
 
-    def get_classes(self) -> List[int]:
+    def get_labels(self) -> List[int]:
         return list(set(self.__data[1]))
 
-    def has_classless_samples(self) -> bool:
+    def has_labelless_samples(self) -> bool:
         return -1 in self.__data[1]
 
     def is_empty(self) -> bool:
@@ -119,7 +126,7 @@ class DataSet:
         Provides several checks of the input parameter raw_data of the constructor and raises an error if raw_data can't be converted to
         appropriate form.
 
-        :param raw_data: Samples (and corresponding classes) of this DataSet. Can be a tuple of samples and classes, only classless samples, CSV file.
+        :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
         :return: None
         """
         if isinstance(raw_data, str):
@@ -152,13 +159,14 @@ class DataSet:
             raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
 
     def __update_internal(self, to_update: 'DataSet') -> 'DataSet':
-        """Update all internal attributes which can normally only be changed through DataSet methods.
+        """Update all internal attributes which can normally only be changed through DataSet methods or should be changed automatically.
 
         Mainly used to keep scaling of DataSets after methods that change the internal data.
 
         :param to_update: DataSet whose internal attributes need to updated
         :return: Input DataSet with updated internal attributes
         """
+        to_update.__label = self.__label
         to_update.__shuffled = self.__shuffled
         to_update.__scaled = self.__scaled
         to_update.__scaling_range = self.__scaling_range
@@ -315,8 +323,8 @@ class DataSet:
             else:
                 raise ValueError("DataSets must have the same dimensions for concatenation.")
         values = np.concatenate((self.__data[0], other_dataset[0]), axis=0)
-        classes = np.concatenate((self.__data[1], other_dataset[1]))
-        concatenated_set = DataSet((values, classes))
+        labels = np.concatenate((self.__data[1], other_dataset[1]))
+        concatenated_set = DataSet((values, labels))
         self.__update_internal(concatenated_set)
         equal_scaling = self.same_scaling(concatenated_set)
         if not equal_scaling:
@@ -339,39 +347,39 @@ class DataSet:
             dataset = dataset.concatenate(list_datasets[i])
         return dataset
 
-    def split_classes(self) -> List['DataSet']:
-        """Split samples with the same classes into their own DataSets.
+    def split_labels(self) -> List['DataSet']:
+        """Split samples with the same labels into their own DataSets.
 
-        Creates a DataSet for each class and puts all samples with corresponding class into this DataSet.
-        Stores all of those single-class-DataSets into a list.
+        Creates a DataSet for each label and puts all samples with corresponding label into this DataSet.
+        Stores all of those single-label-DataSets into a list.
 
-        :return: A List which contains all single-class-DataSets
+        :return: A List which contains all single-label-DataSets
         """
-        set_classes = []
-        for j in self.get_classes():
+        set_labels = []
+        for j in self.get_labels():
             current_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == j])
-            current_class = np.array(([j] * len(current_values)), dtype=np.int64)
-            current_set = DataSet(tuple([current_values, current_class]))
+            current_label = np.array(([j] * len(current_values)), dtype=np.int64)
+            current_set = DataSet(tuple([current_values, current_label]))
             self.__update_internal(current_set)
-            set_classes.append(current_set)
-        return set_classes
+            set_labels.append(current_set)
+        return set_labels
 
-    def split_without_classes(self) -> Tuple['DataSet', 'DataSet']:
-        """Separates samples without classes from samples with classes.
+    def split_without_labels(self) -> Tuple['DataSet', 'DataSet']:
+        """Separates samples without labels from samples with labels.
 
-        Creates a DataSet for samples with and without classes each.
+        Creates a DataSet for samples with and without labels each.
         Samples are stored in the respective DataSet.
-        If there are no classless samples and/ or samples with classes, the respective DataSet stays empty.
+        If there are no labelless samples and/ or samples with labels, the respective DataSet stays empty.
 
-        :return: A Tuple of two new DataSets which contain all classless samples and all samples with classes
+        :return: A Tuple of two new DataSets which contain all labelless samples and all samples with labels
         """
-        classless_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == -1])
-        classfull_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] >= 0])
-        set_classless = DataSet(classless_values)
-        set_classfull = DataSet(tuple([classfull_values, np.array([c for c in self.__data[1] if c >= 0], dtype=np.int64)]))
-        self.__update_internal(set_classless)
-        self.__update_internal(set_classfull)
-        return set_classless, set_classfull
+        labelless_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == -1])
+        labelfull_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] >= 0])
+        set_labelless = DataSet(labelless_values)
+        set_labelfull = DataSet(tuple([labelfull_values, np.array([c for c in self.__data[1] if c >= 0], dtype=np.int64)]))
+        self.__update_internal(set_labelless)
+        self.__update_internal(set_labelfull)
+        return set_labelless, set_labelfull
 
     def split_pieces(self, percentage: float) -> Tuple['DataSet', 'DataSet']:
         """Splits this DataSet's data into two uneven pieces.
@@ -392,25 +400,25 @@ class DataSet:
         self.__update_internal(set1)
         return set0, set1
 
-    def remove_classes(self, percentage: float) -> None:
-        """Removes the classes of percentage samples randomly.
+    def remove_labels(self, percentage: float) -> None:
+        """Removes the labels of percentage samples randomly.
 
-        Before removal of classes, percentage is checked if in range (0, 1) and if not is set to 1.
+        Before removal of labels, percentage is checked if in range (0, 1) and if not is set to 1.
         Mainly used for testing purposes.
 
-        :param percentage: Percentage of random indices at which to remove classes
+        :param percentage: Percentage of random indices at which to remove labels
         :return: None
         """
-        classless, classfull = self.split_without_classes()
-        indices = rnd.sample(range(0, classfull.get_length()), round((percentage if (1 > percentage >= 0) else 1.0) * classfull.get_length()))
-        classes = classfull.__data[1]
-        classes[indices] = -1
-        if classless.is_empty():
-            self.__data = tuple([classfull.__data[0], classes])
-        elif classfull.is_empty():
-            self.__data = tuple([classless.__data[0], classless.__data[1]])
+        labelless, labelfull = self.split_without_labels()
+        indices = rnd.sample(range(0, labelfull.get_length()), round((percentage if (1 > percentage >= 0) else 1.0) * labelfull.get_length()))
+        labels = labelfull.__data[1]
+        labels[indices] = -1
+        if labelless.is_empty():
+            self.__data = tuple([labelfull.__data[0], labels])
+        elif labelfull.is_empty():
+            self.__data = tuple([labelless.__data[0], labelless.__data[1]])
         else:
-            self.__data = tuple([np.concatenate((classfull.__data[0], classless.__data[0])), np.concatenate((classes, classless.__data[1]))])
+            self.__data = tuple([np.concatenate((labelfull.__data[0], labelless.__data[0])), np.concatenate((labels, labelless.__data[1]))])
 
     def move_boundaries_to_front(self) -> None:
         """Move samples with lowest and highest value in each dimension to the front of this DataSet's data.
@@ -475,7 +483,7 @@ class DataSet:
         if plot_de_dataset:
             if de_object.scaled:
                 self.scale_range((0, 1), override_scaling=True)
-            self.plot(plot_classes=False)
+            self.plot(plot_labels=False)
         if plot_density_estimation:
             combi_object.plot(contour=True)
         if plot_combi_scheme:
@@ -484,12 +492,12 @@ class DataSet:
             combi_object.print_resulting_sparsegrid(markersize=20)
         return combi_object, de_object
 
-    def plot(self, /, plot_classes: bool = True) -> plt.Figure:
+    def plot(self, /, plot_labels: bool = True) -> plt.Figure:
         """Plot DataSet.
 
         Plotting is only available for dimensions 2 and 3.
 
-        :param plot_classes: Optional. Conditional parameter which indicates whether classes should be coloured for plotting.
+        :param plot_labels: Optional. Conditional parameter which indicates whether labels should be coloured for plotting.
         :return: Figure which is plotted
         """
         plt.rc('font', size=30)
@@ -499,17 +507,17 @@ class DataSet:
 
         if self.__dim == 2:
             ax = fig.add_subplot(111)
-            if plot_classes:
-                if self.has_classless_samples():
-                    data_classless, data_classfull = self.split_without_classes()
-                    list_classes = data_classfull.split_classes()
-                    x, y = zip(*data_classless[0])
-                    ax.scatter(x, y, s=125, label='class_?', c='gray')
+            if plot_labels:
+                if self.has_labelless_samples():
+                    data_labelless, data_labelfull = self.split_without_labels()
+                    list_labels = data_labelfull.split_labels()
+                    x, y = zip(*data_labelless[0])
+                    ax.scatter(x, y, s=125, label='%s_?' % self.__label, c='gray')
                 else:
-                    list_classes = self.split_classes()
-                for i, v in enumerate(list_classes):
+                    list_labels = self.split_labels()
+                for i, v in enumerate(list_labels):
                     x, y = zip(*v[0])
-                    ax.scatter(x, y, s=125, label='class_%d' % i)
+                    ax.scatter(x, y, s=125, label='%s_%d' % (self.__label, i))
                 ax.legend(fontsize=22, loc='upper left', borderaxespad=0.0, bbox_to_anchor=(1.05, 1))
             else:
                 fig.set_figwidth(10.0)
@@ -522,17 +530,17 @@ class DataSet:
             ax.set_ylabel('y')
         elif self.__dim == 3:
             ax = fig.add_subplot(111, projection='3d')
-            if plot_classes:
-                if self.has_classless_samples():
-                    data_classless, data_classfull = self.split_without_classes()
-                    list_classes = data_classfull.split_classes()
-                    x, y, z = zip(*data_classless[0])
-                    ax.scatter(x, y, z, s=125, label='class_?', c='gray')
+            if plot_labels:
+                if self.has_labelless_samples():
+                    data_labelless, data_labelfull = self.split_without_labels()
+                    list_labels = data_labelfull.split_labels()
+                    x, y, z = zip(*data_labelless[0])
+                    ax.scatter(x, y, z, s=125, label='%s_?' % self.__label, c='gray')
                 else:
-                    list_classes = self.split_classes()
-                for i, v in enumerate(list_classes):
+                    list_labels = self.split_labels()
+                for i, v in enumerate(list_labels):
                     x, y, z = zip(*v[0])
-                    ax.scatter(x, y, z, s=125, label='class_%d' % i)
+                    ax.scatter(x, y, z, s=125, label='%s_%d' % (self.__label, i))
                 ax.legend(fontsize=22, loc='upper left', borderaxespad=0.0, bbox_to_anchor=(1.05, 1))
             else:
                 fig.set_figwidth(10.0)
@@ -628,7 +636,7 @@ class Classification:
                              "\n[%s]\n[%s]\nwith this classification object" %
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
         evaluated_data = DataSet(tuple([evaluate[0], np.array(self.__classificate(evaluate))]), name="%s_evaluated_classes" %
-                                                                                                     data_to_evaluate.get_name())
+                                                                                                     data_to_evaluate.get_name(), label="class")
         del self.__densities_testset[(len(self.__densities_testset) - data_to_evaluate.get_length()):]
         return evaluated_data
 
@@ -677,7 +685,8 @@ class Classification:
         for each class should be of near equal size
         :return: None
         """
-        self.__omitted_data, used_data = self.__data.split_without_classes()
+        self.__data.set_label("class")
+        self.__omitted_data, used_data = self.__data.split_without_labels()
         self.__omitted_data.set_name("%s_omitted" % self.__data.get_name())
         used_data.set_name(self.__data.get_name())
         self.__data = used_data
@@ -700,7 +709,7 @@ class Classification:
         self.__data.shuffle()
         self.__data.move_boundaries_to_front()
         if split_evenly:
-            data_classes = self.__data.split_classes()
+            data_classes = self.__data.split_labels()
             data_learn_list = [x.split_pieces(percentage)[0] for x in data_classes]
             data_test_list = [x.split_pieces(percentage)[1] for x in data_classes]
             data_learn = DataSet.list_concatenate(data_learn_list)
@@ -713,10 +722,10 @@ class Classification:
         self.__testing_data.set_name("%s_testing_data" % self.__data.get_name())
 
     def __perform_classification(self,
-                                 _masslumping: bool,
-                                 _lambd: float,
-                                 _minimum_level: int,
-                                 _maximum_level: int) -> None:
+                                 masslumping: bool,
+                                 lambd: float,
+                                 minimum_level: int,
+                                 maximum_level: int) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -724,14 +733,14 @@ class Classification:
         each of the single-class-DataSets.
         The DensityEstimation objects are mainly used for plotting the combi scheme.
 
-        :param _masslumping: Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
-        :param _lambd: Parameter which adjusts the 'smoothness' of DensityEstimation results
-        :param _minimum_level: Minimum Level of Sparse Grids on which to perform DensityEstimation
-        :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param masslumping: Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param lambd: Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param minimum_level: Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
         :return: None
         """
-        learning_data_classes = self.__learning_data.split_classes()
-        operation_list = [x.density_estimation(masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
+        learning_data_classes = self.__learning_data.split_labels()
+        operation_list = [x.density_estimation(masslumping=masslumping, lambd=lambd, minimum_level=minimum_level, maximum_level=maximum_level,
                                                plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
@@ -786,7 +795,8 @@ class Classification:
                     print(removed_samples[1][i])
         return data_to_check
 
-    def __print_evaluation(self, testing_data: 'DataSet', calculated_classes: List[int], density_testdata: List[np.ndarray]) -> None:
+    @staticmethod
+    def __print_evaluation(testing_data: 'DataSet', calculated_classes: List[int], density_testdata: List[np.ndarray]) -> None:
         """Print the results of some specified testing data to stdout.
 
         Only prints evaluation if input is valid.
@@ -927,12 +937,13 @@ class Classification:
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
         print("Testing classes of %s DataSet..." % new_testing_data.get_name())
+        new_testing_data.set_label("class")
         evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for testing were out of bounds. Please only test samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
-        omitted_data, used_data = evaluate.split_without_classes()
+        omitted_data, used_data = evaluate.split_without_labels()
         if not omitted_data.is_empty():
             print("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
         self.__omitted_data.concatenate(omitted_data)
@@ -943,7 +954,7 @@ class Classification:
         if print_output:
             print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
             self.__print_evaluation(used_data, calculated_new_testclasses, self.__densities_testset[(len(self.__densities_testset) -
-                                                                                                     new_testing_data.get_length()):])
+                                                                                                    new_testing_data.get_length()):])
             print("_________________________________________________________________________________________________________________________________")
             print("---------------------------------------------------------------------------------------------------------------------------------")
         return omitted_data
@@ -952,12 +963,26 @@ class Classification:
 class Clustering:
     pass  # TODO implement Clustering class
 
-    def __init__(self):
+    def __init__(self, raw_data: 'DataSet', /,
+                 masslumping: bool = True,
+                 lambd: float = 0.0,
+                 minimum_level: int = 1,
+                 maximum_level: int = 5):
         # initialize Clustering class: input parameter. type of clustering. number of clusters. DE input parameter. etc...
-        pass
+        self.__data = raw_data
+        self.__label = 'cluster'
+        self.__de_object = None
+        self.__clustertinator = None
+        self.__nearest_neighbor = None
+        self.__initialize(masslumping, lambd, minimum_level, maximum_level)
 
     def __call__(self):
         pass
+
+    def __initialize(self, masslumping, lambd, minimum_level, maximum_level):
+        self.__data.set_label(self.__label)
+        self.__clustertinator, self.__de_object = self.__data.density_estimation(masslumping=masslumping, lambd=lambd, minimum_level=minimum_level,
+                                                                                 maximum_level=maximum_level)
 
     def __perform_clustering(self):
         pass
@@ -994,8 +1019,8 @@ if __name__ == "__main__":
     part0, part1 = data_copy.split_pieces(0.5)  # split
     data_copy = part0.concatenate(part1)  # concatenated
     data_copy.set_name('2nd_Set')  # renamed
-    data_copy.remove_classes(0.2)  # freed of some class assignments to samples
-    without_classes, with_classes = data_copy.split_without_classes()  # seperated into samples with and without classes
+    data_copy.remove_labels(0.2)  # freed of some class assignments to samples
+    without_classes, with_classes = data_copy.split_without_labels()  # seperated into samples with and without classes
     data_copy.plot()  # plotted
 
     # and of course we can perform a regular density estimation on a DataSet object:
@@ -1024,13 +1049,13 @@ if __name__ == "__main__":
     classification.test_data(with_classes, print_output=True)
 
     # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-    data_copy.remove_classes(1.0)
+    data_copy.remove_labels(1.0)
     calcult_classes = classification(data_copy)
 
     # because we used 2D datasets before we can plot the results to easily see which samples were classified correctly and which not
     correct_classes = data.copy()
     correct_classes.scale_range((0.005, 0.995))
-    correct_classes.set_name('Correct_Classes')
-    calcult_classes.set_name('Calculated_Classes')
+    correct_classes.set_name('Correct_classes')
+    calcult_classes.set_name('Calculated_classes')
     correct_classes.plot()
     calcult_classes.plot()
