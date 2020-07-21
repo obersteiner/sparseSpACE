@@ -6,7 +6,7 @@ from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
 from GridOperation import GridOperation
-from src.Utils import *
+from Utils import *
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):

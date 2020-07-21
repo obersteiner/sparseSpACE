@@ -133,17 +133,17 @@ class GridOperation(object):
         """
         return 1
 
-    def interpolate_points(self, values: Sequence[Sequence[float]], mesh_points_grid: Sequence[Sequence[float]],
+    def interpolate_points_component_grid(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]],
                            evaluation_points: Sequence[Tuple[float, ...]]):
         """Interpolates values that are on the mesh_points_grid at the given evaluation_points using bilinear
         interpolation.
 
-        :param values: Numpy array with values at grid points. Each value is again a numpy array.
+        :param component_grid: Component grid for which we want to interpolate
         :param mesh_points_grid: Grid definition where values are placed. List of !D arrays.
         :param evaluation_points: Points at which we want to evaluate. List of points.
         :return:
         """
-        return Interpolation.interpolate_points(values, self.dim, self.grid, mesh_points_grid, evaluation_points)
+        return Interpolation.interpolate_points(self.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary), self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
     def eval_analytic(self, coordinate: Tuple[float, ...]) -> Sequence[float]:
