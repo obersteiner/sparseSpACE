@@ -121,6 +121,8 @@ class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
         comm = MPI.COMM_WORLD
         size = comm.Get_size()
         rank = comm.Get_rank()
+
+        # gathering all work packages (equivalent to IntegratorAbitraryGrid)
         if rank == 0:
             dim = len(start)
             offsets = np.ones(dim, dtype=np.int64)
@@ -139,18 +141,41 @@ class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
                     rest = rest % offsets[d]
                 indexvectors.append(indexvector)
             chunks = [indexvectors[i::size] for i in range(size)]
+
         else:
             chunks = None
         
+        # distributing work packages
         indexvectors = comm.scatter(chunks, root=0)
         localresult = 0.0
         for vec in indexvectors:
             localresult += self.integrate_point(f, vec)
-        result = comm.gather(localresult)
+        results = comm.gather(localresult)
+
+        # merge caches 
+        if isinstance(f, Function):
+            caches : List[dict] = comm.gather(f.f_dict)
+            if rank == 0:
+                all_keys = set([key for cache in caches for key in cache.keys()])
+                new_cache = {}
+                for key in all_keys:
+                    for cache in caches:
+                        if cache.get(key) is not None:
+                            new_cache[key] = cache[key]
+            else:
+                new_cache = None
+            new_cache = comm.bcast(new_cache)
+            f.f_dict = new_cache
+
+        # return the same result to all processes so they can continue
         if rank == 0:
-            return sum(result)
+            global_result = sum(results) 
         else:
-            return 0
+            global_result = None
+        global_result = comm.bcast(global_result) # scattering so each process returns a valid result
+        return global_result
+
+
 # This integrator computes the integral of an arbitrary grid from the Grid class
 # using the predefined interfaces and weights. The grid is explicitly constructed and efficiently evaluated using numpy.
 # If the function is a vector valued function we evaluate a matrix vector product with the weights, i.e. integrate
