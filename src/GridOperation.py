@@ -144,7 +144,8 @@ class GridOperation(object):
         :param evaluation_points: Points at which we want to evaluate. List of points.
         :return:
         """
-        self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+        if not isinstance(self.grid, GlobalGrid):
+            self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
         if mesh_points_grid is None:
             mesh_points_grid = self.grid.coordinate_array_with_boundary
         return Interpolation.interpolate_points(self.get_component_grid_values(component_grid, mesh_points_grid), self.dim, self.grid, mesh_points_grid, evaluation_points)
