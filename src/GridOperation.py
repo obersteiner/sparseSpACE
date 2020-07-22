@@ -144,6 +144,9 @@ class GridOperation(object):
         :param evaluation_points: Points at which we want to evaluate. List of points.
         :return:
         """
+        self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+        if mesh_points_grid is None:
+            mesh_points_grid = self.grid.coordinate_array_with_boundary
         return Interpolation.interpolate_points(self.get_component_grid_values(component_grid, mesh_points_grid), self.dim, self.grid, mesh_points_grid, evaluation_points)
 
     @abc.abstractmethod
@@ -288,6 +291,7 @@ class DensityEstimation(AreaOperation):
         self.data_bins = [{} for d in range(dim)]
         self.max_levels = []
         self.numeric_calculation = numeric_calculation
+        self.dimension_wise = False
         print('DensityEstimation debug: ', self.debug)
 
     def initialize(self):
@@ -331,20 +335,35 @@ class DensityEstimation(AreaOperation):
             result1 = super().interpolate_points_component_grid(component_grid, mesh_points_grid, evaluation_points)
             return result1
         else:
-            interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
             surplus_values = self.surpluses[tuple(component_grid.levelvector)]
-            num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
-            offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
-            hat_support_cache = {}
-            for i, p in enumerate(evaluation_points):
-                hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
-                supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
-                for j, hat in enumerate(hats):
-                    hat_support_cache[hat] = supports[j]
-                evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
-                for hat, hat_position, j in zip(hats, indices, range(len(hats))):
-                    hat_index = np.inner(np.array(hat_position) - 1,offsets)
-                    interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
+            threshold = 20
+            if self.grid.get_num_points() < threshold and not self.dimension_wise:
+                self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
+                if self.grid.boundary:
+                    self.grid.numPoints += 1
+                else:
+                    self.grid.numPoints -= 1
+                hats = np.array(get_cross_product_range_list(self.grid.numPoints)) + 1
+                hat_evaluations = self.hat_function_in_support_completely_vectorized(ivecs=hats, lvec=np.asarray(component_grid.levelvector), points=np.asarray(evaluation_points))
+                interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
+                interpolated_values = interpolated_values.reshape(((len(evaluation_points), self.point_output_length())))
+            else:
+                self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+                if mesh_points_grid is None:
+                    mesh_points_grid = self.grid.coordinate_array_with_boundary
+                interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
+                num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
+                offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
+                hat_support_cache = {}
+                for i, p in enumerate(evaluation_points):
+                    hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
+                    supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
+                    for j, hat in enumerate(hats):
+                        hat_support_cache[hat] = supports[j]
+                    evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
+                    for hat, hat_position, j in zip(hats, indices, range(len(hats))):
+                        hat_index = np.inner(np.array(hat_position) - 1,offsets)
+                        interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
 
             result2 = interpolated_values
             return result2
@@ -464,7 +483,17 @@ class DensityEstimation(AreaOperation):
         :param component_grid: ComponentGridInfo of the specified component grid
         :return: Surpluses of the component grid
         """
-        self.grid.setCurrentArea(np.zeros(len(component_grid.levelvector)), np.ones(len(component_grid.levelvector)), component_grid.levelvector)
+        if self.dimension_wise:
+            self.grid.setCurrentArea(np.zeros(len(component_grid.levelvector)), np.ones(len(component_grid.levelvector)), component_grid.levelvector)
+        else:
+            numPoints = 2**(np.asarray(component_grid.levelvector, dtype=int))
+            if self.grid.boundary:
+                numPoints += 1
+            else:
+                numPoints -= 1
+            self.grid.numPoints = numPoints
+        # currently routine only tested without boundaries and without adaptivity!
+        assert not self.grid.boundary and not self.dimension_wise
         surpluses = self.solve_density_estimation(component_grid.levelvector)
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
         return surpluses
@@ -504,6 +533,7 @@ class DensityEstimation(AreaOperation):
         self.lmax = lmax
         self.a = a
         self.b = b
+        self.dimension_wise = True
 
     def initialize_evaluation_dimension_wise(self, refinement_container):
         # TODO
@@ -534,8 +564,11 @@ class DensityEstimation(AreaOperation):
         :return: Surpluses for the component_grid filled up with zero on the boundary
         """
         surpluses = list(self.get_result().get(tuple(component_grid.levelvector)))
-        mesh_points = get_cross_product(mesh_points_grid)
-        values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
+        if len(mesh_points_grid > len(surpluses)):
+            mesh_points = get_cross_product(mesh_points_grid)
+            values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
+        else:
+            values = surpluses
         return values.reshape((len(values), 1))
 
     def get_point_values_component_grid(self, points: Sequence[float], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -1270,7 +1303,7 @@ class DensityEstimation(AreaOperation):
         dim = len(levelvec)
 
         #if not self.grid.is_global():
-        index_list = self.grid.get_indexlist()
+        index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         #else:
         #    index_list = self.get_existing_indices(levelvec)
 
@@ -1337,8 +1370,12 @@ class DensityEstimation(AreaOperation):
             print("Alphas: ", levelvec, alphas)
             print("-" * 100)
         # normalize integral of density
-        points, weights = self.grid.get_points_and_weights()
-        integral = np.inner(alphas, weights)
+        levelvec = np.asarray(levelvec)
+        if not self.dimension_wise and not self.grid.boundary:
+            integral = np.sum(alphas) * 2.0**(-np.sum(levelvec))
+        else:
+            points, weights = self.grid.get_points_and_weights()
+            integral = np.inner(alphas, weights)
         if integral == 0 or self.debug:
             # integral should not be zero!
             print("Matrix", R)
@@ -1357,27 +1394,32 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = self.grid.get_num_points()
         b = np.zeros(N)
-        #if not self.grid.is_global():
-        index_list = self.grid.get_indexlist()
-        #else:
-        #    index_list = self.get_existing_indices(levelvec)
-        index_cache = {}
-        for i in range(M):
-            hats = self.get_hats_in_support(levelvec, data[i])
-            if len(hats) != 0:
-                result = self.hat_function_in_support_vectorized(np.array(hats, dtype=int), np.array(levelvec, dtype=int), data[i])
-            else:
-                result = 0.0
-            for j in range(len(hats)):
-                if hats[j] in index_cache:
-                    index = index_cache[hats[j]]
+        threshold = 20
+        if N < threshold:
+            hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+            b = np.sum(self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), data), axis=0)
+        else:
+            #if not self.grid.is_global():
+            index_list = self.grid.get_indexlist()
+            #else:
+            #    index_list = self.get_existing_indices(levelvec)
+            index_cache = {}
+            for i in range(M):
+                hats = self.get_hats_in_support(levelvec, data[i])
+                if len(hats) != 0:
+                    result = self.hat_function_in_support_vectorized(np.array(hats, dtype=int), np.array(levelvec, dtype=int), data[i])
                 else:
-                    index = index_list.index(hats[j])
-                    index_cache[hats[j]] = index
-                b[index] += result[j]
-            # old version
-            #for j in range(len(hats)):
-            #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
+                    result = 0.0
+                for j in range(len(hats)):
+                    if hats[j] in index_cache:
+                        index = index_cache[hats[j]]
+                    else:
+                        index = index_list.index(hats[j])
+                        index_cache[hats[j]] = index
+                    b[index] += result[j]
+                # old version
+                #for j in range(len(hats)):
+                #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
         b *= (1 / M)
         if self.print_output:
             print("B vector: ", b)
@@ -1424,6 +1466,25 @@ class DensityEstimation(AreaOperation):
             for j in range(len(ivecs)):
                 assert(np.prod(1 - abs(2 ** lvec * x - ivecs[j])) == result[j])
         assert np.all(result >= 0)
+        return result
+
+    def hat_function_in_support_completely_vectorized(self, ivecs: Sequence[Sequence[int]], lvec: Sequence[int], points: Sequence[float]) -> float:
+        """
+        This method calculates the value of the hat function at the point x
+        :param ivecs: Vector with indeces of the hat functions
+        :param lvec: Levelvector of the component grid
+        :param points: datapoints
+        :return: Value of the hat function at points, for different ivecs (numpy array shape(nPoints,nIvecs))
+        """
+        dim = len(lvec)
+        results = np.empty(len(ivecs))
+        points = np.hstack([points]*len(ivecs)).reshape((len(points),len(ivecs),self.dim))
+        inner_calculation = 1 - abs(2 ** lvec * points - ivecs)
+        max_filter = np.maximum.reduce([inner_calculation, np.zeros(np.shape(points))] )
+        result = np.prod(max_filter, axis=2)
+        assert np.all(result >= 0)
+        assert(len(result[0]) == len(ivecs))
+        assert(len(result) == len(points))
         return result
 
     def weighted_basis_function(self, levelvec: Sequence[int], alphas: Sequence[float], x: Sequence[float]) -> float:
