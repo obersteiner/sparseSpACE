@@ -91,7 +91,8 @@ class Grid(object):
     def setCurrentArea(self, start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]) -> None:
         self.start = start if start is not None else self.a
         self.end = end if end is not None else self.b
-        self.dim = len(start)
+        assert self.dim == len(self.start)
+        assert self.dim == len(self.end)
         self.levelvec = levelvec
         for d in range(self.dim):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
@@ -99,7 +100,7 @@ class Grid(object):
         self.coordinate_array = [self.grids[d].coords for d in range(self.dim)]
         self.coordinate_array_with_boundary = [self.grids[d].coords_with_boundary for d in range(self.dim)]
         self.weights = [self.grids[d].weights for d in range(self.dim)]
-        self.length = np.array(end) - np.array(start)
+        self.length = np.array(self.end) - np.array(self.start)
         self.numPointsWithBoundary = self.levelToNumPointsWithBoundary(levelvec)
         # prepare coordinates and weights
 
