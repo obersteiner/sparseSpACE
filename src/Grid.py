@@ -89,28 +89,19 @@ class Grid(object):
     # This method adjusts the grid to the given area defined by start and end. We initialize the weights and the grids
     # for the given levelvector.
     def setCurrentArea(self, start: Sequence[float], end: Sequence[float], levelvec: Sequence[int]) -> None:
-        self.start = start
-        self.end = end
+        self.start = start if start is not None else self.a
+        self.end = end if end is not None else self.b
         self.dim = len(start)
         self.levelvec = levelvec
         for d in range(self.dim):
             self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
         self.numPoints = self.levelToNumPoints(levelvec)
-        self.numPointsWithBoundary = self.levelToNumPointsWithBoundary(levelvec)
-        self.coordinate_array = []
-        self.coordinate_array_with_boundary = []
-        self.weights = []
+        self.coordinate_array = [self.grids[d].coords for d in range(self.dim)]
+        self.coordinate_array_with_boundary = [self.grids[d].coords_with_boundary for d in range(self.dim)]
+        self.weights = [self.grids[d].weights for d in range(self.dim)]
         self.length = np.array(end) - np.array(start)
+        self.numPointsWithBoundary = self.levelToNumPointsWithBoundary(levelvec)
         # prepare coordinates and weights
-        for d in range(self.dim):
-            self.grids[d].set_current_area(self.start[d], self.end[d], self.levelvec[d])
-            coordsD = self.grids[d].coords
-            coordsD_with_boundary = self.grids[d].coords_with_boundary
-            weightsD = self.grids[d].weights
-            self.coordinate_array.append(np.asarray(coordsD))
-            self.coordinate_array_with_boundary.append(np.asarray(coordsD_with_boundary))
-            self.weights.append(np.asarray(weightsD))
-        # print(coords)
 
     # this method returns the number of points in the grid that correspond to the specified levelvector
     def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
@@ -786,6 +777,8 @@ class TrapezoidalGrid1D(Grid1d):
         return coordsD, weightsD
 
     def get_1D_level_points(self):
+        if not self.boundary and self.num_points == 1:
+            return np.array([(self.end+self.start)/2.0])
         return np.linspace(self.start, self.end, self.num_points_with_boundary)[self.lowerBorder:self.upperBorder]
 
     def get_1d_weight(self, index):
@@ -823,6 +816,8 @@ class TrapezoidalGrid1D(Grid1d):
             return self.weight_composite_trapezoidal(index)
 
     def weight_composite_trapezoidal(self, index):
+        if not self.boundary and self.num_points == 1:
+            return self.spacing
         return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
                                       self.num_points_with_boundary - 1 else 1)
 
