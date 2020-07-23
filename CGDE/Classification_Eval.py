@@ -200,7 +200,7 @@ for data_set in range(6):
 log_info('--- Classification_eval end ---')
 
 # make a backup of the log without overwriting old ones
-log_backup = 'log_backup'
+log_backup = 'log_sg_backup'
 while os.path.isfile(log_backup):
     log_backup = log_backup + '+'
-copyfile('log', log_backup)
+copyfile(log_filename, log_backup)
