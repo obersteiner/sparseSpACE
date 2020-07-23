@@ -6,7 +6,12 @@ from ErrorCalculator import *
 from Function import *
 from StandardCombi import *
 from GridOperation import GridOperation
-from src.Utils import *
+from Utils import *
+import sys
+if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
+    timing = time.time_ns
+else:
+    timing = time.time
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
@@ -89,9 +94,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         areas = self.get_new_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
         self.init_evaluation_operation(areas)
-        comp0 = time.time_ns()
+        comp0 = timing()
         self.compute_solutions(areas, evaluation_array)
-        comp1 = time.time_ns()
+        comp1 = timing()
         if self.timings is not None:
             self.timings['BASE_compute_solutions'] = [comp1 - comp0] \
                 if 'BASE_compute_solutions' not in self.timings \
@@ -248,9 +253,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         start_time = time.time()
         while True:
-            eval0 = time.time_ns()
+            eval0 = timing()
             error, surplus_error = self.evaluate_operation()
-            eval1 = time.time_ns()
+            eval1 = timing()
             if self.timings is not None:
                 self.timings['BASE_evaluate_operation'] = [eval1 - eval0] \
                     if 'BASE_evaluate_operation' not in self.timings \
@@ -289,9 +294,9 @@ class SpatiallyAdaptivBase(StandardCombi):
             if max_time is not None and time.time() - start_time > max_time:
                 break
             # refine further
-            ref0 = time.time_ns()
+            ref0 = timing()
             self.refine()
-            ref1 = time.time_ns()
+            ref1 = timing()
             if self.timings is not None:
                 self.timings['BASE_refinement'] = [ref1 - ref0] \
                     if 'BASE_refinement' not in self.timings \

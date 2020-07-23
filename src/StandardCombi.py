@@ -7,7 +7,7 @@ from GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from src.Utils import *
+from Utils import *
 
 
 class StandardCombi(object):
@@ -63,8 +63,7 @@ class StandardCombi(object):
         :param component_grid: ComponentGridInfo of the specified component grid.
         :return: List of values (each a numpy array)
         """
-        self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
-        return self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary), mesh_points_grid=self.grid.coordinate_array_with_boundary,
+        return self.operation.interpolate_points_component_grid(component_grid, mesh_points_grid=None,
                                                  evaluation_points=interpolation_points)
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:

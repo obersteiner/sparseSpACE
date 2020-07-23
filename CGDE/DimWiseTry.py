@@ -77,7 +77,7 @@ def plot_dataset(d, dim, filename: str = None):
 dim = 2
 print('data set dimension: ', dim)
 # define number of samples
-size = 10000
+size = 1000
 print('data set size: ', size)
 
 # define boundaries
@@ -103,7 +103,7 @@ print('modified_basis:', modified_basis)
 boundary = False
 print('points on boundary:', boundary)
 # reuse older R matrix values
-reuse_old_values = True
+reuse_old_values = False
 print('reuse old values: ', reuse_old_values)
 # choose between numeric and analytic calculation
 numeric_calculation = False

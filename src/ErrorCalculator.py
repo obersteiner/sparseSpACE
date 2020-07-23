@@ -91,10 +91,6 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
         return abs(volumes * volume_weights)
 
     def calc_global_error(self, data, grid_scheme):
-        #test = grid_scheme.interpolate_points([data[0]], component_grid)
-        test = grid_scheme(data[0])[0]
-        #A[np.random.choice(A.shape[0], num_rows_2_sample, replace=False)]
-        #samples_test = np.random_choice(data, size=data.shape(), replace=False)
         samples = data
         f = lambda x: grid_scheme(x)
         values = f(samples)
