@@ -17,11 +17,13 @@ filterDelimiters = lambda x: not ('|||' in x or '~~~' in x or '###' in x or '---
 content = [x for x in content if filterDelimiters(x)]
 data_set_indices = [i for i, x in enumerate(content) if 'do.datasets' in x]
 data_sets = [content[data_set_indices[x]:data_set_indices[x+1]] for x in range(len(data_set_indices)) if (x+1) < len(data_set_indices)]
+
 substr_idx = lambda s, sub: [i for i, x in enumerate(s) if sub in x]
 stringIndex = lambda l, st: [i for i, x in enumerate(l) if st in x][0]
-#test = [s for s in data_sets for i in scheme_indices(s)]
-#test2 = [substr_idx(s, 'Percentage') for s in data_sets]
-data_sets = [(s[:stringIndex(s, 'data dimension')+1], s[stringIndex(s, 'data dimension')+1:substr_idx(s, 'Percentage')[0]+1], s[substr_idx(s, 'Percentage')[0]+1:]) for s in data_sets]
+
+#data_sets = [(s[:stringIndex(s, 'data dimension')+1], s[stringIndex(s, 'data dimension')+1:substr_idx(s, 'Percentage')[0]+1], s[substr_idx(s, 'Percentage')[0]+1:]) for s in data_sets]
+data_sets = [(s[:stringIndex(s, 'one_vs_others')+1], s[stringIndex(s, 'one_vs_others')+1:substr_idx(s, 'Percentage')[0]+1], s[substr_idx(s, 'Percentage')[0]+1:]) for s in data_sets]
+
 
 eval_avg = {}
 for tup in data_sets:
@@ -29,6 +31,7 @@ for tup in data_sets:
     data_size = int(meta[substr_idx(meta, 'data size')[0]].split(':')[1])
     data_dim = int(meta[substr_idx(meta, 'data dimension')[0]].split(':')[1])
     data_type = meta[substr_idx(meta, 'make_')[0]]
+    one_vs_others = bool(meta[substr_idx(meta, 'one_vs_others')[0]].split()[1])
 
     stdCombi = tup[1]
     stdTime = [float(s.split(':')[1]) for s in stdCombi if 'Time' in s]
@@ -41,6 +44,7 @@ for tup in data_sets:
     dimCombi = tup[2]
     dimTime = [float(s.split(':')[1]) for s in dimCombi if 'Time' in s]
     dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'distinct points' in s]
+    dimStartLevel = [int(s.split(':')[1]) for s in dimCombi if 'dimwise start level' in s]
     #dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'max_evaluations' in s]
     dimAcc = [float(s.split(':')[1].replace('%', '')) for s in dimCombi if 'Percentage' in s]
 
