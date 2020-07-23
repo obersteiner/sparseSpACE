@@ -506,3 +506,51 @@
 18:44:57,979 root INFO :: Time used (s):0.36400294303894043
 18:44:58,343 root INFO :: Time used (s):0.36329197883605957
 18:44:58,724 root INFO :: Time used (s):0.3803427219390869
+19:21:13,876 root INFO :: --- DimWiseClassification begin ---
+19:21:13,888 root INFO :: data size: 1000
+19:21:13,888 root INFO :: data dimension: 2
+19:21:13,888 root INFO :: one vs others: False
+19:21:13,908 root INFO :: used data set: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+19:21:14,270 root INFO :: classification standardCombi max_level: 6
+19:21:26,203 root INFO :: --- DimWiseClassification begin ---
+19:21:26,216 root INFO :: data size: 1000
+19:21:26,216 root INFO :: data dimension: 2
+19:21:26,216 root INFO :: one vs others: False
+19:21:26,251 root INFO :: used data set: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+19:21:26,631 root INFO :: classification standardCombi max_level: 6
+19:21:26,992 root INFO :: Time used (s):0.35924506187438965
+19:21:27,360 root INFO :: Time used (s):0.3673715591430664
+19:21:27,640 root INFO :: Time used (s):0.2800734043121338
+19:21:27,934 root INFO :: Time used (s):0.2929956912994385
+19:21:28,211 root INFO :: Time used (s):0.27750253677368164
+19:21:28,494 root INFO :: Time used (s):0.28203606605529785
+19:21:29,741 root INFO :: Percentage of correct mappings: 71.86%
+19:21:36,49 root INFO :: classification dimwise max_evaluations: 273
+19:21:51,508 root INFO :: --- DimWiseClassification begin ---
+19:21:51,520 root INFO :: data size: 1000
+19:21:51,520 root INFO :: data dimension: 2
+19:21:51,520 root INFO :: one vs others: False
+19:21:51,556 root INFO :: used data set: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+19:21:51,929 root INFO :: classification standardCombi max_level: 6
+19:21:52,220 root INFO :: Time used (s):0.28825950622558594
+19:21:52,507 root INFO :: Time used (s):0.2862236499786377
+19:21:52,797 root INFO :: Time used (s):0.29005932807922363
+19:21:53,86 root INFO :: Time used (s):0.28869009017944336
+19:21:53,374 root INFO :: Time used (s):0.2876474857330322
+19:21:53,669 root INFO :: Time used (s):0.2952098846435547
+19:21:54,957 root INFO :: Percentage of correct mappings: 82.41%
+19:22:01,529 root INFO :: classification dimwise max_evaluations: 273
+19:22:04,983 root INFO :: Number of distinct points used during the refinement: 325
+19:22:04,983 root INFO :: Time used (s):3.445629596710205
+19:22:08,465 root INFO :: Number of distinct points used during the refinement: 330
+19:22:08,465 root INFO :: Time used (s):3.4816105365753174
+19:22:12,19 root INFO :: Number of distinct points used during the refinement: 357
+19:22:12,19 root INFO :: Time used (s):3.553572177886963
+19:22:15,567 root INFO :: Number of distinct points used during the refinement: 334
+19:22:15,567 root INFO :: Time used (s):3.546992301940918
+19:22:19,241 root INFO :: Number of distinct points used during the refinement: 431
+19:22:19,242 root INFO :: Time used (s):3.6740825176239014
+19:22:22,965 root INFO :: Number of distinct points used during the refinement: 436
+19:22:22,965 root INFO :: Time used (s):3.722501516342163
+19:22:24,185 root INFO :: Percentage of correct mappings: 77.89%
+19:22:31,54 root INFO :: --- DimWiseClassification end ---

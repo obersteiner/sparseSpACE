@@ -96,8 +96,8 @@ for data_set in range(6):
                     # part0, part1 = data_copy.split_pieces(0.5)                           # split
                     # data_copy = part0.concatenate(part1)                                 # concatenated
                     # data_copy.set_name('2nd_Set')                                        # renamed
-                    # data_copy.remove_classes(0.2)                                        # freed of some class assignments to samples
-                    without_classes, with_classes = data_copy.split_without_classes()    # seperated into samples with and without classes
+                    # data_copy.remove_labels(0.2)                                        # freed of some class assignments to samples
+                    without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes
                     # data_copy.plot()                                                      # plotted
 
 
@@ -129,7 +129,7 @@ for data_set in range(6):
                     classification.test_data(with_classes, print_output=False)
 
                     # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-                    data_copy.remove_classes(1.0)
+                    data_copy.remove_labels(1.0)
                     calcult_classes = classification(data_copy)
 
                     # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
@@ -175,7 +175,7 @@ for data_set in range(6):
                     classification_dimwise.test_data(with_classes, print_output=False)
 
                     # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-                    data_copy.remove_classes(1.0)
+                    data_copy.remove_labels(1.0)
                     calcult_classes_dimwise = classification(data_copy)
 
                     # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
