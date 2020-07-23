@@ -41,16 +41,10 @@ clear_log()
 
 log_info('--- Classification_eval start ---')
 for data_set in range(6):
-    log_info('~~~~~~~~~~~~~~~~~~~~~~')
-    log_info('~~~ DataSet Change ~~~')
-    log_info('~~~~~~~~~~~~~~~~~~~~~~')
     for dimension in [4]:
-        log_info('||||||||||||||||||||||||')
-        log_info('||| Dimension Change |||')
-        log_info('||||||||||||||||||||||||')
 
         # generate a Circle-Dataset of size with the sklearn library
-        size = 100000
+        size = 10000
         dim = dimension
         if data_set == 0:
             sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
@@ -71,9 +65,6 @@ for data_set in range(6):
 
         for level_max in [2,3,4,5,6,7,8]:
             for start_level in range(2, min(level_max-1, 5)):
-                log_info('########################')
-                log_info('### Max Level Change ###')
-                log_info('########################')
                 for one_vs_others in [False, True]:
 
                     log_info('next iteration')

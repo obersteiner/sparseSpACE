@@ -257,9 +257,9 @@ import DatasetOperation as do
 
 
 # generate a Circle-Dataset of size with the sklearn library
-size = 10000
+size = 1000
 dim = 2
-one_vs_others = True
+one_vs_others = False
 log_info('data size: ' + str(size))
 log_info('data dimension: ' + str(dim))
 log_info('one vs others: ' + str(one_vs_others))
@@ -306,14 +306,14 @@ classification.perform_classification(masslumping=False, lambd=0.0, minimum_leve
 # now we can perform some other operations on this classification object
 
 # we could e.g. plot its classificators and corresponding density estimations
-classification.plot(plot_class_sparsegrid=True, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
+classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
 
 # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
 classification.print_evaluation()
 
 # we can also add more testing data and print the results immediately
-with_classes.set_name("Test_new_data")
-classification.test_data(with_classes, print_output=False)
+#with_classes.set_name("Test_new_data")
+#classification.test_data(with_classes, print_output=False)
 
 # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
 data_copy.remove_classes(1.0)
@@ -323,9 +323,9 @@ calcult_classes = classification(data_copy)
 correct_classes = data.copy()
 correct_classes.scale_range((0.005, 0.995))
 correct_classes.set_name('Correct_Classes')
-calcult_classes.set_name('Calculated_Classes')
+#calcult_classes.set_name('Calculated_Classes')
 retfig0 = correct_classes.plot()
-retfig1 = calcult_classes.plot()
+#retfig1 = calcult_classes.plot()
 
 ########################################################################################################################
 ########################################################################################################################
@@ -351,14 +351,14 @@ classification_dimwise.perform_classification_dimension_wise(_masslumping=False,
 # now we can perform some other operations on this classification object
 
 # we could e.g. plot its classificators and corresponding density estimations
-classification_dimwise.plot(plot_class_sparsegrid=True, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=True)
+classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
 
 # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
 classification_dimwise.print_evaluation()
 
 # we can also add more testing data and print the results immediately
-with_classes.set_name("Test_new_data")
-classification_dimwise.test_data(with_classes, print_output=False)
+#with_classes.set_name("Test_new_data")
+#classification_dimwise.test_data(with_classes, print_output=False)
 
 # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
 data_copy.remove_classes(1.0)

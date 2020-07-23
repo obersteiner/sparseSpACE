@@ -1,12 +1,13 @@
 from numpy import linalg as LA
 from math import isclose, isinf
-from Grid import *
-from BasisFunctions import *
-from RefinementContainer import RefinementContainer
-from RefinementObject import RefinementObject
+from src.Grid import *
+from src.BasisFunctions import *
+from src.RefinementContainer import RefinementContainer
+from src.RefinementObject import RefinementObject
 from bisect import bisect_left
 
 import time
+
 
 class GridOperation(object):
     """This class defines the basic interface for a GridOperation which performs operations on a component grid.
