@@ -31,7 +31,7 @@ for tup in data_sets:
     data_size = int(meta[substr_idx(meta, 'data size')[0]].split(':')[1])
     data_dim = int(meta[substr_idx(meta, 'data dimension')[0]].split(':')[1])
     data_type = meta[substr_idx(meta, 'make_')[0]]
-    one_vs_others = bool(meta[substr_idx(meta, 'one_vs_others')[0]].split()[1])
+    one_vs_others = meta[substr_idx(meta, 'one_vs_others')[0]].split()[1]
 
     stdCombi = tup[1]
     stdTime = [float(s.split(':')[1]) for s in stdCombi if 'Time' in s]
@@ -54,20 +54,40 @@ for tup in data_sets:
     dim_info = namedtuple('dim_info', 'dimTimeAvg dimPointAvg dimAcc')
     entry = (std_info(sum(stdTime)/len(stdTime), sum(stdPoints)/len(stdPoints), stdAcc),
              dim_info(sum(dimTime)/len(dimTime), sum(dimPoints)/len(dimPoints), dimAcc))
-    if data_dim not in eval_avg[data_type].keys():
-        eval_avg[data_type][data_dim] = []
-    eval_avg[data_type][data_dim].append(entry)
+
+    #if old log file type
+    # key = data_dim
+    # else
+    key = str([data_dim, dimStartLevel, one_vs_others])
+
+    if key not in eval_avg[data_type].keys():
+        eval_avg[data_type][key] = []
+    eval_avg[data_type][key].append(entry)
 
 
 # plot the data
 for dtype in eval_avg.keys():
-    for dimension in eval_avg[dtype].keys():
+    #for dimension in eval_avg[dtype].keys():
+    for keys in eval_avg[dtype].keys():
+        if isinstance(keys, int):
+            dimension = keys
+            dimStartLevel_str = ''
+            ovo_str = ''
+        else:
+            k = str(keys).replace('[', '').replace(']', '').replace('\'','')
+            k = k.split(',')
+            dimension = int(k[0])
+            dimStartLevel = int(k[1])
+            dimStartLevel_str = '_DimWiseStartLvl_'+str(dimStartLevel)
+            one_vs_others = k[2]
+            ovo_str = '_one_vs_others' if 'True' in one_vs_others else ''
+
         regex = r"make_.*\("
         match = re.search(regex, str(dtype))
         name = match.group(0)
         name = name.replace('make_', '').replace('(', '')
 
-        entries = eval_avg[dtype][dimension]
+        entries = eval_avg[dtype][keys]
         stdTimes = [t[0].stdTimeAvg for t in entries]
         stdPoints = [t[0].stdPointAvg for t in entries]
         stdAccs = [t[0].stdAcc for t in entries]
@@ -89,7 +109,7 @@ for dtype in eval_avg.keys():
         plt.ylabel("Accuracy")
         plt.legend(loc="upper right")
         plt.title(name + '\ndimensions: ' + str(dimension))
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_acc', bbox_inches='tight')
+        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_acc'+dimStartLevel_str+ovo_str, bbox_inches='tight')
         plt.show()
 
         # plot points and accuracy
@@ -102,7 +122,7 @@ for dtype in eval_avg.keys():
         plt.ylabel("Accuracy")
         plt.title(name + '\ndimensions: ' + str(dimension))
         plt.legend(loc="upper right")
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_points_acc', bbox_inches='tight')
+        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_points_acc'+dimStartLevel_str+ovo_str, bbox_inches='tight')
         plt.show()
 
         # plot runtime and points
@@ -115,7 +135,7 @@ for dtype in eval_avg.keys():
         plt.ylabel("# Points")
         plt.title(name + '\ndimensions: ' + str(dimension))
         plt.legend(loc="upper right")
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_points', bbox_inches='tight')
+        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str, bbox_inches='tight')
         plt.show()
 
 
