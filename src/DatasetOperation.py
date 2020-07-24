@@ -894,10 +894,16 @@ class Classification:
         :param data_to_classificate: DataSet whose samples are to be classified
         :return: List of computed classes in the same order as their corresponding samples
         """
-        density_data = list(zip(*[x(data_to_classificate[0]) for x in self.__classificators]))
-        self.__densities_testset += density_data
-        max_density_per_point = np.amax(density_data, axis=1)
-        return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]  # TODO dynamic classes
+        density_data = np.array([x(data_to_classificate[0]) for x in self.__classificators])
+        results = np.argmax(density_data, axis=0)
+        return results.flatten()
+        #max_density_per_point = np.amax(density_data, axis=1)
+        #return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
+
+        # density_data = list(zip(*[x(data_to_classificate[0]) for x in self.__classificators]))
+        # self.__densities_testset += density_data
+        # max_density_per_point = np.amax(density_data, axis=1)
+        # return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]  # TODO dynamic classes
 
     def __internal_scaling(self, data_to_check: 'DataSet', print_removed: bool = False) -> 'DataSet':
         """Scale data with the same factors as the original data (self.__data) was scaled.
@@ -932,7 +938,8 @@ class Classification:
         return data_to_check
 
     @staticmethod
-    def __print_evaluation(testing_data: 'DataSet', calculated_classes: List[int], density_testdata: List[np.ndarray]) -> None:
+    def __print_evaluation(testing_data: 'DataSet', calculated_classes: List[int], density_testdata: List[np.ndarray],
+                           print_incorrect_points: bool = False) -> None:
         """Print the results of some specified testing data to stdout.
 
         Only prints evaluation if input is valid.
@@ -959,7 +966,7 @@ class Classification:
         print("Percentage of correct mappings:", end=" ")
         print("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))
         log_info("Percentage of correct mappings: " + ("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)))
-        if number_wrong != 0:
+        if number_wrong != 0 and print_incorrect_points:
             print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
             print("Points mapped incorrectly:")
             for i, wr in enumerate(indices_wrong):
