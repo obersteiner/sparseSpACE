@@ -6,6 +6,9 @@ from StandardCombi import *
 from Grid import *
 from GridOperation import DensityEstimation
 
+import numpy as np
+from matplotlib import pyplot as plt
+
 
 class TestDensityEstimation(unittest.TestCase):
 
@@ -133,6 +136,22 @@ class TestDensityEstimation(unittest.TestCase):
             for j in range(len(alpha1)):
                 self.assertAlmostEqual(alpha1[j], alpha2[j])
 
+    def test_calculate_L2_scalarproduct(self):
+
+        dom_1 = [(0.0, 1.0)]
+        point_1 = [0.25]
+        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+        self.assertAlmostEqual(1.0 / 3.0 - res[0])
+
+        dom_1 = [(-1.0, 1.0)]
+        point_1 = [0.0]
+        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+        self.assertAlmostEqual(2.0 / 3.0 - res[0])
+
+        dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
+        point_1 = [0.0, 0.0]
+        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+        self.assertAlmostEqual((4.0 / 9.0) - res[0])
 
 if __name__ == '__main__':
     unittest.main()
