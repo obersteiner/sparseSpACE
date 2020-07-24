@@ -103,7 +103,7 @@ print('modified_basis:', modified_basis)
 boundary = False
 print('points on boundary:', boundary)
 # reuse older R matrix values
-reuse_old_values = False
+reuse_old_values = True
 print('reuse old values: ', reuse_old_values)
 # choose between numeric and analytic calculation
 numeric_calculation = False

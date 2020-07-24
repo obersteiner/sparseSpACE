@@ -266,9 +266,9 @@ log_info('one vs others: ' + str(one_vs_others))
 # sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
 # sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
 # sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
-# sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
 # sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)
-sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
+# sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
 
 log_info('used data set: ' + 'do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
 
@@ -344,14 +344,14 @@ log_info('classification dimwise max_evaluations: ' + str(max_evals))
 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
 classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=3,
                                                      _reuse_old_values=True, _numeric_calculation=False,
-                                                     _boundary=boundary, _modified_basis=modified_basis, _one_vs_others=True,
+                                                     _boundary=boundary, _modified_basis=modified_basis, _one_vs_others=False,
                                                      _tolerance=tolerance, _margin=margin, _max_evaluations=max_evals)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # now we can perform some other operations on this classification object
 
 # we could e.g. plot its classificators and corresponding density estimations
-classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
+classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=True, plot_class_dataset=False, plot_class_density_estimation=True)
 
 # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
 classification_dimwise.print_evaluation()
