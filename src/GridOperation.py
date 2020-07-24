@@ -5,6 +5,7 @@ from src.BasisFunctions import *
 from src.RefinementContainer import RefinementContainer
 from src.RefinementObject import RefinementObject
 from bisect import bisect_left
+from src.Utils import *
 
 import time
 
@@ -338,7 +339,7 @@ class DensityEstimation(AreaOperation):
             return result1
         else:
             surplus_values = self.surpluses[tuple(component_grid.levelvector)]
-            threshold = 20
+            threshold = 200
             if self.grid.get_num_points() < threshold and not self.dimension_wise:
                 self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
                 if self.grid.boundary:
@@ -1316,6 +1317,10 @@ class DensityEstimation(AreaOperation):
         if self.print_output:
             print("Alphas: ", levelvec, alphas)
             print("-" * 100)
+
+        if self.classes is not None:
+            return alphas
+
         # normalize integral of density
         levelvec = np.asarray(levelvec)
         if not self.dimension_wise and not self.grid.boundary:
@@ -1329,6 +1334,7 @@ class DensityEstimation(AreaOperation):
             print("b Vector", b)
             print("surplus_values", alphas)
             print("Weights", weights)
+
         return alphas/integral
 
     def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
@@ -1342,11 +1348,11 @@ class DensityEstimation(AreaOperation):
         N = self.grid.get_num_points()
         b = np.zeros(N)
 
-        threshold = 30
+        threshold = 100
 
         old_b_key = None
         get_point_list = lambda x: list(get_cross_product(x))
-        if self.reuse_old_values and N > threshold:
+        if self.reuse_old_values and (N > threshold or self.classes is not None):
             gridPointCoordsAsStripes = [[(1 / (2**levelvec[d])) * (i+1) for i in range((2**levelvec[d])-1)] for d in range(self.dim)]
 
             if not self.grid.boundary:
@@ -1356,7 +1362,7 @@ class DensityEstimation(AreaOperation):
 
             old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes)
 
-        if self.reuse_old_values and old_b_key is not None and N > threshold:
+        if self.reuse_old_values and old_b_key is not None and (N > threshold or self.classes is not None):
             # copy the old values
             old_b = self.old_B[old_b_key]
             old_point_list = [x for x in get_point_list(self.old_grid_coord[old_b_key]) if 0.0 not in x and 1.0 not in x]
@@ -1399,7 +1405,7 @@ class DensityEstimation(AreaOperation):
             #         for j in range(len(hats)):
             #             sign = 1.0
             #             if self.classes is not None:
-            #                 sign = -1.0 if self.classes[i] < 1 else 1.0
+            #                 sign = self.classes[i]
             #             b[index_list.index(hats[j])] += (self.hat_function(hats[j], levelvec, data[i]) * sign)
             if N < threshold:
                 hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
