@@ -15,6 +15,8 @@ def get_cross_product(one_d_arrays: Sequence[Sequence[Union[float, int]]]) \
 def get_cross_product_list(one_d_arrays: Sequence[Sequence[Union[float, int]]]) -> List[Tuple[Union[float, int], ...]]:
     return list(get_cross_product(one_d_arrays))
 
+def get_cross_product_numpy_array(one_d_arrays: Sequence[Sequence[Union[float, int]]]) -> np.ndarray:
+    return np.array(get_cross_product_list(one_d_arrays))
 
 def get_cross_product_range(one_d_arrays: Sequence[Sequence[int]]) -> Generator[Tuple[int, ...], None, None]:
     return get_cross_product([range(one_d_array) for one_d_array in one_d_arrays])
