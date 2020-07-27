@@ -1,12 +1,17 @@
 from numpy import linalg as LA
 from math import isclose, isinf
-from src.Grid import *
-from src.BasisFunctions import *
-from src.RefinementContainer import RefinementContainer
-from src.RefinementObject import RefinementObject
+from Grid import *
+from BasisFunctions import *
+from RefinementContainer import RefinementContainer
+from RefinementObject import RefinementObject
 from bisect import bisect_left
-from src.Utils import *
-
+from Utils import *
+import time
+import sys
+if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
+    timing = time.time_ns
+else:
+    timing = time.time
 import time
 
 
