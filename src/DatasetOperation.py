@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 import csv
 import warnings
 import random as rnd
-from src.StandardCombi import StandardCombi
-from src.GridOperation import DensityEstimation
+from StandardCombi import StandardCombi
+from GridOperation import DensityEstimation
 from sklearn import datasets, preprocessing
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
-from src.ErrorCalculator import *
-from src.Grid import GlobalTrapezoidalGrid
-from src.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+from ErrorCalculator import *
+from Grid import GlobalTrapezoidalGrid
+from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
-from src.Utils import *
+from Utils import *
 
 
 class DataSet:
