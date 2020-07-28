@@ -535,7 +535,7 @@ class DensityEstimation(AreaOperation):
 
         #self.refinement_container.value += np.array(LA.norm(abs(surpluses), 2)) * component_grid.coefficient
         self.refinement_container.value += np.array(abs(surpluses.sum() / surpluses.size)) * component_grid.coefficient
-        self.surpluses.update({tuple(component_grid.levelvector): surpluses * component_grid.coefficient})
+        self.surpluses.update({tuple(component_grid.levelvector): surpluses})
 
         #if reuse_old_values:
         #    # do nothing as of yet
