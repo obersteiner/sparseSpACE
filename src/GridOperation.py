@@ -742,8 +742,8 @@ class DensityEstimation(AreaOperation):
             coords = [np.array([0.0] + list[gridPointCoordsAsStripes[d]] + [1.0]) for d in range(self.dim)]
         else:
             coords = gridPointCoordsAsStripes
-        upper = get_cross_product_numpy_array([np.roll(coords[d], -1)[1:-1] for d in range(self.dim)])
-        lower = get_cross_product_numpy_array([np.roll(coords[d], 1)[1:-1] for d in range(self.dim)])
+        upper = get_cross_product_numpy_array([[1] if len(coords[d]) == 3 else np.roll(coords[d], -1)[1:-1] for d in range(self.dim)])
+        lower = get_cross_product_numpy_array([[0] if len(coords[d]) == 3 else np.roll(coords[d], 1)[1:-1] for d in range(self.dim)])
         points = get_cross_product_numpy_array([coords[d][1:-1] for d in range(self.dim)])
         return points, lower, upper
     def get_grid_points_with_support(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]], skip_equal_point:bool=False, return_boundary=True):
@@ -953,9 +953,10 @@ class DensityEstimation(AreaOperation):
         else:
             threshold = 100
             if N < threshold:
-                #print(lower, upper, points, data)
-                b = np.sum(self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, data), axis=0)
-                #print(b)
+                evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, data)
+                if self.classes is not None:
+                    evaluations = np.transpose(evaluations.T * np.asarray(self.classes))
+                b = np.sum(evaluations, axis=0)
             else:
                 for i in range(M):
                     hats, indices = self.get_neighbors_optimized(data[i], gridPointCoordsAsStripes)
@@ -1000,6 +1001,8 @@ class DensityEstimation(AreaOperation):
         scaling_factor = 1.0/np.max(R)
         #alphas, info = cg(R*scaling_factor, b*scaling_factor)
         alphas = np.linalg.solve(R*scaling_factor, b*scaling_factor)
+        if self.classes is not None:
+            return alphas
         cg1 = timing()
         print('OP: conjugate_gradient time taken: ', (cg1 - cg0) / 1000000)
         points, weights = self.grid.get_points_and_weights()
@@ -1192,11 +1195,28 @@ class DensityEstimation(AreaOperation):
             #            elif x[dim] < point[dim]:
             #                factor_part = max(0.0, 1.0 - (1.0 / (point[dim] - domain[i][dim][0])) * (point[dim] - x[dim]))
             #            factor2[i] *= factor_part
-            value1_temp = 1.0 - (evaluation_points - grid_point_positions) / (upper - grid_point_positions)
-            value1_maximum_filter = np.maximum.reduce([value1_temp, np.zeros(np.shape(evaluation_points))])
-            value1 =  value1_maximum_filter * np.ceil(evaluation_points - grid_point_positions + 10**-30)
-            value2 = np.maximum.reduce([1.0 - (grid_point_positions - evaluation_points) / (grid_point_positions - lower), np.zeros(np.shape(evaluation_points))]) * np.ceil(grid_point_positions - evaluation_points)
+
+            value_1_temp = (evaluation_points - grid_point_positions)
+            value1_temp = 1.0 - value_1_temp / (upper - grid_point_positions)
+            value1_temp[value1_temp > 1] = 0
+            value1_temp[value1_temp < 0] = 0
+            value1 = value1_temp  #if we are out of support we are <0 if we are on wrong side > 1
+
+            #value1_temp = 1.0 - (evaluation_points - grid_point_positions) / (upper - grid_point_positions)
+            #value1_maximum_filter = np.maximum.reduce([value1_temp, np.zeros(np.shape(evaluation_points))])
+            #value1_2 =  value1_maximum_filter * np.ceil(evaluation_points - grid_point_positions + 10**-30)
+            #print(value1, value1_2)
+            #assert np.all(value1 == value1_2)
+            value_2_temp = (grid_point_positions - evaluation_points)
+            value2_temp = 1.0 - value_2_temp / (grid_point_positions - lower)
+            # if we are out of support we are <0 if we are on wrong side > 1
+            value2_temp[value2_temp >= 1] = 0
+            value2_temp[value2_temp < 0] = 0
+            value2 = value2_temp
+            #value2_2 = np.maximum.reduce([1.0 - (grid_point_positions - evaluation_points) / (grid_point_positions - lower), np.zeros(np.shape(evaluation_points))]) * np.ceil(grid_point_positions - evaluation_points)
             result = np.prod(value1 + value2, axis=2)
+            #print(value2, value2_2)
+            #assert np.all(value2_2 == value2)
             return result
         else:
             # not yet implemented
@@ -1415,6 +1435,7 @@ class DensityEstimation(AreaOperation):
         else:
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
+        print(alphas)
         if integral == 0 or self.debug:
             # integral should not be zero!
             print("Matrix", R)
