@@ -563,7 +563,7 @@ class DataSet:
             de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd,
                                           reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
             error_calculator = ErrorCalculatorSingleDimVolumeGuided()
-        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=True)
         combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme)
         if plot_de_dataset:
             if de_object.scaled:

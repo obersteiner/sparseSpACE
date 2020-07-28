@@ -763,14 +763,17 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             if refinement_object.levels[1] == level:
                 position_level = i
             if refinement_object.levels[1] == level + 1:
-                if position_level_1_left is None:
+                if position_level_1_left is None and position_level is None:
                     position_level_1_left = i
-                if position_level_1_left is not None:
+                elif position_level is not None:
                 #else:
                     #assert position_level_1_right is None
+                    assert position_level_1_right is None
                     position_level_1_right = i
-                if position_level is not None and position_level_1_left is not None and position_level_1_right is not None:
-                    break
+                else:
+                    assert False
+                #if position_level is not None and position_level_1_left is not None and position_level_1_right is not None:
+                #    break
 
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
@@ -782,8 +785,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if position_level_1_right is None:
             print('stop')
         assert position_level is not None
-        assert position_level_1_right is not None
-        assert position_level_1_left is not None
+        #assert position_level_1_right is not None
+        #assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
@@ -802,6 +805,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
                     else:
                         if refinement_object.levels[1] == level + 1:
+                            assert j == position_level_1_right
                             new_leaf_reached = True
                             position_new_leaf = start + j
                         if j > position_level and new_leaf_reached:
@@ -835,6 +839,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                             refinement_object.levels[1] -= 1
                             next_refinement_object.levels[0] -= 1
                         if refinement_object.levels[1] == level:
+                            assert j == position_level_1_left
                             new_leaf_reached = False
                             position_new_leaf = start + j
             assert position_new_leaf is not None
