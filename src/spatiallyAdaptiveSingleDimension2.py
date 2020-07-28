@@ -1243,7 +1243,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                               if refinement_obj.start <= data[i][d] <= refinement_obj.end
                               and copysign(1.0, eval(data[i])) != copysign(1.0, self.operation.classes[i])))
                 if hits + misses > 0:
-                    refinement_obj.add_volume(np.array(misses / (hits + misses)))
+                    refinement_obj.add_volume(np.array(misses / (hits + misses) * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
                     refinement_obj.add_volume(np.zeros(1))
