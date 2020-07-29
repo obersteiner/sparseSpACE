@@ -893,41 +893,44 @@ class GlobalGrid(Grid):
         assert len(grid_points) == len(grid_levels)
         for d in range(self.dim):
             assert len(grid_levels[d]) == len(grid_points[d])
-        self.coordinate_array = []
-        self.coordinate_array_with_boundary = []
-        self.weights = []
-        self.levels = []
+        #self.coordinate_array = []
+        #self.coordinate_array_with_boundary = []
+        #self.weights = []
+        #self.levels = []
         #print("Points and levels", grid_points, grid_levels)
         self.basis = [np.empty(len(grid_points[d]), dtype=object) for d in range(self.dim)]
 
         if self.boundary:
-            self.numPoints = [len(grid_points[d]) for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+            self.numPoints = np.asarray([len(grid_points[d]) for d in range(self.dim)])
+            self.numPointsWithBoundary = np.asarray([len(grid_points[d]) for d in range(self.dim)])
         else:
-            self.numPoints = [len(grid_points[d]) - 2 for d in range(self.dim)]
-            self.numPointsWithBoundary = [len(grid_points[d]) for d in range(self.dim)]
+            self.numPoints = np.asarray([len(grid_points[d]) - 2 for d in range(self.dim)])
+            self.numPointsWithBoundary = np.asarray([len(grid_points[d]) for d in range(self.dim)])
 
-        for d in range(self.dim):
-            # check if grid_points are sorted
-            assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
-            if self.boundary:
-                coordsD = grid_points[d]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d])
-                levelsD = grid_levels[d]
-            else:
-                coordsD = grid_points[d][1:-1]
-                weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1]
-                levelsD = grid_levels[d][1:-1]
-            coords_d_with_boundary = grid_points[d]
-            self.coordinate_array.append(coordsD)
-            self.coordinate_array_with_boundary.append(coords_d_with_boundary)
-            self.weights.append(weightsD)
-            self.levels.append(levelsD)
-            self.numPoints[d] = len(coordsD)
-        self.coordinate_array = np.asarray(self.coordinate_array)
-        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary)
-        self.weights = np.asarray(self.weights)
-        self.levels = np.asarray(self.levels)
+        #for d in range(self.dim):
+        #    # check if grid_points are sorted
+        #    assert all(grid_points[d][i] <= grid_points[d][i + 1] for i in range(len(grid_points[d]) - 1))
+        #    if self.boundary:
+        #        coordsD = grid_points[d]
+        #        weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d])
+        #        levelsD = grid_levels[d]
+        #    else:
+        #        coordsD = grid_points[d][1:-1]
+        #        weightsD = self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1]
+        #        levelsD = grid_levels[d][1:-1]
+        #    coords_d_with_boundary = grid_points[d]
+        #    self.coordinate_array.append(coordsD)
+        #    self.coordinate_array_with_boundary.append(coords_d_with_boundary)
+        #    self.weights.append(weightsD)
+        #    self.levels.append(levelsD)
+        #    self.numPoints[d] = len(coordsD)
+        self.coordinate_array = np.asarray([grid_points_dim[1:-1] if not self.boundary else grid_points_dim for grid_points_dim in grid_points ])
+        self.coordinate_array_with_boundary = np.array(grid_points)
+        if not self.boundary:
+            self.weights = np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1] for d in range(self.dim)])
+        else:
+            self.weights = np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],) for d in range(self.dim)])
+        self.levels = np.asarray([levels_dim[1:-1] if not self.boundary else levels_dim for levels_dim in grid_levels])
 
     def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
         if hasattr(self, 'numPoints'):
