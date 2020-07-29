@@ -529,7 +529,7 @@ class DensityEstimation(AreaOperation):
         # if reuse_old_values:
         #     whole bunch of stuff goes here when implemented
         # else:
-        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        #self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         surpluses = self.solve_density_estimation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)
 
