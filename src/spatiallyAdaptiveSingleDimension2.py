@@ -47,6 +47,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.chebyshev_points = chebyshev_points
         self.use_volume_weighting = use_volume_weighting
         self.timings = timings
+        self.debug = True
 
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
@@ -136,24 +137,28 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             points_level_dim = []
 
             children_indices_dim = []
-            points_dim.append(refine_container_objects[0].start)
-            points_level_dim.append(refine_container_objects[0].levels[0])
-            for i in range(len(refine_container_objects)):
-                refineObj = refine_container_objects[i]
-                if i + 1 < len(refine_container_objects):
-                    next_refineObj = refine_container_objects[i + 1]
-                else:
-                    next_refineObj = None
-
-                subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
-
-                if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
-                    points_dim.append(refineObj.end)
-                    if not self.use_local_children:
-                        if next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0]):
-                            children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
+            if levelvec[d] == 1 and self.use_local_children:
+                points_dim = [refineObj.start for refineObj in refine_container_objects if refineObj.levels[0] <= 1] + [refine_container_objects[-1].end]
+                points_level_dim = [refineObj.levels[0] for refineObj in refine_container_objects if refineObj.levels[0] <= 1] + [refine_container_objects[-1].levels[1]]
+            else:
+                points_dim.append(refine_container_objects[0].start)
+                points_level_dim.append(refine_container_objects[0].levels[0])
+                for i in range(len(refine_container_objects)):
+                    refineObj = refine_container_objects[i]
+                    if i + 1 < len(refine_container_objects):
+                        next_refineObj = refine_container_objects[i + 1]
                     else:
-                        points_level_dim.append(refineObj.levels[1])
+                        next_refineObj = None
+
+                    subtraction_value = self.get_subtraction_value(refineObj, refineContainer, i, max_coarsenings, d, levelvec)
+
+                    if (refineObj.levels[1] <= max(levelvec[d] - subtraction_value, 1)):
+                        points_dim.append(refineObj.end)
+                        if not self.use_local_children:
+                            if next_refineObj is not None and self.is_child(refineObj.levels[0], refineObj.levels[1], next_refineObj.levels[0]):
+                                children_indices_dim.append(self.get_node_info(refineObj.end, refineObj.levels[1], refineObj.start, refineObj.levels[0], next_refineObj.end, next_refineObj.levels[1], d))
+                        else:
+                            points_level_dim.append(refineObj.levels[1])
 
             if self.use_local_children:
                 for i in range(1,len(points_level_dim)-1):
@@ -162,13 +167,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             point_coordinates.append(points_dim)
             children_indices.append(children_indices_dim)
             points_level.append(points_level_dim)
-
-            # Test if children_indices is valid
-            for c in children_indices_dim:
-                points_dim.index(c.left_parent)
-                points_dim.index(c.right_parent)
-            # Test if indices are valid
-            assert all(points_dim[i] <= points_dim[i + 1] for i in range(len(points_dim) - 1))
+            #print(points_dim, points_level_dim, children_indices_dim)
+            if self.debug:
+                # Test if children_indices is valid
+                for c in children_indices_dim:
+                    points_dim.index(c.left_parent)
+                    points_dim.index(c.right_parent)
+                # Test if indices are valid
+                assert all(points_dim[i] <= points_dim[i + 1] for i in range(len(points_dim) - 1))
 
         return point_coordinates, points_level, children_indices
 
