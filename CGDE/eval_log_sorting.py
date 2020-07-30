@@ -27,26 +27,28 @@ data_sets = [(s[:stringIndex(s, 'one_vs_others')+1], s[stringIndex(s, 'one_vs_ot
 
 eval_avg = {}
 for tup in data_sets:
+    str_exists = lambda lines, substr: len(substr_idx(lines, substr)) > 0
     meta = tup[0]
-    data_size = int(meta[substr_idx(meta, 'data size')[0]].split(':')[1])
-    data_dim = int(meta[substr_idx(meta, 'data dimension')[0]].split(':')[1])
-    data_type = meta[substr_idx(meta, 'make_')[0]]
-    one_vs_others = meta[substr_idx(meta, 'one_vs_others')[0]].split()[1]
+    data_size = int(meta[substr_idx(meta, 'data size')[0]].split(':')[1]) if str_exists(meta, 'data size') else None
+    data_dim = int(meta[substr_idx(meta, 'data dimension')[0]].split(':')[1]) if str_exists(meta, 'data dimension') else None
+    data_type = meta[substr_idx(meta, 'make_')[0]] if str_exists(meta, 'make_') else None
+    one_vs_others = meta[substr_idx(meta, 'one_vs_others')[0]].split()[1] if str_exists(meta, 'one_vs_others') else None
+    error_calculator = meta[substr_idx(meta, 'error_calculator')[0]].split()[-1] if str_exists(meta, 'error_calculator') else None
 
     stdCombi = tup[1]
-    stdTime = [float(s.split(':')[1]) for s in stdCombi if 'Time' in s]
-    max_level_std = [int(s.split(':')[1]) for s in stdCombi if 'max_level' in s][0]
-    point_num = ((2**max_level_std) - 1) * data_dim - (data_dim - 1) + (2**data_dim) * prev_level(max_level_std, data_dim)
+    stdTime = [float(s.split(':')[1]) for s in stdCombi if 'Time' in s] if str_exists(stdCombi, 'Time') else None
+    max_level_std = [int(s.split(':')[1]) for s in stdCombi if 'max_level' in s][0] if str_exists(stdCombi, 'max_level') else None
+    point_num = ((2**max_level_std) - 1) * data_dim - (data_dim - 1) + (2**data_dim) * prev_level(max_level_std, data_dim) if max_level_std is not None else 0
     #stdPoints = [((2 ** int(s.split(':')[1])) - 1) * data_dim for s in stdCombi if 'max_level' in s]
     stdPoints = [point_num]
-    stdAcc = [float(s.split(':')[1].replace('%', '')) for s in stdCombi if 'Percentage' in s]
+    stdAcc = [float(s.split(':')[1].replace('%', '')) for s in stdCombi if 'Percentage' in s] if str_exists(stdCombi, 'Percentage') else None
 
     dimCombi = tup[2]
-    dimTime = [float(s.split(':')[1]) for s in dimCombi if 'Time' in s]
-    dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'distinct points' in s]
-    dimStartLevel = [int(s.split(':')[1]) for s in dimCombi if 'dimwise start level' in s]
+    dimTime = [float(s.split(':')[1]) for s in dimCombi if 'Time' in s] if str_exists(dimCombi, 'Time') else None
+    dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'distinct points' in s] if str_exists(dimCombi, 'distinct points') else None
+    dimStartLevel = [int(s.split(':')[1]) for s in dimCombi if 'dimwise start level' in s] if str_exists(dimCombi, 'dimwise start level') else None
     #dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'max_evaluations' in s]
-    dimAcc = [float(s.split(':')[1].replace('%', '')) for s in dimCombi if 'Percentage' in s]
+    dimAcc = [float(s.split(':')[1].replace('%', '')) for s in dimCombi if 'Percentage' in s] if str_exists(dimCombi, 'Percentage') else None
 
     if data_type not in eval_avg.keys():
         eval_avg[data_type] = {}
@@ -58,8 +60,7 @@ for tup in data_sets:
     #if old log file type
     # key = data_dim
     # else
-    key = str([data_dim, dimStartLevel, one_vs_others])
-
+    key = str([data_dim, dimStartLevel, one_vs_others, error_calculator])
     if key not in eval_avg[data_type].keys():
         eval_avg[data_type][key] = []
     eval_avg[data_type][key].append(entry)
@@ -73,6 +74,7 @@ for dtype in eval_avg.keys():
             dimension = keys
             dimStartLevel_str = ''
             ovo_str = ''
+            error_calculator = ''
         else:
             k = str(keys).replace('[', '').replace(']', '').replace('\'','')
             k = k.split(',')
@@ -81,6 +83,7 @@ for dtype in eval_avg.keys():
             dimStartLevel_str = '_DimWiseStartLvl_'+str(dimStartLevel)
             one_vs_others = k[2]
             ovo_str = '_one_vs_others' if 'True' in one_vs_others else ''
+            error_calculator = k[3].split('.')[1]
 
         regex = r"make_.*\("
         match = re.search(regex, str(dtype))
@@ -101,41 +104,44 @@ for dtype in eval_avg.keys():
         time_dim_x = np.linspace(min(dimTimes), max(dimTimes), len(dimTimes))
         acc_y_std = np.array(stdAccs).flatten()
         acc_y_dim = np.array(dimAccs).flatten()
+        min_acc = min(np.min(acc_y_std), np.min(acc_y_dim))
 
-        plt.figure(num=3, figsize=(8, 5))
+        plt.figure(num=3, figsize=(16, 10))
         plt.plot(time_std_x, acc_y_std, label='StdCombi')
         plt.plot(time_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=1.0)
         plt.xlabel("Runtime")
         plt.ylabel("Accuracy")
+        plt.ylim(bottom=min(50.0, min_acc), top=100.0)
         plt.legend(loc="upper right")
-        plt.title(name + '\ndimensions: ' + str(dimension))
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_acc'+dimStartLevel_str+ovo_str, bbox_inches='tight')
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
+        plt.savefig('eval_figs/time_acc/'+name+'_'+str(dimension)+'_time_acc'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
         plt.show()
 
         # plot points and accuracy
         points_std_x = np.linspace(min(stdPoints), max(stdPoints), len(stdPoints))
         points_dim_x = np.linspace(min(dimPoints), max(dimPoints), len(dimPoints))
-        plt.figure(num=3, figsize=(8, 5))
+        plt.figure(num=3, figsize=(16, 10))
         plt.plot(points_std_x, acc_y_std, label='StdCombi')
         plt.plot(points_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=1.0)
         plt.xlabel("# Points")
         plt.ylabel("Accuracy")
-        plt.title(name + '\ndimensions: ' + str(dimension))
+        plt.ylim(bottom=min(50.0, min_acc), top=100.0)
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
         plt.legend(loc="upper right")
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_points_acc'+dimStartLevel_str+ovo_str, bbox_inches='tight')
+        plt.savefig('eval_figs/point_acc/'+name+'_'+str(dimension)+'_points_acc'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
         plt.show()
 
         # plot runtime and points
         point_y_std = np.array(stdPoints).flatten()
         point_y_dim = np.array(dimPoints).flatten()
-        plt.figure(num=3, figsize=(8, 5))
+        plt.figure(num=3, figsize=(16, 10))
         plt.plot(time_std_x, point_y_std, label='StdCombi')
         plt.plot(time_dim_x, point_y_dim, label='DimCombi', color='red', linewidth=1.0)
         plt.xlabel("Runtime")
         plt.ylabel("# Points")
-        plt.title(name + '\ndimensions: ' + str(dimension))
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
         plt.legend(loc="upper right")
-        plt.savefig('eval_figs/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str, bbox_inches='tight')
+        plt.savefig('eval_figs/time_point/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
         plt.show()
 
 

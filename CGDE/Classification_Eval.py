@@ -3,6 +3,7 @@ path.append('../src/')
 path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
+
 from Function import *
 import numpy as np
 import scipy as sp
@@ -11,17 +12,18 @@ from spatiallyAdaptiveSingleDimension2 import *
 from Function import *
 from ErrorCalculator import *
 
-# sgde tut
 from GridOperation import *
 from StandardCombi import *
 from sklearn import datasets
 from SGppCompare import plot_comparison
-from src.Utils import *
-
-from sklearn.neighbors import KernelDensity
 
 import cProfile
 import pstats
+
+from src.ErrorCalculator import *
+
+# sgde tut
+from src.Utils import *
 
 from shutil import copyfile
 import os
@@ -30,6 +32,8 @@ import os
 from sys import path
 path.append('../src/')
 import DatasetOperation as do
+from ErrorCalculator import *
+import logging
 
 def prev_level(l, d):
     if l - 2 <= 0:
@@ -38,21 +42,21 @@ def prev_level(l, d):
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
 clear_log()
+print_log_info = False
+logger.setLevel(logging.INFO)
 
-log_info('--- Classification_eval start ---')
-for data_set in range(6):
-    for dimension in [4]:
+log_info('--- Classification_eval start ---', True)
+for data_set in [3, 5]:
+    for dimension in [3, 4, 5]:
 
         # generate a Circle-Dataset of size with the sklearn library
         size = 10000
         dim = dimension
-        if data_set == 0:
-            sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
-        elif data_set == 1:
-            sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
-        elif data_set == 2:
-            sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
-        elif data_set == 3:
+        # if data_set == 0:
+        #     sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
+        # elif data_set == 1:
+        #     sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
+        if data_set == 3:
             sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
         elif data_set == 4:
             sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=6)
@@ -62,139 +66,173 @@ for data_set in range(6):
 
         # now we can transform this dataset into a DataSet object and give it an appropriate name
         data = do.DataSet(sklearn_dataset, name='Testset')
+        data_range = (0.0, 1.0)
+        data.scale_range(data_range)
 
-        for level_max in [2,3,4,5,6,7,8]:
-            for start_level in range(2, min(level_max-1, 5)):
-                for one_vs_others in [False, True]:
+        max_levels = [2,3,4,5,6]
+        start_levels = [x-3 for x in max_levels if x-3 > 1]
+        if len(start_levels) == 0:
+            start_levels = [2]
+        for level_max in max_levels:
+            for start_level in start_levels:
+                for error_config in [(False, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimMisclassificationGlobal())]:
+                    for rebalancing in [True, False]:
+                        one_vs_others = error_config[0]
+                        error_calc = error_config[1]
+                        log_info('next iteration', print_log_info)
 
-                    log_info('next iteration')
+                        if data_set == 0:
+                            log_info('do.datasets.make_circles(n_samples=size, noise=0.05)', print_log_info)
+                        elif data_set == 1:
+                            log_info('do.datasets.make_moons(n_samples=size, noise=0.3)', print_log_info)
+                        elif data_set == 2:
+                            log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)', print_log_info)
+                        elif data_set == 3:
+                            log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)', print_log_info)
+                        elif data_set == 4:
+                            log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)', print_log_info)
+                        elif data_set == 5:
+                            log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)', print_log_info)
 
-                    if data_set == 0:
-                        log_info('do.datasets.make_circles(n_samples=size, noise=0.05)')
-                    elif data_set == 1:
-                        log_info('do.datasets.make_moons(n_samples=size, noise=0.3)')
-                    elif data_set == 2:
-                        log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)')
-                    elif data_set == 3:
-                        log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
-                    elif data_set == 4:
-                        log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)')
-                    elif data_set == 5:
-                        log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)')
-
-                    log_info('data size: ' + str(size))
-                    log_info('data dimension: ' + str(data.get_dim()))
-                    log_info('one_vs_others ' + str(one_vs_others))
-
-
-                    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                    # now let's look at some functions of the DataSet class
-
-                    # # DataSet objects can e.g. be ...
-                    data_copy = data.copy()                                              # deepcopied
-                    data_copy.scale_range((0.005, 0.995))                                # scaled
-                    # part0, part1 = data_copy.split_pieces(0.5)                           # split
-                    # data_copy = part0.concatenate(part1)                                 # concatenated
-                    # data_copy.set_name('2nd_Set')                                        # renamed
-                    # data_copy.remove_labels(0.2)                                        # freed of some class assignments to samples
-                    without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes
-                    # data_copy.plot()                                                      # plotted
-
-                    data_stdCombi = data.copy()
-                    data_stdCombi_copy = data_copy.copy()
-
-                    data_dimCombi = data.copy()
-                    data_dimCombi_copy = data_copy.copy()
+                        log_info('data size: ' + str(size), print_log_info)
+                        log_info('data dimension: ' + str(data.get_dim()), print_log_info)
+                        t = [i for i, x in enumerate(str(type(error_calc))) if '\'' in x]
+                        log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]], print_log_info)
+                        log_info('one_vs_others ' + str(one_vs_others), print_log_info)
 
 
-                    # and of course we can perform a regular density estimation on a DataSet object:
-                    #de_retval = data_copy.density_estimation(plot_de_dataset=False, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
+                        # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                        # now let's look at some functions of the DataSet class
+
+                        # # DataSet objects can e.g. be ...
+                        data_copy = data.copy()                                              # deepcopied
+                        data_copy.scale_range(data_range)                                # scaled
+                        # part0, part1 = data_copy.split_pieces(0.5)                           # split
+                        # data_copy = part0.concatenate(part1)                                 # concatenated
+                        # data_copy.set_name('2nd_Set')                                        # renamed
+                        # data_copy.remove_labels(0.2)                                        # freed of some class assignments to samples
+                        without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes
+                        # data_copy.plot()                                                      # plotted
+
+                        data.scale_range(data_range)
+
+                        data_stdCombi = data.copy()
+                        data_stdCombi_copy = data_copy.copy()
+
+                        data_dimCombi = data.copy()
+                        data_dimCombi_copy = data_copy.copy()
 
 
-                    # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
-                    # distributed classes
-                    classification = do.Classification(data_stdCombi, split_percentage=0.8, split_evenly=True)
+                        # and of course we can perform a regular density estimation on a DataSet object:
+                        #de_retval = data_copy.density_estimation(plot_de_dataset=False, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
 
-                    # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-                    max_level = level_max
-                    print('classification max_level', max_level)
-                    log_info('classification standardCombi max_level: ' + str(max_level))
-                    classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=False)
 
-                    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                    # now we can perform some other operations on this classification object
+                        # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
+                        # distributed classes
+                        classification = do.Classification(data_stdCombi, split_percentage=0.8, split_evenly=True)
 
-                    # we could e.g. plot its classificators and corresponding density estimations
-                    #classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
+                        # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
+                        max_level = level_max
+                        print('classification max_level', max_level)
+                        log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
+                        classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=False)
 
-                    # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
-                    classification.print_evaluation(print_incorrect_points=False)
+                        # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                        # now we can perform some other operations on this classification object
 
-                    # we can also add more testing data and print the results immediately
-                    #with_classes.set_name("Test_new_data")
-                    #classification.test_data(with_classes, print_output=False)
+                        # we could e.g. plot its classificators and corresponding density estimations
+                        #classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
 
-                    # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-                    #data_stdCombi_copy.remove_labels(1.0)
-                    #calcult_classes = classification(data_stdCombi_copy)
+                        # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
+                        classification.print_evaluation(print_incorrect_points=False)
 
-                    # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
-                    correct_classes = data_stdCombi.copy()
-                    correct_classes.scale_range((0.005, 0.995))
-                    #correct_classes.set_name('Correct_Classes')
-                    #calcult_classes.set_name('Calculated_Classes')
-                    #retfig0 = correct_classes.plot()
-                    #retfig1 = calcult_classes.plot()
+                        # we can also add more testing data and print the results immediately
+                        #with_classes.set_name("Test_new_data")
+                        #classification.test_data(with_classes, print_output=False)
 
-                    ########################################################################################################################
-                    ########################################################################################################################
-                    ########################################################################################################################
-                    ########################################################################################################################
-                    ########################################################################################################################
+                        # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
+                        #data_stdCombi_copy.remove_labels(1.0)
+                        #calcult_classes = classification(data_stdCombi_copy)
 
-                    # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
-                    # distributed classes
-                    classification_dimwise = do.Classification(data_dimCombi, split_percentage=0.8, split_evenly=True)
-                    #max_evals = (((2**(max_level-1)) - 1) * dim)
+                        # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
+                        correct_classes = data_stdCombi.copy()
+                        correct_classes.scale_range(data_range)
+                        #correct_classes.set_name('Correct_Classes')
+                        #calcult_classes.set_name('Calculated_Classes')
+                        #retfig0 = correct_classes.plot()
+                        #retfig1 = calcult_classes.plot()
 
-                    max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
-                    print('classification max_evaluations', max_evals)
-                    log_info('classification dimwise max_evaluations: ' + str(max_evals))
-                    log_info('classification dimwise start level: ' + str(start_level))
-                    # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-                    classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=start_level,
-                                                                         _reuse_old_values=True, _numeric_calculation=False,
-                                                                         _boundary=False, _modified_basis=False, _one_vs_others=one_vs_others,
-                                                                         _tolerance=0.05, _margin=0.5, _max_evaluations=max_evals)
+                        ########################################################################################################################
+                        ########################################################################################################################
+                        ########################################################################################################################
+                        ########################################################################################################################
+                        ########################################################################################################################
 
-                    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                    # now we can perform some other operations on this classification object
+                        # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
+                        # distributed classes
+                        classification_dimwise = do.Classification(data_dimCombi, split_percentage=0.8, split_evenly=True)
+                        #max_evals = (((2**(max_level-1)) - 1) * dim)
 
-                    # we could e.g. plot its classificators and corresponding density estimations
-                    #classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
+                        max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
+                        print('classification max_evaluations', max_evals)
+                        log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
+                        log_info('classification dimwise start level: ' + str(start_level), print_log_info)
+                        # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
+                        if data_set == 0:
+                            figure_prefix = 'dimwise_plots/circles'
+                        elif data_set == 1:
+                            figure_prefix = 'dimwise_plots/moons'
+                        elif data_set == 2:
+                            figure_prefix = 'dimwise_plots/classification'
+                        elif data_set == 3:
+                            figure_prefix = 'dimwise_plots/classification'
+                        elif data_set == 4:
+                            figure_prefix = 'dimwise_plots/blobs'
+                        elif data_set == 5:
+                            figure_prefix = 'dimwise_plots/gaussian_quantiles'
+                        classification_dimwise.perform_classification_dimension_wise(masslumping=False,
+                                                                                     lambd=0.0,
+                                                                                     minimum_level=1, maximum_level=start_level,
+                                                                                     reuse_old_values=True,
+                                                                                     numeric_calculation=False,
+                                                                                     boundary=False,
+                                                                                     modified_basis=False,
+                                                                                     one_vs_others=one_vs_others,
+                                                                                     tolerance=0.05,
+                                                                                     margin=0.5,
+                                                                                     rebalancing=rebalancing,
+                                                                                     max_evaluations=max_evals,
+                                                                                     filename=figure_prefix,
+                                                                                     error_calculator=error_calc)
 
-                    # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
-                    classification_dimwise.print_evaluation(print_incorrect_points=False)
+                        # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                        # now we can perform some other operations on this classification object
 
-                    # we can also add more testing data and print the results immediately
-                    #with_classes.set_name("Test_new_data")
-                    #classification_dimwise.test_data(with_classes, print_output=False)
+                        # we could e.g. plot its classificators and corresponding density estimations
+                        #classification_dimwise.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=False, plot_class_density_estimation=False)
 
-                    # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-                    #data_dimCombi_copy.remove_labels(1.0)
-                    #calcult_classes_dimwise = classification(data_dimCombi_copy)
+                        # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing samples), we can print the current evaluation
+                        classification_dimwise.print_evaluation(print_incorrect_points=False)
 
-                    # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
-                    correct_classes_dimwise = data_dimCombi.copy()
-                    correct_classes_dimwise.scale_range((0.005, 0.995))
-                    #correct_classes_dimwise.set_name('Correct_Classes_dimwise')
-                    #calcult_classes_dimwise.set_name('Calculated_Classes_dimwise')
-                    #retfig0 = correct_classes_dimwise.plot()
-                    #retfig1 = calcult_classes_dimwise.plot()
+                        # we can also add more testing data and print the results immediately
+                        #with_classes.set_name("Test_new_data")
+                        #classification_dimwise.test_data(with_classes, print_output=False)
 
-                    log_info('iteration end')
+                        # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
+                        #data_dimCombi_copy.remove_labels(1.0)
+                        #calcult_classes_dimwise = classification(data_dimCombi_copy)
 
-log_info('--- Classification_eval end ---')
+                        # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
+                        correct_classes_dimwise = data_dimCombi.copy()
+                        correct_classes_dimwise.scale_range(data_range)
+                        #correct_classes_dimwise.set_name('Correct_Classes_dimwise')
+                        #calcult_classes_dimwise.set_name('Calculated_Classes_dimwise')
+                        #retfig0 = correct_classes_dimwise.plot()
+                        #retfig1 = calcult_classes_dimwise.plot()
+
+                        log_info('iteration end', print_log_info)
+
+log_info('--- Classification_eval end ---', print_log_info)
 
 # make a backup of the log without overwriting old ones
 log_backup = 'log_sg_backup'

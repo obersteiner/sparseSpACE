@@ -272,7 +272,7 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, reuse_old_values=False, numeric_calculation=False):
+    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, reuse_old_values=False, numeric_calculation=False, pre_scaled_data=False):
         self.data = data
         self.dim = dim
         if grid is None:
@@ -283,7 +283,7 @@ class DensityEstimation(AreaOperation):
         self.masslumping = masslumping
         self.surpluses = {}
         self.initialized = False
-        self.scaled = False
+        self.scaled = pre_scaled_data
         self.extrema = None
         self.print_output = print_output
         self.reference_solution = None
@@ -300,7 +300,7 @@ class DensityEstimation(AreaOperation):
         self.max_levels = []
         self.numeric_calculation = numeric_calculation
         self.dimension_wise = False
-        print('DensityEstimation debug: ', self.debug)
+        log_debug('DensityEstimation debug: {0}'.format(self.debug), self.print_output)
 
     def initialize(self):
         """
@@ -322,18 +322,21 @@ class DensityEstimation(AreaOperation):
                     dataCSV.append([float(i) for i in row])
                 scaler.fit(dataCSV)
                 if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
-                    self.data = scaler.transform(dataCSV)
+                    #self.data = scaler.transform(dataCSV)
+                    data = scaler.transform(self.data)
                     self.scaled = True
         elif (isinstance(self.data, tuple)):
             self.data = self.data[0]
             scaler.fit(self.data)
             if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
-                self.data = scaler.transform(self.data)
+                #self.data = scaler.transform(self.data)
+                data = scaler.transform(self.data)
                 self.scaled = True
         else:
             scaler.fit(self.data)
             if (any([(x < 0) for x in scaler.data_min_])) or (any([(x > 1) for x in scaler.data_max_])):
-                self.data = scaler.transform(self.data)
+                #self.data = scaler.transform(self.data)
+                data = scaler.transform(self.data)
                 self.scaled = True
         self.initialized = True
 
@@ -356,7 +359,7 @@ class DensityEstimation(AreaOperation):
                 interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
                 interpolated_values = interpolated_values.reshape(((len(evaluation_points), self.point_output_length())))
             else:
-                if not isinstance(self.grid, GlobalGrid):
+                if not isinstance(self.grid, GlobalGrid) and not isinstance(self.grid, GlobalTrapezoidalGrid):
                     self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
                 if mesh_points_grid is None:
                     mesh_points_grid = self.grid.coordinate_array_with_boundary
@@ -409,8 +412,8 @@ class DensityEstimation(AreaOperation):
         surpluses = np.concatenate(list(self.get_result().values()))
         max = np.max(surpluses)
         min = np.min(surpluses)
-        if self.print_output:
-            print("Max: ", max, "Min: ", min)
+        #if self.print_output:
+        log_debug("Max: {0} Max{1}".format(max,min), self.print_output)
         self.extrema = (min, max)
         return self.extrema
 
@@ -608,11 +611,11 @@ class DensityEstimation(AreaOperation):
                 values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
                 values_indices = [nodal_values.index(s) for s in values]
                 if (len(nodal_values) == 0 or len(points_list) == 0 or len(values) == 0):
-                    print('Operation DensityEstimation; error, stop here with debugger')
-                    print('second print to prevent the stupid debugger from skipping lines again')
+                    log_debug('Operation DensityEstimation; error, stop here with debugger', False)
+                    log_debug('second print to prevent the stupid debugger from skipping lines again', False)
                 #if points_indices != values_indices:
                 #    # if nodal_values has duplicate entries we can also end up here
-                #    print('returned wrong component grid value(s)')
+                #    log_debug('returned wrong component grid value(s)', False)
                 return values.reshape((len(values), 1))
                 #return values
             else:
@@ -839,9 +842,9 @@ class DensityEstimation(AreaOperation):
         grid_size = len(points)
         R = np.zeros((grid_size, grid_size))
 
-        if self.print_output:
-            print("Point list: ", points)
-            print("Point levels: ", grid_point_levels)
+        #if self.print_output:
+        log_debug("Point list: {0}".format(points), self.print_output)
+        log_debug("Point levels: {0}".format(grid_point_levels), self.print_output)
         if self.reuse_old_values and not self.masslumping:
             # get overlap of domains between points in each dimension in sequence; sort sequence;
             # the string of the sequence
@@ -913,11 +916,13 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = len(point_list)
         b = np.zeros(N)
+        threshold = 100
+        old_b_key = None
 
-        if self.reuse_old_values:
+        if self.reuse_old_values and N >= threshold:
             old_b_key = self.find_closest_old_B(gridPointCoordsAsStripes)
 
-        if self.reuse_old_values and old_b_key is not None:
+        if self.reuse_old_values and old_b_key is not None and N >= threshold:
             # copy the old values
             old_b = self.old_B[old_b_key]
             old_point_list = [x for x in get_cross_product_list(self.old_grid_coord[old_b_key]) if 0.0 not in x and 1.0 not in x]
@@ -951,7 +956,6 @@ class DensityEstimation(AreaOperation):
                         b[i] += (self.hat_function_non_symmetric(hat, domain, data[x]) * sign)
                     b[i] *= (1 / M)
         else:
-            threshold = 100
             if N < threshold:
                 evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, data)
                 if self.classes is not None:
@@ -973,8 +977,8 @@ class DensityEstimation(AreaOperation):
                                 (self.hat_function_non_symmetric(h, self.get_hat_domain(h, gridPointCoordsAsStripes), data[i]) * sign)
             b *= (1 / M)
 
-        if self.print_output:
-            print("B vector: ", b)
+        #if self.print_output:
+        log_debug("B vector: {0}".format(b), self.print_output)
         max_levels = [max(x) for x in grid_point_levels]
         self.max_levels = [max(max_levels[d]+1, self.max_levels[d]) for d in range(self.dim)]
         self.new_B[str(max_levels)] = np.array(b)  # copy the values, not the reference
@@ -992,11 +996,11 @@ class DensityEstimation(AreaOperation):
         r0 = timing()
         R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
         r1 = timing()
-        print('OP: build_R_matrix_dimension_wise time taken: ', (r1 - r0) / 1000000)
+        log_debug('OP: build_R_matrix_dimension_wise time taken: {0}'.format((r1 - r0) / 1000000), self.print_output)
         b0 = timing()
         b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes, grid_point_levels)
         b1 = timing()
-        print('OP: calculate_B_dimension_wise time taken: ', (b1 - b0) / 1000000)
+        log_debug('OP: calculate_B_dimension_wise time taken: '.format((b1 - b0) / 1000000), self.print_output)
         cg0 = timing()
         scaling_factor = 1.0/np.max(R)
         #alphas, info = cg(R*scaling_factor, b*scaling_factor)
@@ -1004,13 +1008,13 @@ class DensityEstimation(AreaOperation):
         if self.classes is not None:
             return alphas
         cg1 = timing()
-        print('OP: conjugate_gradient time taken: ', (cg1 - cg0) / 1000000)
+        log_debug('OP: conjugate_gradient time taken: '.format((cg1 - cg0) / 1000000), self.print_output)
         points, weights = self.grid.get_points_and_weights()
         integral = np.inner(alphas, weights)
         #print(alphas, R*scaling_factor, b*scaling_factor)
-        if self.print_output:
-            print("Alphas: ", component_grid.levelvector, alphas/integral)
-            print("-" * 100)
+        #if self.print_output:
+        log_debug("Alphas: {0} {1}".format(component_grid.levelvector, alphas/integral), self.print_output)
+        log_debug("-" * 100, self.print_output)
         return alphas/integral
 
     def calculate_L2_scalarproduct(self, point_i: Tuple[int, ...], domain_i: Sequence[Tuple[int, int]],
@@ -1024,17 +1028,17 @@ class DensityEstimation(AreaOperation):
         :return: L2-scalarproduct of the two hat functions plus the error of the calculation
         """
         if not (len(point_i) == len(point_j) == len(domain_i) == len(domain_j)):
-            print('error in calculate_L2_scalarproduct: dimensionality of the points i,j or their domains differ')
+            log_error('error in calculate_L2_scalarproduct: dimensionality of the points i,j or their domains differ', True)
         # check adjacency
         if all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(self.dim))):
             f = lambda *x: (self.hat_function_non_symmetric(point_i, domain_i, [*x]) * self.hat_function_non_symmetric(point_j, domain_j, [*x]))
             start = [min(domain_i[d][0], domain_j[d][0]) for d in range(self.dim)]
             end = [max(domain_i[d][1], domain_j[d][1]) for d in range(self.dim)]
-            if self.print_output:
-                print("-" * 100)
-                print("Calculating")
-                print("Gridpoints: ", point_i, point_j)
-                print("Domain: ", start, end)
+            #if self.print_output:
+            log_debug("-" * 100, self.print_output)
+            log_debug("Calculating", self.print_output)
+            log_debug("Gridpoints: {0} {1}".format(point_i, point_j), self.print_output)
+            log_debug("Domain: {0} {1}".format(start, end), self.print_output)
             return nquad(f, [[start[d], end[d]] for d in range(self.dim)],
                          opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
         else:
@@ -1365,10 +1369,10 @@ class DensityEstimation(AreaOperation):
 
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
         R[np.diag_indices_from(R)] += (diag_val + self.lambd)
-        if self.print_output:
-            print("Indexlist: ", index_list)
-            print("Levelvector: ", levelvec)
-            print("Diagonal value: ", diag_val)
+        #if self.print_output:
+        log_debug("Indexlist: {0}".format(index_list), self.print_output)
+        log_debug("Levelvector: {0}".format(levelvec), self.print_output)
+        log_debug("Diagonal value: {0}".format(diag_val), self.print_output)
         if self.masslumping == False:
             for i in range(grid_size - 1):
                 for j in range(i + 1, grid_size):
@@ -1391,16 +1395,16 @@ class DensityEstimation(AreaOperation):
                             res *= 1 / (2 ** (levelvec[k] - 1) * 12)
 
                     if res == 0:
-                        if self.print_output:
-                            print("-" * 100)
-                            print("Skipping calculation")
-                            print("Gridpoints: ", index_list[i], index_list[j])
+                        #if self.print_output:
+                        log_debug("-" * 100, self.print_output)
+                        log_debug("Skipping calculation", self.print_output)
+                        log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]), self.print_output)
                     else:
-                        if self.print_output:
-                            print("-" * 100)
-                            print("Calculating")
-                            print("Gridpoints: ", index_list[i], index_list[j])
-                            print("Result: ", res)
+                        #if self.print_output:
+                        log_debug("-" * 100, self.print_output)
+                        log_debug("Calculating", self.print_output)
+                        log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]), self.print_output)
+                        log_debug("Result: {0}".format(res), self.print_output)
                         R[i, j] = res
                         R[j, i] = res
         return R
@@ -1421,9 +1425,9 @@ class DensityEstimation(AreaOperation):
             alphas = b
         else:
             alphas, info = cg(R, b)
-        if self.print_output:
-            print("Alphas: ", levelvec, alphas)
-            print("-" * 100)
+        #if self.print_output:
+        log_debug("Alphas: ".format(levelvec, alphas), self.print_output)
+        log_debug("-" * 100, self.print_output)
 
         if self.classes is not None:
             return alphas
@@ -1435,13 +1439,13 @@ class DensityEstimation(AreaOperation):
         else:
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
-        print(alphas)
+        log_debug(alphas, self.print_output)
         if integral == 0 or self.debug:
             # integral should not be zero!
-            print("Matrix", R)
-            print("b Vector", b)
-            print("surplus_values", alphas)
-            print("Weights", weights)
+            log_debug("Matrix: ".format(R), self.print_output)
+            log_debug("b Vector: ".format(b), self.print_output)
+            log_debug("surplus_values: ".format(alphas), self.print_output)
+            log_debug("Weights: ".format(weights), self.print_output)
 
         return alphas/integral
 
@@ -1549,8 +1553,8 @@ class DensityEstimation(AreaOperation):
                     # for j in range(len(hats)):
                     #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
             b *= (1 / M)
-            if self.print_output:
-                print("B vector: ", b)
+            #if self.print_output:
+            log_debug("B vector: {0}".format(b), self.print_output)
         return b
 
     def hat_function(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:
@@ -1660,7 +1664,7 @@ class DensityEstimation(AreaOperation):
             ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
 
         else:
-            print("Cannot print data of dimension > 2")
+            log_warning("Cannot print data of dimension > 2")
 
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
@@ -1920,7 +1924,7 @@ class Integration(AreaOperation):
         combi_integral = self.integral
         if len(combi_integral) == 1:
             combi_integral = combi_integral[0]
-        print("combiintegral:", combi_integral)
+        log_debug("combiintegral: {0}".format(combi_integral), True)
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
         reuse_old_values = False

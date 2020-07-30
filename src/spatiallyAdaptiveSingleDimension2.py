@@ -488,6 +488,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         #plt.show()
+        plt.close()
         return fig
 
     def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
@@ -583,14 +584,14 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             calc0 = timing()
             self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
             calc1 = timing()
-            print('DIM: calculate_operation_dimension_wise time taken: ', (calc1 - calc0) / 1000000)
+            log_debug('DIM: calculate_operation_dimension_wise time taken: {0}'.format((calc1 - calc0) / 1000000), self.print_output)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             if not self.errorEstimator.is_global:
                 err0 = timing()
                 self.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
                 err1 = timing()
-                print('DIM: compute_error_estimates_dimension_wise time taken: ', (err1 - err0) / 1000000)
+                log_debug('DIM: compute_error_estimates_dimension_wise time taken: {0}'.format((err1 - err0) / 1000000), self.print_output)
 
             # save the number of evaluations used per d-1 dimensional slice
             #for d in range(self.dim):
@@ -720,8 +721,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         """
         self.lmax[d] += value
         if self.dim_adaptive:
-            if self.print_output:
-                print("New lmax:", self.lmax)
+            #if self.print_output:
+            log_debug("New lmax: {0}".format(self.lmax), self.print_output)
             while (True):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
@@ -778,12 +779,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
         safetyfactor = 10**-1#0#0.1
-        if position_level is None:
-            print('stop')
-        if position_level_1_left is None:
-            print('stop')
-        if position_level_1_right is None:
-            print('stop')
+        # if position_level is None:
+        #     print('stop')
+        # if position_level_1_left is None:
+        #     print('stop')
+        # if position_level_1_right is None:
+        #     print('stop')
         assert position_level is not None
         #assert position_level_1_right is not None
         #assert position_level_1_left is not None
@@ -791,8 +792,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-            if self.print_output:
-                print("Rebalancing!")
+            #if self.print_output:
+            log_debug("Rebalancing!", self.print_output)
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -820,8 +821,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         new_leaf_reached = True
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-            if self.print_output:
-                print("Rebalancing!")
+            #if self.print_output:
+            log_debug("Rebalancing!", self.print_output)
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)

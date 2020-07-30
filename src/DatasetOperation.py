@@ -472,10 +472,11 @@ class DataSet:
                            maximum_level: int = 5,
                            one_vs_others: bool = False,
                            reuse_old_values: bool = False,
+                           pre_scaled_data: bool = False,
                            plot_de_dataset: bool = True,
                            plot_density_estimation: bool = True,
                            plot_combi_scheme: bool = True,
-                           plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
+                           plot_sparsegrid: bool = True,) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation on this DataSet.
 
         Also is able to plot the DensityEstimation results directly.
@@ -495,10 +496,10 @@ class DataSet:
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         if one_vs_others:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, classes=self.__data[1])
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, classes=self.__data[1], pre_scaled_data=pre_scaled_data)
         else:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values)
-        combi_object = StandardCombi(a, b, operation=de_object, print_output=True)
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, pre_scaled_data=pre_scaled_data)
+        combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
             if de_object.scaled:
@@ -522,13 +523,17 @@ class DataSet:
                                           margin: float = 0.5,
                                           tolerance: float = 0.01,
                                           max_evaluations: int = 256,
+                                          rebalancing: bool = False,
                                           modified_basis: bool = False,
                                           boundary: bool = False,
                                           one_vs_others: bool = True,
+                                          error_calculator: ErrorCalculator = None,
+                                          pre_scaled_data: bool = False,
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
-                                          plot_sparsegrid: bool = True,) -> Tuple[StandardCombi, DensityEstimation]:
+                                          plot_sparsegrid: bool = True,
+                                          filename: str = None) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation on this DataSet.
 
         Also is able to plot the DensityEstimation results directly.
@@ -554,17 +559,26 @@ class DataSet:
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=modified_basis, boundary=boundary)
-        if one_vs_others:
-            de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd,
-                                          classes=self.__data[1],
-                                          reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
-            error_calculator = ErrorCalculatorSingleDimMisclassificationGlobal()
-        else:
-            de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd,
-                                          reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation)
+        if error_calculator is None:
             error_calculator = ErrorCalculatorSingleDimVolumeGuided()
-        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=True)
-        combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme)
+
+        classes = None
+        if one_vs_others:
+            classes = self.__data[1]
+
+        de_object = DensityEstimation(self.__data,
+                                      self.__dim,
+                                      grid=grid,
+                                      masslumping=masslumping,
+                                      lambd=lambd,
+                                      classes=classes,
+                                      reuse_old_values=reuse_old_values,
+                                      numeric_calculation=numeric_calculation,
+                                      print_output=False,
+                                      pre_scaled_data=pre_scaled_data)
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing)
+        combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance,
+                                             max_evaluations=max_evaluations, do_plot=plot_combi_scheme, print_output=False)
         if plot_de_dataset:
             if de_object.scaled:
                 self.scale_range((0, 1), override_scaling=True)
@@ -575,6 +589,11 @@ class DataSet:
             combi_object.print_resulting_combi_scheme(operation=de_object)
         if plot_sparsegrid:
             combi_object.print_resulting_sparsegrid(markersize=20)
+        err_str = str(type(error_calculator)).replace('ErrorCalculator.', '')
+        t = [i for i, x in enumerate(err_str) if '\'' in x]
+        err_str = err_str[t[0]+1:t[-1]]
+        if filename is not None:
+            combi_object.draw_refinement(filename=filename+'_dim-'+str(self.__dim)+'_maxEvals-'+str(max_evaluations)+'_errCalc-'+err_str+'.png')
         return combi_object, de_object
 
     def plot(self, plot_labels: bool = True) -> plt.Figure:
@@ -661,7 +680,8 @@ class Classification:
                  data_range: Tuple[np.ndarray, np.ndarray] = None,
                  split_percentage: float = 1.0,
                  split_evenly: bool = True,
-                 one_vs_others: bool = False):
+                 one_vs_others: bool = False,
+                 print_output: bool = False):
         """Constructor of Classification.
 
         Takes raw_data as necessary parameter and some more optional parameters which are specified below.
@@ -697,6 +717,7 @@ class Classification:
         self.__one_vs_others_labels = [] # only used if one_vs_others is true
         self.__performed_classification = False
         self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly, one_vs_others)
+        self.__print_output = print_output
 
     def __call__(self, data_to_evaluate: 'DataSet', print_removed: bool = True) -> 'DataSet':
         """Evaluate classes for samples in input data and create a new DataSet from those same samples and classes.
@@ -714,10 +735,10 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if data_to_evaluate.is_empty():
             raise ValueError("Can't classificate empty dataset.")
-        print("Evaluating classes of %s DataSet..." % data_to_evaluate.get_name())
+        log_debug("Evaluating classes of {0} DataSet...".format(data_to_evaluate.get_name()), self.__print_output)
         evaluate = self.__internal_scaling(data_to_evaluate, print_removed=print_removed)
-        print("_________________________________________________________________________________________________________________________________")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
+        log_debug("_________________________________________________________________________________________________________________________________", self.__print_output)
+        log_debug("---------------------------------------------------------------------------------------------------------------------------------", self.__print_output)
         if evaluate.is_empty():
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
@@ -789,7 +810,7 @@ class Classification:
             self.__data_range = (self.__data.get_original_min(), self.__data.get_original_max())
             self.__scale_factor = self.__data.get_scaling_factor()
         if not self.__omitted_data.is_empty():
-            print("Omitted some classless samples during initialization and added them to omitted sample collection of this object.")
+            log_debug("Omitted some classless samples during initialization and added them to omitted sample collection of this object.", self.__print_output)
             self.__omitted_data.shift_value(-self.__data_range[0], override_scaling=True)
             self.__omitted_data.scale_factor(self.__scale_factor, override_scaling=True)
             self.__omitted_data.shift_value(0.005, override_scaling=True)
@@ -814,7 +835,8 @@ class Classification:
                                  minimum_level: int,
                                  maximum_level: int,
                                  reuse_old_values: bool = False,
-                                 one_vs_others: bool = False) -> None:
+                                 one_vs_others: bool = False,
+                                 pre_scaled_data: bool = False) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -833,27 +855,31 @@ class Classification:
         else:
             learning_data_classes = self.__learning_data.split_labels()
         operation_list = [x.density_estimation(masslumping=masslumping, lambd=lambd, minimum_level=minimum_level, maximum_level=maximum_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values,
-                                               plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
+                                               plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False, pre_scaled_data=pre_scaled_data)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
         self.__de_objects = [x[1] for x in operation_list]
-        print("Performed Classification of '%s' DataSet." % self.__data.get_name())
-        print("_________________________________________________________________________________________________________________________________")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
+        log_debug("Performed Classification of '{0}' DataSet.".format(self.__data.get_name()), self.__print_output)
+        log_debug("_________________________________________________________________________________________________________________________________", self.__print_output)
+        log_debug("---------------------------------------------------------------------------------------------------------------------------------", self.__print_output)
 
     def __perform_classification_dimension_wise(self,
-                                                _masslumping: bool,
-                                                _lambd: float,
-                                                _minimum_level: int,
-                                                _maximum_level: int,
-                                                _reuse_old_values: bool = False,
-                                                _numeric_calculation: bool = True,
-                                                _margin: float = 0.5,
-                                                _tolerance: float = 0.01,
-                                                _max_evaluations: int = 256,
-                                                _modified_basis: bool = False,
-                                                _boundary: bool = False,
-                                                _one_vs_others: bool = False) -> None:
+                                                masslumping: bool,
+                                                lambd: float,
+                                                minimum_level: int,
+                                                maximum_level: int,
+                                                reuse_old_values: bool = False,
+                                                numeric_calculation: bool = True,
+                                                margin: float = 0.5,
+                                                tolerance: float = 0.01,
+                                                max_evaluations: int = 256,
+                                                rebalancing: bool = False,
+                                                modified_basis: bool = False,
+                                                boundary: bool = False,
+                                                one_vs_others: bool = False,
+                                                error_calculator: ErrorCalculator = None,
+                                                pre_scaled_data: bool = False,
+                                                filename: str = None) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -867,23 +893,38 @@ class Classification:
         :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
         :return: None
         """
-        if _one_vs_others:
+        if one_vs_others:
             learning_data_classes = self.__data.split_one_vs_others()
         else:
             learning_data_classes = self.__learning_data.split_labels()
 
         operation_list = [x.density_estimation_dimension_wise(
-            masslumping=_masslumping, lambd=_lambd, minimum_level=_minimum_level, maximum_level=_maximum_level,
-            reuse_old_values=_reuse_old_values, numeric_calculation=_numeric_calculation,
-            margin=_margin, tolerance=_tolerance, max_evaluations=_max_evaluations,
-            modified_basis=_modified_basis, boundary=_boundary, one_vs_others=_one_vs_others,
-            plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
+                                                        masslumping=masslumping,
+                                                        lambd=lambd,
+                                                        minimum_level=minimum_level,
+                                                        maximum_level=maximum_level,
+                                                        reuse_old_values=reuse_old_values,
+                                                        numeric_calculation=numeric_calculation,
+                                                        margin=margin,
+                                                        tolerance=tolerance,
+                                                        max_evaluations=max_evaluations,
+                                                        rebalancing=rebalancing,
+                                                        modified_basis=modified_basis,
+                                                        boundary=boundary,
+                                                        one_vs_others=one_vs_others,
+                                                        error_calculator=error_calculator,
+                                                        plot_de_dataset=False,
+                                                        plot_density_estimation=False,
+                                                        plot_combi_scheme=False,
+                                                        plot_sparsegrid=False,
+                                                        filename=filename,
+                                                        pre_scaled_data=pre_scaled_data)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
         self.__de_objects = [x[1] for x in operation_list]
-        print("Performed Classification of '%s' DataSet." % self.__data.get_name())
-        print("_________________________________________________________________________________________________________________________________")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
+        log_debug("Performed Classification of '{0}' DataSet.".format(self.__data.get_name()), self.__print_output)
+        log_debug("_________________________________________________________________________________________________________________________________", self.__print_output)
+        log_debug("---------------------------------------------------------------------------------------------------------------------------------", self.__print_output)
 
     def __classificate(self, data_to_classificate: 'DataSet') -> List[int]:
         """Calculate classes for samples of input data.
@@ -927,14 +968,12 @@ class Classification:
         remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.0049) for y in x]) or any([(y > 0.9951) for y in x])]
         removed_samples = data_to_check.remove_samples(remove_indices)
         if not removed_samples.is_empty():
-            print("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators."
-                  % data_to_check.get_name())
+            log_warning("During internal scale checking of {0} DataSet some samples were removed due to them being out of bounds of classificators.".format(data_to_check.get_name()), True)
             if print_removed:
-                print("Points removed during scale checking:")
+                points = ''
                 for i, x in enumerate(removed_samples[0]):
-                    print(i, end=": ")
-                    print(x, end=" | class: ")
-                    print(removed_samples[1][i])
+                    points += '{0} : {1} | class: {2}'.format(i, x, removed_samples[1][i])
+                log_debug('Points removed during scale checking: \n{0}'.format(points), True)
         return data_to_check
 
     @staticmethod
@@ -958,26 +997,21 @@ class Classification:
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
-        print("Evaluation:")
-        print("Number of wrong mappings:", end=" ")
-        print(number_wrong)
-        print("Number of total mappings:", end=" ")
-        print(len(calculated_classes))
-        print("Percentage of correct mappings:", end=" ")
-        print("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))
-        log_info("Percentage of correct mappings: " + ("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)))
+        log_debug("Evaluation:", True)
+        log_debug("Number of wrong mappings: {0}".format(number_wrong), True)
+        log_debug("Number of total mappings: {0}".format(len(calculated_classes)), True)
+        log_debug("Percentage of correct mappings: {:10.2f}".format(((1.0 - (number_wrong / len(calculated_classes))) * 100)), True)
+        log_info("Percentage of correct mappings: " + ("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)), False)
         if number_wrong != 0 and print_incorrect_points:
-            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            print("Points mapped incorrectly:")
+            log_debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", True)
+            points = ''
             for i, wr in enumerate(indices_wrong):
-                print(i, end=": ")
-                print(testing_data[0][wr], end=" | correct class: ")
-                print(testing_data[1][wr], end=", calculated class: ")
-                print(calculated_classes[wr], end=" | ")
+                points += "{0}: {1} | correct class: {2}, calculated class: {3} | ".format(i, testing_data[0][wr], testing_data[1][wr], calculated_classes[wr])
+                d_c = ""
                 for j, x in enumerate(density_testdata[wr]):
-                    print("density_class%d" % j, end=": ")
-                    print(x, end=", ")
-                print()
+                    d_c += "density_class{0}: {1}, ".format(j, x)
+                points += d_c
+            log_debug("Points mapped incorrectly: {0}".format(points), True)
 
     def perform_classification(self,
                                masslumping: bool = True,
@@ -985,7 +1019,8 @@ class Classification:
                                minimum_level: int = 1,
                                maximum_level: int = 5,
                                reuse_old_values: bool = False,
-                               one_vs_others: bool = False) -> None:
+                               one_vs_others: bool = False,
+                               pre_scaled_data: bool = False) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
         Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
@@ -998,7 +1033,7 @@ class Classification:
         :return: None
         """
         if not self.__performed_classification:
-            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
+            self.__perform_classification(masslumping, lambd, minimum_level, maximum_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values, pre_scaled_data=pre_scaled_data)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
@@ -1006,18 +1041,22 @@ class Classification:
             raise ValueError("Can't perform classification for the same object twice.")
 
     def perform_classification_dimension_wise(self,
-                                              _masslumping: bool = True,
-                                              _lambd: float = 0.0,
-                                              _minimum_level: int = 1,
-                                              _maximum_level: int = 5,
-                                              _reuse_old_values: bool = False,
-                                              _numeric_calculation: bool = True,
-                                              _margin: float = 0.5,
-                                              _tolerance: float = 0.01,
-                                              _max_evaluations: int = 256,
-                                              _modified_basis: bool = False,
-                                              _boundary: bool = False,
-                                              _one_vs_others: bool = False) -> None:
+                                              masslumping: bool = True,
+                                              lambd: float = 0.0,
+                                              minimum_level: int = 1,
+                                              maximum_level: int = 5,
+                                              reuse_old_values: bool = False,
+                                              numeric_calculation: bool = True,
+                                              margin: float = 0.5,
+                                              tolerance: float = 0.01,
+                                              max_evaluations: int = 256,
+                                              rebalancing: bool = False,
+                                              modified_basis: bool = False,
+                                              boundary: bool = False,
+                                              one_vs_others: bool = False,
+                                              error_calculator: ErrorCalculator = None,
+                                              pre_scaled_data: bool = False,
+                                              filename: str = None) -> None:
         """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
 
         Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
@@ -1030,18 +1069,22 @@ class Classification:
         :return: None
         """
         if not self.__performed_classification:
-            self.__perform_classification_dimension_wise(_masslumping=_masslumping,
-                                                         _lambd=_lambd,
-                                                         _minimum_level=_minimum_level,
-                                                         _maximum_level=_maximum_level,
-                                                         _margin=_margin,
-                                                         _tolerance=_tolerance,
-                                                         _max_evaluations=_max_evaluations,
-                                                         _modified_basis=_modified_basis,
-                                                         _boundary=_boundary,
-                                                         _reuse_old_values=_reuse_old_values,
-                                                         _numeric_calculation=_numeric_calculation,
-                                                         _one_vs_others=_one_vs_others)
+            self.__perform_classification_dimension_wise(masslumping=masslumping,
+                                                         lambd=lambd,
+                                                         minimum_level=minimum_level,
+                                                         maximum_level=maximum_level,
+                                                         margin=margin,
+                                                         tolerance=tolerance,
+                                                         max_evaluations=max_evaluations,
+                                                         rebalancing=rebalancing,
+                                                         modified_basis=modified_basis,
+                                                         boundary=boundary,
+                                                         reuse_old_values=reuse_old_values,
+                                                         numeric_calculation=numeric_calculation,
+                                                         one_vs_others=one_vs_others,
+                                                         error_calculator=error_calculator,
+                                                         filename=filename,
+                                                         pre_scaled_data=pre_scaled_data)
             self.__performed_classification = True
             if not self.__testing_data.is_empty():
                 self.__calculated_classes_testset = self.__classificate(self.__testing_data)
@@ -1064,11 +1107,11 @@ class Classification:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
-        print("Printing evaluation of all current testing data...")
-        print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+        log_debug("Printing evaluation of all current testing data...", True)
+        log_debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", True)
         self.__print_evaluation(self.__testing_data, self.__calculated_classes_testset, self.__densities_testset)
-        print("_________________________________________________________________________________________________________________________________")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
+        log_debug("_________________________________________________________________________________________________________________________________", True)
+        log_debug("---------------------------------------------------------------------------------------------------------------------------------", True)
 
     def plot(self,
              plot_class_dataset: bool = True,
@@ -1126,7 +1169,7 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
-        print("Testing classes of %s DataSet..." % new_testing_data.get_name())
+        log_debug("Testing classes of {0} DataSet...".format(new_testing_data.get_name()), True)
         new_testing_data.set_label("class")
         evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
@@ -1135,18 +1178,18 @@ class Classification:
                              (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
         omitted_data, used_data = evaluate.split_without_labels()
         if not omitted_data.is_empty():
-            print("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
+            log_debug("Omitted some classless samples during testing and added them to omitted sample collection of this object.", True)
         self.__omitted_data.concatenate(omitted_data)
         self.__data.concatenate(used_data)
         self.__testing_data.concatenate(used_data)
         calculated_new_testclasses = self.__classificate(used_data)
         self.__calculated_classes_testset += calculated_new_testclasses
         if print_output:
-            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+            log_debug("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -", True)
             self.__print_evaluation(used_data, calculated_new_testclasses, self.__densities_testset[(len(self.__densities_testset) -
                                                                                                     new_testing_data.get_length()):])
-            print("_________________________________________________________________________________________________________________________________")
-            print("---------------------------------------------------------------------------------------------------------------------------------")
+            log_debug("_________________________________________________________________________________________________________________________________", True)
+            log_debug("---------------------------------------------------------------------------------------------------------------------------------", True)
         return omitted_data
 
 

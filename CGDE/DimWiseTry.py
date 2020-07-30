@@ -4,17 +4,16 @@ path.append('../src/')
 path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
-from Function import *
 import numpy as np
 import scipy as sp
 
-from spatiallyAdaptiveSingleDimension2 import *
-from Function import *
-from ErrorCalculator import *
+from src.spatiallyAdaptiveSingleDimension2 import *
+from src.Function import *
+from src.ErrorCalculator import *
 
 # sgde tut
-from GridOperation import *
-from StandardCombi import *
+from src.GridOperation import *
+from src.StandardCombi import *
 from sklearn import datasets
 from SGppCompare import plot_comparison
 

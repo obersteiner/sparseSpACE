@@ -31,24 +31,33 @@ logging.basicConfig(filename=log_filename,
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s :: %(message)s',
                     datefmt='%H:%M:%S',
-                    level=logging.INFO)
+                    level=logging.ERROR)
+logger = logging.getLogger('util')
+logger.setLevel(logging.DEBUG)
 
 
-def log_error(message):
-    logging.error(message)
+def log_error(message: str = '', do_print: bool = False):
+    logger.error(message)
+    if do_print:
+        print(message)
 
 
-def log_warning(message):
-    logging.warning(message)
+def log_warning(message: str = '', do_print: bool = False):
+    logger.warning(message)
+    if do_print:
+        print(message)
 
 
-def log_info(message):
-    logging.info(message)
+def log_info(message: str = '', do_print: bool = False):
+    logger.info(message)
+    if do_print:
+        print(message)
 
 
-def log_debug(message):
-    logging.debug(message)
-
+def log_debug(message: str = '', do_print: bool = False):
+    logger.debug(message)
+    if do_print:
+        print(message)
 
 def clear_log():
     open(log_filename, 'w').close()

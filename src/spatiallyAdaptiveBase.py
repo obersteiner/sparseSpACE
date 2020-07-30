@@ -63,11 +63,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         assert np.isscalar(lmin)
         assert np.isscalar(lmax)
         self.tolerance = tol
-        if self.print_output:
-            if self.reference_solution is not None:
-                print("Reference solution:", self.reference_solution)
-            else:
-                print("No reference solution present. Working purely on surplus error estimates.")
+        #if self.print_output:
+        if self.reference_solution is not None:
+            log_debug("Reference solution: {0}".format(self.reference_solution), self.print_output)
+        else:
+            log_debug("No reference solution present. Working purely on surplus error estimates.", self.print_output)
         if refinement_container is None:  # initialize refinement
             self.lmin = [lmin for i in range(self.dim)]
             self.lmax = [lmax for i in range(self.dim)]
@@ -107,9 +107,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        if self.print_output:
-            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-            self.operation.print_evaluation_output(self.refinement)
+        #if self.print_output:
+        log_debug("max surplus error: {0} total surplus error: {1}".format(self.benefit_max, self.total_error), self.print_output)
+        self.operation.print_evaluation_output(self.refinement)
         global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
@@ -184,9 +184,9 @@ class SpatiallyAdaptivBase(StandardCombi):
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate operation and check if further refinements necessary
-                if self.print_output:
-                    print("Finished refinement")
-                    print("Refined ", num_refinements, " times")
+                #if self.print_output:
+                log_debug("Finished refinement", self.print_output)
+                log_debug("Refined {0} times".format(num_refinements), self.print_output)
                 self.refinement_postprocessing()
                 break
 
@@ -195,8 +195,8 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.evaluationPerArea = []
             self.evaluationsTotal = 0
             self.counter += 1
-            if self.print_output:
-                print("recalculating errors")
+            #if self.print_output:
+            log_debug("recalculating errors", self.print_output)
 
     def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
                                 refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
@@ -272,8 +272,8 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.interpolation_error_arrayL2.append(scipy.linalg.norm(diff, 2))
                 self.interpolation_error_arrayMax.append(scipy.linalg.norm(diff, np.inf))
 
-            if self.print_output:
-                print("Current error:", error)
+            #if self.print_output:
+            log_debug("Current error: {0}".format(error), self.print_output)
             if self.do_plot:
                 print("Contour plot:")
                 filename = 'dimWise_contour'
@@ -321,12 +321,10 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.print_resulting_sparsegrid(filename=filename, markersize=10)
         # finished adaptive algorithm
         #if self.print_output:
-        print("Number of refinements", self.refinements)
-        print("Number of distinct points used during the refinement", self.get_total_num_points())
-        log_info("Number of distinct points used during the refinement: " + str(self.get_total_num_points()))
-        print("Time used (s):", time.time() - start_time)
-        log_info("Time used (s):" + str(time.time() - start_time))
-        print("Final error:", error)
+        log_info("Number of refinements {0}".format(self.refinements), self.print_output)
+        log_info("Number of distinct points used during the refinement: {0}".format(self.get_total_num_points()), self.print_output)
+        log_info("Time used (s): {0}".format(time.time() - start_time), self.print_output)
+        log_debug("Final error: {0}".format(error), self.print_output)
         if self.test_scheme:
             self.check_combi_scheme()
         if self.reevaluate_at_end:
@@ -431,8 +429,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         assert len(areas) == len(evaluation_array)
 
-        if self.print_output:
-            print("Curent number of function evaluations", self.get_total_num_points())
+        #if self.print_output:
+        log_debug("Curent number of function evaluations {0}".format(self.get_total_num_points()), self.print_output)
 
         for area in areas:
             self.operation.area_postprocessing(area)

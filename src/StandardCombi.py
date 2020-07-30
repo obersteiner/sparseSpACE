@@ -105,7 +105,7 @@ class StandardCombi(object):
         :return: None
         """
         if self.dim != 2:
-            print("Can only plot 2D results")
+            log_warning("Can only plot 2D results", True)
             return
         fontsize = 30
         plt.rcParams.update({'font.size': fontsize})
@@ -203,21 +203,20 @@ class StandardCombi(object):
         reference_solution = self.operation.get_reference_solution()
 
         # output combi_result
-        if self.print_output:
-            print("CombiSolution", combi_result)
+        #if self.print_output:
+        log_debug("CombiSolution".format(combi_result), self.print_output)
 
         if plot:
             print("Combi scheme:")
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        print("Time used (s):", time.time() - start_time)
-        log_info("Time used (s):" + str(time.time() - start_time))
+        log_info("Time used (s):" + str(time.time() - start_time), self.print_output)
         # return results
         if reference_solution is not None:
-            if self.print_output:
-                print("Analytic Solution", reference_solution)
-                print("Difference", self.operation.compute_difference(combi_result, reference_solution, self.norm))
+            #if self.print_output:
+            log_debug("Analytic Solution ".format(reference_solution), self.print_output)
+            log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
@@ -271,7 +270,7 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            print("Cannot print combischeme of dimension > 2")
+            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
             return None
         ncols = self.lmax[0] - self.lmin[0] + 1
         nrows = self.lmax[1] - self.lmin[1] + 1
@@ -449,7 +448,7 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            print("Cannot print combischeme of dimension > 2")
+            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
             return None
         fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
@@ -669,7 +668,7 @@ class StandardCombi(object):
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
-            print("Cannot print sparse grid of dimension > 3")
+            log_warning("Cannot print sparse grid of dimension > 3", self.print_output)
             return None
         if dim == 2:
             fig, ax = plt.subplots(figsize=(figsize, figsize))
@@ -787,10 +786,9 @@ class StandardCombi(object):
         for key, value in dictionary.items():
             # print(key, value)
             if value != 1:
-                print(dictionary)
-                print("Failed for:", key, " with value: ", value)
+                log_error("{0} Failed for: {1} with value: {2}".format(dictionary, key, value), True)
                 for area in self.refinement.get_objects():
-                    print("area dict", area.levelvec_dict)
+                    log_error("area dict {0}".format(area.levelvec_dict), True)
             assert (value == 1)
 
     def get_points_component_grid_not_null(self, levelvec: Sequence[int]) -> Sequence[Tuple[float, ...]]:
@@ -858,7 +856,7 @@ class StandardCombi(object):
                 total_surplusses.extend(surplusses)
             return np.asarray(total_surplusses)
         else:
-            print("Grid does not support surplusses")
+            log_warning("Grid does not support surplusses", True)
             return None
 
     def add_refinment_to_figure_axe(self, ax, linewidth: int=1) -> None:
@@ -884,7 +882,7 @@ class StandardCombi(object):
             with open(filename, 'rb') as f:
                 return dill.load(f)
         else:
-            print("Dill library not found! Please install dill using pip3 install dill.")
+            log_error("Dill library not found! Please install dill using pip3 install dill.", True)
 
     def save_to_file(self, filename: str) -> None:
         """This method can be used to store a StandardCombi object (or child class) in a file.
@@ -899,4 +897,4 @@ class StandardCombi(object):
             with open(filename, 'wb') as f:
                 dill.dump(self, f)
         else:
-            print("Dill library not found! Please install dill using pip3 install dill.")
+            log_error("Dill library not found! Please install dill using pip3 install dill.", True)
