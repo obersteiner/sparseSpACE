@@ -924,13 +924,13 @@ class GlobalGrid(Grid):
         #    self.weights.append(weightsD)
         #    self.levels.append(levelsD)
         #    self.numPoints[d] = len(coordsD)
-        self.coordinate_array = np.asarray([grid_points_dim[1:-1] if not self.boundary else grid_points_dim for grid_points_dim in grid_points ])
-        self.coordinate_array_with_boundary = np.array(grid_points)
+        self.coordinate_array = np.asarray(np.asarray([grid_points_dim[1:-1] if not self.boundary else grid_points_dim for grid_points_dim in grid_points ]), dtype=np.ndarray)
+        self.coordinate_array_with_boundary = np.asarray([ grid_points_dim for grid_points_dim in grid_points ], dtype=np.ndarray)
         if not self.boundary:
-            self.weights = np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1] for d in range(self.dim)])
+            self.weights = np.asarray(np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],)[1:-1] for d in range(self.dim)]), dtype=np.ndarray)
         else:
-            self.weights = np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],) for d in range(self.dim)])
-        self.levels = np.asarray([levels_dim[1:-1] if not self.boundary else levels_dim for levels_dim in grid_levels])
+            self.weights = np.asarray(np.asarray([self.compute_1D_quad_weights(grid_points[d], self.a[d], self.b[d], d, grid_levels_1D=grid_levels[d],) for d in range(self.dim)]), dtype=np.ndarray)
+        self.levels = np.asarray(np.asarray([levels_dim[1:-1] if not self.boundary else levels_dim for levels_dim in grid_levels]), dtype=np.ndarray)
 
     def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
         if hasattr(self, 'numPoints'):
