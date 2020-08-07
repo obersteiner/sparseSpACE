@@ -175,7 +175,8 @@ class StandardCombi(object):
 
 
     # lmin = minimum level; lmax = target level
-    def perform_operation(self, lmin: int, lmax: int, plot:bool=False) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
+    def perform_operation(self, lmin: int, lmax: int, plot: bool = False, print_time: bool = False) -> Tuple[Sequence[ComponentGridInfo], float,
+                                                                                                  Sequence[float]]:
         """This method performs the standard combination scheme for the chosen operation.
 
         :param lmin: Minimum level of combination technique.
@@ -211,7 +212,8 @@ class StandardCombi(object):
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        print("Time used (s):", time.time() - start_time)
+        if print_time:
+            print("Time used (s):", time.time() - start_time)
         log_info("Time used (s):" + str(time.time() - start_time))
         # return results
         if reference_solution is not None:

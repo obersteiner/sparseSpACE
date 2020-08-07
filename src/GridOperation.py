@@ -293,7 +293,8 @@ class DensityEstimation(AreaOperation):
         self.max_levels = []
         self.numeric_calculation = numeric_calculation
         self.dimension_wise = False
-        print('DensityEstimation debug: ', self.debug)
+        if self.debug:
+            print('DensityEstimation debug: ', self.debug)
 
     def initialize(self):
         """
@@ -337,7 +338,7 @@ class DensityEstimation(AreaOperation):
             return result1
         else:
             surplus_values = self.surpluses[tuple(component_grid.levelvector)]
-            threshold = 20
+            threshold = 100
             if self.grid.get_num_points() < threshold and not self.dimension_wise:
                 self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
                 if self.grid.boundary:
@@ -1395,7 +1396,7 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = self.grid.get_num_points()
         b = np.zeros(N)
-        threshold = 30
+        threshold = 100
         if N < threshold:
             hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
             b = np.sum(self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), data), axis=0)
