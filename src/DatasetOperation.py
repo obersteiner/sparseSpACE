@@ -1082,8 +1082,301 @@ class Classification:
 
 
 class Clustering:
-    pass
-    # TODO insert with next commit
+
+    def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25):
+        self._original_data = raw_data
+        self._scaled_data = None
+        self._clustered_data = None
+        self._label = 'cluster'
+        self._number_nb = number_nearest_neighbors
+        self._threshold = edge_cutting_threshold
+        self._de_object = None
+        self._clustertinator = None
+        self._density_range = None
+        self._all_edges = None
+        self._remaining_edges = None
+        self._connected_components = []
+        self._connected_edges = []
+        self._connected_samples = None
+        self._noise_edges = []
+        self._noise_samples = None
+        self._performed_clustering = False
+        self._initialize()
+
+    def get_original_data(self) -> DataSet:
+        ret_val = self._original_data.copy()
+        ret_val.set_name(self._original_data.get_name())
+        return ret_val
+
+    def get_clustered_data(self) -> DataSet:
+        ret_val = self._clustered_data.copy()
+        ret_val.set_name(self._clustered_data.get_name())
+        return ret_val
+
+    def get_connected_samples_dataset(self) -> DataSet:
+        ret_val = self._connected_samples.copy()
+        ret_val.set_name(self._connected_samples.get_name())
+        return ret_val
+
+    def get_noise_samples_dataset(self) -> DataSet:
+        ret_val = self._noise_samples.copy()
+        ret_val.set_name(self._noise_samples.get_name())
+        return ret_val
+
+    def get_max_number_nearest_neighbors(self) -> int:
+        return self._number_nb
+
+    def get_edge_cutting_threshold(self) -> float:
+        return self._threshold
+
+    def _initialize(self) -> None:
+        if self._original_data.is_empty():
+            raise ValueError("Can't perform clustering on empty DataSet.")
+        self._scaled_data = self._original_data.copy()
+        self._scaled_data.set_name(self._original_data.get_name())
+        self._scaled_data.set_label(self._label)
+        self._scaled_data.scale_range((0.005, 0.995), override_scaling=True)
+
+    def _compute_nearest_neighbors_connected(self) -> None:
+        # search for nearest neighbors and store edges which weren't cut
+        neigh = neighbors.NearestNeighbors(n_neighbors=self._number_nb)
+        neigh.fit(self._scaled_data[0])
+        self._all_edges = list(set(tuple(sorted(x)) for x in [[x[0], y] for x in neigh.kneighbors(self._scaled_data[0], return_distance=False)
+                                                              for y in x[1:]]))
+
+        centralvalues_edges = np.array([np.array([(self._scaled_data[0][e[0]] + self._scaled_data[0][e[1]]) / 2])
+                                        for e in self._all_edges]).reshape((len(self._all_edges), self._scaled_data.get_dim()))
+        centralvalues_densities = self._clustertinator(centralvalues_edges)
+        centralvalues_dens_percentage = np.array(centralvalues_densities / self._density_range[1])
+        centralvalues_dens_percentage[centralvalues_dens_percentage > 1] = 1.0
+        centralvalues_dens_percentage[centralvalues_dens_percentage < 0] = 0.0
+        self._connected_edges = [e for i, e in enumerate(self._all_edges) if (centralvalues_dens_percentage[i] > self._threshold)]
+
+    def _compute_nearest_neighbors_noise(self) -> None:
+        # filter single samples
+        singles_indices = [i for i in np.arange(self._scaled_data.get_length()) if i not in np.unique(self._connected_edges)]
+        self._connected_samples = self._scaled_data.copy()
+        self._noise_samples = self._connected_samples.remove_samples(singles_indices)
+
+        if self._noise_samples.is_empty():
+            self._noise_edges = []
+            self._remaining_edges = np.array((sorted(self._connected_edges)))
+        elif not self._connected_samples.is_empty():
+            cluster_neigh = neighbors.NearestNeighbors(n_neighbors=1)
+            cluster_neigh.fit(self._connected_samples[0])
+            singles_neigh = cluster_neigh.kneighbors(self._noise_samples[0], return_distance=False)
+            self._noise_edges = [(singles_indices[i], np.where(self._scaled_data[0] == self._connected_samples[0][x[0]])[0][0])
+                                 for i, x in enumerate(singles_neigh)]
+            self._remaining_edges = np.array(sorted(self._noise_edges + self._connected_edges))
+
+    def _compute_connected_components(self) -> None:
+        noisy = self._connected_samples.is_empty()
+        self._connected_components = [np.array([x]) for x in range(self._scaled_data.get_length())] if noisy else self._depth_first_search()
+
+    def _label_samples(self) -> None:
+        clusters = np.empty((self._scaled_data.get_length(),), dtype=np.int64)
+        for i, all_indices_component in enumerate(self._connected_components):
+            clusters[all_indices_component] = i
+        self._clustered_data = DataSet((self._original_data[0], clusters), name="Clustered_%s" % self._original_data.get_name(), label=self._label)
+
+    def _depth_first_search(self) -> List[np.ndarray]:
+        # depth first search
+        all_nodes = np.arange(self._scaled_data.get_length())
+        visited_nodes = np.full((self._scaled_data.get_length(),), False)
+        connected_components = []
+        while not all(visited_nodes):
+            unvisited_nodes = all_nodes[np.invert(visited_nodes)]
+            # sorting not necessary but nice, can be removed. but always look on the bright side of sorting
+            current_snake = np.sort(self._dfs_inner_recursive(unvisited_nodes[0], visited_nodes, self._remaining_edges, np.arange(0)))
+            connected_components += [current_snake]
+        return connected_components
+
+    def _dfs_inner_recursive(self,
+                             current_node: int,
+                             visited_nodes: np.ndarray,
+                             edges: np.ndarray,
+                             connected_component: np.ndarray) -> List[np.ndarray]:
+        connected_component = np.concatenate((connected_component, np.array([current_node])))
+        visited_nodes[current_node] = True
+        current_edges = edges[np.where(edges == current_node)[0]]
+        for x in current_edges:
+            next_node = x[1] if x[0] == current_node else x[0]
+            if visited_nodes[next_node]:
+                continue
+            connected_component = self._dfs_inner_recursive(next_node, visited_nodes, edges, connected_component)
+        return connected_component
+
+    def _process_performed_clustering(self, start_time: float) -> None:
+        self._density_range = self._de_object.extrema
+        self._compute_nearest_neighbors_connected()
+        self._compute_nearest_neighbors_noise()
+        self._compute_connected_components()
+        self._label_samples()
+        # post processing
+        self._performed_clustering = True
+        print()
+        print("=================================================================================================================================")
+        print("Performed Clustering of '%s' DataSet." % self._scaled_data.get_name())
+        print("Time used: %.10f seconds" % (time.time() - start_time))
+
+    def perform_clustering(self,
+                           masslumping: bool = True,
+                           lambd: float = 0.0,
+                           minimum_level: int = 1,
+                           maximum_level: int = 5) -> None:
+        if self._performed_clustering:
+            raise ValueError("Can't perform clustering for the same object twice.")
+        start_time = time.time()
+        self._clustertinator, self._de_object = self._scaled_data.density_estimation(masslumping=masslumping, lambd=lambd,
+                                                                                     minimum_level=minimum_level,
+                                                                                     maximum_level=maximum_level, plot_de_dataset=False,
+                                                                                     plot_density_estimation=False, plot_combi_scheme=False,
+                                                                                     plot_sparsegrid=False)
+        self._process_performed_clustering(start_time)
+
+    def perform_clustering_dimension_wise(self,
+                                          masslumping: bool = True,
+                                          lambd: float = 0.0,
+                                          minimum_level: int = 1,
+                                          maximum_level: int = 5,
+                                          reuse_old_values: bool = False,
+                                          numeric_calculation: bool = True,
+                                          margin: float = 0.5,
+                                          tolerance: float = 0.01,
+                                          max_evaluations: int = 256,
+                                          modified_basis: bool = False,
+                                          boundary: bool = False) -> None:
+        if self._performed_clustering:
+            raise ValueError("Can't perform clustering for the same object twice.")
+        start_time = time.time()
+        self._clustertinator, self._de_object = self._scaled_data.density_estimation_dimension_wise(masslumping=masslumping,
+                                                                                                    lambd=lambd,
+                                                                                                    minimum_level=minimum_level,
+                                                                                                    maximum_level=maximum_level,
+                                                                                                    reuse_old_values=reuse_old_values,
+                                                                                                    numeric_calculation=numeric_calculation,
+                                                                                                    margin=margin,
+                                                                                                    tolerance=tolerance,
+                                                                                                    max_evaluations=max_evaluations,
+                                                                                                    modified_basis=modified_basis,
+                                                                                                    boundary=boundary,
+                                                                                                    plot_de_dataset=False,
+                                                                                                    plot_density_estimation=False,
+                                                                                                    plot_combi_scheme=False,
+                                                                                                    plot_sparsegrid=False)
+        self._process_performed_clustering(start_time)
+
+    def print_evaluation(self, print_clusters: bool = True) -> None:
+        if not self._performed_clustering:
+            raise AttributeError("Clustering needs to be performed on this object first.")
+        omitted, original_data_to_evaluate = self._scaled_data.split_without_labels()
+        if original_data_to_evaluate.is_empty():
+            raise ValueError("Dataset of this Clustering object doesn't have any labelled samples for comparison.")
+
+        cannot_evaluate = [(lambda x, y: x[y == 2])(*np.unique(np.where(self._scaled_data[0] == sample)[0], return_counts=True))[0] for sample in
+                           omitted[0]]
+        computed_data_to_evaluate = self._clustered_data.copy()
+        computed_data_to_evaluate.remove_samples(cannot_evaluate)
+
+        number_wrong = 0
+        number_original_labels = original_data_to_evaluate.get_number_labels()
+        number_computed_labels = computed_data_to_evaluate.get_number_labels()
+        number_min_labels = min(number_original_labels, number_computed_labels)
+        lesser_labels = self._scaled_data[1] if number_original_labels < number_computed_labels else self._clustered_data[1]
+        more_labels = self._clustered_data[1] if number_original_labels < number_computed_labels else self._scaled_data[1]
+
+        for i in range(number_min_labels):
+            current = np.where(lesser_labels == i)[0]
+            current_labels = more_labels[current]
+            unq, count = np.unique(current_labels, return_counts=True)
+            equal_label = np.max(count)
+            number_wrong += (np.size(current) - equal_label)
+
+        print("---------------------------------------------------------------------------------------------------------------------------------")
+        print("Evaluating Clustering object ...")
+        if not omitted.is_empty():
+            print("Omitted some labelless samples of original dataset. Can't compare original labels of these samples with the clustered ones.")
+            print("Number omitted: %d" % omitted.get_length())
+        print("Number of wrong mappings: %d" % number_wrong)
+        print("Number of total mappings: %d" % self._scaled_data.get_length())
+        print("Percentage of correct mappings: %2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100))
+        if print_clusters:
+            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+            print("Number original clusters: %d" % number_original_labels)
+            print("Number computed clusters: %d" % number_computed_labels)
+            print("Original data (per label):")
+            for label in original_data_to_evaluate.get_labels():
+                print("%d: %d samples" % (label, np.count_nonzero(original_data_to_evaluate[1] == label)))
+            print("Clustered data (per cluster):")
+            for label in computed_data_to_evaluate.get_labels():
+                print("%d: %d samples" % (label, np.count_nonzero(computed_data_to_evaluate[1] == label)))
+
+    def plot(self,
+             plot_original_dataset: bool = True,
+             plot_clustered_dataset: bool = True,
+             plot_cluster_density_estimation: bool = True,
+             plot_cluster_combi_scheme: bool = True,
+             plot_cluster_sparsegrid: bool = False,
+             plot_nearest_neighbor_graphs: bool = True) -> None:
+        if not self._performed_clustering:
+            raise AttributeError("Clustering needs to be performed on this object first.")
+        if plot_original_dataset:
+            self._original_data.plot()
+        if plot_clustered_dataset:
+            self._clustered_data.plot()
+        if plot_cluster_density_estimation:
+            self._clustertinator.plot(contour=True)
+        if plot_cluster_combi_scheme:
+            self._clustertinator.print_resulting_combi_scheme(operation=self._de_object)
+        if plot_cluster_sparsegrid:
+            self._clustertinator.print_resulting_sparsegrid(markersize=20)
+        if plot_nearest_neighbor_graphs:
+            if not ((self._scaled_data.get_dim() == 2) or (self._scaled_data.get_dim() == 3)):
+                warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
+                warnings.warn("Invalid dimension for plotting. Couldn't plot Nearest Neighbor Graphs.", stacklevel=3)
+            else:
+                plt.rc('font', size=30)
+                plt.rc('axes', titlesize=40)
+                plt.rc('figure', figsize=(24.0, 12.0))
+                fig = plt.figure()
+                ax0 = fig.add_subplot(121) if (self._scaled_data.get_dim() == 2) else fig.add_subplot(121, projection='3d')
+                ax1 = fig.add_subplot(122) if (self._scaled_data.get_dim() == 2) else fig.add_subplot(122, projection='3d')
+                ax0.set_title("Full_nearest_neighbor_graph")
+                ax1.set_title("Cut_nearest_neighbor_graph")
+                ax0.title.set_position([0.5, 1.025])
+                ax1.title.set_position([0.5, 1.025])
+                ax0.grid(True)
+                ax1.grid(True)
+                ax0.scatter(*zip(*self._scaled_data[0]), s=125)
+                ax1.scatter(*zip(*self._scaled_data[0]), s=125)
+                data_points = self._scaled_data[0]
+
+                def get_all_axes(edge):
+                    ret_val = [[data_points[edge[0]][0], data_points[edge[1]][0]], [data_points[edge[0]][1], data_points[edge[1]][1]]]
+                    if self._scaled_data.get_dim() == 3:
+                        ret_val.append([data_points[edge[0]][2], data_points[edge[1]][2]])
+                    return ret_val
+
+                # plot full graph
+                ax0.scatter(*zip(*self._scaled_data[0]), c='r')
+                for e in self._all_edges:
+                    ax0.plot(*get_all_axes(e), c='r')
+                # plot cut graph
+                if not self._connected_samples.is_empty():
+                    ax1.scatter(*zip(*self._connected_samples[0]), c='r')
+                if not self._noise_samples.is_empty():
+                    ax1.scatter(*zip(*self._noise_samples[0]), c='y')
+                for e in self._remaining_edges:
+                    color = 'y' if tuple(e) in self._noise_edges else 'r'
+                    ax1.plot(*get_all_axes(e), color)
+                ax0.set_xlabel('x')
+                ax0.set_ylabel('y')
+                ax1.set_xlabel('x')
+                ax1.set_ylabel('y')
+                if self._scaled_data.get_dim() == 3:
+                    ax0.set_zlabel('z')
+                    ax1.set_zlabel('z')
+                plt.show()
 
 
 if __name__ == "__main__":
@@ -1160,3 +1453,18 @@ if __name__ == "__main__":
     calcult_classes.set_name('Calculated_classes')
     correct_classes.plot()
     calcult_classes.plot()
+
+    # ==============================================================================================================================================
+
+    # initialize Clustering object with our original data, the number of nearest neighbors for the initial nearest neighbor graph (before cutting
+    # the edges) and an edge cutting threshold (edges with lower estimated density than the threshold will be cut)
+    clus = Clustering(data, number_nearest_neighbors=10, edge_cutting_threshold=0.4)
+
+    # as with the Classification object we should now immediately perform clustering on our Clustering object
+    clus.perform_clustering()
+
+    # but different than the Classification object we can't really do anything after performing clustering since all computations were already
+    # done. What we can do however is printing or plotting (if the raw dataset was 2d or 3d) the results
+    clus.print_evaluation(print_clusters=True)
+    clus.plot(plot_original_dataset=True, plot_cluster_density_estimation=True, plot_cluster_combi_scheme=False, plot_cluster_sparsegrid=False,
+              plot_nearest_neighbor_graphs=True)
