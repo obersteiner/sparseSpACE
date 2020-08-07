@@ -15,7 +15,14 @@ content = [x.split('::')[1] for x in content]
 content = [x.strip() for x in content]
 filterDelimiters = lambda x: not ('|||' in x or '~~~' in x or '###' in x or '---' in x)
 content = [x for x in content if filterDelimiters(x)]
-data_set_indices = [i for i, x in enumerate(content) if 'do.datasets' in x]
+if True in ['next iteration' in x for x in content]:
+    data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
+elif True in ['do.datasets' in x for x in content]:
+    data_set_indices = [i for i, x in enumerate(content) if 'do.datasets' in x]
+elif True in ['data set' in x for x in content]:
+    data_set_indices = [i for i, x in enumerate(content) if 'data set' in x]
+else:
+    print('couldn\'t parse log')
 data_sets = [content[data_set_indices[x]:data_set_indices[x+1]] for x in range(len(data_set_indices)) if (x+1) < len(data_set_indices)]
 
 substr_idx = lambda s, sub: [i for i, x in enumerate(s) if sub in x]
@@ -31,9 +38,11 @@ for tup in data_sets:
     meta = tup[0]
     data_size = int(meta[substr_idx(meta, 'data size')[0]].split(':')[1]) if str_exists(meta, 'data size') else None
     data_dim = int(meta[substr_idx(meta, 'data dimension')[0]].split(':')[1]) if str_exists(meta, 'data dimension') else None
-    data_type = meta[substr_idx(meta, 'make_')[0]] if str_exists(meta, 'make_') else None
+    data_type = meta[substr_idx(meta, 'make_')[0]] if str_exists(meta, 'make_') else meta[0]
     one_vs_others = meta[substr_idx(meta, 'one_vs_others')[0]].split()[1] if str_exists(meta, 'one_vs_others') else None
     error_calculator = meta[substr_idx(meta, 'error_calculator')[0]].split()[-1] if str_exists(meta, 'error_calculator') else None
+    rebalancing = meta[substr_idx(meta, 'rebalancing')[0]].split()[-1] if str_exists(meta, 'rebalancing') else None
+    margin = meta[substr_idx(meta, 'margin')[0]].split()[-1] if str_exists(meta, 'margin') else None
 
     stdCombi = tup[1]
     stdTime = [float(s.split(':')[1]) for s in stdCombi if 'Time' in s] if str_exists(stdCombi, 'Time') else None
@@ -54,7 +63,7 @@ for tup in data_sets:
         eval_avg[data_type] = {}
     std_info = namedtuple('std_info', 'stdTimeAvg stdPointAvg stdAcc')
     dim_info = namedtuple('dim_info', 'dimTimeAvg dimPointAvg dimAcc')
-    entry = (std_info(sum(stdTime)/len(stdTime), sum(stdPoints)/len(stdPoints), stdAcc),
+    entry = (std_info(sum(stdTime)/len(stdTime), sum(stdPoints)/len(stdPoints), stdAcc, ),
              dim_info(sum(dimTime)/len(dimTime), sum(dimPoints)/len(dimPoints), dimAcc))
 
     #if old log file type
@@ -87,8 +96,11 @@ for dtype in eval_avg.keys():
 
         regex = r"make_.*\("
         match = re.search(regex, str(dtype))
-        name = match.group(0)
-        name = name.replace('make_', '').replace('(', '')
+        if match is not None:
+            name = match.group(0)
+            name = name.replace('make_', '').replace('(', '')
+        else:
+            name = dtype.replace(' ', '_')
 
         entries = eval_avg[dtype][keys]
         stdTimes = [t[0].stdTimeAvg for t in entries]

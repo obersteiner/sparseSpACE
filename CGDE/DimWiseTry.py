@@ -123,7 +123,7 @@ print('error margin: ', margin)
 max_evaluations = 256
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
-do_plot = True
+do_plot = False
 print('refinement plotting:', do_plot)
 
 # kde parameters
@@ -296,6 +296,8 @@ if do_plot:
     print("Plot of density estimation")
     # when contour = True, the contour plot is shown next to the 3D plot
     SASD.plot(filename='dimWise_'+data_set+'_contour', contour=True)
+
+SASD.min_max_scale_surplusses()
 
 ################### Kernel Density Estimation
 kde = None
