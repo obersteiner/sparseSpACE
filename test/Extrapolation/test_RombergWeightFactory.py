@@ -16,7 +16,7 @@ class TestWeightFactory(unittest.TestCase):
         m = 2
 
         # Unit domain
-        factory = RombergWeightFactory(0, 1, version=ExtrapolationVersion.ROMBERG_LINEAR)
+        factory = RombergWeightFactory.get(0, 1, version=ExtrapolationVersion.ROMBERG_LINEAR)
 
         # WolframAlpha: ((a)^1 / ((a)^1 - (b)^1)) * ((c)^1 / ((c)^1 - (b)^1)) for a = 1/2, b = 1, c = 1/4
         self.assertAlmostEqual(1/3, factory.get_extrapolation_coefficient(m, 0), self.places)
@@ -28,7 +28,7 @@ class TestWeightFactory(unittest.TestCase):
         self.assertAlmostEqual(8/3, factory.get_extrapolation_coefficient(m, 2), self.places)
 
         # Non-unit domain
-        factory = RombergWeightFactory(3, 1, version=ExtrapolationVersion.ROMBERG_LINEAR)
+        factory = RombergWeightFactory.get(3, 1, version=ExtrapolationVersion.ROMBERG_LINEAR)
 
         # WolframAlpha: ((a)^1 / ((a)^1 - (b)^1)) * ((c)^1 / ((c)^1 - (b)^1)) for a = (3-1)/2, b = (3-1)/1, c = (3-1)/4
         self.assertAlmostEqual(1/3, factory.get_extrapolation_coefficient(m, 0), self.places)
@@ -43,7 +43,7 @@ class TestWeightFactory(unittest.TestCase):
         a = 0
         b = 1
 
-        factory = RombergWeightFactory(a, b, version=ExtrapolationVersion.ROMBERG_LINEAR)
+        factory = RombergWeightFactory.get(a, b, version=ExtrapolationVersion.ROMBERG_LINEAR)
         m = 2
 
         self.assertAlmostEqual(0, factory.get_boundary_point_weight(m))
@@ -58,7 +58,7 @@ class TestWeightFactory(unittest.TestCase):
         m = 2
 
         # Unit domain
-        factory = RombergWeightFactory(0, 1, version=ExtrapolationVersion.ROMBERG_DEFAULT)
+        factory = RombergWeightFactory.get(0, 1, version=ExtrapolationVersion.ROMBERG_DEFAULT)
 
         #  WolframAlpha: ((a)^2 / ((a)^2 - (b)^2)) * ((c)^2 / ((c)^2 - (b)^2)) for a = 1/2, b = 1, c = 1/4
         self.assertAlmostEqual(1/45, factory.get_extrapolation_coefficient(m, 0), self.places)
@@ -70,7 +70,7 @@ class TestWeightFactory(unittest.TestCase):
         self.assertAlmostEqual(64/45, factory.get_extrapolation_coefficient(m, 2), self.places)
 
         # Non-Unit domain: Same coefficients as in unit domain (factor H out and reduce fraction)
-        factory = RombergWeightFactory(1, 3, version=ExtrapolationVersion.ROMBERG_DEFAULT)
+        factory = RombergWeightFactory.get(1, 3, version=ExtrapolationVersion.ROMBERG_DEFAULT)
 
         # WolframAlpha: ((a)^2 / ((a)^2 - (b)^2)) * ((c)^2 / ((c)^2 - (b)^2))
         #   for a = (3-1) / 2, b = (3-1) / 1, c = (3-1) /4
@@ -88,7 +88,7 @@ class TestWeightFactory(unittest.TestCase):
         a = 0
         b = 1
 
-        factory = RombergWeightFactory(a, b, version=ExtrapolationVersion.ROMBERG_DEFAULT)
+        factory = RombergWeightFactory.get(a, b, version=ExtrapolationVersion.ROMBERG_DEFAULT)
         m = 2
 
         self.assertAlmostEqual(7/90, factory.get_boundary_point_weight(m))

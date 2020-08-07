@@ -33,8 +33,10 @@ class ExtrapolationVersion(Enum):
     ROMBERG_DEFAULT = 1
     ROMBERG_LINEAR = 2
     ROMBERG_SLICED = 3
+    ROMBERG_SIMPSON = 4
 
 
+# This class controls the coefficients for the extrapolation
 class ExtrapolationCoefficients(ABC):
     def __init__(self, a, b):
         self.a = a
@@ -47,18 +49,13 @@ class ExtrapolationCoefficients(ABC):
     def get_step_width(self, j):
         return (self.b - self.a) / (2 ** j)
 
-
-class RombergDefaultCoefficients(ExtrapolationCoefficients):
-    def __init__(self, a, b):
-        super(RombergDefaultCoefficients, self).__init__(a, b)
-
-    def get_coefficient(self, m, j):
+    def get_romberg_coefficient(self, m, j, exponent):
         coefficient = 1
         h_j = self.get_step_width(j)
 
         for i in range(m + 1):
             h_i = self.get_step_width(i)
-            coefficient *= (h_i ** 2) / (h_i ** 2 - h_j ** 2) if i != j else 1
+            coefficient *= (h_i ** exponent) / (h_i ** exponent - h_j ** exponent) if i != j else 1
 
         return coefficient
 
@@ -68,14 +65,23 @@ class RombergLinearCoefficients(ExtrapolationCoefficients):
         super(RombergLinearCoefficients, self).__init__(a, b)
 
     def get_coefficient(self, m, j):
-        coefficient = 1
-        h_j = self.get_step_width(j)
+        return self.get_romberg_coefficient(m, j, 1)
 
-        for i in range(m + 1):
-            h_i = self.get_step_width(i)
-            coefficient *= (h_i ** 1) / (h_i ** 1 - h_j ** 1) if i != j else 1
 
-        return coefficient
+class RombergDefaultCoefficients(ExtrapolationCoefficients):
+    def __init__(self, a, b):
+        super(RombergDefaultCoefficients, self).__init__(a, b)
+
+    def get_coefficient(self, m, j):
+        return self.get_romberg_coefficient(m, j, 2)
+
+
+class RombergSimpsonCoefficients(ExtrapolationCoefficients):
+    def __init__(self, a, b):
+        super(RombergSimpsonCoefficients, self).__init__(a, b)
+
+    def get_coefficient(self, m, j):
+        return self.get_romberg_coefficient(m, j, 3)
 
 
 class RombergSlicedCoefficients(ExtrapolationCoefficients):
@@ -129,6 +135,9 @@ class ExtrapolationCoefficientsFactory:
         elif self.extrapolation_version == ExtrapolationVersion.ROMBERG_LINEAR:
             return RombergLinearCoefficients(a, b)
 
+        elif self.extrapolation_version == ExtrapolationVersion.ROMBERG_SIMPSON:
+            return RombergSimpsonCoefficients(a, b)
+
         elif self.extrapolation_version == ExtrapolationVersion.ROMBERG_SLICED:
             assert support_sequence is not None, "Please provide support point sequence for slice extrapolation."
             return RombergSlicedCoefficients(a, b, support_sequence)
@@ -137,12 +146,46 @@ class ExtrapolationCoefficientsFactory:
             raise RuntimeError("Wrong ExtrapolationVersion provided.")
 
 
+# Returns the correct class for the computation of weights
 class RombergWeightFactory:
-    def __init__(self, a, b, version: ExtrapolationVersion = ExtrapolationVersion.ROMBERG_DEFAULT):
+    @staticmethod
+    def get(a, b, version):
+        if version == ExtrapolationVersion.ROMBERG_DEFAULT or version == ExtrapolationVersion.ROMBERG_LINEAR or \
+                version == ExtrapolationVersion.ROMBERG_SLICED:
+            return RombergTrapezoidalWeights(a, b, version)
+
+        elif version == ExtrapolationVersion.ROMBERG_SIMPSON:
+            return RombergSimpsonWeights(a, b)
+
+        else:
+            raise RuntimeError("Wrong ExtrapolationVersion provided.")
+
+
+class RombergWeights(ABC):
+    def __init__(self, a, b, version: ExtrapolationVersion):
         self.a = a
         self.b = b
         self.version = version
         self.extrapolation_factory = ExtrapolationCoefficientsFactory(version).get(a, b)
+
+    @abstractmethod
+    def get_boundary_point_weight(self, max_level):
+        pass
+
+    @abstractmethod
+    def get_inner_point_weight(self, level, max_level):
+        pass
+
+    def get_extrapolation_coefficient(self, m, j):
+        return self.extrapolation_factory.get_coefficient(m, j)
+
+    def get_step_width(self, j):
+        return self.extrapolation_factory.get_step_width(j)
+
+
+class RombergTrapezoidalWeights(RombergWeights):
+    def __init__(self, a, b, version: ExtrapolationVersion = ExtrapolationVersion.ROMBERG_DEFAULT):
+        super(RombergTrapezoidalWeights, self).__init__(a, b, version)
 
     def get_boundary_point_weight(self, max_level):
         weight = 0
@@ -155,7 +198,7 @@ class RombergWeightFactory:
         return weight
 
     def get_inner_point_weight(self, level, max_level):
-        assert level >= 1
+        assert 1 <= level <= max_level
 
         weight = 0
 
@@ -166,11 +209,36 @@ class RombergWeightFactory:
 
         return weight
 
-    def get_extrapolation_coefficient(self, m, j):
-        return self.extrapolation_factory.get_coefficient(m, j)
 
-    def get_step_width(self, j):
-        return self.extrapolation_factory.get_step_width(j)
+class RombergSimpsonWeights(RombergWeights):
+    def __init__(self, a, b):
+        super(RombergSimpsonWeights, self).__init__(a, b, ExtrapolationVersion.ROMBERG_SIMPSON)
+
+    def get_boundary_point_weight(self, max_level):
+        weight = 0
+
+        for j in range(max_level + 1):
+            coefficient = self.extrapolation_factory.get_coefficient(max_level, j)
+            step_width = self.get_step_width(j)
+            weight += (coefficient * step_width)
+
+        return weight / 3
+
+    def get_inner_point_weight(self, level, max_level):
+        assert 1 <= level <= max_level
+        factory = self.extrapolation_factory
+
+        weight = ((factory.get_coefficient(max_level, level) * 4) / 3) * self.get_step_width(level)
+
+        if level + 1 > max_level:
+            return weight
+
+        for j in range(level + 1, max_level + 1):
+            coefficient = factory.get_coefficient(max_level, j)
+            step_width = self.get_step_width(j)
+            weight += ((coefficient * step_width) * 2) / 3
+
+        return weight
 
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -532,8 +600,9 @@ class SliceContainerVersion(Enum):
     """
     This enum specifies the available slice types.
     """
-    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers
+    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers # TODO Rename to DEFAULT_ROMBERG
     LAGRANGE_ROMBERG = 2  # Important missing grid points are interpolated with Lagrange
+    SIMPSON_ROMBERG = 3  # Romberg extrapolation with simpson rule as base quadrature rule
 
 
 class ExtrapolationGrid:
@@ -1989,7 +2058,7 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
         # This container has >= 2 slices
         # Execute default Romberg on this container
-        factory = RombergWeightFactory(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_DEFAULT)
+        factory = RombergWeightFactory.get(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_DEFAULT)
         grid = self.get_grid()
         normalized_grid_levels = self.get_normalized_grid_levels()
         normalized_max_level = max(normalized_grid_levels)
@@ -2016,6 +2085,61 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
     # See parent class
     def to_string(self, name=None):
         return super().to_string("RombergGridSliceContainer")
+
+
+# This class stores >= 1 grid slices that are adjacent and together span a partial full grid
+# of equidistant step width
+class SimpsonRombergGridSliceContainer(ExtrapolationGridSliceContainer):
+    """
+    This class groups >= 1 grid slices that are adjacent and span a full grid of equidistant step width together.
+    If the slice count is > 1 Romberg's method with Simpson sum as base rule is executed in this full grid.
+    Else the unit slice is extrapolated based on its own extrapolation type.
+    """
+
+    def __init__(self, function: Function = None):
+        """
+            Constructor of this class.
+
+            :param function: for error computation.
+        """
+        super(SimpsonRombergGridSliceContainer, self).__init__(function)
+
+    def get_final_weights(self):
+        assert len(self.slices) > 0
+
+        # This container has only one slice. => Extrapolate this unit slice
+        if len(self.slices) == 1:
+            return self.slices[0].get_final_weights()
+
+        # This container has >= 2 slices
+        # Execute default Romberg on this container
+        factory = RombergWeightFactory.get(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_SIMPSON)
+        grid = self.get_grid()
+        normalized_grid_levels = self.get_normalized_grid_levels()
+        normalized_max_level = max(normalized_grid_levels)
+
+        weight_dictionary = defaultdict(list)
+
+        # Extrapolate weights on this container
+        for i, point in enumerate(grid):
+            if (i == 0) or (i == len(grid) - 1):
+                weight = factory.get_boundary_point_weight(normalized_max_level)
+            else:
+                weight = factory.get_inner_point_weight(normalized_grid_levels[i], normalized_max_level)
+
+            weight_dictionary[point].append(weight)
+
+        # Update pointer to dictionary
+        self.extrapolated_weights_dict = weight_dictionary
+
+        return weight_dictionary
+
+    # -----------------------------------------------------------------------------------------------------------------
+    # ---  Helpers
+
+    # See parent class
+    def to_string(self, name=None):
+        return super().to_string("SimpsonRombergGridSliceContainer")
 
 
 class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
@@ -2152,7 +2276,7 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
         # This container has >= 2 slices
         # Execute default Romberg on this container
-        factory = RombergWeightFactory(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_DEFAULT)
+        factory = RombergWeightFactory.get(self.left_point, self.right_point, ExtrapolationVersion.ROMBERG_DEFAULT)
         weight_dictionary = defaultdict(list)
 
         # Non-interpolated grid points
@@ -2186,11 +2310,13 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
         grid = [point for i, point in enumerate(self.get_grid()) if indicator[i]]
         normalized_grid_levels = [level for i, level in enumerate(self.get_normalized_grid_levels())
                                     if indicator[i]]
-        normalized_max_level = max(self.get_normalized_non_interpolated_grid_levels())
+        normalized_max_level = max(self.get_grid_levels())  # Max. level of whole grid (with interpolated points)
 
         for i, interp_point in enumerate(grid):
             level = normalized_grid_levels[i]
-            support_points = self.get_support_points_for_interpolation_geometrically(interp_point, self.max_interpolation_support_points, adaptive=True)
+            support_points = self.\
+                get_support_points_for_interpolation_geometrically(interp_point, self.max_interpolation_support_points,
+                                                                   adaptive=True)
 
             if level == 0:
                 weight = factory.get_boundary_point_weight(normalized_max_level)
@@ -2323,6 +2449,8 @@ class ExtrapolationGridSliceContainerFactory:
             return RombergGridSliceContainer(function)
         elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG:
             return LagrangeRombergGridSliceContainer(function)
+        elif self.slice_container_version == SliceContainerVersion.SIMPSON_ROMBERG:
+            return SimpsonRombergGridSliceContainer(function)
         else:
             raise RuntimeError("Wrong ContainerVersion provided.")
 
