@@ -372,9 +372,11 @@ class DataSet:
 
     def split_one_vs_others(self):
         set_classes = []
+        class_numbers = [sum(self.__data[1] == j) for j in self.get_labels()]
         for j in self.get_labels():
             values = np.array([x for i, x in enumerate(self.__data[0])])
-            labels = np.array([1 if self.__data[1][i] == j else -1 for i, x in enumerate(self.__data[0])])
+            others = (sum(class_numbers) - class_numbers[j])
+            labels = np.array([1 if self.__data[1][i] == j else -1 * (class_numbers[j] / others) for i, x in enumerate(self.__data[0])])
             current_set = DataSet(tuple([values, labels]))
             self.__update_internal(current_set)
             set_classes.append(current_set)
@@ -592,8 +594,9 @@ class DataSet:
         err_str = str(type(error_calculator)).replace('ErrorCalculator.', '')
         t = [i for i, x in enumerate(err_str) if '\'' in x]
         err_str = err_str[t[0]+1:t[-1]]
-        if filename is not None:
-            combi_object.draw_refinement(filename=filename+'_dim-'+str(self.__dim)+'_maxEvals-'+str(max_evaluations)+'_errCalc-'+err_str+'.png')
+        #if filename is not None:
+            #combi_object.draw_refinement(filename=filename+'_dim-'+str(self.__dim)+'_maxEvals-'+str(max_evaluations)+'_errCalc-'+err_str+'.png')
+        #combi_object.min_max_scale_surplusses()
         return combi_object, de_object
 
     def plot(self, plot_labels: bool = True) -> plt.Figure:
@@ -814,7 +817,7 @@ class Classification:
             self.__omitted_data.shift_value(-self.__data_range[0], override_scaling=True)
             self.__omitted_data.scale_factor(self.__scale_factor, override_scaling=True)
             self.__omitted_data.shift_value(0.005, override_scaling=True)
-        self.__data.shuffle()
+        #self.__data.shuffle()
         self.__data.move_boundaries_to_front()
         if split_evenly:
             data_classes = self.__data.split_labels()
