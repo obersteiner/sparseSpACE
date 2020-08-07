@@ -323,8 +323,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         #if self.print_output:
         log_info("Number of refinements {0}".format(self.refinements), self.print_output)
         log_info("Number of distinct points used during the refinement: {0}".format(self.get_total_num_points()), self.print_output)
-        log_info("Time used (s): {0}".format(time.time() - start_time), self.print_output)
-        log_debug("Final error: {0}".format(error), self.print_output)
+        log_info("Time used adaptive (s): {0}".format(time.time() - start_time), self.print_output)
+        log_info("Final error: {0}".format(error), self.print_output)
         if self.test_scheme:
             self.check_combi_scheme()
         if self.reevaluate_at_end:

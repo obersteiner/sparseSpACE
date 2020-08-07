@@ -302,6 +302,26 @@ class DensityEstimation(AreaOperation):
         self.dimension_wise = False
         log_debug('DensityEstimation debug: {0}'.format(self.debug), self.print_output)
 
+    def min_max_scale_surplusses(self):
+        #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+        X = self.surpluses[list(self.surpluses.keys())[0]]
+        for i in range(1, len(self.surpluses.keys())):
+            key = list(self.surpluses.keys())[i]
+            X = np.concatenate([X, self.surpluses[key]])
+        maximum = max(np.max(X), np.abs(np.min(X)))
+        #minimum = np.min(X)
+        for key in self.surpluses.keys():
+            surplus = self.surpluses[key]
+            #surplus = 2 * ((surplus - maximum) / (maximum - minimum)) - 1
+            #surplus = (surplus / (maximum / 2)) - 1
+            surplus = surplus / maximum
+            self.surpluses[key] = surplus
+        log_info('min max scaled surplusses', True)
+        #print('stop here')
+        #X_std = (X - maximum) / (maximum - minimum)
+
+        #transform(self.data)
+
     def initialize(self):
         """
         This method is used to initialize the operation with the dataset.
@@ -1005,17 +1025,27 @@ class DensityEstimation(AreaOperation):
         scaling_factor = 1.0/np.max(R)
         #alphas, info = cg(R*scaling_factor, b*scaling_factor)
         alphas = np.linalg.solve(R*scaling_factor, b*scaling_factor)
-        if self.classes is not None:
-            return alphas
+        avg_value = np.average(alphas)
         cg1 = timing()
         log_debug('OP: conjugate_gradient time taken: '.format((cg1 - cg0) / 1000000), self.print_output)
+        #if self.classes is not None:
+        #    return alphas
         points, weights = self.grid.get_points_and_weights()
-        integral = np.inner(alphas, weights)
+        if self.classes is not None:
+            #integral = np.inner(alphas.clip(min=0), weights)
+            integral = 1.0
+        else:
+            integral = np.inner(alphas, weights)
+        if integral != 0.0:
+            alphas /= integral
+        else:
+            raise ValueError("Integral is zero!")
+        #alphas = alphas.clip(max=avg_value*10)
         #print(alphas, R*scaling_factor, b*scaling_factor)
         #if self.print_output:
-        log_debug("Alphas: {0} {1}".format(component_grid.levelvector, alphas/integral), self.print_output)
+        log_debug("Alphas: {0} {1}".format(component_grid.levelvector, alphas), self.print_output)
         log_debug("-" * 100, self.print_output)
-        return alphas/integral
+        return alphas
 
     def calculate_L2_scalarproduct(self, point_i: Tuple[int, ...], domain_i: Sequence[Tuple[int, int]],
                                    point_j: Tuple[int, ...], domain_j: Sequence[Tuple[int, int]]) \

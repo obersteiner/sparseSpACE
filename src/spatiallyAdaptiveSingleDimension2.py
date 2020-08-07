@@ -48,6 +48,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.use_volume_weighting = use_volume_weighting
         self.timings = timings
 
+    def min_max_scale_surplusses(self):
+        #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+        #test = self.grid_surplusses
+        self.operation.min_max_scale_surplusses()
+        #transform(self.data)
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -778,7 +783,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 10**-1#0#0.1
+        safetyfactor = 2*10**-1#0#0.1
         # if position_level is None:
         #     print('stop')
         # if position_level_1_left is None:
@@ -1244,7 +1249,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                               if refinement_obj.start <= data[i][d] <= refinement_obj.end
                               and copysign(1.0, eval(data[i])) != copysign(1.0, self.operation.classes[i])))
                 if hits + misses > 0:
-                    refinement_obj.add_volume(np.array(misses / (hits + misses) * (refinement_obj.end - refinement_obj.start)))
+                    #refinement_obj.add_volume(np.array(misses / (hits + misses) * (refinement_obj.end - refinement_obj.start)))
+                    refinement_obj.add_volume(
+                        np.array(misses * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
                     refinement_obj.add_volume(np.zeros(1))
