@@ -3,27 +3,11 @@ from collections import defaultdict
 from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import patches
 from abc import ABC, abstractmethod
 from scipy.interpolate import interp1d
 from sympy import *
 import sympy as sym
-
-
-class Function(ABC):
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def get_analytical_solution(self, a, b):
-        pass
-
-    @abstractmethod
-    def evaluate_at(self, point):
-        pass
-
-    @abstractmethod
-    def evaluate_antiderivative_at(self, point):
-        pass
 
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -1219,6 +1203,98 @@ class ExtrapolationGrid:
                 plt.savefig("{}_slice_refinement_level_{}".format(filename, i), bbox_inches='tight', dpi=300)
 
             plt.show()
+
+    def plot_grid_with_containers(self, filename=None):
+        markersize = 20
+        fontsize = 60
+
+        plt.rcParams.update({'font.size': fontsize})
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(20, 5))
+
+        # Initialize total grid
+        containers = self.slice_containers
+        total_grid = []  # Should contain all points (interpolated ones included)
+        total_grid_levels = []
+        interpolated_indicator = []
+
+        for container in containers:
+            for slice in container.slices:
+                total_grid.append(slice.left_point)
+                total_grid_levels.append(slice.levels[0])
+                interpolated_indicator.append(slice.is_left_point_interpolated())
+
+            # Last point in container
+            last_slice = container.slices[-1]
+            total_grid.append(last_slice.right_point)
+            total_grid_levels.append(last_slice.levels[1])
+            interpolated_indicator.append(last_slice.is_right_point_interpolated())
+
+        # Plot grid
+        axis = ax
+        starts = total_grid[0:len(total_grid) - 1]
+        starts_levels = total_grid_levels[0:len(total_grid_levels) - 1]
+        ends = total_grid[1:len(total_grid)]
+        ends_levels = total_grid_levels[1:len(total_grid_levels)]
+
+        # Container background color cycle
+        container_color_cycle = ["blue", "red"]
+        hatch_cycle = ["-", "/"]
+
+        # Plot containers
+        for i, container in enumerate(containers):
+            axis.add_patch(
+                patches.Rectangle(
+                    (container.left_point, -0.1),
+                    container.right_point - container.left_point,
+                    0.2, linestyle='-',
+                    linewidth=2,
+                    fill=True,
+                    color=container_color_cycle[i % 2],
+                    alpha=0.4,
+                    hatch=hatch_cycle[i % 2]
+                )
+            )
+
+        # Plot grid points
+        for i in range(len(starts)):
+            linestyle = '-'
+
+            if interpolated_indicator[i]:
+                linestyle = '--'
+
+            plt.plot([starts[i], starts[i]], [-0.2, 0.2], linestyle, color="black", linewidth=3)
+
+            axis.text(starts[i] + 0.015, 0.01, str(starts_levels[i]),
+                      fontsize=fontsize - 10, ha='center', color="blue")
+
+        # Last vertical bar
+        linestyle = '-'
+
+        if interpolated_indicator[-1]:
+            linestyle = '--'
+
+        plt.plot([ends[-1], ends[-1]], [-0.2, 0.2], linestyle, color="black", linewidth=3)
+
+        # Text and points
+        axis.text(ends[-1] - 0.015, 0.01, str(ends_levels[-1]),
+                  fontsize=fontsize - 10, ha='center', color="blue")
+        xValues = starts + ends
+        yValues = np.zeros(len(xValues))
+        axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+
+        start, end = total_grid[0], total_grid[-1]
+        axis.set_xlim([start - 0.005, end + 0.005])
+        axis.set_ylim([-0.05, 0.05])
+        axis.set_yticks([])
+
+        # Set custom ticks
+        ticks = np.linspace(total_grid[0], total_grid[-1], 9)
+        plt.xticks(ticks, ticks, fontsize=40)
+
+        plt.tight_layout()
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        plt.show()
 
 
 class ExtrapolationGridSlice(ABC):
