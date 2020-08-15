@@ -14,7 +14,7 @@ class RombergConstants(unittest.TestCase):
     # ---  Version: Romberg Sliced
 
     def test_constant_right_extrapolation(self):
-        slice = RombergGridSlice([0, 0.5], [0, 1], [(0, 1), (0, 0.5)], ExtrapolationVersion.ROMBERG_SLICED)
+        slice = RombergGridSlice([0, 0.5], [0, 1], [(0, 1), (0, 0.5)], ExtrapolationVersion.ROMBERG_DEFAULT)
         constants = SlicedRombergConstants(slice)
 
         # C_{1,1}

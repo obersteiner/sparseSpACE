@@ -16,8 +16,7 @@ import sympy as sym
 class ExtrapolationVersion(Enum):
     ROMBERG_DEFAULT = 1
     ROMBERG_LINEAR = 2
-    ROMBERG_SLICED = 3
-    ROMBERG_SIMPSON = 4
+    ROMBERG_SIMPSON = 3
 
 
 # This class controls the coefficients for the extrapolation
@@ -68,46 +67,6 @@ class RombergSimpsonCoefficients(ExtrapolationCoefficients):
         return self.get_romberg_coefficient(m, j, 3)
 
 
-class RombergSlicedCoefficients(ExtrapolationCoefficients):
-    def __init__(self, a, b, support_sequence=None):
-        super(RombergSlicedCoefficients, self).__init__(a, b)
-
-        self.support_sequence = support_sequence
-
-    # TODO Consider constant remainder terms in error expansion
-    def get_coefficient(self, max_level, j):
-        coefficient = 1
-        slice_boundary_left, slice_boundary_right = self.support_sequence[-1]
-
-        midpoint = (slice_boundary_left + slice_boundary_right) / 2
-        assert max_level == len(self.support_sequence) - 1
-
-        left_j, right_j = self.support_sequence[j]
-        H_j = right_j - left_j
-
-        for i in range(max_level + 1):
-            left_i, right_i = self.support_sequence[i]
-
-            if i > 0:
-                left_prev, right_prev = self.support_sequence[i - 1]
-            else:
-                left_prev = None
-
-            H_i = right_i - left_i
-
-            if left_i == left_prev and left_prev is None:
-                # Coefficient for refinement of b_i (right support)
-                coefficient *= H_j / (H_j - H_i) if i != j else 1
-            else:
-                d_j = H_j / (left_j - midpoint) ** 2
-                d_i = H_i / (left_i - midpoint) ** 2
-
-                # Coefficient for refinement of a_i (left support)
-                coefficient *= d_j / (d_j - d_i) if i != j else 1
-
-        return coefficient
-
-
 class ExtrapolationCoefficientsFactory:
     def __init__(self, extrapolation_version: ExtrapolationVersion):
         self.extrapolation_version = extrapolation_version
@@ -121,10 +80,6 @@ class ExtrapolationCoefficientsFactory:
 
         elif self.extrapolation_version == ExtrapolationVersion.ROMBERG_SIMPSON:
             return RombergSimpsonCoefficients(a, b)
-
-        elif self.extrapolation_version == ExtrapolationVersion.ROMBERG_SLICED:
-            assert support_sequence is not None, "Please provide support point sequence for slice extrapolation."
-            return RombergSlicedCoefficients(a, b, support_sequence)
 
         else:
             raise RuntimeError("Wrong ExtrapolationVersion provided.")
@@ -231,7 +186,6 @@ class RombergSimpsonWeights(RombergWeights):
 
 class GridBinaryTree:
     class __GridBinaryTree:
-        # TODO test caching
         def __init__(self, use_caching=False, print_debug=False):
             self.grid = None
             self.grid_levels = None
@@ -575,9 +529,8 @@ class SliceVersion(Enum):
     This enum specifies the available slice types.
     """
     ROMBERG_DEFAULT = 1  # Sliced Romberg with default Romberg extrapolation
-    ROMBERG_SLICED = 2  # Sliced Romberg with spliced trapezoidal extrapolation
-    TRAPEZOID = 3  # Default trapezoidal rule without extrapolation
-    ROMBERG_DEFAULT_CONST_SUBTRACTION = 4  # Sliced Romberg with default Romberg extrapolation and constant subtraction
+    TRAPEZOID = 2  # Default trapezoidal rule without extrapolation
+    ROMBERG_DEFAULT_CONST_SUBTRACTION = 3  # Sliced Romberg with default Romberg extrapolation and constant subtraction
 
 
 class SliceContainerVersion(Enum):
@@ -2533,11 +2486,6 @@ class ExtrapolationGridSliceFactory:
                                                        left_point_is_interpolated, right_point_is_interpolated,
                                                        function)
 
-        elif self.slice_version == SliceVersion.ROMBERG_SLICED:
-            return RombergGridSlice(interval, levels, support_sequence,
-                                    ExtrapolationVersion.ROMBERG_SLICED,
-                                    left_point_is_interpolated, right_point_is_interpolated, function)
-
         elif self.slice_version == SliceVersion.TRAPEZOID:
             return TrapezoidalGridSlice(interval, levels, support_sequence,
                                         left_point_is_interpolated, right_point_is_interpolated,
@@ -2551,8 +2499,8 @@ class ExtrapolationGridSliceFactory:
         if isinstance(slice, RombergGridSlice):
             if slice.extrapolation_version == ExtrapolationVersion.ROMBERG_DEFAULT:
                 return SliceVersion.ROMBERG_DEFAULT
-            elif slice.extrapolation_version == ExtrapolationVersion.ROMBERG_SLICED:
-                return SliceVersion.ROMBERG_SLICED
+            else:
+                raise RuntimeError("This slice extrapolation version does not exist")
         elif isinstance(slice, TrapezoidalGridSlice):
             return SliceVersion.TRAPEZOID
 
