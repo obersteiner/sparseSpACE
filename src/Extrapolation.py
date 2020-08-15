@@ -586,7 +586,8 @@ class SliceContainerVersion(Enum):
     """
     ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers # TODO Rename to DEFAULT_ROMBERG
     LAGRANGE_ROMBERG = 2  # Important missing grid points are interpolated with Lagrange
-    SIMPSON_ROMBERG = 3  # Romberg extrapolation with simpson rule as base quadrature rule
+    LAGRANGE_FULL_GRID_ROMBERG = 3  # All missing points needed for a full grid are interpolated
+    SIMPSON_ROMBERG = 4  # Romberg extrapolation with simpson rule as base quadrature rule
 
 
 class ExtrapolationGrid:
@@ -630,11 +631,14 @@ class ExtrapolationGrid:
         self.container_factory = ExtrapolationGridSliceContainerFactory(self.container_version)
 
         # Interpolation
-        # TODO: allow bigger deltas for grouping
-        self.max_interpolation_step_width_delta = 2 ** 1
+        if self.container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG:
+            self.max_interpolation_step_width_delta = np.infty
+        else:
+            self.max_interpolation_step_width_delta = 2 ** 1
 
     def interpolation_is_enabled(self):
-        return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG
+        return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG or \
+               self.container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG
 
     # Integration
     def integrate(self, function: Function = None):
@@ -848,8 +852,6 @@ class ExtrapolationGrid:
         container = self.slice_containers[-1]
         min_step_width = container.minimal_step_width
         correct_step_width_delta = min_step_width/max_delta <= step_width <= min_step_width*max_delta
-        # correct_step_width_delta = (container.minimal_step_width in [step_width*max_delta, step_width/max_delta]) \
-        #             and (step_width_buffer/max_delta == step_width or (step_width_buffer*max_delta) == step_width)
 
         # Append to previous container
         if step_width_buffer == step_width or correct_step_width_delta:
@@ -1308,7 +1310,7 @@ class ExtrapolationGridSlice(ABC):
     """
 
     def __init__(self, interval, levels, support_sequence,
-                 extrapolation_version: ExtrapolationVersion = None, # TODO Remove?
+                 extrapolation_version: ExtrapolationVersion = None,
                  left_point_is_interpolated=False, right_point_is_interpolated=False,
                  function: Function = None):
         assert interval[0] < interval[1]
@@ -1494,6 +1496,8 @@ class ExtrapolationGridSliceContainer(ABC):
         self.analytical_solution = None
         self.set_function(function)
 
+        self.max_interpolation_support_points = 0
+
     def append_slice(self, slice: ExtrapolationGridSlice):
         """
         This method appends a slice of arbitrary type to the container.
@@ -1571,6 +1575,32 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return truncated_grid_levels
 
+    def get_full_grid_levels_between(self, left_level, right_level, max_level):
+        """
+        This method computes the grid levels of the full grid between two given levels.
+
+        E.g. Given two boundary levels 1, 2 and a maximal level 4
+        => interpolated grid levels [1, 4, 3, 4, 2].
+
+        :returns: the normalized grid levels of this container.
+        """
+
+        if left_level == max_level == right_level:
+            return self.get_grid_levels()
+
+        interpolated_levels = self.__get_full_grid_levels_between(max(left_level, right_level), max_level)
+
+        return [left_level] + interpolated_levels + [right_level]
+
+    def __get_full_grid_levels_between(self, start_level, max_level):
+        if start_level > max_level:
+            return []
+
+        left_levels = self.__get_full_grid_levels_between(start_level + 1, max_level)
+        right_levels = self.__get_full_grid_levels_between(start_level + 1, max_level)
+
+        return left_levels + [start_level] + right_levels
+
     def get_normalized_grid_levels(self):
         """
         This method normalizes the grid levels (with interpolated levels)
@@ -1581,9 +1611,6 @@ class ExtrapolationGridSliceContainer(ABC):
              with grid levels [1, 3, 2]
 
         => normalized grid levels [0, 1, 0].
-
-        :param grid: determines which grid shall be normalized.
-                     If grid=None the interpolated grid is normalized by default.
 
         :returns: the normalized grid levels of this container.
         """
@@ -1640,218 +1667,6 @@ class ExtrapolationGridSliceContainer(ABC):
         indicator.append(self.slices[-1].is_right_point_interpolated())
 
         return indicator
-
-    # -----------------------------------------------------------------------------------------------------------------
-    # ---  Interpolation points
-
-    def get_support_points_for_interpolation_by_levels(self, max_point_count):
-        """
-        This method computes support points that are used in the interpolation of grid points.
-        The support points are distributed to the left containers, middle container and right containers.
-        The points in the middle container a computed level wise
-
-        :param max_point_count: determines how much interpolation support points should be used (>= 2).
-        :return: get optimal distributed support points
-        """
-        assert max_point_count >= 2
-
-        left_containers = self.adjacent_containers_left
-        right_containers = self.adjacent_containers_right
-
-        has_left_containers = len(left_containers) > 0
-        has_right_containers = len(right_containers) > 0
-
-        points_left = []
-        points_right = []
-
-        if has_left_containers:
-            for container in left_containers:
-                points_left.extend(container.get_grid_without_interpolated_points()[0:-1])
-
-        if has_right_containers:
-            for container in right_containers:
-                # TODO handle edge case with one point on the right
-                points_right.extend(container.get_grid_without_interpolated_points()[1:])
-
-        points_middle = self.get_grid_without_interpolated_points()
-        levels_middle = self.get_grid_levels_without_interpolated_points()
-
-        support_points = []
-
-        # Determine how much points should be used to the left and right of this container
-        #   as well as within the container itself.
-        max_left, max_middle, max_right = self.get_interpolation_support_point_count(len(points_left),
-                                                                                     len(points_middle),
-                                                                                     len(points_right),
-                                                                                     max_point_count)
-
-        if max_left > 0:
-            support_points.extend(points_left[-min(max_left, len(points_left)):])
-
-        support_points.extend(self.get_grid_with_max_point_count(points_middle, levels_middle, max_middle))
-
-        if max_right > 0:
-            support_points.extend(points_right[0:min(max_right, len(points_right))])
-
-        return support_points
-
-    @staticmethod
-    def get_interpolation_support_point_count(max_count_left, max_count_middle, max_count_right, max_count_total):
-        max_iter = max_count_left + max_count_middle + max_count_right
-        i = 0
-
-        total_count = 0
-        left_count = 0
-        middle_count = 0
-        right_count = 0
-
-        if max_count_middle >= 2 and max_count_total >= 2:
-            total_count = 2
-            left_count = 0
-            middle_count = 2
-
-        while total_count < max_count_total and i < max_iter:
-            if middle_count < max_count_middle:
-                middle_count += 1
-                total_count += 1
-
-            if left_count < max_count_left and total_count < max_count_total:
-                left_count += 1
-                total_count += 1
-
-            if right_count < max_count_right and total_count < max_count_total:
-                right_count += 1
-                total_count += 1
-
-            i += 1
-
-        return left_count, middle_count, right_count
-
-    @staticmethod
-    def get_grid_with_max_point_count(grid, grid_levels, count):
-        """
-        This method computes a truncated grid with <= count points. Points of a level are only added to the truncated
-        grid if all available points on this level (+ previous points) fit below the point count.
-
-        :param grid: grid points as array
-        :param grid_levels: grid levels as array
-        :param count: maximal point count
-        :return: truncated grid with max. "count" points
-        """
-
-        assert count >= 0
-        assert len(grid) == len(grid_levels)
-
-        if count >= len(grid):
-            return grid
-
-        current_level = min(grid_levels)
-        current_grid = []
-
-        while True:
-            current_grid_tmp = []
-            for i in range(len(grid)):
-                if grid_levels[i] <= current_level:
-                    current_grid_tmp.append(grid[i])
-
-                # TODO return if len(current_grid_tmp) > count
-
-            if len(current_grid_tmp) > count:
-                return current_grid
-
-            current_grid = current_grid_tmp
-            current_level += 1
-
-    def get_support_points_for_interpolation_geometrically(self, interp_point, max_point_count, adaptive=True):
-        """
-        This method computes support points that are used in the interpolation of grid points.
-        The algorithms chooses the geometrical closest neighbours first.
-
-        :param interp_point: the point around which the support points are selected.
-        :param max_point_count: determines how much interpolation support points should be used (>= 2).
-        :param adaptive: If enabled, the algorithm does increase the support points
-                            when many negative weights occur while interpolating
-
-        :return: geometrically closest support points
-        """
-        assert max_point_count >= 2
-
-        # Get non interpolated global grid
-        non_interpolated_global_grid = []
-
-        for container in list(reversed(self.adjacent_containers_left)):
-            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
-
-        non_interpolated_global_grid.extend(self.get_grid_without_interpolated_points())
-
-        for i, container in enumerate(self.adjacent_containers_right):
-            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
-
-        # Remove duplicates
-        non_interpolated_global_grid = list(dict.fromkeys(non_interpolated_global_grid))
-
-        # Find closest non-interpolated neighbours
-        left_index = None
-        right_index = None
-
-        for i in range(len(non_interpolated_global_grid) - 1):
-            left = non_interpolated_global_grid[i]
-            right = non_interpolated_global_grid[i+1]
-
-            if left < interp_point < right:
-                left_index = i
-                right_index = i+1
-                break
-
-        # Determine geometrically closest support points
-        support_points = []
-
-        points_left_exist = left_index is not None and left_index >= 0
-        points_right_exist = right_index is not None and right_index < len(non_interpolated_global_grid)
-
-        while(len(support_points) < max_point_count) and (points_left_exist or points_right_exist):
-            new_left = False
-            new_right = False
-
-            if points_left_exist:
-                new_support_point = non_interpolated_global_grid[left_index]
-                support_points.insert(0, new_support_point)
-                left_index -= 1
-                new_left = True
-
-            if points_right_exist and len(support_points) < max_point_count:
-                new_support_point = non_interpolated_global_grid[right_index]
-                support_points.append(new_support_point)
-                right_index += 1
-                new_right = True
-
-            # Break if many negative lagrange weights occur
-            negative_sum = 0
-
-            if adaptive and len(support_points) > 2:
-                for support_point in support_points:
-                    weight = self.get_langrange_basis(support_points,
-                                                      support_point, interp_point)
-
-                    if weight < 0:
-                        negative_sum += weight
-
-                    if negative_sum > 1 / self.max_interpolation_support_points:
-                        if new_left:
-                            support_points.pop(0)
-
-                        if new_right and len(support_points) > 2:
-                            support_points.pop(-1)
-
-                        break
-
-            points_left_exist = left_index >= 0
-            points_right_exist = right_index < len(non_interpolated_global_grid)
-
-        if len(support_points) < 2:
-            assert len(support_points) >= 2, "There are to few support points, for an interpolation."
-
-        return support_points
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Errors
@@ -2218,7 +2033,7 @@ class SimpsonRombergGridSliceContainer(ExtrapolationGridSliceContainer):
         return super().to_string("SimpsonRombergGridSliceContainer")
 
 
-class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
+class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
     """
         This class interpolates as many missing points as possible inside the container and executes a default
         Romberg method on this interpolated partial full grid.
@@ -2232,17 +2047,221 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
             :param function: for error computation.
         """
-        super(LagrangeRombergGridSliceContainer, self).__init__(function)
+        super(InterpolationGridSliceContainer, self).__init__(function)
         self.max_interpolation_support_points = 7
+
+    def get_support_points_for_interpolation_by_levels(self, max_point_count):
+        """
+        This method computes support points that are used in the interpolation of grid points.
+        The support points are distributed to the left containers, middle container and right containers.
+        The points in the middle container a computed level wise
+
+        :param max_point_count: determines how much interpolation support points should be used (>= 2).
+        :return: get optimal distributed support points
+        """
+        assert max_point_count >= 2
+
+        left_containers = self.adjacent_containers_left
+        right_containers = self.adjacent_containers_right
+
+        has_left_containers = len(left_containers) > 0
+        has_right_containers = len(right_containers) > 0
+
+        points_left = []
+        points_right = []
+
+        if has_left_containers:
+            for container in left_containers:
+                points_left.extend(container.get_grid_without_interpolated_points()[0:-1])
+
+        if has_right_containers:
+            for container in right_containers:
+                # TODO handle edge case with one point on the right
+                points_right.extend(container.get_grid_without_interpolated_points()[1:])
+
+        points_middle = self.get_grid_without_interpolated_points()
+        levels_middle = self.get_grid_levels_without_interpolated_points()
+
+        support_points = []
+
+        # Determine how much points should be used to the left and right of this container
+        #   as well as within the container itself.
+        max_left, max_middle, max_right = self.get_interpolation_support_point_count(len(points_left),
+                                                                                     len(points_middle),
+                                                                                     len(points_right),
+                                                                                     max_point_count)
+
+        if max_left > 0:
+            support_points.extend(points_left[-min(max_left, len(points_left)):])
+
+        support_points.extend(self.get_grid_with_max_point_count(points_middle, levels_middle, max_middle))
+
+        if max_right > 0:
+            support_points.extend(points_right[0:min(max_right, len(points_right))])
+
+        return support_points
+
+    @staticmethod
+    def get_interpolation_support_point_count(max_count_left, max_count_middle, max_count_right, max_count_total):
+        max_iter = max_count_left + max_count_middle + max_count_right
+        i = 0
+
+        total_count = 0
+        left_count = 0
+        middle_count = 0
+        right_count = 0
+
+        if max_count_middle >= 2 and max_count_total >= 2:
+            total_count = 2
+            left_count = 0
+            middle_count = 2
+
+        while total_count < max_count_total and i < max_iter:
+            if middle_count < max_count_middle:
+                middle_count += 1
+                total_count += 1
+
+            if left_count < max_count_left and total_count < max_count_total:
+                left_count += 1
+                total_count += 1
+
+            if right_count < max_count_right and total_count < max_count_total:
+                right_count += 1
+                total_count += 1
+
+            i += 1
+
+        return left_count, middle_count, right_count
+
+    @staticmethod
+    def get_grid_with_max_point_count(grid, grid_levels, count):
+        """
+        This method computes a truncated grid with <= count points. Points of a level are only added to the truncated
+        grid if all available points on this level (+ previous points) fit below the point count.
+
+        :param grid: grid points as array
+        :param grid_levels: grid levels as array
+        :param count: maximal point count
+        :return: truncated grid with max. "count" points
+        """
+
+        assert count >= 0
+        assert len(grid) == len(grid_levels)
+
+        if count >= len(grid):
+            return grid
+
+        current_level = min(grid_levels)
+        current_grid = []
+
+        while True:
+            current_grid_tmp = []
+            for i in range(len(grid)):
+                if grid_levels[i] <= current_level:
+                    current_grid_tmp.append(grid[i])
+
+            if len(current_grid_tmp) > count:
+                return current_grid
+
+            current_grid = current_grid_tmp
+            current_level += 1
+
+    def get_support_points_for_interpolation_geometrically(self, interp_point, max_point_count, adaptive=True):
+        """
+        This method computes support points that are used in the interpolation of grid points.
+        The algorithms chooses the geometrical closest neighbours first.
+
+        :param interp_point: the point around which the support points are selected.
+        :param max_point_count: determines how much interpolation support points should be used (>= 2).
+        :param adaptive: If enabled, the algorithm does increase the support points
+                            when many negative weights occur while interpolating
+
+        :return: geometrically closest support points
+        """
+        assert max_point_count >= 2
+
+        # Get non interpolated global grid
+        non_interpolated_global_grid = []
+
+        for container in list(reversed(self.adjacent_containers_left)):
+            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
+
+        non_interpolated_global_grid.extend(self.get_grid_without_interpolated_points())
+
+        for i, container in enumerate(self.adjacent_containers_right):
+            non_interpolated_global_grid.extend(container.get_grid_without_interpolated_points())
+
+        # Remove duplicates
+        non_interpolated_global_grid = list(dict.fromkeys(non_interpolated_global_grid))
+
+        # Find closest non-interpolated neighbours
+        left_index = None
+        right_index = None
+
+        for i in range(len(non_interpolated_global_grid) - 1):
+            left = non_interpolated_global_grid[i]
+            right = non_interpolated_global_grid[i + 1]
+
+            if left < interp_point < right:
+                left_index = i
+                right_index = i + 1  # i+1, because interp_point is not in the real grid
+                break
+
+        # Determine geometrically closest support points
+        support_points = []
+
+        points_left_exist = left_index is not None and left_index >= 0
+        points_right_exist = right_index is not None and right_index < len(non_interpolated_global_grid)
+
+        while (len(support_points) < max_point_count) and (points_left_exist or points_right_exist):
+            new_left = False
+            new_right = False
+
+            if points_left_exist:
+                new_support_point = non_interpolated_global_grid[left_index]
+                support_points.insert(0, new_support_point)
+                left_index -= 1
+                new_left = True
+
+            if points_right_exist and len(support_points) < max_point_count:
+                new_support_point = non_interpolated_global_grid[right_index]
+                support_points.append(new_support_point)
+                right_index += 1
+                new_right = True
+
+            # Break if many negative lagrange weights occur
+            negative_sum = 0
+
+            if adaptive and len(support_points) > 2:
+                for support_point in support_points:
+                    weight = self.get_interpolation_weights(support_points, support_point, interp_point)
+
+                    if weight < 0:
+                        negative_sum += weight
+
+                    if negative_sum > 1 / self.max_interpolation_support_points:
+                        if new_left:
+                            support_points.pop(0)
+
+                        if new_right and len(support_points) > 2:
+                            support_points.pop(-1)
+
+                        break
+
+            points_left_exist = left_index >= 0
+            points_right_exist = right_index < len(non_interpolated_global_grid)
+
+        if len(support_points) < 2:
+            assert len(support_points) >= 2, "There are to few support points, for an interpolation."
+
+        return support_points
 
     def insert_interpolating_slices(self):
         """
         This method inserts interpolation slices into the container.
-        This implementation works only for insertion of one interpolation point.
 
         :return: void.
         """
-        #
         interpolation_points = self.get_interpolation_points()
 
         # No interpolation points have to be inserted
@@ -2262,44 +2281,49 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
 
             factory = ExtrapolationGridSliceFactory(ExtrapolationGridSliceFactory.get_slice_version(self.slices[i]))
 
-            point = interpolation_points[0]  # Peek at the first interpolation point
+            # Grid that has to be swapped in
+            points_between = [p for p in interpolation_points if container_grid[i] < p < container_grid[i + 1]]
+            points = [container_grid[i]] + points_between + [container_grid[i+1]]
 
-            if point is None:
-                break
+            levels = self.get_full_grid_levels_between(container_grid_levels[i], container_grid_levels[i+1],
+                                                       self.max_level)
 
-            # Replace slice with two interpolating slices
-            if container_grid[i] < point < container_grid[i + 1]:
-                point_level = max(container_grid_levels[i], container_grid_levels[i + 1]) + 1
+            # Replace slice with multiple interpolating slices
+            if len(points_between) > 0:
+                for j in range(0, len(points)-1, 2):
+                    left_index = j
+                    right_index = j+1
+                    # support_sequence = self.slices[i].support_sequence + [(points[j], points[j+1])]  # TODO adjust support sequence
+                    left_interpolated_slice = factory.get_grid_slice(
+                        [points[left_index], points[right_index]],
+                        [levels[left_index], levels[right_index]],
+                        support_sequence=None,
+                        left_point_is_interpolated=left_index > 0,
+                        right_point_is_interpolated=right_index < len(points)-1,
+                        function=self.function
+                    )
+                    assert left_interpolated_slice.is_right_point_interpolated() is True
 
-                support_sequence = self.slices[i].support_sequence + [(container_grid[i], point)]
-                left_interpolated_slice = factory.get_grid_slice(
-                    [container_grid[i], point],
-                    [container_grid_levels[i], point_level],
-                    support_sequence=support_sequence,
-                    right_point_is_interpolated=True,
-                    function=self.function
-                )
+                    left_index = j+1
+                    right_index = j+2
+                    # support_sequence = self.slices[i].support_sequence + [(points[i+1], points[i+2])]  # TODO adjust support sequence
+                    right_interpolated_slice = factory.get_grid_slice(
+                        [points[left_index], points[right_index]],
+                        [levels[left_index], levels[right_index]],
+                        left_point_is_interpolated=left_index > 0,
+                        right_point_is_interpolated=right_index < len(points) - 1,
+                        function=self.function
+                    )
 
-                assert left_interpolated_slice.is_right_point_interpolated() is True
+                    assert right_interpolated_slice.is_left_point_interpolated() is True
 
-                support_sequence = self.slices[i].support_sequence + [(point, container_grid[i + 1])]
-                right_interpolated_slice = factory.get_grid_slice(
-                    [point, container_grid[i + 1]],
-                    [point_level, container_grid_levels[i + 1]],
-                    support_sequence=support_sequence,
-                    left_point_is_interpolated=True,
-                    function=self.function
-                )
+                    # Exchange slice with two interpolated slices
+                    new_slices.append(left_interpolated_slice)
+                    new_slices.append(right_interpolated_slice)
 
-                assert right_interpolated_slice.is_left_point_interpolated() is True
-
-                # Exchange slice with two interpolated slices
-                new_slices.append(left_interpolated_slice)
-                new_slices.append(right_interpolated_slice)
-
-                # Pop queue
-                interpolation_points.pop(0)
-            else:
+                    # Pop queue
+                    interpolation_points.pop(0)
+            else:  # No interpolation slices inserted
                 new_slices.append(self.slices[i])
 
         self.slices = new_slices
@@ -2322,6 +2346,31 @@ class LagrangeRombergGridSliceContainer(ExtrapolationGridSliceContainer):
                 interpolation_points.append(current_point)
 
         return interpolation_points
+
+    @abstractmethod
+    def get_final_weights(self):
+        pass
+
+
+class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
+    """
+        This class interpolates as many missing points as possible inside the container and executes a default
+        Romberg method on this interpolated partial full grid.
+
+        For the interpolation we use the closest points to the left and right of this container.
+    """
+
+    def __init__(self, function: Function = None):
+        """
+            Constructor of this class.
+
+            :param function: for error computation.
+        """
+        super(LagrangeRombergGridSliceContainer, self).__init__(function)
+        self.max_interpolation_support_points = 7
+
+    def get_interpolation_weights(self, support_points, basis_point, evaluation_point):
+        return self.get_langrange_basis(support_points, basis_point, evaluation_point)
 
     @staticmethod
     def get_langrange_basis(support_points, basis_point, evaluation_point):
@@ -2469,7 +2518,7 @@ class ExtrapolationGridSliceFactory:
     def __init__(self, slice_version: SliceVersion):
         self.slice_version = slice_version
 
-    def get_grid_slice(self, interval, levels, support_sequence,
+    def get_grid_slice(self, interval, levels, support_sequence = None,
                        left_point_is_interpolated=False, right_point_is_interpolated=False,
                        function: Function = None) -> ExtrapolationGridSlice:
         if self.slice_version == SliceVersion.ROMBERG_DEFAULT:
@@ -2523,7 +2572,8 @@ class ExtrapolationGridSliceContainerFactory:
     def get_grid_slice_container(self, function: Function = None) -> ExtrapolationGridSliceContainer:
         if self.slice_container_version == SliceContainerVersion.ROMBERG_DEFAULT:
             return RombergGridSliceContainer(function)
-        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG:
+        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG or \
+            self.slice_container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG:
             return LagrangeRombergGridSliceContainer(function)
         elif self.slice_container_version == SliceContainerVersion.SIMPSON_ROMBERG:
             return SimpsonRombergGridSliceContainer(function)
