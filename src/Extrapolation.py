@@ -1159,7 +1159,7 @@ class ExtrapolationGrid:
 
             plt.show()
 
-    def plot_grid_with_containers(self, filename=None):
+    def plot_grid_with_containers(self, filename=None, highlight_containers=True):
         markersize = 20
         fontsize = 60
 
@@ -1203,10 +1203,10 @@ class ExtrapolationGrid:
                     container.right_point - container.left_point,
                     0.2, linestyle='-',
                     linewidth=2,
-                    fill=True,
+                    fill=highlight_containers,
                     color=container_color_cycle[i % 2],
                     alpha=0.4,
-                    hatch=hatch_cycle[i % 2]
+                    hatch=hatch_cycle[i % 2] if highlight_containers else None
                 )
             )
 
@@ -1233,9 +1233,14 @@ class ExtrapolationGrid:
         # Text and points
         axis.text(ends[-1] - 0.015, 0.01, str(ends_levels[-1]),
                   fontsize=fontsize - 10, ha='center', color="blue")
-        xValues = starts + ends
-        yValues = np.zeros(len(xValues))
-        axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+
+        # Interpolated points
+        xValues = [point for i, point in enumerate(total_grid) if interpolated_indicator[i]]
+        axis.plot(xValues, np.zeros(len(xValues)), 'o', markersize=markersize, markeredgewidth=3, fillstyle="none", color="black")
+
+        # Grid points
+        xValues = [point for i, point in enumerate(total_grid) if not interpolated_indicator[i]]
+        axis.plot(xValues, np.zeros(len(xValues)), 'bo', markersize=markersize, color="black")
 
         start, end = total_grid[0], total_grid[-1]
         axis.set_xlim([start - 0.005, end + 0.005])
