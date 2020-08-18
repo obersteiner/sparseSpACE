@@ -5,7 +5,21 @@ from GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from joblib import Parallel, delayed
+import time
 
+def get_multiplied_interpolation(interpolation_points: Sequence[Tuple[float, ...]],
+                                 coordinates: Sequence[Sequence[float]],
+                                 component_grid_values: Sequence[Tuple[float, ...]], operation: GridOperation, coefficient: int):
+    """Returns the interpolation result on specified component grid at interpolation points and multiplied by  combi
+    coefficient.
+
+    :param interpolation_points: List of points at which we want to evaluate/interpolate.
+    :param component_grid: ComponentGridInfo of the specified component grid.
+    :return: List of values (each a numpy array)
+    """
+    return operation.interpolate_points(component_grid_values, mesh_points_grid=coordinates,
+                                        evaluation_points=interpolation_points) * coefficient
 
 class StandardCombi(object):
     """This class implements the standard combination technique.
@@ -40,18 +54,59 @@ class StandardCombi(object):
         :return: List of values (each a numpy array)
         """
         interpolation = np.zeros((len(interpolation_points), self.operation.point_output_length()))
-        self.do_parallel = False
+        self.do_parallel = True
         if self.do_parallel:
-            pool = mp.Pool(4)
-            interpolation_results = pool.starmap_async(self.get_multiplied_interpolation, [(interpolation_points, component_grid) for component_grid in self.scheme]).get()
-            pool.close()
-            pool.join()
+            #pool = mp.Pool(4)
+            start = time.time()
+            component_grid_values_array = []
+            grids_array = []
+            coefficients = []
+
+            for component_grid in self.scheme:
+                self.grid.setCurrentArea(self.a, self.b, component_grid.levelvector)
+                component_grid_values_array.append(self.operation.get_component_grid_values(component_grid, self.grid.coordinate_array_with_boundary))
+                grids_array.append(self.grid.coordinate_array_with_boundary)
+                coefficients.append(component_grid.coefficient)
+            #interpolation_results = pool.map(get_multiplied_interpolation, [(interpolation_points, grid, component_grid_values, self.operation) for (grid,component_grid_values) in zip(grids_array, component_grid_values_array)]).get()
+            interpolation_results = Parallel(n_jobs=-1, backend="threading")(delayed(get_multiplied_interpolation)(interpolation_points, grid, component_grid_values, self.operation, coefficient) for (grid,component_grid_values, coefficient) in zip(grids_array, component_grid_values_array, coefficients))
+            #interpolation_results = Parallel(n_jobs=-1)(delayed(self.get_multiplied_interpolation)(interpolation_points, grid, component_grid_values, self.operation, coefficient) for (grid,component_grid_values, coefficient) in zip(grids_array, component_grid_values_array, coefficients))
+            #pool.close()
+            #pool.join
+            end = time.time()
+            print("Duration parallel:", end - start)
+
+            start = time.time()
             for result in interpolation_results:
                 interpolation += result
+            end = time.time()
+            print("Duration parallel:", end - start)
+
+            interpolation2 = np.zeros((len(interpolation_points), self.operation.point_output_length()))
+            start = time.time()
+            for component_grid in self.scheme:
+                interpolation2 += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
+            end = time.time()
+            print("Duration sequential:", end - start)
+            #print(interpolation, interpolation2)
+            assert np.all(interpolation == interpolation2)
         else:
             for component_grid in self.scheme:
                 interpolation += self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
         return interpolation
+
+    def get_multiplied_interpolation(self, interpolation_points: Sequence[Tuple[float, ...]],
+                                     coordinates: Sequence[Sequence[float]],
+                                     component_grid_values: Sequence[Tuple[float, ...]], operation: GridOperation,
+                                     coefficient: int):
+        """Returns the interpolation result on specified component grid at interpolation points and multiplied by  combi
+        coefficient.
+
+        :param interpolation_points: List of points at which we want to evaluate/interpolate.
+        :param component_grid: ComponentGridInfo of the specified component grid.
+        :return: List of values (each a numpy array)
+        """
+        return self.operation.interpolate_points(component_grid_values, mesh_points_grid=coordinates,
+                                            evaluation_points=interpolation_points) * coefficient
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo):
         """This method evaluates the model at the specified interpolation points on the specified component grid.
@@ -85,16 +140,6 @@ class StandardCombi(object):
         """
         grid_points = list(get_cross_product(grid_coordinates))
         return self.interpolate_points(grid_points, component_grid)
-
-    def get_multiplied_interpolation(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo):
-        """Returns the interpolation result on specified component grid at interpolation points and multiplied by  combi
-        coefficient.
-
-        :param interpolation_points: List of points at which we want to evaluate/interpolate.
-        :param component_grid: ComponentGridInfo of the specified component grid.
-        :return: List of values (each a numpy array)
-        """
-        return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
 
     def plot(self, filename: str = None, plotdimension: int = 0, contour=False) -> None:
         """This method plots the model obtained by the Combination Technique.
