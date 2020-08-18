@@ -89,8 +89,7 @@ class ExtrapolationCoefficientsFactory:
 class RombergWeightFactory:
     @staticmethod
     def get(a, b, version):
-        if version == ExtrapolationVersion.ROMBERG_DEFAULT or version == ExtrapolationVersion.ROMBERG_LINEAR or \
-                version == ExtrapolationVersion.ROMBERG_SLICED:
+        if version == ExtrapolationVersion.ROMBERG_DEFAULT or version == ExtrapolationVersion.ROMBERG_LINEAR:
             return RombergTrapezoidalWeights(a, b, version)
 
         elif version == ExtrapolationVersion.ROMBERG_SIMPSON:
