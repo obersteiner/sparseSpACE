@@ -17,12 +17,13 @@ def performTestStandard(f, a, b, grid, lmin, maxLmax, dim, reference_solution, e
         errorArrayStandard.append(error / abs(reference_solution))
         pointArray.append(standardCombi.get_total_num_points())
         distinctFEvalArray.append(standardCombi.get_total_num_points(distinct_function_evals=True))
-        interpolated_values = np.asarray(standardCombi(evaluation_points))
-        real_values = np.asarray([f.eval(point) for point in evaluation_points])
-        diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
-        # print(interpolated_values, diff)
-        interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
-        interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
+        if evaluation_points is not None:
+            interpolated_values = np.asarray(standardCombi(evaluation_points))
+            real_values = np.asarray([f.eval(point) for point in evaluation_points])
+            diff = [real_values[i] - interpolated_values[i] for i in range(len(evaluation_points))]
+            # print(interpolated_values, diff)
+            interpolation_errorL2.append(scipy.linalg.norm(diff, 2))
+            interpolation_errorMax.append(scipy.linalg.norm(diff, np.inf))
     return pointArray, distinctFEvalArray, errorArrayStandard, interpolation_errorL2, interpolation_errorMax
 
 
@@ -134,9 +135,12 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     if doDimAdaptive:
         for i, grid in enumerate(grids):
             dimAdaptiveCombi = DimAdaptiveCombi(a, b, grid)
-            _, _, _, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1, 2, f,
-                                                                                                      10 ** -maxtol,
-                                                                                                      reference_solution=reference_solution)
+            operation = Integration(f, grid, dim, reference_solution)
+            dimAdaptiveCombi = DimAdaptiveCombi(a, b, operation=operation)
+            scheme, error, result, errorArrayDimAdaptive, numFEvalIdealDimAdaptive = dimAdaptiveCombi.perform_combi(1,
+                                                                                                                    1,
+                                                                                                                    10 ** -maxtol,
+                                                                                                                    max_number_of_points=max_evaluations)
             errorArrayDimAdaptiveArray.append(errorArrayDimAdaptive)
             numFEvalIdealDimAdaptiveArray.append(numFEvalIdealDimAdaptive)
 
@@ -235,7 +239,6 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
         ax.figure.savefig("{}{}.pdf".format(filepath, filename), bbox_inches='tight', dpi=300)
 
     # ax.figure.show()
-
 
 def clear_csv(filepath, filename):
     file = "{}{}.csv".format(filepath, filename)
