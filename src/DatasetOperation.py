@@ -376,7 +376,7 @@ class DataSet:
         for j in self.get_labels():
             values = np.array([x for i, x in enumerate(self.__data[0])])
             others = (sum(class_numbers) - class_numbers[j])
-            labels = np.array([1 if self.__data[1][i] == j else -1 * (class_numbers[j] / others) for i, x in enumerate(self.__data[0])])
+            labels = np.array([1 if self.__data[1][i] == j else max(-1, -1 * (class_numbers[j] / others)) for i, x in enumerate(self.__data[0])])
             current_set = DataSet(tuple([values, labels]))
             self.__update_internal(current_set)
             set_classes.append(current_set)
