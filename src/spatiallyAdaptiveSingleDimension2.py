@@ -612,7 +612,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # TODO: global error calculation
         ### global error calc goes here
         if self.errorEstimator.is_global:
-            self.errorEstimator.calc_global_error(self.operation.data, self)
+            self.errorEstimator.calc_global_error(self.operation.validation_set, self)
         super().finalize_evaluation_operation(areas, evaluation_array)
         #self.refinement.print_containers_only()
         #if self.version == 1:

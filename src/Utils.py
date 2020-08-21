@@ -2,6 +2,12 @@ import numpy as np
 from typing import List, Set, Dict, Tuple, Optional, Union, Sequence, Generator
 from itertools import product
 import logging
+import time
+import sys
+if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
+    timing = time.time_ns
+else:
+    timing = time.time
 
 
 def get_cross_product(one_d_arrays: Sequence[Sequence[Union[float, int]]]) \
@@ -59,6 +65,14 @@ def log_debug(message: str = '', do_print: bool = False):
     if do_print:
         print(message)
 
+
 def clear_log():
     open(log_filename, 'w').close()
 
+
+def time_func(print_output, message, function, *kwargs):
+    start = timing()
+    ret = function(*kwargs)
+    result = timing() - start
+    log_debug("{0} : {1}".format(message, result), print_output)
+    return ret

@@ -100,11 +100,11 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
                 # get the misclassification rate between start and end of refinement_obj
                 hits = sum((1 for i in range(0, len(values))
                             if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                            and copysign(1.0, values[i][0] == copysign(1.0, grid_scheme.operation.classes[i]))))
+                            and copysign(1.0, values[i][0] == copysign(1.0, grid_scheme.operation.validation_classes[i]))))
 
                 misses = sum((1 for i in range(0, len(values))
                               if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                              and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.classes[i])))
+                              and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.validation_classes[i])))
 
                 if hits + misses > 0:
                     #refinement_obj.add_volume(np.array(misses / (hits + misses)))

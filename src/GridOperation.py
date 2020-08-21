@@ -272,8 +272,11 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, reuse_old_values=False, numeric_calculation=False, pre_scaled_data=False):
+    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, validation_set_size=0.15,reuse_old_values=False, numeric_calculation=False, pre_scaled_data=False):
         self.data = data
+        self.validation_set = None
+        self.validation_classes = None
+        self.validation_set_size = validation_set_size
         self.dim = dim
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -358,56 +361,69 @@ class DensityEstimation(AreaOperation):
                 #self.data = scaler.transform(self.data)
                 data = scaler.transform(self.data)
                 self.scaled = True
+
+        if self.classes is not None:
+            class_a = np.where(self.classes > 0)[0]
+            class_b = np.where(self.classes < 0)[0]
+            picks = (int(len(self.classes) * (self.validation_set_size / 2)), 1)
+            validation_a = np.random.choice(class_a, size=picks, replace=False).flatten()
+            validation_b = np.random.choice(class_b, size=picks, replace=False).flatten()
+            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+            self.validation_set = self.data[validation_indices]
+            self.validation_classes = self.classes[validation_indices]
+            self.data = np.delete(self.data, validation_indices, axis=0)
+            self.classes = np.delete(self.classes, validation_indices)
         self.initialized = True
 
+
     def interpolate_points_component_grid(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]],
-                           evaluation_points: Sequence[Tuple[float, ...]]):
-        if self.grid.boundary:
-            result1 = super().interpolate_points_component_grid(component_grid, mesh_points_grid, evaluation_points)
-            return result1
-        else:
-            surplus_values = self.surpluses[tuple(component_grid.levelvector)]
-            threshold = 200
-            if self.grid.get_num_points() < threshold and not self.dimension_wise:
-                self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
-                if self.grid.boundary:
-                    self.grid.numPoints += 1
-                else:
-                    self.grid.numPoints -= 1
-                hats = np.array(get_cross_product_range_list(self.grid.numPoints)) + 1
-                hat_evaluations = self.hat_function_in_support_completely_vectorized(ivecs=hats, lvec=np.asarray(component_grid.levelvector), points=np.asarray(evaluation_points))
-                interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
-                interpolated_values = interpolated_values.reshape(((len(evaluation_points), self.point_output_length())))
+                               evaluation_points: Sequence[Tuple[float, ...]]):
+            if self.grid.boundary:
+                result1 = super().interpolate_points_component_grid(component_grid, mesh_points_grid, evaluation_points)
+                return result1
             else:
-                if not isinstance(self.grid, GlobalGrid) and not isinstance(self.grid, GlobalTrapezoidalGrid):
-                    self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
-                if mesh_points_grid is None:
-                    mesh_points_grid = self.grid.coordinate_array_with_boundary
-                if self.grid.get_num_points() < threshold:
-                    points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(mesh_points_grid)
-                    hat_evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, evaluation_points)
+                surplus_values = self.surpluses[tuple(component_grid.levelvector)]
+                threshold = 200
+                if self.grid.get_num_points() < threshold and not self.dimension_wise:
+                    self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
+                    if self.grid.boundary:
+                        self.grid.numPoints += 1
+                    else:
+                        self.grid.numPoints -= 1
+                    hats = np.array(get_cross_product_range_list(self.grid.numPoints)) + 1
+                    hat_evaluations = self.hat_function_in_support_completely_vectorized(ivecs=hats, lvec=np.asarray(component_grid.levelvector), points=np.asarray(evaluation_points))
                     interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
-                    interpolated_values = interpolated_values.reshape(
-                        ((len(evaluation_points), self.point_output_length())))
-
+                    interpolated_values = interpolated_values.reshape(((len(evaluation_points), self.point_output_length())))
                 else:
-                    interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
-                    num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
-                    offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
-                    hat_support_cache = {}
-                    for i, p in enumerate(evaluation_points):
-                        hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
-                        supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
-                        for j, hat in enumerate(hats):
-                            hat_support_cache[hat] = supports[j]
-                        evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
-                        for hat, hat_position, j in zip(hats, indices, range(len(hats))):
-                            hat_index = np.inner(np.array(hat_position) - 1,offsets)
-                            interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
+                    if not isinstance(self.grid, GlobalGrid) and not isinstance(self.grid, GlobalTrapezoidalGrid):
+                        self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+                    if mesh_points_grid is None:
+                        mesh_points_grid = self.grid.coordinate_array_with_boundary
+                    if self.grid.get_num_points() < threshold:
+                        points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(mesh_points_grid)
+                        hat_evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, evaluation_points)
+                        interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
+                        interpolated_values = interpolated_values.reshape(
+                            ((len(evaluation_points), self.point_output_length())))
 
-            result2 = interpolated_values
-            return result2
-        # print("difference:", result1 - result2, sum(result1-result2))
+                    else:
+                        interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
+                        num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
+                        offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
+                        hat_support_cache = {}
+                        for i, p in enumerate(evaluation_points):
+                            hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
+                            supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
+                            for j, hat in enumerate(hats):
+                                hat_support_cache[hat] = supports[j]
+                            evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
+                            for hat, hat_position, j in zip(hats, indices, range(len(hats))):
+                                hat_index = np.inner(np.array(hat_position) - 1,offsets)
+                                interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
+
+                result2 = interpolated_values
+                return result2
+            # print("difference:", result1 - result2, sum(result1-result2))
 
     def post_processing(self):
         """
@@ -936,7 +952,7 @@ class DensityEstimation(AreaOperation):
         M = len(data)
         N = len(point_list)
         b = np.zeros(N)
-        threshold = 100
+        threshold = 200
         old_b_key = None
 
         if self.reuse_old_values and N >= threshold:
@@ -1013,33 +1029,34 @@ class DensityEstimation(AreaOperation):
         :return: Surpluses of the component grid for the specified dataset
         """
         #numGridCoord = sum((len(l) for l in gridPointCoordsAsStripes))
-        r0 = timing()
-        R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
-        r1 = timing()
-        log_debug('OP: build_R_matrix_dimension_wise time taken: {0}'.format((r1 - r0) / 1000000), self.print_output)
-        b0 = timing()
-        b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes, grid_point_levels)
-        b1 = timing()
-        log_debug('OP: calculate_B_dimension_wise time taken: '.format((b1 - b0) / 1000000), self.print_output)
-        cg0 = timing()
+        #r0 = timing()
+        R = time_func(self.print_output, "OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
+        #R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+        #r1 = timing()
+        #log_debug('OP: build_R_matrix_dimension_wise time taken: {0}'.format((r1 - r0) / 1000000), self.print_output)
+        #b0 = timing()
+        b = time_func(self.print_output, "OP: calculate_B_dimension_wise time taken", self.calculate_B_dimension_wise, self.data, gridPointCoordsAsStripes, grid_point_levels)
+        #b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes, grid_point_levels)
+        #b1 = timing()
+        #log_debug('OP: calculate_B_dimension_wise time taken: {0}'.format((b1 - b0) / 1000000), self.print_output)
+        #cg0 = timing()
         scaling_factor = 1.0/np.max(R)
-        #alphas, info = cg(R*scaling_factor, b*scaling_factor)
-        alphas = np.linalg.solve(R*scaling_factor, b*scaling_factor)
-        avg_value = np.average(alphas)
-        cg1 = timing()
-        log_debug('OP: conjugate_gradient time taken: '.format((cg1 - cg0) / 1000000), self.print_output)
+        alphas = time_func(self.print_output, "OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
+        #alphas = np.linalg.solve(R*scaling_factor, b*scaling_factor)
+        #cg1 = timing()
+        #log_debug('OP: conjugate_gradient time taken: {0}'.format((cg1 - cg0) / 1000000), self.print_output)
         #if self.classes is not None:
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            #integral = np.inner(alphas.clip(min=0), weights)
-            integral = 1.0
+            integral = np.inner(alphas.clip(min=0), weights)
+            #integral = 1.0
         else:
             integral = np.inner(alphas, weights)
         if integral != 0.0:
             alphas /= integral
-        else:
-            raise ValueError("Integral is zero!")
+        #else:
+        #    raise ValueError("Integral is zero!")
         #alphas = alphas.clip(max=avg_value*10)
         #print(alphas, R*scaling_factor, b*scaling_factor)
         #if self.print_output:
@@ -1490,7 +1507,7 @@ class DensityEstimation(AreaOperation):
         N = self.grid.get_num_points()
         b = np.zeros(N)
 
-        threshold = 100
+        threshold = 200
 
         old_b_key = None
         get_point_list = lambda x: list(get_cross_product(x))
