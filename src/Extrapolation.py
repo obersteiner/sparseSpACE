@@ -536,7 +536,7 @@ class SliceContainerVersion(Enum):
     """
     This enum specifies the available slice types.
     """
-    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers # TODO Rename to DEFAULT_ROMBERG
+    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers
     LAGRANGE_ROMBERG = 2  # Important missing grid points are interpolated with Lagrange
     LAGRANGE_FULL_GRID_ROMBERG = 3  # All missing points needed for a full grid are interpolated
     SIMPSON_ROMBERG = 4  # Romberg extrapolation with simpson rule as base quadrature rule
@@ -725,7 +725,7 @@ class ExtrapolationGrid:
                    + self.__compute_support_sequence_rec(0, len(self.grid) - 1,
                                                          final_slice_start_index, final_slice_stop_index)
 
-        return list(map(lambda element: (self.grid[element[0]], self.grid[element[1]]), sequence))
+        return [(self.grid[element[0]], self.grid[element[1]]) for element in sequence]
 
     def __compute_support_sequence_rec(self, start_index, stop_index,
                                        final_slice_start_index, final_slice_stop_index):
@@ -859,6 +859,9 @@ class ExtrapolationGrid:
         # Add information about all containers to the left & right for each container
         self.set_adjacent_containers_for_all_slice_containers()
 
+        # Add information about all slices to the left & right for each slice in each container
+        self.set_adjacent_slices_for_all_slices()
+
     def insert_interpolating_slices(self):
         """
         This method computes missing grid points and updates the container accordingly
@@ -923,6 +926,16 @@ class ExtrapolationGrid:
 
             container.set_adjacent_containers(left=list(reversed(containers_to_left)),
                                               right=containers_to_right)
+
+    def set_adjacent_slices_for_all_slices(self):
+        """
+        This method initializes the adjacent slices for all slices in each container.
+
+        :return: void
+        """
+
+        for container in self.slice_containers:
+            container.initialize_adjacent_slices_for_all_slices()
 
     @staticmethod
     def assert_container_size(container):
@@ -1003,13 +1016,16 @@ class ExtrapolationGrid:
     def get_grid_levels(self):
         return self.grid_levels
 
-    def get_absolute_error(self):
+    def get_error(self):
         actual_result = self.integral_approximation
 
         if actual_result is None:
             actual_result = self.integrate()
 
-        return abs(actual_result - self.function.getAnalyticSolutionIntegral(self.a, self.b))
+        return actual_result - self.function.getAnalyticSolutionIntegral(self.a, self.b)
+
+    def get_absolute_error(self):
+        return abs(self.get_error())
 
     def get_step_width(self, level):
         return (self.b - self.a) / (2 ** level)
@@ -1281,6 +1297,7 @@ class ExtrapolationGridSlice(ABC):
 
         assert support_sequence is None or self.max_level == len(support_sequence) - 1
         self.support_sequence = support_sequence
+        self.extrapolation_version = extrapolation_version
 
         # Weights
         self.extrapolated_weights_dict = None
@@ -1294,6 +1311,10 @@ class ExtrapolationGridSlice(ABC):
         self.analytical_solution = None
 
         self.set_function(function)
+
+        # Adjacent slices
+        self.adjacent_slice_left = None
+        self.adjacent_slice_right = None
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Weights
@@ -1417,6 +1438,12 @@ class ExtrapolationGridSlice(ABC):
     def is_right_point_interpolated(self):
         return self.right_point_is_interpolated
 
+    def set_adjacent_slice_left(self, slice):
+        self.adjacent_slice_left = slice
+
+    def set_adjacent_slice_right(self, slice):
+        self.adjacent_slice_right = slice
+
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
@@ -1477,6 +1504,22 @@ class ExtrapolationGridSliceContainer(ABC):
             self.minimal_step_width = slice.right_point - slice.left_point
 
         self.slices.append(slice)
+
+    def initialize_adjacent_slices_for_all_slices(self):
+        # First slice of this container
+        container_left = self.get_adjacent_container_left()
+        slice_left = container_left.slices[-1] if container_left is not None else None
+
+        # Last slice of this container
+        container_right = self.get_adjacent_container_right()
+        slice_right = container_right.slices[0] if container_right is not None else None
+
+        slices = [slice_left] + self.slices + [slice_right]
+
+        # Inner slices
+        for i in range(1, len(slices) - 1):
+            slices[i].set_adjacent_slice_left(slices[i-1])
+            slices[i].set_adjacent_slice_right(slices[i+1])
 
     @abstractmethod
     def get_final_weights(self):
@@ -1682,6 +1725,12 @@ class ExtrapolationGridSliceContainer(ABC):
     def get_slices(self):
         return self.slices
 
+    def get_adjacent_container_left(self):
+        return self.adjacent_containers_left[0] if len(self.adjacent_containers_left) >= 1 else None
+
+    def get_adjacent_container_right(self):
+        return self.adjacent_containers_right[0] if len(self.adjacent_containers_right) >= 1 else None
+
     # Returns the amount of slices in this container
     def size(self):
         return len(self.slices)
@@ -1873,8 +1922,7 @@ class RombergGridSlice(ExtrapolationGridSlice):
 class RombergGridSliceConstantSubtraction(RombergGridSlice):
     def subtract_constants(self, weight_dictionary):
         constants = SlicedRombergConstants(self)
-        # TODO left and right refinement
-        constant_dict = constants.get_final_constant_weights_for_right_refinement()
+        constant_dict = constants.get_final_extrapolation_constant_weights()
 
         for point, weight in sorted(constant_dict.items()):
             weight_dictionary[point].append(weight)
@@ -2029,11 +2077,12 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
 
         if has_left_containers:
             for container in left_containers:
+                # At this point each container has at least two non-interpolated grid points
                 points_left.extend(container.get_grid_without_interpolated_points()[0:-1])
 
         if has_right_containers:
             for container in right_containers:
-                # TODO handle edge case with one point on the right
+                # At this point each container has at least two non-interpolated grid points
                 points_right.extend(container.get_grid_without_interpolated_points()[1:])
 
         points_middle = self.get_grid_without_interpolated_points()
@@ -2250,11 +2299,9 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
                 for j in range(0, len(points)-1, 2):
                     left_index = j
                     right_index = j+1
-                    # support_sequence = self.slices[i].support_sequence + [(points[j], points[j+1])]  # TODO adjust support sequence
                     left_interpolated_slice = factory.get_grid_slice(
                         [points[left_index], points[right_index]],
                         [levels[left_index], levels[right_index]],
-                        support_sequence=None,
                         left_point_is_interpolated=left_index > 0,
                         right_point_is_interpolated=right_index < len(points)-1,
                         function=self.function
@@ -2263,7 +2310,6 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
 
                     left_index = j+1
                     right_index = j+2
-                    # support_sequence = self.slices[i].support_sequence + [(points[i+1], points[i+2])]  # TODO adjust support sequence
                     right_interpolated_slice = factory.get_grid_slice(
                         [points[left_index], points[right_index]],
                         [levels[left_index], levels[right_index]],
@@ -2630,71 +2676,108 @@ class SlicedRombergConstants(ExtrapolationConstants):
     def __init__(self, slice: ExtrapolationGridSlice):
         super(SlicedRombergConstants, self).__init__(slice)
 
+        self.max_constant_level = self.slice.max_level + 2
+
         # Initialize derivatives
         self.derivatives = []
         self.support_points_for_derivatives = []
-        for k in range(1, self.slice.max_level + 2):
+        for k in range(1, self.max_constant_level):
             support_points = self.get_interpolation_support_points(self.slice.support_sequence, k)
             derivative = np.array(self.get_nth_derivative_approximation(support_points, k))
 
             self.derivatives.append(derivative)
             self.support_points_for_derivatives.append(support_points)
 
-    def get_final_constant_weights_for_right_refinement(self):
+    def get_final_extrapolation_constant_weights(self):
         """
         This method returns a dictionary that maps grid points to their summarized constants.
         (Only constants for right boundary refinement)
 
-        :return: a dictionary that maps grid points to their summarized constants
-        """
-        constant_weights_dict = defaultdict(list)
-
-        self.__add_new_constants_weights(constant_weights_dict)
-
-        # Sum constant weights for each support point together
-        constant_weights = {}
-
-        for point, weights in sorted(constant_weights_dict.items()):
-            constant_weights[point] = sum(weights)
-
-        return constant_weights
-
-    def __add_new_constants_weights(self, constant_weights_dict, k=0):
-        """
-        Recursively adds new constants weights to the dictionary.
-        e.g. Extrapolation with a support sequence of length 3 => max_level = 2. In the first extrapolation step
-        we combine eq. 1 with 2 and eq. 2 with 3. These two new equations are then be combined in the second
-        extrapolation step.
+        Adds new constant weights to the dictionary.
+        e.g. Extrapolation with a support sequence of length 3 => max_level = 2.
+        In the first extrapolation step we combine eq. 1 with 2 and eq. 2 with 3.
+        These two new equations are then combined in the second extrapolation step (in this step appear
+            NO new constants. Instead the constants obtain new factors).
 
         For each of those extrapolations we have to add/subtract new constants weights to the dictionary.
 
-        :param constant_weights_dict: dictionary that contains all constant weights
-        :param k: max_level
         :return: void
         """
-        if k > self.slice.max_level or k > 4:
-            return
 
-        for i in range(self.slice.max_level - k):
-            self.__add_constants_for_one_extrapolation_step(constant_weights_dict, k + 1)
+        # Return empty extrapolation dictionary, if no extrapolation happened
+        if self.slice.max_level <= 0:
+            return defaultdict(list)
 
-        self.__add_new_constants_weights(constant_weights_dict, k + 1)
+        dict_list = []
 
-    def __add_constants_for_one_extrapolation_step(self, constant_weights_dictionary, k):
-        # There is no extrapolation (=> no constants) for k = 0
-        if k < 1:
-            return
+        # Contants from first column of the Romberg table
+        for i in range(1,  self.slice.max_level + 1):
+            # Left or right extrapolation?
+            prev_right_support = self.slice.support_sequence[i - 1][1]
+            right_support = self.slice.support_sequence[i][1]
 
-        # TODO edge case: derivative is not a constant. Should not happen
+            if prev_right_support == right_support:  # Right boundary is unchanged => extrapolation of left boundary
+                dict_list.append(self.__get_constants_for_left_boundary_extrapolation(i))
+            else:  # extrapolation of right boundary
+                dict_list.append(self.__get_constants_for_right_boundary_extrapolation(i))
 
-        # Left or right extrapolation?
-        prev_right_support = self.slice.support_sequence[k-1][1]
-        right_support = self.slice.support_sequence[k][1]
+        # Sum constant weights in dictionary for each point
+        for i in range(len(dict_list)):
+            constant_weights = {}
 
-        if prev_right_support == right_support:  # Right boundary is unchanged => extrapolation of left boundary
-            self.__add_constants_for_left_boundary_extrapolation(constant_weights_dictionary, k)
-        else:  # extrapolation of right boundary
-            self.__add_constants_for_right_boundary_extrapolation(constant_weights_dictionary, k)
+            for point, weights in sorted(dict_list[i].items()):
+                constant_weights[point] = sum(weights)
+
+            dict_list[i] = constant_weights
+
+        # Special case: only one extrapolation step
+        if len(dict_list) == 1:
+            return dict_list[0]
+
+        # Combination of the constants of the first column
+        for j in range(2, self.slice.max_level+1):  # Iterate of the remaining columns
+            new_dict_list = []
+
+            for i in range(0, self.slice.max_level - j + 1):
+                # Combine always the constants of two adjacent cells each
+                dict1 = dict_list[i]
+                dict2 = dict_list[i+1]
+
+                factor1 = (self.slice.support_sequence[j + i][1] - self.slice.support_sequence[j + i][0]) ** 2
+                factor2 = (self.slice.support_sequence[i][1] - self.slice.support_sequence[i][0]) ** 2
+
+                new_dict = self.__subtract_constant_dicts(dict1, dict2, factor1, factor2)
+                new_dict_list.append(new_dict)
+
+            # Update dict_list with new combined constants
+            dict_list = new_dict_list
+
+        assert len(dict_list) == 1
+
+        return dict_list[0]
+
+    @staticmethod
+    def __subtract_constant_dicts(dict1, dict2, factor1, factor2):
+        """
+        This method combines two dictionaries with factors.
+
+        :param dict1:
+        :param dict2:
+        :param factor1:
+        :param factor2:
+        :return: a new dictionary that combines the constants
+        """
+        combined_dict = {}
+
+        for point, weights in sorted(dict1.items()):
+            combined_dict[point] = factor1 * dict1[point] - factor2 * dict2[point]
+            del dict2[point]
+
+        # Add weight of points that are not in dict1
+        for point, weights in sorted(dict2.items()):
+            combined_dict[point] = factor2 * dict2[point]
+
+        return combined_dict
 
     def compute_taylor_derivative_factor(self, k):
         """
@@ -2727,56 +2810,52 @@ class SlicedRombergConstants(ExtrapolationConstants):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Right boundary extrapolation
 
-    def __add_constants_for_right_boundary_extrapolation(self, constant_weights_dictionary, k):
-        # - C_{1,k}
-        support_points, constant_1_1 = self.get_constant_1_for_right_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, -constant_1_1)
+    def __get_constants_for_right_boundary_extrapolation(self, level):
+        """
+        Adds constants for a extrapolation of the right boundary.
 
-        # - C_{1,k + 1}
-        support_points, constant_1_2 = self.get_constant_1_for_right_boundary_extrapolation(k+1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, -constant_1_2)
+        :param level: new level towards one extrapolates
+        :return: dictionary of constant weights
+        """
 
-        # factor2
-        seq = self.slice.support_sequence
-        a_max, b_max = seq[k]
-        a_prev, b_prev = seq[k - 1]
-        H_max = b_max - a_prev
-        H_prev = b_prev - a_prev
-        factor_2 = ((H_max**2) / (H_prev**k) - (H_prev**2) / (H_max**k)) / (H_max**2 - H_prev**2)
+        constant_weights_dict = defaultdict(list)
 
-        # - factor_2 * C_{2, k}
-        support_points, constant_2_1 = self.get_constant_2_for_right_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_2 * constant_2_1)
+        for k in range(1, self.max_constant_level):
+            # - C_{1,k}
+            support_points, constant_1_1 = self.get_constant_1_for_right_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, -constant_1_1)
 
-        # - factor_2 * C_{2, k+1}
-        support_points, constant_2_2 = self.get_constant_2_for_right_boundary_extrapolation(k+1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_2 * constant_2_2)
+            # factor2
+            seq = self.slice.support_sequence
+            a_max, b_max = seq[level]
+            a_prev, b_prev = seq[level - 1]
+            H_max = b_max - a_prev
+            H_prev = b_prev - a_prev
+            factor_2 = ((H_max**2) / H_prev - (H_prev**2) / H_max) / (H_max**2 - H_prev**2)
 
-        # factor3
-        m = self.midpoint
+            # - factor_2 * C_{2, k}
+            support_points, constant_2_1 = self.get_constant_2_for_right_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, - factor_2 * constant_2_1)
 
-        def factor_3(exp):
-            numerator = (((H_max**2)/(H_prev**k))*(b_max - m)**exp - ((H_prev**2)/(H_max**k))*(b_prev - m)**exp)
-            denominator = H_max**2 - H_prev**2
+            # factor3
+            m = self.midpoint
 
-            return numerator / denominator
+            def factor_3(exp):
+                numerator = (((H_max**2)/H_prev)*(b_max - m)**exp - ((H_prev**2)/H_max)*(b_prev - m)**exp)
+                denominator = H_max**2 - H_prev**2
 
-        # - factor_3(k) * C_{3, k}
-        support_points, constant_3_1 = self.get_constant_3_for_right_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_3(k) * constant_3_1)
+                return numerator / denominator
 
-        # - factor_3(k+1) * C_{3, k+1}
-        support_points, constant_3_2 = self.get_constant_3_for_right_boundary_extrapolation(k+1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_3(k+1) * constant_3_2)
+            # - factor_3(k) * C_{3, k}
+            support_points, constant_3_1 = self.get_constant_3_for_right_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, - factor_3(k) * constant_3_1)
 
-        # + C_{k + 1} with TODO validate and force (k + 1) % 2 = 0
-        if k % 2 == 0:
-            new_level = k
-        else:
-            new_level = k + 1
+            # + C_{k} where k is even
+            if k % 2 == 0:
+                support_points, integration_constant = self.get_integration_constant_weights(k)
+                self.append_constants_dict(constant_weights_dict, support_points, integration_constant)
 
-        support_points, integration_constant = self.get_integration_constant_weights(new_level)
-        self.append_constants_dict(constant_weights_dictionary, support_points, integration_constant)
+        return constant_weights_dict
 
     def get_constant_1_for_right_boundary_extrapolation(self, k):
         """
@@ -2826,69 +2905,63 @@ class SlicedRombergConstants(ExtrapolationConstants):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Left boundary extrapolation
 
-    def __add_constants_for_left_boundary_extrapolation(self, constant_weights_dictionary, k):
-        # Factor 1
-        seq = self.slice.support_sequence
-        a_max, b_max = seq[k]
-        a_prev, b_prev = seq[k - 1]
-        H_max = b_prev - a_max
-        H_prev = b_prev - a_prev
-        m = self.midpoint
+    def __get_constants_for_left_boundary_extrapolation(self, level):
+        """
+        Adds constants for a extrapolation of the left boundary.
 
-        def factor_1(exp):
-            numerator = (((H_max ** 2) * (a_prev - m) ** exp) - ((H_prev ** 2) * (a_max - m) ** exp))
+        :param level: new level towards one extrapolates
+        :return: dictionary of constant weights
+        """
+
+        constant_weights_dict = defaultdict(list)
+
+        for k in range(1, self.max_constant_level):
+            # Factor 1
+            seq = self.slice.support_sequence
+            a_max, b_max = seq[level]
+            a_prev, b_prev = seq[level - 1]
+            H_max = b_prev - a_max
+            H_prev = b_prev - a_prev
+            m = self.midpoint
+
+            def factor_1(exp):
+                numerator = (((H_max ** 2) * (a_prev - m) ** exp) - ((H_prev ** 2) * (a_max - m) ** exp))
+                denominator = H_max ** 2 - H_prev ** 2
+
+                return numerator / denominator
+
+            # - factor_1(k) * C_{1,k}
+            support_points, constant_1_1 = self.get_constant_1_for_left_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, - factor_1(k) * constant_1_1)
+
+            # factor2
+            def factor_2(exp):
+                numerator = (((H_max ** 2) * (a_prev - m) ** (exp+1)) / H_prev
+                             - ((H_prev ** 2) * (a_max - m) ** (exp+1)) / H_max)
+                denominator = H_max ** 2 - H_prev ** 2
+
+                return numerator / denominator
+
+            # - factor_2 * C_{2, k}
+            support_points, constant_2_1 = self.get_constant_2_for_left_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, - factor_2(k) * constant_2_1)
+
+            # factor3
+            numerator = (((H_prev ** 2) / H_max) * (a_max - m)
+                         - ((H_max ** 2) / H_prev) * (a_prev - m))
             denominator = H_max ** 2 - H_prev ** 2
+            factor_3 = numerator / denominator
 
-            return numerator / denominator
+            # - factor_3(k) * C_{3, k}
+            support_points, constant_3_1 = self.get_constant_3_for_left_boundary_extrapolation(k)
+            self.append_constants_dict(constant_weights_dict, support_points, - factor_3 * constant_3_1)
 
-        # - factor_1(k) * C_{1,k}
-        support_points, constant_1_1 = self.get_constant_1_for_left_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_1(k) * constant_1_1)
+            # + C_{k} where k is even
+            if k % 2 == 0:
+                support_points, integration_constant = self.get_integration_constant_weights(k)
+                self.append_constants_dict(constant_weights_dict, support_points, integration_constant)
 
-        # - C_{1,k + 1}
-        support_points, constant_1_2 = self.get_constant_1_for_left_boundary_extrapolation(k + 1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_1(k+1) * constant_1_2)
-
-        # factor2
-        def factor_2(exp):
-            numerator = (((H_max ** 2) * (a_prev - m) ** (exp+1)) / H_prev ** exp
-                         - ((H_prev ** 2) * (a_max - m) ** (exp+1)) / H_max ** exp)
-            denominator = H_max ** 2 - H_prev ** 2
-
-            return numerator / denominator
-
-        # - factor_2 * C_{2, k}
-        support_points, constant_2_1 = self.get_constant_2_for_left_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_2(k) * constant_2_1)
-
-        # - factor_2 * C_{2, k+1}
-        support_points, constant_2_2 = self.get_constant_2_for_left_boundary_extrapolation(k + 1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_2(k+1) * constant_2_2)
-
-        # factor3
-        def factor_3(exp):
-            numerator = (((H_prev ** 2) / (H_max ** k)) * (a_max - m)
-                         - ((H_max ** 2) / (H_prev ** k)) * (a_prev - m))
-            denominator = H_max ** 2 - H_prev ** 2
-
-            return numerator / denominator
-
-        # - factor_3(k) * C_{3, k}
-        support_points, constant_3_1 = self.get_constant_3_for_left_boundary_extrapolation(k)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_3(k) * constant_3_1)
-
-        # - factor_3(k+1) * C_{3, k+1}
-        support_points, constant_3_2 = self.get_constant_3_for_left_boundary_extrapolation(k + 1)
-        self.append_constants_dict(constant_weights_dictionary, support_points, - factor_3(k + 1) * constant_3_2)
-
-        # + C_{k + 1} with TODO validate and force (k + 1) % 2 = 0
-        if k % 2 == 0:
-            new_level = k
-        else:
-            new_level = k + 1
-
-        support_points, integration_constant = self.get_integration_constant_weights(new_level)
-        self.append_constants_dict(constant_weights_dictionary, support_points, integration_constant)
+        return constant_weights_dict
 
     def get_constant_1_for_left_boundary_extrapolation(self, k):
         """
