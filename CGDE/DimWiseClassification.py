@@ -261,26 +261,33 @@ import DatasetOperation as do
 # generate a Circle-Dataset of size with the sklearn library
 size = 10000
 dim = 2
-one_vs_others = False
-error_calculator = ErrorCalculatorSingleDimVolumeGuided()#ErrorCalculatorSingleDimMisclassificationGlobal()
+#error_config = (ErrorCalculatorSingleDimVolumeGuided(), False)
+error_config = (ErrorCalculatorSingleDimMisclassificationGlobal(), True)
+error_calculator = error_config[0]
+one_vs_others = error_config[1]
+
 log_info('data size: ' + str(size))
 log_info('data dimension: ' + str(dim))
 log_info('one vs others: ' + str(one_vs_others))
 log_info('error_calculator: ' + str(type(error_calculator)))
 # sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
+sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
+data_set_name = 'Two Moons'
 # sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
 # sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
 # sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
 # sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=6)
+data_set_name = 'Blobs'
 # sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
+data_set_name = 'Gaussian Quantiles'
 
-breast_cancer = do.datasets.load_breast_cancer()
-sklearn_dataset = (breast_cancer.data, breast_cancer.target)
+#breast_cancer = do.datasets.load_breast_cancer()
+#sklearn_dataset = (breast_cancer.data, breast_cancer.target)
 
 log_info('used data set: ' + 'do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
 
 # now we can transform this dataset into a DataSet object and give it an appropriate name
-data = do.DataSet(sklearn_dataset, name='Testset')
+data = do.DataSet(sklearn_dataset, name=data_set_name)
 data.plot()
 data_range = (0.0, 1.0)
 
@@ -289,7 +296,7 @@ data_range = (0.0, 1.0)
 
 # DataSet objects can e.g. be ...
 data_copy = data.copy()                                              # deepcopied
-data_copy.scale_range(data_range)                                # scaled
+#data_copy.scale_range(data_range)                                # scaled
 part0, part1 = data_copy.split_pieces(0.5)                           # split
 data_copy = part0.concatenate(part1)                                 # concatenated
 data_copy.set_name('2nd_Set')                                        # renamed

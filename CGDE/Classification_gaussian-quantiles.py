@@ -3,25 +3,6 @@ path.append('../src/')
 path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
-
-from Function import *
-import numpy as np
-import scipy as sp
-
-from spatiallyAdaptiveSingleDimension2 import *
-from Function import *
-from ErrorCalculator import *
-
-from GridOperation import *
-from StandardCombi import *
-from sklearn import datasets
-from SGppCompare import plot_comparison
-
-import cProfile
-import pstats
-
-from src.ErrorCalculator import *
-
 # sgde tut
 from src.Utils import *
 
@@ -52,6 +33,8 @@ dim = 5
 max_level = 7
 test2 = ((2 ** max_level) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_level, dim)
 
+tolerance = -1.0
+
 log_info('--- Classification_eval start ---', True)
 for dimension in [4, 5]:
 
@@ -70,6 +53,8 @@ for dimension in [4, 5]:
     data_range = (0.0, 1.0)
     data.scale_range(data_range)
 
+    reuse_old_values = True
+
     max_levels = [7,8]
     start_levels = [3,5]
     if len(start_levels) == 0:
@@ -77,8 +62,8 @@ for dimension in [4, 5]:
     for level_max in max_levels:
         for start_level in start_levels:
             for error_config in [(False, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimMisclassificationGlobal())]:
-                for rebalancing in [True, False]:
-                    for margin in [0.5, 0.25, 0.1]:
+                for rebalancing in [True]:
+                    for margin in [0.5]:
                         one_vs_others = error_config[0]
                         error_calc = error_config[1]
                         log_info('next iteration', print_log_info)
@@ -126,7 +111,7 @@ for dimension in [4, 5]:
                         max_level = level_max
                         print('classification max_level', max_level)
                         log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
-                        classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=False)
+                        classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                         # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                         # now we can perform some other operations on this classification object
@@ -175,12 +160,12 @@ for dimension in [4, 5]:
                         classification_dimwise.perform_classification_dimension_wise(masslumping=False,
                                                                                      lambd=0.0,
                                                                                      minimum_level=1, maximum_level=start_level,
-                                                                                     reuse_old_values=True,
+                                                                                     reuse_old_values=reuse_old_values,
                                                                                      numeric_calculation=False,
                                                                                      boundary=False,
                                                                                      modified_basis=False,
                                                                                      one_vs_others=one_vs_others,
-                                                                                     tolerance=0.05,
+                                                                                     tolerance=tolerance,
                                                                                      margin=margin,
                                                                                      rebalancing=rebalancing,
                                                                                      max_evaluations=max_evals,

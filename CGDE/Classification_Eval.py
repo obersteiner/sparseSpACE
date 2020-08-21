@@ -3,25 +3,6 @@ path.append('../src/')
 path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
-
-from Function import *
-import numpy as np
-import scipy as sp
-
-from spatiallyAdaptiveSingleDimension2 import *
-from Function import *
-from ErrorCalculator import *
-
-from GridOperation import *
-from StandardCombi import *
-from sklearn import datasets
-from SGppCompare import plot_comparison
-
-import cProfile
-import pstats
-
-from src.ErrorCalculator import *
-
 # sgde tut
 from src.Utils import *
 
@@ -52,10 +33,6 @@ for data_set in [3, 5]:
         # generate a Circle-Dataset of size with the sklearn library
         size = 10000
         dim = dimension
-        # if data_set == 0:
-        #     sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
-        # elif data_set == 1:
-        #     sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
         if data_set == 3:
             sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
         elif data_set == 4:

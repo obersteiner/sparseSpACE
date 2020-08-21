@@ -24,6 +24,12 @@ import cProfile
 import pstats
 import logging
 
+def prev_level(l, d):
+    if l - 2 <= 0:
+        return 1
+    else:
+        return (2**(l-2) - 1) * d + prev_level(l-2, d)
+
 
 def scale_data(data, dim, scale):
     scaler = preprocessing.MinMaxScaler(feature_range=(scale[0], scale[1]))
@@ -121,6 +127,9 @@ margin = 0.5
 print('error margin: ', margin)
 # maximum amount of new grid_points
 max_evaluations = 256
+max_levels = 4
+#max_evaluations = 256
+max_evaluations = ((2 ** max_levels) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_levels, dim)
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
 do_plot = False
@@ -211,7 +220,8 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 ########### GRID EVALUATIONS
 
 ### Standard Combi
-for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
+#for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
+for i in [max_levels]:
     maximum_level = i
     # define operation to be performed
     operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)

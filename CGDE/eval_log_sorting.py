@@ -9,18 +9,19 @@ def prev_level(l, d):
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
-with open('log_sg') as f:
+with open('log_sg_real-data_backup_2') as f:
     content = f.readlines()
 content = [x.split('::')[1] for x in content]
 content = [x.strip() for x in content]
 filterDelimiters = lambda x: not ('|||' in x or '~~~' in x or '###' in x or '---' in x)
 content = [x for x in content if filterDelimiters(x)]
-if True in ['next iteration' in x for x in content]:
-    data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
-elif True in ['do.datasets' in x for x in content]:
+data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
+if True in ['do.datasets' in x for x in content]:
     data_set_indices = [i for i, x in enumerate(content) if 'do.datasets' in x]
 elif True in ['data set' in x for x in content]:
     data_set_indices = [i for i, x in enumerate(content) if 'data set' in x]
+elif True in ['next iteration' in x for x in content]:
+    data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
 else:
     print('couldn\'t parse log')
 data_sets = [content[data_set_indices[x]:data_set_indices[x+1]] for x in range(len(data_set_indices)) if (x+1) < len(data_set_indices)]
@@ -49,11 +50,11 @@ for tup in data_sets:
     max_level_std = [int(s.split(':')[1]) for s in stdCombi if 'max_level' in s][0] if str_exists(stdCombi, 'max_level') else None
     point_num = ((2**max_level_std) - 1) * data_dim - (data_dim - 1) + (2**data_dim) * prev_level(max_level_std, data_dim) if max_level_std is not None else 0
     #stdPoints = [((2 ** int(s.split(':')[1])) - 1) * data_dim for s in stdCombi if 'max_level' in s]
-    stdPoints = [point_num]
+    stdPoints = [point_num*len(stdTime)]
     stdAcc = [float(s.split(':')[1].replace('%', '')) for s in stdCombi if 'Percentage' in s] if str_exists(stdCombi, 'Percentage') else None
 
     dimCombi = tup[2]
-    dimTime = [float(s.split(':')[1]) for s in dimCombi if 'Time' in s] if str_exists(dimCombi, 'Time') else None
+    dimTime = [float(s.split(':')[1]) for s in dimCombi if 'Time used adaptive' in s] if str_exists(dimCombi, 'Time') else None
     dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'distinct points' in s] if str_exists(dimCombi, 'distinct points') else None
     dimStartLevel = [int(s.split(':')[1]) for s in dimCombi if 'dimwise start level' in s] if str_exists(dimCombi, 'dimwise start level') else None
     #dimPoints = [int(s.split(':')[1]) for s in dimCombi if 'max_evaluations' in s]
@@ -69,7 +70,10 @@ for tup in data_sets:
     #if old log file type
     # key = data_dim
     # else
-    key = str([data_dim, dimStartLevel, one_vs_others, error_calculator])
+    if rebalancing is not None and margin is not None:
+        key = str([data_dim, dimStartLevel, one_vs_others, error_calculator, margin, rebalancing])
+    else:
+        key = str([data_dim, dimStartLevel, one_vs_others, error_calculator])
     if key not in eval_avg[data_type].keys():
         eval_avg[data_type][key] = []
     eval_avg[data_type][key].append(entry)
@@ -93,6 +97,13 @@ for dtype in eval_avg.keys():
             one_vs_others = k[2]
             ovo_str = '_one_vs_others' if 'True' in one_vs_others else ''
             error_calculator = k[3].split('.')[1]
+            margin = ''
+            if len(k) > 4:
+                margin = 'margin-' + str(k[4]).replace('margin', '').replace(':', '').strip().replace('.', 'p')
+            rebalancing = ''
+            if len(k) > 5:
+                rebalancing = 'rebalancing' if 'True' in str(k[5]) else ''
+
 
         regex = r"make_.*\("
         match = re.search(regex, str(dtype))
@@ -119,41 +130,58 @@ for dtype in eval_avg.keys():
         min_acc = min(np.min(acc_y_std), np.min(acc_y_dim))
 
         plt.figure(num=3, figsize=(16, 10))
-        plt.plot(time_std_x, acc_y_std, label='StdCombi')
-        plt.plot(time_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=1.0)
+        bar_width = 3.0
+        line_width = 2.0
+        if len(time_std_x) == 1 and len(time_dim_x) == 1:
+            plt.bar([time_std_x[0]], [acc_y_std[0]], label='standard combi', width=bar_width)
+            plt.bar([time_dim_x[0]], [acc_y_dim[0]], label='dimwise combi', width=bar_width)
+            plt.legend(loc="upper center")
+        else:
+            plt.plot(time_std_x, acc_y_std, label='StdCombi', linewidth=line_width)
+            plt.plot(time_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=line_width)
+            plt.ylim(bottom=min(50.0, min_acc), top=100.0)
+            plt.legend(loc="upper right")
         plt.xlabel("Runtime")
         plt.ylabel("Accuracy")
-        plt.ylim(bottom=min(50.0, min_acc), top=100.0)
-        plt.legend(loc="upper right")
-        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
-        plt.savefig('eval_figs/time_acc/'+name+'_'+str(dimension)+'_time_acc'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator + '\nmargin: '+margin.replace('p', '.')+'\nrebalancing: '+('True' if rebalancing is not '' else 'False'))
+        plt.savefig('eval_figs/time_acc/'+name+'_'+str(dimension)+'_time_acc'+dimStartLevel_str+ovo_str+'_'+error_calculator+'_'+margin+'_'+rebalancing, bbox_inches='tight')
         plt.show()
 
         # plot points and accuracy
         points_std_x = np.linspace(min(stdPoints), max(stdPoints), len(stdPoints))
         points_dim_x = np.linspace(min(dimPoints), max(dimPoints), len(dimPoints))
         plt.figure(num=3, figsize=(16, 10))
-        plt.plot(points_std_x, acc_y_std, label='StdCombi')
-        plt.plot(points_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=1.0)
+        if len(points_std_x) == 1 and len(points_dim_x) == 1:
+            plt.bar([points_std_x[0]], [acc_y_std[0]], label='standard combi', width=bar_width)
+            plt.bar([points_dim_x[0]], [acc_y_dim[0]], label='dimwise combi', width=bar_width)
+            plt.legend(loc="upper center")
+        else:
+            plt.plot(points_std_x, acc_y_std, label='StdCombi', linewidth=line_width)
+            plt.plot(points_dim_x, acc_y_dim, label='DimCombi', color='red', linewidth=line_width)
+            plt.ylim(bottom=min(50.0, min_acc), top=100.0)
+            plt.legend(loc="upper right")
         plt.xlabel("# Points")
         plt.ylabel("Accuracy")
-        plt.ylim(bottom=min(50.0, min_acc), top=100.0)
-        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
-        plt.legend(loc="upper right")
-        plt.savefig('eval_figs/point_acc/'+name+'_'+str(dimension)+'_points_acc'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator + '\nmargin: '+margin.replace('p', '.')+'\nrebalancing: '+('True' if rebalancing is not '' else 'False'))
+        plt.savefig('eval_figs/point_acc/'+name+'_'+str(dimension)+'_points_acc'+dimStartLevel_str+ovo_str+'_'+error_calculator+'_'+margin+'_'+rebalancing, bbox_inches='tight')
         plt.show()
 
         # plot runtime and points
         point_y_std = np.array(stdPoints).flatten()
         point_y_dim = np.array(dimPoints).flatten()
         plt.figure(num=3, figsize=(16, 10))
-        plt.plot(time_std_x, point_y_std, label='StdCombi')
-        plt.plot(time_dim_x, point_y_dim, label='DimCombi', color='red', linewidth=1.0)
+        if len(time_std_x) == 1 and len(time_dim_x) == 1:
+            plt.bar([time_std_x[0]], [point_y_dim[0]], label='standard combi', width=bar_width)
+            plt.bar([time_dim_x[0]], [point_y_dim[0]], label='dimwise combi', width=bar_width)
+            plt.legend(loc="upper center")
+        else:
+            plt.plot(time_std_x, point_y_std, label='StdCombi', linewidth=line_width)
+            plt.plot(time_dim_x, point_y_dim, label='DimCombi', color='red', linewidth=line_width)
+            plt.legend(loc="upper right")
         plt.xlabel("Runtime")
         plt.ylabel("# Points")
-        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator)
-        plt.legend(loc="upper right")
-        plt.savefig('eval_figs/time_point/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str+' '+error_calculator, bbox_inches='tight')
+        plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator + '\nmargin: '+margin.replace('p', '.')+'\nrebalancing: '+('True' if rebalancing is not '' else 'False'))
+        plt.savefig('eval_figs/time_point/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str+'_'+error_calculator+'_'+margin+'_'+rebalancing, bbox_inches='tight')
         plt.show()
 
 

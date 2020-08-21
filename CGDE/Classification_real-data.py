@@ -4,26 +4,8 @@ path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
 
-from Function import *
-import numpy as np
-import scipy as sp
-
-from spatiallyAdaptiveSingleDimension2 import *
-from Function import *
-from ErrorCalculator import *
-
-from GridOperation import *
-from StandardCombi import *
-from sklearn import datasets
-from SGppCompare import plot_comparison
-
-import cProfile
-import pstats
-
-from src.ErrorCalculator import *
-
 # sgde tut
-from src.Utils import *
+from Utils import *
 
 from shutil import copyfile
 import os
@@ -46,7 +28,7 @@ print_log_info = False
 logger.setLevel(logging.INFO)
 
 log_info('--- Classification_eval start ---', True)
-for data_set in [0, 1, 2]:
+for data_set in [0, 1]:
 
     # generate a Circle-Dataset of size with the sklearn library
 
@@ -80,6 +62,7 @@ for data_set in [0, 1, 2]:
 
     dim = data.get_dim()
     size = data.get_length()
+    tolerance = -1.0
 
     # use this for quick calculation of grid points used for given level and dimension
     #max_level = 4
@@ -93,8 +76,8 @@ for data_set in [0, 1, 2]:
         for level_max in max_levels:
             for start_level in start_levels:
                 for error_config in [(False, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimMisclassificationGlobal())]:
-                    for rebalancing in [True, False]:
-                        for margin in [0.1, 0.25, 0.5]:
+                    for rebalancing in [True]:
+                        for margin in [0.5]:
                             one_vs_others = error_config[0]
                             error_calc = error_config[1]
                             log_info('next iteration', print_log_info)
@@ -150,7 +133,7 @@ for data_set in [0, 1, 2]:
                             max_level = level_max
                             print('classification max_level', max_level)
                             log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
-                            classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=True)
+                            classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                             # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                             # now we can perform some other operations on this classification object
@@ -188,7 +171,10 @@ for data_set in [0, 1, 2]:
                             classification_dimwise = do.Classification(data_dimCombi, split_percentage=0.8, split_evenly=True)
                             #max_evals = (((2**(max_level-1)) - 1) * dim)
 
-                            max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
+                            if data_set == 2:
+                                max_evals = 10000
+                            else:
+                                max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
                             print('classification max_evaluations', max_evals)
                             log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
                             log_info('classification dimwise start level: ' + str(start_level), print_log_info)
@@ -202,12 +188,12 @@ for data_set in [0, 1, 2]:
                             classification_dimwise.perform_classification_dimension_wise(masslumping=False,
                                                                                          lambd=0.0,
                                                                                          minimum_level=1, maximum_level=start_level,
-                                                                                         reuse_old_values=True,
+                                                                                         reuse_old_values=reuse_old_values,
                                                                                          numeric_calculation=False,
                                                                                          boundary=False,
                                                                                          modified_basis=False,
                                                                                          one_vs_others=one_vs_others,
-                                                                                         tolerance=0.05,
+                                                                                         tolerance=tolerance,
                                                                                          margin=0.5,
                                                                                          rebalancing=rebalancing,
                                                                                          max_evaluations=max_evals,
