@@ -111,6 +111,47 @@ class TestExtrapolationGrid(unittest.TestCase):
             containers[4]
         ], containers[3].adjacent_containers_right)
 
+    def test_adjacent_slices(self):
+        grid = [0.0, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.75, 0.875, 1]
+        grid_levels = [0, 3, 4, 2, 3, 1, 2, 3, 0]
+        # Containers: [0, 0.125], [0.125, 0.1875, 0.25], [0.25, 0.375, 0.5], [0.5, 0.75], [0.75, 0.875, 1]
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.GROUPED_OPTIMIZED,
+                                         slice_version=SliceVersion.ROMBERG_DEFAULT,
+                                         force_balanced_refinement_tree=False)
+        romberg_grid.set_grid(grid, grid_levels)
+
+        containers = romberg_grid.slice_containers
+
+        # Container 0
+        self.assertEqual(None, containers[0].slices[0].adjacent_slice_left)
+        self.assertEqual(containers[1].slices[0], containers[0].slices[0].adjacent_slice_right)
+
+        # Container 1
+        self.assertEqual(containers[0].slices[0], containers[1].slices[0].adjacent_slice_left)
+        self.assertEqual(containers[1].slices[1], containers[1].slices[0].adjacent_slice_right)
+
+        self.assertEqual(containers[1].slices[0], containers[1].slices[1].adjacent_slice_left)
+        self.assertEqual(containers[2].slices[0], containers[1].slices[1].adjacent_slice_right)
+
+        # Container 2
+        self.assertEqual(containers[1].slices[-1], containers[2].slices[0].adjacent_slice_left)
+        self.assertEqual(containers[2].slices[1], containers[2].slices[0].adjacent_slice_right)
+
+        self.assertEqual(containers[2].slices[0], containers[2].slices[1].adjacent_slice_left)
+        self.assertEqual(containers[3].slices[0], containers[2].slices[1].adjacent_slice_right)
+
+        # Container 3
+        self.assertEqual(containers[2].slices[-1], containers[3].slices[0].adjacent_slice_left)
+        self.assertEqual(containers[4].slices[0], containers[3].slices[0].adjacent_slice_right)
+
+        # Container 4
+        self.assertEqual(containers[3].slices[-1], containers[4].slices[0].adjacent_slice_left)
+        self.assertEqual(containers[4].slices[1], containers[4].slices[0].adjacent_slice_right)
+
+        self.assertEqual(containers[4].slices[0], containers[4].slices[1].adjacent_slice_left)
+        self.assertEqual(None, containers[4].slices[1].adjacent_slice_right)
+
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Approximation
 
@@ -138,21 +179,6 @@ class TestExtrapolationGrid(unittest.TestCase):
 
         expected_value = 11279 / 7680  # computed by hand. This is not the analytical result!!
         self.assertEqual(expected_value, actual_result)
-
-    def test_integral_approximation_trapezoidal_slice(self):
-        grid, grid_levels = self.get_grid_and_level(0)
-
-        function = Polynomial1d([1, 0, 0, 2])
-
-        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.UNIT,
-                                         slice_version=SliceVersion.ROMBERG_DEFAULT)
-        romberg_grid.set_grid(grid, grid_levels)
-        actual_result = romberg_grid.integrate(function)
-
-        expected_value = 3 / 2  # analytical result
-
-        # TODO this test case is not yet successful. Change extrapolation
-        # self.assertAlmostEqual(expected_value, actual_result)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Exactness
@@ -196,21 +222,6 @@ class TestExtrapolationGrid(unittest.TestCase):
         actual_error_in_container = romberg_grid.slice_containers[1].get_extrapolated_error()
 
         self.assertAlmostEqual(0, actual_error_in_container)
-
-    def test_exactness_on_adaptive_grid_with_unit_slices(self):
-        grid, grid_levels = self.get_grid_and_level(0)
-
-        function = Polynomial1d([1, 0, 0, 2])
-
-        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.UNIT,
-                                         slice_version=SliceVersion.ROMBERG_DEFAULT)
-        romberg_grid.set_grid(grid, grid_levels)
-        romberg_grid.integrate(function)
-
-        actual_error_in_container = romberg_grid.slice_containers[0].get_extrapolated_error()
-
-        # TODO this test case is not yet successful. Change extrapolation
-        # self.assertAlmostEqual(0, actual_error_in_container)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers for Romberg Grid

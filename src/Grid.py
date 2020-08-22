@@ -1136,7 +1136,8 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
 
 
-from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion
+from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
+    BalancedExtrapolationGrid
 
 
 class GlobalRombergGrid(GlobalGrid):
@@ -1187,7 +1188,32 @@ class GlobalRombergGrid(GlobalGrid):
             self.weight_cache[key] = weights
 
         return weights
-        # return np.asarray(weights, dtype=np.float64)
+
+
+class GlobalBalancedRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+
+        assert not(modified_basis)
+        assert boundary
+
+        self.weight_cache = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+
+        grid = BalancedExtrapolationGrid()
+
+        grid.set_grid(grid_1D, grid_levels_1D)
+        weights = grid.get_weights()
+
+        return weights
 
 
 class GlobalBasisGrid(GlobalGrid):

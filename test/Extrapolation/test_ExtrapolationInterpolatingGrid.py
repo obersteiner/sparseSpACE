@@ -9,7 +9,6 @@ from Function import Polynomial1d
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Interpolating Grid
 
-
 class TestExtrapolationInterpolationGrid(unittest.TestCase):
     def test_interpolated_points(self):
         grid = [0.0, 0.125, 0.1875, 0.25, 0.375, 0.5, 0.75, 0.875, 1]
@@ -101,15 +100,15 @@ class TestExtrapolationInterpolationGrid(unittest.TestCase):
 
     # Exactness tests
     def test_exactness(self):
-        grid = [0, 0.5, 0.75, 1]
-        grid_levels = [0, 1, 2, 0]
+        grid = [0, 0.5, 0.625, 0.75, 1]
+        grid_levels = [0, 1, 3, 2, 0]
 
         function = Polynomial1d([1, 0, 0, 2])
 
         romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.GROUPED_OPTIMIZED,
                                          slice_version=SliceVersion.ROMBERG_DEFAULT,
                                          container_version=SliceContainerVersion.LAGRANGE_ROMBERG,
-                                         force_balanced_refinement_tree=False)
+                                         force_balanced_refinement_tree=True)
         romberg_grid.set_grid(grid, grid_levels)
         actual_result = romberg_grid.integrate(function)
 
@@ -138,6 +137,22 @@ class TestExtrapolationInterpolationGrid(unittest.TestCase):
         # 0.96875 is not a support point
 
         self.assertEqual(len(grid), len(weights))
+
+    def test_full_grid_interpolation(self):
+        grid = [0, 0.5, 0.625, 0.75, 1]
+        grid_levels = [0, 1, 3, 2, 0]
+
+        function = Polynomial1d([1, 0, 0, 2])
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.GROUPED_OPTIMIZED,
+                                         slice_version=SliceVersion.ROMBERG_DEFAULT,
+                                         container_version=SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG,
+                                         force_balanced_refinement_tree=False)
+        romberg_grid.set_grid(grid, grid_levels)
+        actual_result = romberg_grid.integrate(function)
+
+        expected_result = 1.5
+        self.assertAlmostEqual(expected_result, actual_result)
 
 
 # -----------------------------------------------------------------------------------------------------------------

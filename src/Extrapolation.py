@@ -182,7 +182,7 @@ class RombergSimpsonWeights(RombergWeights):
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Binary Tree Grid
 
-
+# Singleton wrapper is defined below
 class GridBinaryTree:
     class __GridBinaryTree:
         def __init__(self, use_caching=False, print_debug=False):
@@ -512,7 +512,7 @@ class GridBinaryTree:
 
 
 # -----------------------------------------------------------------------------------------------------------------
-# ---  Romberg Grid
+# ---  Extrapolation Grid
 
 class SliceGrouping(Enum):
     """
@@ -2354,6 +2354,9 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
     def get_final_weights(self):
         pass
 
+    def get_interpolation_weight(self, support_points, basis_point, evaluation_point):
+        pass
+
 
 class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
     """
@@ -2604,22 +2607,21 @@ class ExtrapolationConstants:
 
         return lagrange_weights_derivative
 
-    @staticmethod
-    def get_interpolation_support_points(support_sequence, max_level):
+    def get_interpolation_support_points(self, max_level):
         support_points = []
 
-        # Iterate over the reversed support sequence (so that the slice boundaries are the first element)
-        for i, element in enumerate(reversed(support_sequence)):
-            if i >= max_level:
-                break
+        # Geometrically add points left and right from the slice
+        left_slice = self.slice
+        right_slice = self.slice
 
-            left_point, right_point = element
-            support_points.append(left_point)
-            support_points.append(right_point)
+        while len(support_points) <= max_level and (left_slice is not None or right_slice is not None):
+            if left_slice is not None:
+                support_points = [left_slice.left_point] + support_points
+                left_slice = left_slice.adjacent_slice_left
 
-        # Remove duplicates and sort support points
-        support_points = list(set(support_points))
-        support_points.sort()
+            if right_slice is not None and len(support_points) <= max_level:
+                support_points.append(right_slice.right_point)
+                right_slice = right_slice.adjacent_slice_right
 
         return support_points
 
@@ -2682,7 +2684,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
         self.derivatives = []
         self.support_points_for_derivatives = []
         for k in range(1, self.max_constant_level):
-            support_points = self.get_interpolation_support_points(self.slice.support_sequence, k)
+            support_points = self.get_interpolation_support_points(k)
             derivative = np.array(self.get_nth_derivative_approximation(support_points, k))
 
             self.derivatives.append(derivative)
@@ -3000,3 +3002,278 @@ class SlicedRombergConstants(ExtrapolationConstants):
         support_points, constant_weights = self.get_constant_1_for_right_boundary_extrapolation(k)
 
         return support_points, constant_weights * (self.slice.right_point - self.midpoint) ** k
+
+
+# -----------------------------------------------------------------------------------------------------------------
+# ---  Balanced Extrapolation Grid
+
+# Extrapolation for balanced binary trees
+class BalancedExtrapolationGrid:
+    def __init__(self, print_debug=False):
+        # Root node has level 1, since boundary points are note store in the tree
+        self.root_node = None
+        self.active_node_queue = []
+
+        self.grid = None
+        self.grid_levels = None
+        self.max_level = None
+
+        self.print_debug = print_debug
+
+    def set_grid(self, grid, grid_levels):
+        """
+        Given a grid level array, this method initializes a appropriate binary tree structure
+        Example input:    grid [0, 0.125, 0.25, 0.375, 0.5, 0.75, 1]
+                        levels [0, 3, 2, 3, 1, 2, 0]
+
+        :param grid:
+        :param grid_levels:
+        :return:
+        """
+        self.grid = grid
+        self.grid_levels = grid_levels
+        self.max_level = max(grid_levels)
+
+        assert grid_levels[0] == 0 and grid_levels[-1] == 0
+
+        # build tree based on inner points (neglect index 0 and -1)
+        self.init_tree_rec(None, grid, grid_levels, 1, len(grid_levels) - 2)
+
+        assert self.root_node is not None
+
+        # Assert that the tree is balanced
+        for node in self.root_node.get_nodes_using_dfs_in_order():
+            assert node.has_both_children() or node.is_leaf(), "The grid is not balanced!"
+
+    def init_tree_rec(self, node, grid, grid_levels, start_index, stop_index,
+                      inside_left_subtree=None):
+        # Find index of minimal element in active interval
+        current_grid_level_slice = grid_levels[start_index:stop_index + 1]
+        if start_index < stop_index:
+            split_index = start_index + current_grid_level_slice.index(min(current_grid_level_slice))
+        else:
+            split_index = start_index
+
+        # Termination criteria
+        if stop_index < start_index or split_index > stop_index or split_index < start_index:
+            return
+        # Root node
+        elif node is None:
+            self.root_node = GridNode(grid[0], grid[-1], print_debug=self.print_debug)
+            self.init_tree_rec(self.root_node, grid, grid_levels,
+                               start_index, split_index - 1, inside_left_subtree=True)
+            self.init_tree_rec(self.root_node, grid, grid_levels,
+                               split_index + 1, stop_index, inside_left_subtree=False)
+        # Other nodes
+        else:
+            if inside_left_subtree:
+                node.set_left_child(GridNode(grid[start_index - 1], grid[stop_index + 1], parent_node=node))
+                node = node.get_left_child()
+            else:
+                node.set_right_child(GridNode(grid[start_index - 1], grid[stop_index + 1], parent_node=node))
+                node = node.get_right_child()
+
+            self.init_tree_rec(node, grid, grid_levels,
+                               start_index, split_index - 1, inside_left_subtree=True)
+            self.init_tree_rec(node, grid, grid_levels,
+                               split_index + 1, stop_index, inside_left_subtree=False)
+
+    def get_weights(self):
+        assert self.grid is not None
+        assert self.grid_levels is not None
+        assert self.root_node is not None
+
+        # Initialize list of weight dictionaries
+        weight_dict_list = []
+
+        # Build list of weights dictionaries for extrapolation
+        for i in range(1, self.max_level + 1):
+            leaf_nodes = self.root_node.get_leafs_or_max_level_nodes(max_level=i)
+
+            weight_dict = defaultdict(np.float64)
+
+            for leaf in leaf_nodes:
+                weight_dict[leaf.grid_point] = leaf.get_step_width()
+
+            weight_dict_list.append(weight_dict)
+
+        # Extrapolate
+        #   M_{0,0}     {}         {}
+        #   M_{1,0}   M_{1,1}      {}
+        #   M_{2,0}   M_{2,1}   M_{2,2}
+
+        weight_dict_table = [weight_dict_list]  # Initialize first column of table
+
+        for j in range(1, self.max_level):  # Iterate over columns
+            # Initialize empty table entries
+            weight_dict_table.append([{}] * j)
+            column_list = weight_dict_table[j]
+
+            # Extrapolate column entries row by row
+            for i in range(j, self.max_level):
+                left_entry = weight_dict_table[j-1][i]
+                top_left_entry = weight_dict_table[j-1][i-1]
+
+                new_entry = self.extrapolate_dicts_one_step(left_entry, top_left_entry, j)
+                column_list.append(new_entry)
+
+        # Transform dictionary to weights
+        weights = []
+
+        for grid_point in self.grid:
+            weight = weight_dict_table[-1][-1][grid_point]
+            weights.append(weight)
+
+        assert len(weights) == len(self.grid)
+
+        return weights
+
+    @staticmethod
+    def extrapolate_dicts_one_step(left_dict, top_left_dict, k):
+        new_dict = defaultdict(np.float64)
+
+        # Compute a_k
+        coefficient = (-1) / (4 ** k - 1)
+
+        # Weights that exist in the left dict
+        considered_grid_points = []
+
+        for grid_point in left_dict:
+            considered_grid_points.append(grid_point)
+            new_dict[grid_point] = (1 - coefficient) * left_dict[grid_point] + coefficient * top_left_dict[grid_point]
+
+        # Weight that do not exist in the left dict, but in the top left dict
+        for grid_point, weight in top_left_dict.items():
+            if grid_point not in considered_grid_points:
+                new_dict[grid_point] = 0 + coefficient * weight
+
+        return new_dict
+
+    # Return grid with boundary points
+    def get_grid(self, max_level=None):
+        return [self.grid[0]] + self.root_node.get_grid(max_level) + [self.grid[-1]]
+
+    # Return levels, with boundaries
+    def get_grid_levels(self, max_level=None):
+        return [0] + self.root_node.get_grid_levels(max_level) + [0]
+
+
+class GridNode:
+    # a: left bound, b: right bound of interval, root node has no parent
+    def __init__(self, boundary_left, boundary_right,
+                 left_child=None, right_child=None, parent_node=None, start_level=1,
+                 print_debug=False):
+        self.boundary_left = boundary_left
+        self.boundary_right = boundary_right
+        self.grid_point = self.get_midpoint(boundary_left, boundary_right)
+
+        self.left_child = left_child
+        self.right_child = right_child
+        self.parent_node = parent_node
+        self.level = start_level if parent_node is None else parent_node.level + 1
+
+        self.print_debug = print_debug
+
+    def get_leafs_or_max_level_nodes(self, max_level=None):
+        return self.__get_leafs_or_max_level_nodes(self, max_level)
+
+    def __get_leafs_or_max_level_nodes(self, node, max_level=None):
+        """
+        Assumption: Balanced tree
+
+        :param node:
+        :param max_level:
+        :return:
+        """
+        if node is None or (max_level is not None and node.level > max_level):
+            return []
+
+        if node.level == max_level or node.is_leaf():
+            return [node]
+
+        left_subtree = self.__get_leafs_or_max_level_nodes(node.get_left_child(), max_level)
+        right_subtree = self.__get_leafs_or_max_level_nodes(node.get_right_child(), max_level)
+
+        return left_subtree + right_subtree
+
+    def get_nodes_using_dfs_in_order(self, max_level=None):
+        return self.__get_nodes_using_dfs_in_order_rec(self, max_level)
+
+    def __get_nodes_using_dfs_in_order_rec(self, node, max_level=None):
+        if node is None or (max_level is not None and node.level > max_level):
+            return []
+
+        left_subtree = self.__get_nodes_using_dfs_in_order_rec(node.get_left_child(), max_level)
+        right_subtree = self.__get_nodes_using_dfs_in_order_rec(node.get_right_child(), max_level)
+
+        return left_subtree + [node] + right_subtree
+
+    # Returns the grid of current subtree
+    def get_grid(self, max_level=None):
+        return list(map(lambda node: node.grid_point, self.get_nodes_using_dfs_in_order(max_level)))
+
+    # Returns the levels of the current subtree
+    def get_grid_levels(self, max_level=None):
+        return list(map(lambda node: node.level, self.get_nodes_using_dfs_in_order(max_level)))
+
+    # Setter methods for children nodes
+    def set_left_child(self, left_child):
+        self.left_child = left_child
+
+    def set_right_child(self, right_child):
+        self.right_child = right_child
+
+    # Getter methods
+    def get_step_width(self):
+        return self.boundary_right - self.boundary_left
+
+    def get_left_child(self):
+        return self.left_child
+
+    def get_right_child(self):
+        return self.right_child
+
+    def has_left_child(self):
+        return self.get_left_child() is not None
+
+    def has_right_child(self):
+        return self.get_right_child() is not None
+
+    def has_both_children(self):
+        return self.has_left_child() and self.has_right_child()
+
+    def has_only_one_child(self):
+        return (self.has_left_child() and (not self.has_right_child())) \
+               or (self.has_right_child() and (not self.has_left_child()))
+
+    def is_root_node(self):
+        return self.parent_node is None
+
+    def has_parent_node(self):
+        return not self.is_root_node()
+
+    def is_left_child(self):
+        return self.parent_node.get_left_child() is self
+
+    def is_right_child(self):
+        return self.parent_node.get_right_child() is self
+
+    # Return sibling of current node
+    def get_sibling(self):
+        if self.is_root_node():
+            return None
+
+        parent_node = self.parent_node
+
+        return parent_node.right_child if parent_node.left_child is self else parent_node.left_child
+
+    def is_leaf(self):
+        return not self.has_left_child() and not self.has_right_child()
+
+    @staticmethod
+    def get_midpoint(a, b):
+        return (a + b) / 2
+
+    @staticmethod
+    def node_to_string(node):
+        return "[{}, {}] (point {} of level {})".format(node.a, node.b, node.point, node.level)

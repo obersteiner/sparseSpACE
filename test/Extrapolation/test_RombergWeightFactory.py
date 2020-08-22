@@ -95,10 +95,6 @@ class TestWeightFactory(unittest.TestCase):
         self.assertAlmostEqual(2/15, factory.get_inner_point_weight(1, m))
         self.assertAlmostEqual(16/45, factory.get_inner_point_weight(2, m))
 
-    # -----------------------------------------------------------------------------------------------------------------
-    # ---  Version: Romberg Trapezoidal Slice
-    # TODO Test trapezoidal slice extrapolation
-
 
 if __name__ == '__main__':
     unittest.main()
