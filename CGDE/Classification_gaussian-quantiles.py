@@ -4,7 +4,7 @@ path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
 # sgde tut
-from src.Utils import *
+from Utils import *
 
 from shutil import copyfile
 import os
@@ -21,6 +21,8 @@ def prev_level(l, d):
         return 1
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
+
+change_log_file('logs/log_classification_gaussian-quantiles')
 
 clear_log()
 print_log_info = False
@@ -53,9 +55,9 @@ for dimension in [4, 5]:
     data_range = (0.0, 1.0)
     data.scale_range(data_range)
 
-    reuse_old_values = True
+    reuse_old_values = False
 
-    max_levels = [7,8]
+    max_levels = [2, 3, 4, 5]
     start_levels = [3,5]
     if len(start_levels) == 0:
         start_levels = [2]

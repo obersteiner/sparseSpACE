@@ -9,3 +9,6 @@ __pycache__/
 *Profile.txt
 *profile.txt
 Untitled.ipynb
+.directory
+eval_figs_*
+logs_*

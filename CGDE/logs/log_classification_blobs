@@ -1,0 +1,1537 @@
+2020-08-23 21:29:15,042,42 util INFO :: --- Classification_eval start ---
+2020-08-23 21:29:15,071,71 util INFO :: next iteration
+2020-08-23 21:29:15,071,71 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:15,071,71 util INFO :: data size: 50000
+2020-08-23 21:29:15,071,71 util INFO :: data dimension: 2
+2020-08-23 21:29:15,071,71 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:15,071,71 util INFO :: rebalancing: True
+2020-08-23 21:29:15,071,71 util INFO :: margin: 0.5
+2020-08-23 21:29:15,071,71 util INFO :: one_vs_others False
+2020-08-23 21:29:15,436,436 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:15,519,519 util INFO :: Time used (s):0.010643482208251953
+2020-08-23 21:29:15,529,529 util INFO :: Time used (s):0.009790897369384766
+2020-08-23 21:29:15,539,539 util INFO :: Time used (s):0.010334014892578125
+2020-08-23 21:29:15,556,556 util INFO :: Percentage of correct mappings: 98.60%
+2020-08-23 21:29:15,791,791 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:15,791,791 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:15,791,791 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:15,791,791 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:15,912,912 util INFO :: Number of refinements 4
+2020-08-23 21:29:15,912,912 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:15,912,912 util INFO :: Time used adaptive (s): 0.04867362976074219
+2020-08-23 21:29:15,912,912 util INFO :: Final error: 2.6463404131256967
+2020-08-23 21:29:15,962,962 util INFO :: Number of refinements 4
+2020-08-23 21:29:15,963,963 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:15,963,963 util INFO :: Time used adaptive (s): 0.04980754852294922
+2020-08-23 21:29:15,963,963 util INFO :: Final error: 1.5162414931528705
+2020-08-23 21:29:16,012,12 util INFO :: Number of refinements 4
+2020-08-23 21:29:16,012,12 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:16,012,12 util INFO :: Time used adaptive (s): 0.0488286018371582
+2020-08-23 21:29:16,013,13 util INFO :: Final error: 1.856990684601909
+2020-08-23 21:29:16,072,72 util INFO :: Percentage of correct mappings: 98.88%
+2020-08-23 21:29:16,090,90 util INFO :: iteration end
+2020-08-23 21:29:16,090,90 util INFO :: next iteration
+2020-08-23 21:29:16,090,90 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:16,090,90 util INFO :: data size: 50000
+2020-08-23 21:29:16,090,90 util INFO :: data dimension: 2
+2020-08-23 21:29:16,090,90 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:16,090,90 util INFO :: rebalancing: False
+2020-08-23 21:29:16,090,90 util INFO :: margin: 0.5
+2020-08-23 21:29:16,090,90 util INFO :: one_vs_others False
+2020-08-23 21:29:16,458,458 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:16,538,538 util INFO :: Time used (s):0.00924372673034668
+2020-08-23 21:29:16,547,547 util INFO :: Time used (s):0.00880122184753418
+2020-08-23 21:29:16,556,556 util INFO :: Time used (s):0.008385419845581055
+2020-08-23 21:29:16,572,572 util INFO :: Percentage of correct mappings: 98.60%
+2020-08-23 21:29:16,808,808 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:16,808,808 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:16,808,808 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:16,808,808 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:16,924,924 util INFO :: Number of refinements 4
+2020-08-23 21:29:16,924,924 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:16,924,924 util INFO :: Time used adaptive (s): 0.0449066162109375
+2020-08-23 21:29:16,924,924 util INFO :: Final error: 2.6463404131256967
+2020-08-23 21:29:16,970,970 util INFO :: Number of refinements 4
+2020-08-23 21:29:16,970,970 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:16,970,970 util INFO :: Time used adaptive (s): 0.0450592041015625
+2020-08-23 21:29:16,970,970 util INFO :: Final error: 1.5162414931528705
+2020-08-23 21:29:17,017,17 util INFO :: Number of refinements 4
+2020-08-23 21:29:17,017,17 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:17,017,17 util INFO :: Time used adaptive (s): 0.04550671577453613
+2020-08-23 21:29:17,017,17 util INFO :: Final error: 1.856990684601909
+2020-08-23 21:29:17,065,65 util INFO :: Percentage of correct mappings: 98.88%
+2020-08-23 21:29:17,082,82 util INFO :: iteration end
+2020-08-23 21:29:17,082,82 util INFO :: next iteration
+2020-08-23 21:29:17,083,83 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:17,083,83 util INFO :: data size: 50000
+2020-08-23 21:29:17,083,83 util INFO :: data dimension: 2
+2020-08-23 21:29:17,083,83 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:17,083,83 util INFO :: rebalancing: True
+2020-08-23 21:29:17,083,83 util INFO :: margin: 0.5
+2020-08-23 21:29:17,083,83 util INFO :: one_vs_others True
+2020-08-23 21:29:17,454,454 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:18,053,53 util INFO :: Time used (s):0.03398704528808594
+2020-08-23 21:29:18,086,86 util INFO :: Time used (s):0.03279733657836914
+2020-08-23 21:29:18,119,119 util INFO :: Time used (s):0.03306913375854492
+2020-08-23 21:29:18,136,136 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:18,377,377 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:18,378,378 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:18,378,378 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:18,378,378 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:19,143,143 util INFO :: Number of refinements 8
+2020-08-23 21:29:19,143,143 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:19,143,143 util INFO :: Time used adaptive (s): 0.1979668140411377
+2020-08-23 21:29:19,143,143 util INFO :: Final error: 1.4465032729202139
+2020-08-23 21:29:19,303,303 util INFO :: Number of refinements 6
+2020-08-23 21:29:19,303,303 util INFO :: Number of distinct points used during the refinement: 24
+2020-08-23 21:29:19,303,303 util INFO :: Time used adaptive (s): 0.1573960781097412
+2020-08-23 21:29:19,303,303 util INFO :: Final error: 0.8071497913393614
+2020-08-23 21:29:19,443,443 util INFO :: Number of refinements 4
+2020-08-23 21:29:19,443,443 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:19,443,443 util INFO :: Time used adaptive (s): 0.13651537895202637
+2020-08-23 21:29:19,443,443 util INFO :: Final error: 0.2375637176089571
+2020-08-23 21:29:19,506,506 util INFO :: Percentage of correct mappings: 98.17%
+2020-08-23 21:29:19,525,525 util INFO :: iteration end
+2020-08-23 21:29:19,525,525 util INFO :: next iteration
+2020-08-23 21:29:19,525,525 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:19,525,525 util INFO :: data size: 50000
+2020-08-23 21:29:19,525,525 util INFO :: data dimension: 2
+2020-08-23 21:29:19,525,525 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:19,525,525 util INFO :: rebalancing: False
+2020-08-23 21:29:19,525,525 util INFO :: margin: 0.5
+2020-08-23 21:29:19,525,525 util INFO :: one_vs_others True
+2020-08-23 21:29:19,891,891 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:20,474,474 util INFO :: Time used (s):0.03365659713745117
+2020-08-23 21:29:20,508,508 util INFO :: Time used (s):0.03351640701293945
+2020-08-23 21:29:20,542,542 util INFO :: Time used (s):0.03407454490661621
+2020-08-23 21:29:20,560,560 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:20,801,801 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:20,801,801 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:20,801,801 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:20,801,801 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:21,521,521 util INFO :: Number of refinements 8
+2020-08-23 21:29:21,522,522 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:21,522,522 util INFO :: Time used adaptive (s): 0.16676926612854004
+2020-08-23 21:29:21,522,522 util INFO :: Final error: 1.4447434727634552
+2020-08-23 21:29:21,672,672 util INFO :: Number of refinements 6
+2020-08-23 21:29:21,672,672 util INFO :: Number of distinct points used during the refinement: 24
+2020-08-23 21:29:21,672,672 util INFO :: Time used adaptive (s): 0.14760446548461914
+2020-08-23 21:29:21,672,672 util INFO :: Final error: 0.8113338543808178
+2020-08-23 21:29:21,818,818 util INFO :: Number of refinements 4
+2020-08-23 21:29:21,819,819 util INFO :: Number of distinct points used during the refinement: 19
+2020-08-23 21:29:21,819,819 util INFO :: Time used adaptive (s): 0.143890380859375
+2020-08-23 21:29:21,819,819 util INFO :: Final error: 0.2415959307961939
+2020-08-23 21:29:21,880,880 util INFO :: Percentage of correct mappings: 98.17%
+2020-08-23 21:29:21,898,898 util INFO :: iteration end
+2020-08-23 21:29:21,898,898 util INFO :: next iteration
+2020-08-23 21:29:21,898,898 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:21,898,898 util INFO :: data size: 50000
+2020-08-23 21:29:21,898,898 util INFO :: data dimension: 2
+2020-08-23 21:29:21,898,898 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:21,898,898 util INFO :: rebalancing: True
+2020-08-23 21:29:21,898,898 util INFO :: margin: 0.5
+2020-08-23 21:29:21,898,898 util INFO :: one_vs_others True
+2020-08-23 21:29:22,260,260 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:22,846,846 util INFO :: Time used (s):0.033068180084228516
+2020-08-23 21:29:22,880,880 util INFO :: Time used (s):0.03356027603149414
+2020-08-23 21:29:22,915,915 util INFO :: Time used (s):0.0352177619934082
+2020-08-23 21:29:22,932,932 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:23,166,166 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:23,166,166 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:23,166,166 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:23,166,166 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:24,098,98 util INFO :: Number of refinements 2
+2020-08-23 21:29:24,098,98 util INFO :: Number of distinct points used during the refinement: 17
+2020-08-23 21:29:24,098,98 util INFO :: Time used adaptive (s): 0.37025022506713867
+2020-08-23 21:29:24,098,98 util INFO :: Final error: 32.125
+2020-08-23 21:29:24,575,575 util INFO :: Number of refinements 8
+2020-08-23 21:29:24,575,575 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:24,575,575 util INFO :: Time used adaptive (s): 0.47409677505493164
+2020-08-23 21:29:24,575,575 util INFO :: Final error: 2.0
+2020-08-23 21:29:24,935,935 util INFO :: Number of refinements 2
+2020-08-23 21:29:24,935,935 util INFO :: Number of distinct points used during the refinement: 17
+2020-08-23 21:29:24,935,935 util INFO :: Time used adaptive (s): 0.35695743560791016
+2020-08-23 21:29:24,935,935 util INFO :: Final error: 34.0
+2020-08-23 21:29:24,992,992 util INFO :: Percentage of correct mappings: 99.04%
+2020-08-23 21:29:25,010,10 util INFO :: iteration end
+2020-08-23 21:29:25,010,10 util INFO :: next iteration
+2020-08-23 21:29:25,010,10 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:25,011,11 util INFO :: data size: 50000
+2020-08-23 21:29:25,011,11 util INFO :: data dimension: 2
+2020-08-23 21:29:25,011,11 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:25,011,11 util INFO :: rebalancing: False
+2020-08-23 21:29:25,011,11 util INFO :: margin: 0.5
+2020-08-23 21:29:25,011,11 util INFO :: one_vs_others True
+2020-08-23 21:29:25,376,376 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:25,967,967 util INFO :: Time used (s):0.0313725471496582
+2020-08-23 21:29:25,999,999 util INFO :: Time used (s):0.03203868865966797
+2020-08-23 21:29:26,032,32 util INFO :: Time used (s):0.03258872032165527
+2020-08-23 21:29:26,048,48 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:26,285,285 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:26,285,285 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:26,285,285 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:26,285,285 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:27,215,215 util INFO :: Number of refinements 2
+2020-08-23 21:29:27,215,215 util INFO :: Number of distinct points used during the refinement: 17
+2020-08-23 21:29:27,215,215 util INFO :: Time used adaptive (s): 0.36861538887023926
+2020-08-23 21:29:27,215,215 util INFO :: Final error: 29.625
+2020-08-23 21:29:27,602,602 util INFO :: Number of refinements 2
+2020-08-23 21:29:27,602,602 util INFO :: Number of distinct points used during the refinement: 17
+2020-08-23 21:29:27,602,602 util INFO :: Time used adaptive (s): 0.3838386535644531
+2020-08-23 21:29:27,602,602 util INFO :: Final error: 4.375
+2020-08-23 21:29:28,002,2 util INFO :: Number of refinements 2
+2020-08-23 21:29:28,002,2 util INFO :: Number of distinct points used during the refinement: 17
+2020-08-23 21:29:28,003,3 util INFO :: Time used adaptive (s): 0.39788389205932617
+2020-08-23 21:29:28,003,3 util INFO :: Final error: 30.0
+2020-08-23 21:29:28,057,57 util INFO :: Percentage of correct mappings: 99.02%
+2020-08-23 21:29:28,076,76 util INFO :: iteration end
+2020-08-23 21:29:28,076,76 util INFO :: next iteration
+2020-08-23 21:29:28,076,76 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:28,076,76 util INFO :: data size: 50000
+2020-08-23 21:29:28,076,76 util INFO :: data dimension: 2
+2020-08-23 21:29:28,076,76 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:28,076,76 util INFO :: rebalancing: True
+2020-08-23 21:29:28,076,76 util INFO :: margin: 0.5
+2020-08-23 21:29:28,076,76 util INFO :: one_vs_others False
+2020-08-23 21:29:28,464,464 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:28,544,544 util INFO :: Time used (s):0.008820295333862305
+2020-08-23 21:29:28,554,554 util INFO :: Time used (s):0.009639739990234375
+2020-08-23 21:29:28,563,563 util INFO :: Time used (s):0.008771419525146484
+2020-08-23 21:29:28,581,581 util INFO :: Percentage of correct mappings: 98.60%
+2020-08-23 21:29:28,825,825 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:28,825,825 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:28,825,825 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:28,825,825 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:28,940,940 util INFO :: Number of refinements 0
+2020-08-23 21:29:28,940,940 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:28,940,940 util INFO :: Time used adaptive (s): 0.04372859001159668
+2020-08-23 21:29:28,940,940 util INFO :: Final error: 2.3528334518406906
+2020-08-23 21:29:28,983,983 util INFO :: Number of refinements 0
+2020-08-23 21:29:28,983,983 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:28,983,983 util INFO :: Time used adaptive (s): 0.04131054878234863
+2020-08-23 21:29:28,983,983 util INFO :: Final error: 1.5878511567264644
+2020-08-23 21:29:29,025,25 util INFO :: Number of refinements 0
+2020-08-23 21:29:29,025,25 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:29,025,25 util INFO :: Time used adaptive (s): 0.0410768985748291
+2020-08-23 21:29:29,025,25 util INFO :: Final error: 1.8867327728809724
+2020-08-23 21:29:29,096,96 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:29,114,114 util INFO :: iteration end
+2020-08-23 21:29:29,114,114 util INFO :: next iteration
+2020-08-23 21:29:29,114,114 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:29,114,114 util INFO :: data size: 50000
+2020-08-23 21:29:29,114,114 util INFO :: data dimension: 2
+2020-08-23 21:29:29,114,114 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:29,114,114 util INFO :: rebalancing: False
+2020-08-23 21:29:29,114,114 util INFO :: margin: 0.5
+2020-08-23 21:29:29,114,114 util INFO :: one_vs_others False
+2020-08-23 21:29:29,499,499 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:29,588,588 util INFO :: Time used (s):0.010713815689086914
+2020-08-23 21:29:29,598,598 util INFO :: Time used (s):0.009632587432861328
+2020-08-23 21:29:29,608,608 util INFO :: Time used (s):0.009291410446166992
+2020-08-23 21:29:29,627,627 util INFO :: Percentage of correct mappings: 98.60%
+2020-08-23 21:29:29,864,864 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:29,864,864 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:29,864,864 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:29,864,864 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:29,983,983 util INFO :: Number of refinements 0
+2020-08-23 21:29:29,983,983 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:29,983,983 util INFO :: Time used adaptive (s): 0.04389190673828125
+2020-08-23 21:29:29,983,983 util INFO :: Final error: 2.3528334518406906
+2020-08-23 21:29:30,024,24 util INFO :: Number of refinements 0
+2020-08-23 21:29:30,024,24 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:30,024,24 util INFO :: Time used adaptive (s): 0.040704965591430664
+2020-08-23 21:29:30,024,24 util INFO :: Final error: 1.5878511567264644
+2020-08-23 21:29:30,067,67 util INFO :: Number of refinements 0
+2020-08-23 21:29:30,067,67 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:30,067,67 util INFO :: Time used adaptive (s): 0.04131197929382324
+2020-08-23 21:29:30,067,67 util INFO :: Final error: 1.8867327728809724
+2020-08-23 21:29:30,138,138 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:30,156,156 util INFO :: iteration end
+2020-08-23 21:29:30,156,156 util INFO :: next iteration
+2020-08-23 21:29:30,156,156 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:30,156,156 util INFO :: data size: 50000
+2020-08-23 21:29:30,156,156 util INFO :: data dimension: 2
+2020-08-23 21:29:30,156,156 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:30,156,156 util INFO :: rebalancing: True
+2020-08-23 21:29:30,156,156 util INFO :: margin: 0.5
+2020-08-23 21:29:30,156,156 util INFO :: one_vs_others True
+2020-08-23 21:29:30,518,518 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:31,106,106 util INFO :: Time used (s):0.03075432777404785
+2020-08-23 21:29:31,139,139 util INFO :: Time used (s):0.03253746032714844
+2020-08-23 21:29:31,172,172 util INFO :: Time used (s):0.032190561294555664
+2020-08-23 21:29:31,188,188 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:31,430,430 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:31,430,430 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:31,430,430 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:31,430,430 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:32,131,131 util INFO :: Number of refinements 0
+2020-08-23 21:29:32,131,131 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:32,131,131 util INFO :: Time used adaptive (s): 0.1381833553314209
+2020-08-23 21:29:32,131,131 util INFO :: Final error: 1.4490848769511941
+2020-08-23 21:29:32,272,272 util INFO :: Number of refinements 0
+2020-08-23 21:29:32,272,272 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:32,272,272 util INFO :: Time used adaptive (s): 0.13866758346557617
+2020-08-23 21:29:32,272,272 util INFO :: Final error: 0.9527139838131063
+2020-08-23 21:29:32,411,411 util INFO :: Number of refinements 0
+2020-08-23 21:29:32,411,411 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:32,411,411 util INFO :: Time used adaptive (s): 0.1357405185699463
+2020-08-23 21:29:32,411,411 util INFO :: Final error: 1.4794301733767292
+2020-08-23 21:29:32,484,484 util INFO :: Percentage of correct mappings: 98.62%
+2020-08-23 21:29:32,503,503 util INFO :: iteration end
+2020-08-23 21:29:32,503,503 util INFO :: next iteration
+2020-08-23 21:29:32,503,503 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:32,503,503 util INFO :: data size: 50000
+2020-08-23 21:29:32,503,503 util INFO :: data dimension: 2
+2020-08-23 21:29:32,503,503 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:32,503,503 util INFO :: rebalancing: False
+2020-08-23 21:29:32,503,503 util INFO :: margin: 0.5
+2020-08-23 21:29:32,503,503 util INFO :: one_vs_others True
+2020-08-23 21:29:32,875,875 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:33,481,481 util INFO :: Time used (s):0.0314939022064209
+2020-08-23 21:29:33,513,513 util INFO :: Time used (s):0.03217911720275879
+2020-08-23 21:29:33,546,546 util INFO :: Time used (s):0.032781362533569336
+2020-08-23 21:29:33,563,563 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:33,798,798 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:33,798,798 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:33,798,798 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:33,798,798 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:34,493,493 util INFO :: Number of refinements 0
+2020-08-23 21:29:34,493,493 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:34,493,493 util INFO :: Time used adaptive (s): 0.13887763023376465
+2020-08-23 21:29:34,493,493 util INFO :: Final error: 1.4469969674272067
+2020-08-23 21:29:34,633,633 util INFO :: Number of refinements 0
+2020-08-23 21:29:34,633,633 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:34,633,633 util INFO :: Time used adaptive (s): 0.13738059997558594
+2020-08-23 21:29:34,633,633 util INFO :: Final error: 0.9520296455619863
+2020-08-23 21:29:34,772,772 util INFO :: Number of refinements 0
+2020-08-23 21:29:34,773,773 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:34,773,773 util INFO :: Time used adaptive (s): 0.13683843612670898
+2020-08-23 21:29:34,773,773 util INFO :: Final error: 1.477819910899929
+2020-08-23 21:29:34,845,845 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:34,863,863 util INFO :: iteration end
+2020-08-23 21:29:34,863,863 util INFO :: next iteration
+2020-08-23 21:29:34,863,863 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:34,863,863 util INFO :: data size: 50000
+2020-08-23 21:29:34,863,863 util INFO :: data dimension: 2
+2020-08-23 21:29:34,863,863 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:34,863,863 util INFO :: rebalancing: True
+2020-08-23 21:29:34,863,863 util INFO :: margin: 0.5
+2020-08-23 21:29:34,863,863 util INFO :: one_vs_others True
+2020-08-23 21:29:35,231,231 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:35,839,839 util INFO :: Time used (s):0.032453298568725586
+2020-08-23 21:29:35,872,872 util INFO :: Time used (s):0.032732248306274414
+2020-08-23 21:29:35,904,904 util INFO :: Time used (s):0.03233623504638672
+2020-08-23 21:29:35,921,921 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:36,161,161 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:36,161,161 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:36,161,161 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:36,161,161 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:37,049,49 util INFO :: Number of refinements 0
+2020-08-23 21:29:37,049,49 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:37,049,49 util INFO :: Time used adaptive (s): 0.32425642013549805
+2020-08-23 21:29:37,049,49 util INFO :: Final error: [43.25]
+2020-08-23 21:29:37,372,372 util INFO :: Number of refinements 0
+2020-08-23 21:29:37,372,372 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:37,372,372 util INFO :: Time used adaptive (s): 0.32084035873413086
+2020-08-23 21:29:37,373,373 util INFO :: Final error: [3.5]
+2020-08-23 21:29:37,724,724 util INFO :: Number of refinements 0
+2020-08-23 21:29:37,724,724 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:37,724,724 util INFO :: Time used adaptive (s): 0.34839534759521484
+2020-08-23 21:29:37,724,724 util INFO :: Final error: [30.25]
+2020-08-23 21:29:37,796,796 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:37,814,814 util INFO :: iteration end
+2020-08-23 21:29:37,814,814 util INFO :: next iteration
+2020-08-23 21:29:37,814,814 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:37,814,814 util INFO :: data size: 50000
+2020-08-23 21:29:37,814,814 util INFO :: data dimension: 2
+2020-08-23 21:29:37,814,814 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:37,814,814 util INFO :: rebalancing: False
+2020-08-23 21:29:37,814,814 util INFO :: margin: 0.5
+2020-08-23 21:29:37,814,814 util INFO :: one_vs_others True
+2020-08-23 21:29:38,189,189 util INFO :: classification standardCombi max_level: 2
+2020-08-23 21:29:38,790,790 util INFO :: Time used (s):0.031954050064086914
+2020-08-23 21:29:38,823,823 util INFO :: Time used (s):0.032343387603759766
+2020-08-23 21:29:38,856,856 util INFO :: Time used (s):0.03257489204406738
+2020-08-23 21:29:38,872,872 util INFO :: Percentage of correct mappings: 81.37%
+2020-08-23 21:29:39,106,106 util INFO :: classification dimwise max_evaluations: 9
+2020-08-23 21:29:39,107,107 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:39,107,107 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:39,107,107 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:39,986,986 util INFO :: Number of refinements 0
+2020-08-23 21:29:39,986,986 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:39,986,986 util INFO :: Time used adaptive (s): 0.3258538246154785
+2020-08-23 21:29:39,986,986 util INFO :: Final error: [40.5]
+2020-08-23 21:29:40,310,310 util INFO :: Number of refinements 0
+2020-08-23 21:29:40,310,310 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:40,310,310 util INFO :: Time used adaptive (s): 0.3207108974456787
+2020-08-23 21:29:40,310,310 util INFO :: Final error: [1.75]
+2020-08-23 21:29:40,643,643 util INFO :: Number of refinements 0
+2020-08-23 21:29:40,643,643 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:40,643,643 util INFO :: Time used adaptive (s): 0.33045363426208496
+2020-08-23 21:29:40,644,644 util INFO :: Final error: 28.5
+2020-08-23 21:29:40,714,714 util INFO :: Percentage of correct mappings: 98.63%
+2020-08-23 21:29:40,731,731 util INFO :: iteration end
+2020-08-23 21:29:40,731,731 util INFO :: next iteration
+2020-08-23 21:29:40,731,731 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:40,731,731 util INFO :: data size: 50000
+2020-08-23 21:29:40,731,731 util INFO :: data dimension: 2
+2020-08-23 21:29:40,731,731 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:40,731,731 util INFO :: rebalancing: True
+2020-08-23 21:29:40,731,731 util INFO :: margin: 0.5
+2020-08-23 21:29:40,732,732 util INFO :: one_vs_others False
+2020-08-23 21:29:41,098,98 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:41,211,211 util INFO :: Time used (s):0.04087233543395996
+2020-08-23 21:29:41,249,249 util INFO :: Time used (s):0.03776860237121582
+2020-08-23 21:29:41,287,287 util INFO :: Time used (s):0.03719162940979004
+2020-08-23 21:29:41,338,338 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:41,581,581 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:41,581,581 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:41,581,581 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:41,581,581 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:41,781,781 util INFO :: Number of refinements 12
+2020-08-23 21:29:41,782,782 util INFO :: Number of distinct points used during the refinement: 57
+2020-08-23 21:29:41,782,782 util INFO :: Time used adaptive (s): 0.12614011764526367
+2020-08-23 21:29:41,782,782 util INFO :: Final error: 0.9505807055268061
+2020-08-23 21:29:41,887,887 util INFO :: Number of refinements 10
+2020-08-23 21:29:41,887,887 util INFO :: Number of distinct points used during the refinement: 46
+2020-08-23 21:29:41,887,887 util INFO :: Time used adaptive (s): 0.10423016548156738
+2020-08-23 21:29:41,887,887 util INFO :: Final error: 0.8375841526223244
+2020-08-23 21:29:42,018,18 util INFO :: Number of refinements 12
+2020-08-23 21:29:42,019,19 util INFO :: Number of distinct points used during the refinement: 57
+2020-08-23 21:29:42,019,19 util INFO :: Time used adaptive (s): 0.13062024116516113
+2020-08-23 21:29:42,019,19 util INFO :: Final error: 0.7996814412986388
+2020-08-23 21:29:42,166,166 util INFO :: Percentage of correct mappings: 98.64%
+2020-08-23 21:29:42,184,184 util INFO :: iteration end
+2020-08-23 21:29:42,184,184 util INFO :: next iteration
+2020-08-23 21:29:42,184,184 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:42,184,184 util INFO :: data size: 50000
+2020-08-23 21:29:42,184,184 util INFO :: data dimension: 2
+2020-08-23 21:29:42,184,184 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:42,184,184 util INFO :: rebalancing: False
+2020-08-23 21:29:42,184,184 util INFO :: margin: 0.5
+2020-08-23 21:29:42,184,184 util INFO :: one_vs_others False
+2020-08-23 21:29:42,556,556 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:42,669,669 util INFO :: Time used (s):0.039499521255493164
+2020-08-23 21:29:42,707,707 util INFO :: Time used (s):0.03702259063720703
+2020-08-23 21:29:42,745,745 util INFO :: Time used (s):0.03842425346374512
+2020-08-23 21:29:42,800,800 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:43,039,39 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:43,039,39 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:43,039,39 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:43,039,39 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:43,214,214 util INFO :: Number of refinements 12
+2020-08-23 21:29:43,214,214 util INFO :: Number of distinct points used during the refinement: 51
+2020-08-23 21:29:43,214,214 util INFO :: Time used adaptive (s): 0.10274481773376465
+2020-08-23 21:29:43,214,214 util INFO :: Final error: 0.7741883492904349
+2020-08-23 21:29:43,311,311 util INFO :: Number of refinements 10
+2020-08-23 21:29:43,312,312 util INFO :: Number of distinct points used during the refinement: 46
+2020-08-23 21:29:43,312,312 util INFO :: Time used adaptive (s): 0.09655380249023438
+2020-08-23 21:29:43,312,312 util INFO :: Final error: 0.8099416684249842
+2020-08-23 21:29:43,425,425 util INFO :: Number of refinements 12
+2020-08-23 21:29:43,425,425 util INFO :: Number of distinct points used during the refinement: 51
+2020-08-23 21:29:43,425,425 util INFO :: Time used adaptive (s): 0.11209440231323242
+2020-08-23 21:29:43,425,425 util INFO :: Final error: 0.7995791961239078
+2020-08-23 21:29:43,534,534 util INFO :: Percentage of correct mappings: 98.40%
+2020-08-23 21:29:43,552,552 util INFO :: iteration end
+2020-08-23 21:29:43,552,552 util INFO :: next iteration
+2020-08-23 21:29:43,552,552 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:43,552,552 util INFO :: data size: 50000
+2020-08-23 21:29:43,552,552 util INFO :: data dimension: 2
+2020-08-23 21:29:43,552,552 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:43,553,553 util INFO :: rebalancing: True
+2020-08-23 21:29:43,553,553 util INFO :: margin: 0.5
+2020-08-23 21:29:43,553,553 util INFO :: one_vs_others True
+2020-08-23 21:29:43,919,919 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:44,604,604 util INFO :: Time used (s):0.11874985694885254
+2020-08-23 21:29:44,721,721 util INFO :: Time used (s):0.11675429344177246
+2020-08-23 21:29:44,838,838 util INFO :: Time used (s):0.11695432662963867
+2020-08-23 21:29:44,888,888 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:45,124,124 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:45,125,125 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:45,125,125 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:45,125,125 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:45,871,871 util INFO :: Number of refinements 8
+2020-08-23 21:29:45,871,871 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:45,871,871 util INFO :: Time used adaptive (s): 0.1657240390777588
+2020-08-23 21:29:45,871,871 util INFO :: Final error: 1.444530027248597
+2020-08-23 21:29:46,262,262 util INFO :: Number of refinements 14
+2020-08-23 21:29:46,262,262 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:29:46,262,262 util INFO :: Time used adaptive (s): 0.3882918357849121
+2020-08-23 21:29:46,263,263 util INFO :: Final error: 0.4342490429438689
+2020-08-23 21:29:46,530,530 util INFO :: Number of refinements 8
+2020-08-23 21:29:46,530,530 util INFO :: Number of distinct points used during the refinement: 36
+2020-08-23 21:29:46,530,530 util INFO :: Time used adaptive (s): 0.2644805908203125
+2020-08-23 21:29:46,530,530 util INFO :: Final error: 0.6083605543416235
+2020-08-23 21:29:46,636,636 util INFO :: Percentage of correct mappings: 98.78%
+2020-08-23 21:29:46,653,653 util INFO :: iteration end
+2020-08-23 21:29:46,653,653 util INFO :: next iteration
+2020-08-23 21:29:46,653,653 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:46,653,653 util INFO :: data size: 50000
+2020-08-23 21:29:46,653,653 util INFO :: data dimension: 2
+2020-08-23 21:29:46,653,653 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:46,654,654 util INFO :: rebalancing: False
+2020-08-23 21:29:46,654,654 util INFO :: margin: 0.5
+2020-08-23 21:29:46,654,654 util INFO :: one_vs_others True
+2020-08-23 21:29:47,035,35 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:47,715,715 util INFO :: Time used (s):0.12126421928405762
+2020-08-23 21:29:47,835,835 util INFO :: Time used (s):0.11988234519958496
+2020-08-23 21:29:47,954,954 util INFO :: Time used (s):0.11863589286804199
+2020-08-23 21:29:48,005,5 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:48,253,253 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:48,253,253 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:48,253,253 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:48,254,254 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:48,991,991 util INFO :: Number of refinements 8
+2020-08-23 21:29:48,992,992 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:48,992,992 util INFO :: Time used adaptive (s): 0.16541719436645508
+2020-08-23 21:29:48,992,992 util INFO :: Final error: 1.444955353239811
+2020-08-23 21:29:49,388,388 util INFO :: Number of refinements 14
+2020-08-23 21:29:49,388,388 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:29:49,388,388 util INFO :: Time used adaptive (s): 0.39366698265075684
+2020-08-23 21:29:49,388,388 util INFO :: Final error: 0.4544138836757822
+2020-08-23 21:29:49,687,687 util INFO :: Number of refinements 8
+2020-08-23 21:29:49,687,687 util INFO :: Number of distinct points used during the refinement: 41
+2020-08-23 21:29:49,687,687 util INFO :: Time used adaptive (s): 0.2956078052520752
+2020-08-23 21:29:49,687,687 util INFO :: Final error: 0.24122851138892465
+2020-08-23 21:29:49,803,803 util INFO :: Percentage of correct mappings: 98.27%
+2020-08-23 21:29:49,822,822 util INFO :: iteration end
+2020-08-23 21:29:49,823,823 util INFO :: next iteration
+2020-08-23 21:29:49,823,823 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:49,823,823 util INFO :: data size: 50000
+2020-08-23 21:29:49,823,823 util INFO :: data dimension: 2
+2020-08-23 21:29:49,823,823 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:49,823,823 util INFO :: rebalancing: True
+2020-08-23 21:29:49,823,823 util INFO :: margin: 0.5
+2020-08-23 21:29:49,823,823 util INFO :: one_vs_others True
+2020-08-23 21:29:50,206,206 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:50,878,878 util INFO :: Time used (s):0.11614656448364258
+2020-08-23 21:29:50,996,996 util INFO :: Time used (s):0.11759209632873535
+2020-08-23 21:29:51,114,114 util INFO :: Time used (s):0.11835455894470215
+2020-08-23 21:29:51,171,171 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:51,422,422 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:51,423,423 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:51,423,423 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:51,423,423 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:52,590,590 util INFO :: Number of refinements 5
+2020-08-23 21:29:52,590,590 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:52,590,590 util INFO :: Time used adaptive (s): 0.6030495166778564
+2020-08-23 21:29:52,590,590 util INFO :: Final error: 25.25
+2020-08-23 21:29:53,063,63 util INFO :: Number of refinements 8
+2020-08-23 21:29:53,063,63 util INFO :: Number of distinct points used during the refinement: 30
+2020-08-23 21:29:53,063,63 util INFO :: Time used adaptive (s): 0.4700124263763428
+2020-08-23 21:29:53,063,63 util INFO :: Final error: 2.5
+2020-08-23 21:29:53,694,694 util INFO :: Number of refinements 5
+2020-08-23 21:29:53,694,694 util INFO :: Number of distinct points used during the refinement: 27
+2020-08-23 21:29:53,694,694 util INFO :: Time used adaptive (s): 0.6283566951751709
+2020-08-23 21:29:53,694,694 util INFO :: Final error: 22.0
+2020-08-23 21:29:53,764,764 util INFO :: Percentage of correct mappings: 98.96%
+2020-08-23 21:29:53,783,783 util INFO :: iteration end
+2020-08-23 21:29:53,783,783 util INFO :: next iteration
+2020-08-23 21:29:53,783,783 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:53,783,783 util INFO :: data size: 50000
+2020-08-23 21:29:53,783,783 util INFO :: data dimension: 2
+2020-08-23 21:29:53,783,783 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:29:53,783,783 util INFO :: rebalancing: False
+2020-08-23 21:29:53,783,783 util INFO :: margin: 0.5
+2020-08-23 21:29:53,783,783 util INFO :: one_vs_others True
+2020-08-23 21:29:54,155,155 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:54,838,838 util INFO :: Time used (s):0.11646151542663574
+2020-08-23 21:29:54,955,955 util INFO :: Time used (s):0.11652636528015137
+2020-08-23 21:29:55,073,73 util INFO :: Time used (s):0.11788105964660645
+2020-08-23 21:29:55,123,123 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:29:55,369,369 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:55,370,370 util INFO :: classification dimwise start level: 2
+2020-08-23 21:29:55,370,370 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:55,370,370 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:56,573,573 util INFO :: Number of refinements 5
+2020-08-23 21:29:56,573,573 util INFO :: Number of distinct points used during the refinement: 38
+2020-08-23 21:29:56,573,573 util INFO :: Time used adaptive (s): 0.632880449295044
+2020-08-23 21:29:56,573,573 util INFO :: Final error: 16.3125
+2020-08-23 21:29:57,229,229 util INFO :: Number of refinements 5
+2020-08-23 21:29:57,229,229 util INFO :: Number of distinct points used during the refinement: 38
+2020-08-23 21:29:57,229,229 util INFO :: Time used adaptive (s): 0.6531538963317871
+2020-08-23 21:29:57,229,229 util INFO :: Final error: 7.1875
+2020-08-23 21:29:57,906,906 util INFO :: Number of refinements 6
+2020-08-23 21:29:57,906,906 util INFO :: Number of distinct points used during the refinement: 42
+2020-08-23 21:29:57,906,906 util INFO :: Time used adaptive (s): 0.6743054389953613
+2020-08-23 21:29:57,906,906 util INFO :: Final error: 22.75
+2020-08-23 21:29:57,999,999 util INFO :: Percentage of correct mappings: 99.01%
+2020-08-23 21:29:58,017,17 util INFO :: iteration end
+2020-08-23 21:29:58,018,18 util INFO :: next iteration
+2020-08-23 21:29:58,018,18 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:58,018,18 util INFO :: data size: 50000
+2020-08-23 21:29:58,018,18 util INFO :: data dimension: 2
+2020-08-23 21:29:58,018,18 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:58,018,18 util INFO :: rebalancing: True
+2020-08-23 21:29:58,018,18 util INFO :: margin: 0.5
+2020-08-23 21:29:58,018,18 util INFO :: one_vs_others False
+2020-08-23 21:29:58,391,391 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:58,497,497 util INFO :: Time used (s):0.035631656646728516
+2020-08-23 21:29:58,532,532 util INFO :: Time used (s):0.03452801704406738
+2020-08-23 21:29:58,566,566 util INFO :: Time used (s):0.03412199020385742
+2020-08-23 21:29:58,618,618 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:58,853,853 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:58,853,853 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:58,853,853 util INFO :: classification dimwise rebalance True
+2020-08-23 21:29:58,853,853 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:29:58,964,964 util INFO :: Number of refinements 0
+2020-08-23 21:29:58,964,964 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:58,964,964 util INFO :: Time used adaptive (s): 0.03972053527832031
+2020-08-23 21:29:58,964,964 util INFO :: Final error: 2.3528334518406906
+2020-08-23 21:29:59,005,5 util INFO :: Number of refinements 0
+2020-08-23 21:29:59,006,6 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:59,006,6 util INFO :: Time used adaptive (s): 0.040199995040893555
+2020-08-23 21:29:59,006,6 util INFO :: Final error: 1.5878511567264644
+2020-08-23 21:29:59,049,49 util INFO :: Number of refinements 0
+2020-08-23 21:29:59,050,50 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:29:59,050,50 util INFO :: Time used adaptive (s): 0.04289674758911133
+2020-08-23 21:29:59,050,50 util INFO :: Final error: 1.8867327728809724
+2020-08-23 21:29:59,130,130 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:59,149,149 util INFO :: iteration end
+2020-08-23 21:29:59,149,149 util INFO :: next iteration
+2020-08-23 21:29:59,149,149 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:29:59,149,149 util INFO :: data size: 50000
+2020-08-23 21:29:59,149,149 util INFO :: data dimension: 2
+2020-08-23 21:29:59,149,149 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:29:59,149,149 util INFO :: rebalancing: False
+2020-08-23 21:29:59,149,149 util INFO :: margin: 0.5
+2020-08-23 21:29:59,149,149 util INFO :: one_vs_others False
+2020-08-23 21:29:59,516,516 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:29:59,625,625 util INFO :: Time used (s):0.03518509864807129
+2020-08-23 21:29:59,660,660 util INFO :: Time used (s):0.03451180458068848
+2020-08-23 21:29:59,693,693 util INFO :: Time used (s):0.0329289436340332
+2020-08-23 21:29:59,744,744 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:29:59,977,977 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:29:59,977,977 util INFO :: classification dimwise start level: 3
+2020-08-23 21:29:59,977,977 util INFO :: classification dimwise rebalance False
+2020-08-23 21:29:59,977,977 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:00,088,88 util INFO :: Number of refinements 0
+2020-08-23 21:30:00,089,89 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:00,089,89 util INFO :: Time used adaptive (s): 0.03997206687927246
+2020-08-23 21:30:00,089,89 util INFO :: Final error: 2.3528334518406906
+2020-08-23 21:30:00,130,130 util INFO :: Number of refinements 0
+2020-08-23 21:30:00,130,130 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:00,130,130 util INFO :: Time used adaptive (s): 0.04072690010070801
+2020-08-23 21:30:00,130,130 util INFO :: Final error: 1.5878511567264644
+2020-08-23 21:30:00,175,175 util INFO :: Number of refinements 0
+2020-08-23 21:30:00,175,175 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:00,175,175 util INFO :: Time used adaptive (s): 0.04388570785522461
+2020-08-23 21:30:00,175,175 util INFO :: Final error: 1.8867327728809724
+2020-08-23 21:30:00,254,254 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:30:00,273,273 util INFO :: iteration end
+2020-08-23 21:30:00,273,273 util INFO :: next iteration
+2020-08-23 21:30:00,273,273 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:00,273,273 util INFO :: data size: 50000
+2020-08-23 21:30:00,274,274 util INFO :: data dimension: 2
+2020-08-23 21:30:00,274,274 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:00,274,274 util INFO :: rebalancing: True
+2020-08-23 21:30:00,274,274 util INFO :: margin: 0.5
+2020-08-23 21:30:00,274,274 util INFO :: one_vs_others True
+2020-08-23 21:30:00,647,647 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:30:01,323,323 util INFO :: Time used (s):0.12026834487915039
+2020-08-23 21:30:01,441,441 util INFO :: Time used (s):0.11728453636169434
+2020-08-23 21:30:01,559,559 util INFO :: Time used (s):0.11776947975158691
+2020-08-23 21:30:01,610,610 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:01,855,855 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:30:01,855,855 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:01,855,855 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:01,855,855 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:02,563,563 util INFO :: Number of refinements 0
+2020-08-23 21:30:02,563,563 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:02,563,563 util INFO :: Time used adaptive (s): 0.12987542152404785
+2020-08-23 21:30:02,563,563 util INFO :: Final error: 1.4440423180828468
+2020-08-23 21:30:02,702,702 util INFO :: Number of refinements 0
+2020-08-23 21:30:02,702,702 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:02,702,702 util INFO :: Time used adaptive (s): 0.13695478439331055
+2020-08-23 21:30:02,702,702 util INFO :: Final error: 0.9514938572911535
+2020-08-23 21:30:02,848,848 util INFO :: Number of refinements 0
+2020-08-23 21:30:02,848,848 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:02,848,848 util INFO :: Time used adaptive (s): 0.14258623123168945
+2020-08-23 21:30:02,848,848 util INFO :: Final error: 1.4797352228434801
+2020-08-23 21:30:02,922,922 util INFO :: Percentage of correct mappings: 98.64%
+2020-08-23 21:30:02,940,940 util INFO :: iteration end
+2020-08-23 21:30:02,940,940 util INFO :: next iteration
+2020-08-23 21:30:02,940,940 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:02,941,941 util INFO :: data size: 50000
+2020-08-23 21:30:02,941,941 util INFO :: data dimension: 2
+2020-08-23 21:30:02,941,941 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:02,941,941 util INFO :: rebalancing: False
+2020-08-23 21:30:02,941,941 util INFO :: margin: 0.5
+2020-08-23 21:30:02,941,941 util INFO :: one_vs_others True
+2020-08-23 21:30:03,337,337 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:30:04,017,17 util INFO :: Time used (s):0.11652374267578125
+2020-08-23 21:30:04,133,133 util INFO :: Time used (s):0.1160268783569336
+2020-08-23 21:30:04,252,252 util INFO :: Time used (s):0.11835861206054688
+2020-08-23 21:30:04,302,302 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:04,549,549 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:30:04,549,549 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:04,549,549 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:04,549,549 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:05,258,258 util INFO :: Number of refinements 0
+2020-08-23 21:30:05,258,258 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:05,258,258 util INFO :: Time used adaptive (s): 0.13126325607299805
+2020-08-23 21:30:05,258,258 util INFO :: Final error: 1.4456684432427156
+2020-08-23 21:30:05,393,393 util INFO :: Number of refinements 0
+2020-08-23 21:30:05,393,393 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:05,393,393 util INFO :: Time used adaptive (s): 0.13265109062194824
+2020-08-23 21:30:05,394,394 util INFO :: Final error: 0.9532105489447651
+2020-08-23 21:30:05,530,530 util INFO :: Number of refinements 0
+2020-08-23 21:30:05,530,530 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:05,530,530 util INFO :: Time used adaptive (s): 0.13353991508483887
+2020-08-23 21:30:05,530,530 util INFO :: Final error: 1.4812515359945517
+2020-08-23 21:30:05,601,601 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:05,619,619 util INFO :: iteration end
+2020-08-23 21:30:05,620,620 util INFO :: next iteration
+2020-08-23 21:30:05,620,620 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:05,620,620 util INFO :: data size: 50000
+2020-08-23 21:30:05,620,620 util INFO :: data dimension: 2
+2020-08-23 21:30:05,620,620 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:30:05,620,620 util INFO :: rebalancing: True
+2020-08-23 21:30:05,620,620 util INFO :: margin: 0.5
+2020-08-23 21:30:05,620,620 util INFO :: one_vs_others True
+2020-08-23 21:30:06,002,2 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:30:06,677,677 util INFO :: Time used (s):0.1169137954711914
+2020-08-23 21:30:06,795,795 util INFO :: Time used (s):0.11776280403137207
+2020-08-23 21:30:06,914,914 util INFO :: Time used (s):0.11912655830383301
+2020-08-23 21:30:06,964,964 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:07,210,210 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:30:07,211,211 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:07,211,211 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:07,211,211 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:08,092,92 util INFO :: Number of refinements 0
+2020-08-23 21:30:08,092,92 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:08,094,94 util INFO :: Time used adaptive (s): 0.3115720748901367
+2020-08-23 21:30:08,095,95 util INFO :: Final error: [42.5]
+2020-08-23 21:30:08,415,415 util INFO :: Number of refinements 0
+2020-08-23 21:30:08,416,416 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:08,416,416 util INFO :: Time used adaptive (s): 0.318148136138916
+2020-08-23 21:30:08,416,416 util INFO :: Final error: 3.0
+2020-08-23 21:30:08,734,734 util INFO :: Number of refinements 0
+2020-08-23 21:30:08,734,734 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:08,734,734 util INFO :: Time used adaptive (s): 0.31531572341918945
+2020-08-23 21:30:08,734,734 util INFO :: Final error: [29.5]
+2020-08-23 21:30:08,804,804 util INFO :: Percentage of correct mappings: 98.64%
+2020-08-23 21:30:08,821,821 util INFO :: iteration end
+2020-08-23 21:30:08,821,821 util INFO :: next iteration
+2020-08-23 21:30:08,821,821 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:08,821,821 util INFO :: data size: 50000
+2020-08-23 21:30:08,821,821 util INFO :: data dimension: 2
+2020-08-23 21:30:08,822,822 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:30:08,822,822 util INFO :: rebalancing: False
+2020-08-23 21:30:08,822,822 util INFO :: margin: 0.5
+2020-08-23 21:30:08,822,822 util INFO :: one_vs_others True
+2020-08-23 21:30:09,189,189 util INFO :: classification standardCombi max_level: 3
+2020-08-23 21:30:09,856,856 util INFO :: Time used (s):0.11789107322692871
+2020-08-23 21:30:09,974,974 util INFO :: Time used (s):0.11734843254089355
+2020-08-23 21:30:10,094,94 util INFO :: Time used (s):0.11969614028930664
+2020-08-23 21:30:10,144,144 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:10,387,387 util INFO :: classification dimwise max_evaluations: 25
+2020-08-23 21:30:10,387,387 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:10,387,387 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:10,387,387 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:11,254,254 util INFO :: Number of refinements 0
+2020-08-23 21:30:11,254,254 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:11,254,254 util INFO :: Time used adaptive (s): 0.30988526344299316
+2020-08-23 21:30:11,254,254 util INFO :: Final error: [45.25]
+2020-08-23 21:30:11,577,577 util INFO :: Number of refinements 0
+2020-08-23 21:30:11,577,577 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:11,577,577 util INFO :: Time used adaptive (s): 0.3199629783630371
+2020-08-23 21:30:11,577,577 util INFO :: Final error: [3.5]
+2020-08-23 21:30:11,897,897 util INFO :: Number of refinements 0
+2020-08-23 21:30:11,897,897 util INFO :: Number of distinct points used during the refinement: 29
+2020-08-23 21:30:11,897,897 util INFO :: Time used adaptive (s): 0.3170020580291748
+2020-08-23 21:30:11,897,897 util INFO :: Final error: [31.5]
+2020-08-23 21:30:11,971,971 util INFO :: Percentage of correct mappings: 98.63%
+2020-08-23 21:30:11,989,989 util INFO :: iteration end
+2020-08-23 21:30:11,989,989 util INFO :: next iteration
+2020-08-23 21:30:11,989,989 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:11,989,989 util INFO :: data size: 50000
+2020-08-23 21:30:11,989,989 util INFO :: data dimension: 2
+2020-08-23 21:30:11,989,989 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:11,989,989 util INFO :: rebalancing: True
+2020-08-23 21:30:11,989,989 util INFO :: margin: 0.5
+2020-08-23 21:30:11,989,989 util INFO :: one_vs_others False
+2020-08-23 21:30:12,352,352 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:12,567,567 util INFO :: Time used (s):0.1445155143737793
+2020-08-23 21:30:12,702,702 util INFO :: Time used (s):0.13550496101379395
+2020-08-23 21:30:12,839,839 util INFO :: Time used (s):0.13615703582763672
+2020-08-23 21:30:13,020,20 util INFO :: Percentage of correct mappings: 98.38%
+2020-08-23 21:30:13,266,266 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:13,266,266 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:13,267,267 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:13,267,267 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:13,599,599 util INFO :: Number of refinements 20
+2020-08-23 21:30:13,599,599 util INFO :: Number of distinct points used during the refinement: 88
+2020-08-23 21:30:13,599,599 util INFO :: Time used adaptive (s): 0.2593967914581299
+2020-08-23 21:30:13,599,599 util INFO :: Final error: 0.43408828816347816
+2020-08-23 21:30:13,767,767 util INFO :: Number of refinements 12
+2020-08-23 21:30:13,767,767 util INFO :: Number of distinct points used during the refinement: 72
+2020-08-23 21:30:13,767,767 util INFO :: Time used adaptive (s): 0.16705751419067383
+2020-08-23 21:30:13,767,767 util INFO :: Final error: 0.6175027067449216
+2020-08-23 21:30:13,967,967 util INFO :: Number of refinements 16
+2020-08-23 21:30:13,967,967 util INFO :: Number of distinct points used during the refinement: 67
+2020-08-23 21:30:13,967,967 util INFO :: Time used adaptive (s): 0.19878864288330078
+2020-08-23 21:30:13,967,967 util INFO :: Final error: 0.3484016127791889
+2020-08-23 21:30:14,141,141 util INFO :: Percentage of correct mappings: 98.28%
+2020-08-23 21:30:14,159,159 util INFO :: iteration end
+2020-08-23 21:30:14,159,159 util INFO :: next iteration
+2020-08-23 21:30:14,159,159 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:14,160,160 util INFO :: data size: 50000
+2020-08-23 21:30:14,160,160 util INFO :: data dimension: 2
+2020-08-23 21:30:14,160,160 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:14,160,160 util INFO :: rebalancing: False
+2020-08-23 21:30:14,160,160 util INFO :: margin: 0.5
+2020-08-23 21:30:14,160,160 util INFO :: one_vs_others False
+2020-08-23 21:30:14,541,541 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:14,767,767 util INFO :: Time used (s):0.15178132057189941
+2020-08-23 21:30:14,908,908 util INFO :: Time used (s):0.14066123962402344
+2020-08-23 21:30:15,050,50 util INFO :: Time used (s):0.14200043678283691
+2020-08-23 21:30:15,223,223 util INFO :: Percentage of correct mappings: 98.38%
+2020-08-23 21:30:15,472,472 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:15,472,472 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:15,472,472 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:15,472,472 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:15,797,797 util INFO :: Number of refinements 18
+2020-08-23 21:30:15,798,798 util INFO :: Number of distinct points used during the refinement: 106
+2020-08-23 21:30:15,798,798 util INFO :: Time used adaptive (s): 0.250990629196167
+2020-08-23 21:30:15,798,798 util INFO :: Final error: 0.3180234468658007
+2020-08-23 21:30:15,971,971 util INFO :: Number of refinements 12
+2020-08-23 21:30:15,971,971 util INFO :: Number of distinct points used during the refinement: 72
+2020-08-23 21:30:15,971,971 util INFO :: Time used adaptive (s): 0.17252397537231445
+2020-08-23 21:30:15,971,971 util INFO :: Final error: 0.6018164188251521
+2020-08-23 21:30:16,165,165 util INFO :: Number of refinements 16
+2020-08-23 21:30:16,165,165 util INFO :: Number of distinct points used during the refinement: 89
+2020-08-23 21:30:16,165,165 util INFO :: Time used adaptive (s): 0.19240212440490723
+2020-08-23 21:30:16,165,165 util INFO :: Final error: 0.3206721868189285
+2020-08-23 21:30:16,354,354 util INFO :: Percentage of correct mappings: 98.31%
+2020-08-23 21:30:16,373,373 util INFO :: iteration end
+2020-08-23 21:30:16,373,373 util INFO :: next iteration
+2020-08-23 21:30:16,373,373 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:16,373,373 util INFO :: data size: 50000
+2020-08-23 21:30:16,373,373 util INFO :: data dimension: 2
+2020-08-23 21:30:16,373,373 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:16,373,373 util INFO :: rebalancing: True
+2020-08-23 21:30:16,373,373 util INFO :: margin: 0.5
+2020-08-23 21:30:16,373,373 util INFO :: one_vs_others True
+2020-08-23 21:30:16,750,750 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:17,708,708 util INFO :: Time used (s):0.40207362174987793
+2020-08-23 21:30:18,165,165 util INFO :: Time used (s):0.45650196075439453
+2020-08-23 21:30:18,659,659 util INFO :: Time used (s):0.4939849376678467
+2020-08-23 21:30:18,866,866 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:19,120,120 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:19,120,120 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:19,121,121 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:19,121,121 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:20,491,491 util INFO :: Number of refinements 24
+2020-08-23 21:30:20,492,492 util INFO :: Number of distinct points used during the refinement: 126
+2020-08-23 21:30:20,492,492 util INFO :: Time used adaptive (s): 0.8004136085510254
+2020-08-23 21:30:20,492,492 util INFO :: Final error: 0.3645713376484362
+2020-08-23 21:30:20,993,993 util INFO :: Number of refinements 14
+2020-08-23 21:30:20,993,993 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:30:20,993,993 util INFO :: Time used adaptive (s): 0.4982438087463379
+2020-08-23 21:30:20,993,993 util INFO :: Final error: 0.43385981948439606
+2020-08-23 21:30:22,107,107 util INFO :: Number of refinements 18
+2020-08-23 21:30:22,107,107 util INFO :: Number of distinct points used during the refinement: 97
+2020-08-23 21:30:22,107,107 util INFO :: Time used adaptive (s): 1.1112604141235352
+2020-08-23 21:30:22,107,107 util INFO :: Final error: 0.6552335515815284
+2020-08-23 21:30:22,375,375 util INFO :: Percentage of correct mappings: 98.48%
+2020-08-23 21:30:22,395,395 util INFO :: iteration end
+2020-08-23 21:30:22,395,395 util INFO :: next iteration
+2020-08-23 21:30:22,395,395 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:22,396,396 util INFO :: data size: 50000
+2020-08-23 21:30:22,396,396 util INFO :: data dimension: 2
+2020-08-23 21:30:22,396,396 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:22,396,396 util INFO :: rebalancing: False
+2020-08-23 21:30:22,396,396 util INFO :: margin: 0.5
+2020-08-23 21:30:22,396,396 util INFO :: one_vs_others True
+2020-08-23 21:30:22,784,784 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:23,792,792 util INFO :: Time used (s):0.44535350799560547
+2020-08-23 21:30:24,259,259 util INFO :: Time used (s):0.46637511253356934
+2020-08-23 21:30:24,746,746 util INFO :: Time used (s):0.48625922203063965
+2020-08-23 21:30:24,957,957 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:25,206,206 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:25,206,206 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:25,207,207 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:25,207,207 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:26,631,631 util INFO :: Number of refinements 24
+2020-08-23 21:30:26,631,631 util INFO :: Number of distinct points used during the refinement: 126
+2020-08-23 21:30:26,631,631 util INFO :: Time used adaptive (s): 0.8686800003051758
+2020-08-23 21:30:26,631,631 util INFO :: Final error: 0.3613073713947562
+2020-08-23 21:30:27,099,99 util INFO :: Number of refinements 14
+2020-08-23 21:30:27,099,99 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:30:27,099,99 util INFO :: Time used adaptive (s): 0.46468329429626465
+2020-08-23 21:30:27,099,99 util INFO :: Final error: 0.4503383105974583
+2020-08-23 21:30:27,637,637 util INFO :: Number of refinements 12
+2020-08-23 21:30:27,637,637 util INFO :: Number of distinct points used during the refinement: 64
+2020-08-23 21:30:27,637,637 util INFO :: Time used adaptive (s): 0.5346918106079102
+2020-08-23 21:30:27,637,637 util INFO :: Final error: 0.13967075743304413
+2020-08-23 21:30:27,849,849 util INFO :: Percentage of correct mappings: 98.88%
+2020-08-23 21:30:27,867,867 util INFO :: iteration end
+2020-08-23 21:30:27,867,867 util INFO :: next iteration
+2020-08-23 21:30:27,868,868 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:27,868,868 util INFO :: data size: 50000
+2020-08-23 21:30:27,868,868 util INFO :: data dimension: 2
+2020-08-23 21:30:27,868,868 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:30:27,868,868 util INFO :: rebalancing: True
+2020-08-23 21:30:27,868,868 util INFO :: margin: 0.5
+2020-08-23 21:30:27,868,868 util INFO :: one_vs_others True
+2020-08-23 21:30:28,254,254 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:29,242,242 util INFO :: Time used (s):0.4139111042022705
+2020-08-23 21:30:29,685,685 util INFO :: Time used (s):0.4430427551269531
+2020-08-23 21:30:30,208,208 util INFO :: Time used (s):0.5230269432067871
+2020-08-23 21:30:30,443,443 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:30,700,700 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:30,700,700 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:30,700,700 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:30,700,700 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:33,148,148 util INFO :: Number of refinements 10
+2020-08-23 21:30:33,149,149 util INFO :: Number of distinct points used during the refinement: 60
+2020-08-23 21:30:33,149,149 util INFO :: Time used adaptive (s): 1.8493824005126953
+2020-08-23 21:30:33,149,149 util INFO :: Final error: 10.53125
+2020-08-23 21:30:34,882,882 util INFO :: Number of refinements 11
+2020-08-23 21:30:34,882,882 util INFO :: Number of distinct points used during the refinement: 71
+2020-08-23 21:30:34,882,882 util INFO :: Time used adaptive (s): 1.7308330535888672
+2020-08-23 21:30:34,882,882 util INFO :: Final error: [1.90625]
+2020-08-23 21:30:36,120,120 util INFO :: Number of refinements 12
+2020-08-23 21:30:36,121,121 util INFO :: Number of distinct points used during the refinement: 73
+2020-08-23 21:30:36,121,121 util INFO :: Time used adaptive (s): 1.2355070114135742
+2020-08-23 21:30:36,121,121 util INFO :: Final error: 13.40625
+2020-08-23 21:30:36,272,272 util INFO :: Percentage of correct mappings: 99.13%
+2020-08-23 21:30:36,290,290 util INFO :: iteration end
+2020-08-23 21:30:36,290,290 util INFO :: next iteration
+2020-08-23 21:30:36,290,290 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:36,290,290 util INFO :: data size: 50000
+2020-08-23 21:30:36,290,290 util INFO :: data dimension: 2
+2020-08-23 21:30:36,290,290 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:30:36,290,290 util INFO :: rebalancing: False
+2020-08-23 21:30:36,290,290 util INFO :: margin: 0.5
+2020-08-23 21:30:36,290,290 util INFO :: one_vs_others True
+2020-08-23 21:30:36,661,661 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:37,692,692 util INFO :: Time used (s):0.4536285400390625
+2020-08-23 21:30:38,096,96 util INFO :: Time used (s):0.4032590389251709
+2020-08-23 21:30:38,513,513 util INFO :: Time used (s):0.417421817779541
+2020-08-23 21:30:38,716,716 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:38,977,977 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:38,977,977 util INFO :: classification dimwise start level: 2
+2020-08-23 21:30:38,977,977 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:38,977,977 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:40,727,727 util INFO :: Number of refinements 8
+2020-08-23 21:30:40,727,727 util INFO :: Number of distinct points used during the refinement: 77
+2020-08-23 21:30:40,727,727 util INFO :: Time used adaptive (s): 1.1431093215942383
+2020-08-23 21:30:40,727,727 util INFO :: Final error: 30.71875
+2020-08-23 21:30:41,709,709 util INFO :: Number of refinements 12
+2020-08-23 21:30:41,709,709 util INFO :: Number of distinct points used during the refinement: 59
+2020-08-23 21:30:41,709,709 util INFO :: Time used adaptive (s): 0.9791181087493896
+2020-08-23 21:30:41,709,709 util INFO :: Final error: [3.3125]
+2020-08-23 21:30:43,161,161 util INFO :: Number of refinements 13
+2020-08-23 21:30:43,161,161 util INFO :: Number of distinct points used during the refinement: 103
+2020-08-23 21:30:43,161,161 util INFO :: Time used adaptive (s): 1.4496536254882812
+2020-08-23 21:30:43,161,161 util INFO :: Final error: 9.34375
+2020-08-23 21:30:43,372,372 util INFO :: Percentage of correct mappings: 99.15%
+2020-08-23 21:30:43,390,390 util INFO :: iteration end
+2020-08-23 21:30:43,390,390 util INFO :: next iteration
+2020-08-23 21:30:43,390,390 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:43,390,390 util INFO :: data size: 50000
+2020-08-23 21:30:43,390,390 util INFO :: data dimension: 2
+2020-08-23 21:30:43,391,391 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:43,391,391 util INFO :: rebalancing: True
+2020-08-23 21:30:43,391,391 util INFO :: margin: 0.5
+2020-08-23 21:30:43,391,391 util INFO :: one_vs_others False
+2020-08-23 21:30:43,766,766 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:44,005,5 util INFO :: Time used (s):0.16463875770568848
+2020-08-23 21:30:44,163,163 util INFO :: Time used (s):0.15708565711975098
+2020-08-23 21:30:44,311,311 util INFO :: Time used (s):0.1480402946472168
+2020-08-23 21:30:44,520,520 util INFO :: Percentage of correct mappings: 98.38%
+2020-08-23 21:30:44,772,772 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:44,772,772 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:44,772,772 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:44,772,772 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:44,971,971 util INFO :: Number of refinements 6
+2020-08-23 21:30:44,971,971 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:30:44,971,971 util INFO :: Time used adaptive (s): 0.12627434730529785
+2020-08-23 21:30:44,971,971 util INFO :: Final error: 0.7869014015119538
+2020-08-23 21:30:45,125,125 util INFO :: Number of refinements 6
+2020-08-23 21:30:45,125,125 util INFO :: Number of distinct points used during the refinement: 64
+2020-08-23 21:30:45,125,125 util INFO :: Time used adaptive (s): 0.15236616134643555
+2020-08-23 21:30:45,125,125 util INFO :: Final error: 0.867760432927658
+2020-08-23 21:30:45,257,257 util INFO :: Number of refinements 8
+2020-08-23 21:30:45,257,257 util INFO :: Number of distinct points used during the refinement: 69
+2020-08-23 21:30:45,257,257 util INFO :: Time used adaptive (s): 0.1302790641784668
+2020-08-23 21:30:45,257,257 util INFO :: Final error: 0.82145754803626
+2020-08-23 21:30:45,406,406 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:45,424,424 util INFO :: iteration end
+2020-08-23 21:30:45,424,424 util INFO :: next iteration
+2020-08-23 21:30:45,424,424 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:45,424,424 util INFO :: data size: 50000
+2020-08-23 21:30:45,424,424 util INFO :: data dimension: 2
+2020-08-23 21:30:45,424,424 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:45,424,424 util INFO :: rebalancing: False
+2020-08-23 21:30:45,424,424 util INFO :: margin: 0.5
+2020-08-23 21:30:45,424,424 util INFO :: one_vs_others False
+2020-08-23 21:30:45,799,799 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:46,028,28 util INFO :: Time used (s):0.15479660034179688
+2020-08-23 21:30:46,193,193 util INFO :: Time used (s):0.16497230529785156
+2020-08-23 21:30:46,340,340 util INFO :: Time used (s):0.1463909149169922
+2020-08-23 21:30:46,518,518 util INFO :: Percentage of correct mappings: 98.38%
+2020-08-23 21:30:46,762,762 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:46,762,762 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:46,762,762 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:46,762,762 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:46,973,973 util INFO :: Number of refinements 6
+2020-08-23 21:30:46,973,973 util INFO :: Number of distinct points used during the refinement: 63
+2020-08-23 21:30:46,973,973 util INFO :: Time used adaptive (s): 0.1348252296447754
+2020-08-23 21:30:46,973,973 util INFO :: Final error: 0.7869014015119538
+2020-08-23 21:30:47,117,117 util INFO :: Number of refinements 6
+2020-08-23 21:30:47,117,117 util INFO :: Number of distinct points used during the refinement: 64
+2020-08-23 21:30:47,117,117 util INFO :: Time used adaptive (s): 0.14223289489746094
+2020-08-23 21:30:47,117,117 util INFO :: Final error: 0.867760432927658
+2020-08-23 21:30:47,270,270 util INFO :: Number of refinements 8
+2020-08-23 21:30:47,270,270 util INFO :: Number of distinct points used during the refinement: 69
+2020-08-23 21:30:47,270,270 util INFO :: Time used adaptive (s): 0.15221238136291504
+2020-08-23 21:30:47,270,270 util INFO :: Final error: 0.82145754803626
+2020-08-23 21:30:47,414,414 util INFO :: Percentage of correct mappings: 98.65%
+2020-08-23 21:30:47,432,432 util INFO :: iteration end
+2020-08-23 21:30:47,432,432 util INFO :: next iteration
+2020-08-23 21:30:47,432,432 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:47,432,432 util INFO :: data size: 50000
+2020-08-23 21:30:47,432,432 util INFO :: data dimension: 2
+2020-08-23 21:30:47,432,432 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:47,432,432 util INFO :: rebalancing: True
+2020-08-23 21:30:47,432,432 util INFO :: margin: 0.5
+2020-08-23 21:30:47,432,432 util INFO :: one_vs_others True
+2020-08-23 21:30:47,796,796 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:48,805,805 util INFO :: Time used (s):0.42842793464660645
+2020-08-23 21:30:49,287,287 util INFO :: Time used (s):0.4824972152709961
+2020-08-23 21:30:49,735,735 util INFO :: Time used (s):0.44765329360961914
+2020-08-23 21:30:49,915,915 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:50,154,154 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:50,154,154 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:50,154,154 util INFO :: classification dimwise rebalance True
+2020-08-23 21:30:50,154,154 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:51,684,684 util INFO :: Number of refinements 16
+2020-08-23 21:30:51,684,684 util INFO :: Number of distinct points used during the refinement: 125
+2020-08-23 21:30:51,684,684 util INFO :: Time used adaptive (s): 0.9229207038879395
+2020-08-23 21:30:51,684,684 util INFO :: Final error: 0.36167986373388
+2020-08-23 21:30:52,225,225 util INFO :: Number of refinements 10
+2020-08-23 21:30:52,225,225 util INFO :: Number of distinct points used during the refinement: 83
+2020-08-23 21:30:52,225,225 util INFO :: Time used adaptive (s): 0.5374116897583008
+2020-08-23 21:30:52,225,225 util INFO :: Final error: 0.5091318526232994
+2020-08-23 21:30:52,973,973 util INFO :: Number of refinements 16
+2020-08-23 21:30:52,973,973 util INFO :: Number of distinct points used during the refinement: 125
+2020-08-23 21:30:52,973,973 util INFO :: Time used adaptive (s): 0.745213508605957
+2020-08-23 21:30:52,973,973 util INFO :: Final error: 0.33572036485636547
+2020-08-23 21:30:53,255,255 util INFO :: Percentage of correct mappings: 98.49%
+2020-08-23 21:30:53,273,273 util INFO :: iteration end
+2020-08-23 21:30:53,274,274 util INFO :: next iteration
+2020-08-23 21:30:53,274,274 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:53,274,274 util INFO :: data size: 50000
+2020-08-23 21:30:53,274,274 util INFO :: data dimension: 2
+2020-08-23 21:30:53,274,274 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:30:53,274,274 util INFO :: rebalancing: False
+2020-08-23 21:30:53,274,274 util INFO :: margin: 0.5
+2020-08-23 21:30:53,274,274 util INFO :: one_vs_others True
+2020-08-23 21:30:53,663,663 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:30:54,693,693 util INFO :: Time used (s):0.43418097496032715
+2020-08-23 21:30:55,096,96 util INFO :: Time used (s):0.40284228324890137
+2020-08-23 21:30:55,507,507 util INFO :: Time used (s):0.4105815887451172
+2020-08-23 21:30:55,704,704 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:30:55,960,960 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:30:55,960,960 util INFO :: classification dimwise start level: 3
+2020-08-23 21:30:55,960,960 util INFO :: classification dimwise rebalance False
+2020-08-23 21:30:55,960,960 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:30:57,384,384 util INFO :: Number of refinements 14
+2020-08-23 21:30:57,384,384 util INFO :: Number of distinct points used during the refinement: 136
+2020-08-23 21:30:57,384,384 util INFO :: Time used adaptive (s): 0.8249912261962891
+2020-08-23 21:30:57,384,384 util INFO :: Final error: 0.2894224275438866
+2020-08-23 21:30:57,834,834 util INFO :: Number of refinements 10
+2020-08-23 21:30:57,834,834 util INFO :: Number of distinct points used during the refinement: 83
+2020-08-23 21:30:57,834,834 util INFO :: Time used adaptive (s): 0.4468569755554199
+2020-08-23 21:30:57,834,834 util INFO :: Final error: 0.5158093866697991
+2020-08-23 21:30:58,687,687 util INFO :: Number of refinements 16
+2020-08-23 21:30:58,687,687 util INFO :: Number of distinct points used during the refinement: 125
+2020-08-23 21:30:58,687,687 util INFO :: Time used adaptive (s): 0.8499891757965088
+2020-08-23 21:30:58,688,688 util INFO :: Final error: 0.335866464440841
+2020-08-23 21:30:58,972,972 util INFO :: Percentage of correct mappings: 98.59%
+2020-08-23 21:30:58,992,992 util INFO :: iteration end
+2020-08-23 21:30:58,992,992 util INFO :: next iteration
+2020-08-23 21:30:58,992,992 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:30:58,992,992 util INFO :: data size: 50000
+2020-08-23 21:30:58,992,992 util INFO :: data dimension: 2
+2020-08-23 21:30:58,992,992 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:30:58,992,992 util INFO :: rebalancing: True
+2020-08-23 21:30:58,993,993 util INFO :: margin: 0.5
+2020-08-23 21:30:58,993,993 util INFO :: one_vs_others True
+2020-08-23 21:30:59,376,376 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:31:00,345,345 util INFO :: Time used (s):0.41112279891967773
+2020-08-23 21:31:00,837,837 util INFO :: Time used (s):0.491940975189209
+2020-08-23 21:31:01,312,312 util INFO :: Time used (s):0.4738805294036865
+2020-08-23 21:31:01,509,509 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:31:01,765,765 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:31:01,765,765 util INFO :: classification dimwise start level: 3
+2020-08-23 21:31:01,765,765 util INFO :: classification dimwise rebalance True
+2020-08-23 21:31:01,765,765 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:03,862,862 util INFO :: Number of refinements 8
+2020-08-23 21:31:03,862,862 util INFO :: Number of distinct points used during the refinement: 116
+2020-08-23 21:31:03,862,862 util INFO :: Time used adaptive (s): 1.5271060466766357
+2020-08-23 21:31:03,862,862 util INFO :: Final error: [14.71875]
+2020-08-23 21:31:04,674,674 util INFO :: Number of refinements 4
+2020-08-23 21:31:04,674,674 util INFO :: Number of distinct points used during the refinement: 58
+2020-08-23 21:31:04,674,674 util INFO :: Time used adaptive (s): 0.8087584972381592
+2020-08-23 21:31:04,674,674 util INFO :: Final error: [4.5625]
+2020-08-23 21:31:06,306,306 util INFO :: Number of refinements 9
+2020-08-23 21:31:06,306,306 util INFO :: Number of distinct points used during the refinement: 126
+2020-08-23 21:31:06,306,306 util INFO :: Time used adaptive (s): 1.6290743350982666
+2020-08-23 21:31:06,307,307 util INFO :: Final error: [16.09375]
+2020-08-23 21:31:06,529,529 util INFO :: Percentage of correct mappings: 98.89%
+2020-08-23 21:31:06,547,547 util INFO :: iteration end
+2020-08-23 21:31:06,547,547 util INFO :: next iteration
+2020-08-23 21:31:06,547,547 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:06,547,547 util INFO :: data size: 50000
+2020-08-23 21:31:06,547,547 util INFO :: data dimension: 2
+2020-08-23 21:31:06,547,547 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:31:06,547,547 util INFO :: rebalancing: False
+2020-08-23 21:31:06,547,547 util INFO :: margin: 0.5
+2020-08-23 21:31:06,547,547 util INFO :: one_vs_others True
+2020-08-23 21:31:06,954,954 util INFO :: classification standardCombi max_level: 4
+2020-08-23 21:31:08,003,3 util INFO :: Time used (s):0.44232773780822754
+2020-08-23 21:31:08,437,437 util INFO :: Time used (s):0.4345376491546631
+2020-08-23 21:31:08,963,963 util INFO :: Time used (s):0.5257339477539062
+2020-08-23 21:31:09,185,185 util INFO :: Percentage of correct mappings: 98.57%
+2020-08-23 21:31:09,451,451 util INFO :: classification dimwise max_evaluations: 57
+2020-08-23 21:31:09,451,451 util INFO :: classification dimwise start level: 3
+2020-08-23 21:31:09,451,451 util INFO :: classification dimwise rebalance False
+2020-08-23 21:31:09,451,451 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:11,657,657 util INFO :: Number of refinements 9
+2020-08-23 21:31:11,657,657 util INFO :: Number of distinct points used during the refinement: 120
+2020-08-23 21:31:11,657,657 util INFO :: Time used adaptive (s): 1.5869481563568115
+2020-08-23 21:31:11,657,657 util INFO :: Final error: 12.09375
+2020-08-23 21:31:12,580,580 util INFO :: Number of refinements 4
+2020-08-23 21:31:12,580,580 util INFO :: Number of distinct points used during the refinement: 69
+2020-08-23 21:31:12,580,580 util INFO :: Time used adaptive (s): 0.9198713302612305
+2020-08-23 21:31:12,580,580 util INFO :: Final error: [4.0625]
+2020-08-23 21:31:14,223,223 util INFO :: Number of refinements 8
+2020-08-23 21:31:14,223,223 util INFO :: Number of distinct points used during the refinement: 116
+2020-08-23 21:31:14,223,223 util INFO :: Time used adaptive (s): 1.639425277709961
+2020-08-23 21:31:14,223,223 util INFO :: Final error: [12.8125]
+2020-08-23 21:31:14,444,444 util INFO :: Percentage of correct mappings: 98.95%
+2020-08-23 21:31:14,462,462 util INFO :: iteration end
+2020-08-23 21:31:14,462,462 util INFO :: next iteration
+2020-08-23 21:31:14,462,462 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:14,462,462 util INFO :: data size: 50000
+2020-08-23 21:31:14,462,462 util INFO :: data dimension: 2
+2020-08-23 21:31:14,462,462 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:31:14,462,462 util INFO :: rebalancing: True
+2020-08-23 21:31:14,462,462 util INFO :: margin: 0.5
+2020-08-23 21:31:14,462,462 util INFO :: one_vs_others False
+2020-08-23 21:31:14,833,833 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:31:15,577,577 util INFO :: Time used (s):0.6733677387237549
+2020-08-23 21:31:16,232,232 util INFO :: Time used (s):0.6543853282928467
+2020-08-23 21:31:16,901,901 util INFO :: Time used (s):0.6694135665893555
+2020-08-23 21:31:17,462,462 util INFO :: Percentage of correct mappings: 98.18%
+2020-08-23 21:31:17,715,715 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:31:17,715,715 util INFO :: classification dimwise start level: 2
+2020-08-23 21:31:17,715,715 util INFO :: classification dimwise rebalance True
+2020-08-23 21:31:17,716,716 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:18,163,163 util INFO :: Number of refinements 22
+2020-08-23 21:31:18,163,163 util INFO :: Number of distinct points used during the refinement: 133
+2020-08-23 21:31:18,164,164 util INFO :: Time used adaptive (s): 0.37137389183044434
+2020-08-23 21:31:18,164,164 util INFO :: Final error: 0.3508624130987339
+2020-08-23 21:31:18,700,700 util INFO :: Number of refinements 22
+2020-08-23 21:31:18,700,700 util INFO :: Number of distinct points used during the refinement: 136
+2020-08-23 21:31:18,700,700 util INFO :: Time used adaptive (s): 0.5351302623748779
+2020-08-23 21:31:18,700,700 util INFO :: Final error: 0.25339739385015325
+2020-08-23 21:31:19,140,140 util INFO :: Number of refinements 24
+2020-08-23 21:31:19,140,140 util INFO :: Number of distinct points used during the refinement: 160
+2020-08-23 21:31:19,141,141 util INFO :: Time used adaptive (s): 0.43950963020324707
+2020-08-23 21:31:19,141,141 util INFO :: Final error: 0.17262383157795658
+2020-08-23 21:31:19,451,451 util INFO :: Percentage of correct mappings: 98.86%
+2020-08-23 21:31:19,471,471 util INFO :: iteration end
+2020-08-23 21:31:19,471,471 util INFO :: next iteration
+2020-08-23 21:31:19,471,471 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:19,471,471 util INFO :: data size: 50000
+2020-08-23 21:31:19,471,471 util INFO :: data dimension: 2
+2020-08-23 21:31:19,471,471 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:31:19,471,471 util INFO :: rebalancing: False
+2020-08-23 21:31:19,471,471 util INFO :: margin: 0.5
+2020-08-23 21:31:19,471,471 util INFO :: one_vs_others False
+2020-08-23 21:31:19,873,873 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:31:20,669,669 util INFO :: Time used (s):0.7169287204742432
+2020-08-23 21:31:21,338,338 util INFO :: Time used (s):0.6692183017730713
+2020-08-23 21:31:21,995,995 util INFO :: Time used (s):0.656360387802124
+2020-08-23 21:31:22,531,531 util INFO :: Percentage of correct mappings: 98.18%
+2020-08-23 21:31:22,775,775 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:31:22,775,775 util INFO :: classification dimwise start level: 2
+2020-08-23 21:31:22,775,775 util INFO :: classification dimwise rebalance False
+2020-08-23 21:31:22,776,776 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:23,429,429 util INFO :: Number of refinements 28
+2020-08-23 21:31:23,429,429 util INFO :: Number of distinct points used during the refinement: 149
+2020-08-23 21:31:23,429,429 util INFO :: Time used adaptive (s): 0.5781958103179932
+2020-08-23 21:31:23,429,429 util INFO :: Final error: 0.23724550548051015
+2020-08-23 21:31:23,803,803 util INFO :: Number of refinements 20
+2020-08-23 21:31:23,803,803 util INFO :: Number of distinct points used during the refinement: 147
+2020-08-23 21:31:23,803,803 util INFO :: Time used adaptive (s): 0.37294626235961914
+2020-08-23 21:31:23,803,803 util INFO :: Final error: 0.6067702861595103
+2020-08-23 21:31:24,243,243 util INFO :: Number of refinements 24
+2020-08-23 21:31:24,243,243 util INFO :: Number of distinct points used during the refinement: 173
+2020-08-23 21:31:24,243,243 util INFO :: Time used adaptive (s): 0.4387187957763672
+2020-08-23 21:31:24,243,243 util INFO :: Final error: 0.15347809489883135
+2020-08-23 21:31:24,571,571 util INFO :: Percentage of correct mappings: 98.14%
+2020-08-23 21:31:24,591,591 util INFO :: iteration end
+2020-08-23 21:31:24,591,591 util INFO :: next iteration
+2020-08-23 21:31:24,591,591 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:24,591,591 util INFO :: data size: 50000
+2020-08-23 21:31:24,592,592 util INFO :: data dimension: 2
+2020-08-23 21:31:24,592,592 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:31:24,592,592 util INFO :: rebalancing: True
+2020-08-23 21:31:24,592,592 util INFO :: margin: 0.5
+2020-08-23 21:31:24,592,592 util INFO :: one_vs_others True
+2020-08-23 21:31:24,980,980 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:31:27,135,135 util INFO :: Time used (s):1.5489771366119385
+2020-08-23 21:31:28,637,637 util INFO :: Time used (s):1.5011930465698242
+2020-08-23 21:31:30,207,207 util INFO :: Time used (s):1.57065749168396
+2020-08-23 21:31:30,832,832 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:31:31,085,85 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:31:31,085,85 util INFO :: classification dimwise start level: 2
+2020-08-23 21:31:31,085,85 util INFO :: classification dimwise rebalance True
+2020-08-23 21:31:31,085,85 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:33,359,359 util INFO :: Number of refinements 34
+2020-08-23 21:31:33,359,359 util INFO :: Number of distinct points used during the refinement: 207
+2020-08-23 21:31:33,359,359 util INFO :: Time used adaptive (s): 1.681211233139038
+2020-08-23 21:31:33,359,359 util INFO :: Final error: 0.20387846155034303
+2020-08-23 21:31:34,839,839 util INFO :: Number of refinements 26
+2020-08-23 21:31:34,839,839 util INFO :: Number of distinct points used during the refinement: 148
+2020-08-23 21:31:34,839,839 util INFO :: Time used adaptive (s): 1.4769270420074463
+2020-08-23 21:31:34,839,839 util INFO :: Final error: 0.35236391698427616
+2020-08-23 21:31:37,105,105 util INFO :: Number of refinements 26
+2020-08-23 21:31:37,105,105 util INFO :: Number of distinct points used during the refinement: 136
+2020-08-23 21:31:37,105,105 util INFO :: Time used adaptive (s): 2.262692928314209
+2020-08-23 21:31:37,105,105 util INFO :: Final error: 0.3124020753572866
+2020-08-23 21:31:37,530,530 util INFO :: Percentage of correct mappings: 98.32%
+2020-08-23 21:31:37,548,548 util INFO :: iteration end
+2020-08-23 21:31:37,549,549 util INFO :: next iteration
+2020-08-23 21:31:37,549,549 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:37,549,549 util INFO :: data size: 50000
+2020-08-23 21:31:37,549,549 util INFO :: data dimension: 2
+2020-08-23 21:31:37,549,549 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:31:37,549,549 util INFO :: rebalancing: False
+2020-08-23 21:31:37,549,549 util INFO :: margin: 0.5
+2020-08-23 21:31:37,549,549 util INFO :: one_vs_others True
+2020-08-23 21:31:37,940,940 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:31:39,976,976 util INFO :: Time used (s):1.4339325428009033
+2020-08-23 21:31:41,461,461 util INFO :: Time used (s):1.4843275547027588
+2020-08-23 21:31:42,986,986 util INFO :: Time used (s):1.5245203971862793
+2020-08-23 21:31:43,541,541 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:31:43,786,786 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:31:43,786,786 util INFO :: classification dimwise start level: 2
+2020-08-23 21:31:43,786,786 util INFO :: classification dimwise rebalance False
+2020-08-23 21:31:43,786,786 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:45,260,260 util INFO :: Number of refinements 22
+2020-08-23 21:31:45,260,260 util INFO :: Number of distinct points used during the refinement: 137
+2020-08-23 21:31:45,260,260 util INFO :: Time used adaptive (s): 0.8826584815979004
+2020-08-23 21:31:45,261,261 util INFO :: Final error: 0.2947919031846974
+2020-08-23 21:31:46,151,151 util INFO :: Number of refinements 22
+2020-08-23 21:31:46,151,151 util INFO :: Number of distinct points used during the refinement: 133
+2020-08-23 21:31:46,151,151 util INFO :: Time used adaptive (s): 0.8876953125
+2020-08-23 21:31:46,151,151 util INFO :: Final error: 0.2823031471230629
+2020-08-23 21:31:48,348,348 util INFO :: Number of refinements 26
+2020-08-23 21:31:48,348,348 util INFO :: Number of distinct points used during the refinement: 143
+2020-08-23 21:31:48,348,348 util INFO :: Time used adaptive (s): 2.1946306228637695
+2020-08-23 21:31:48,348,348 util INFO :: Final error: 0.2556046231043125
+2020-08-23 21:31:48,704,704 util INFO :: Percentage of correct mappings: 98.46%
+2020-08-23 21:31:48,724,724 util INFO :: iteration end
+2020-08-23 21:31:48,724,724 util INFO :: next iteration
+2020-08-23 21:31:48,724,724 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:31:48,724,724 util INFO :: data size: 50000
+2020-08-23 21:31:48,724,724 util INFO :: data dimension: 2
+2020-08-23 21:31:48,724,724 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:31:48,724,724 util INFO :: rebalancing: True
+2020-08-23 21:31:48,724,724 util INFO :: margin: 0.5
+2020-08-23 21:31:48,724,724 util INFO :: one_vs_others True
+2020-08-23 21:31:49,111,111 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:31:51,264,264 util INFO :: Time used (s):1.5655837059020996
+2020-08-23 21:31:52,686,686 util INFO :: Time used (s):1.4213807582855225
+2020-08-23 21:31:54,225,225 util INFO :: Time used (s):1.538647174835205
+2020-08-23 21:31:54,766,766 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:31:55,018,18 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:31:55,018,18 util INFO :: classification dimwise start level: 2
+2020-08-23 21:31:55,018,18 util INFO :: classification dimwise rebalance True
+2020-08-23 21:31:55,018,18 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:31:57,964,964 util INFO :: Number of refinements 19
+2020-08-23 21:31:57,964,964 util INFO :: Number of distinct points used during the refinement: 143
+2020-08-23 21:31:57,964,964 util INFO :: Time used adaptive (s): 2.3486950397491455
+2020-08-23 21:31:57,964,964 util INFO :: Final error: 10.953125
+2020-08-23 21:32:00,520,520 util INFO :: Number of refinements 18
+2020-08-23 21:32:00,520,520 util INFO :: Number of distinct points used during the refinement: 141
+2020-08-23 21:32:00,520,520 util INFO :: Time used adaptive (s): 2.5530319213867188
+2020-08-23 21:32:00,520,520 util INFO :: Final error: [8.625]
+2020-08-23 21:32:04,369,369 util INFO :: Number of refinements 25
+2020-08-23 21:32:04,369,369 util INFO :: Number of distinct points used during the refinement: 175
+2020-08-23 21:32:04,369,369 util INFO :: Time used adaptive (s): 3.846308946609497
+2020-08-23 21:32:04,369,369 util INFO :: Final error: 7.453125
+2020-08-23 21:32:04,720,720 util INFO :: Percentage of correct mappings: 98.91%
+2020-08-23 21:32:04,738,738 util INFO :: iteration end
+2020-08-23 21:32:04,738,738 util INFO :: next iteration
+2020-08-23 21:32:04,738,738 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:04,738,738 util INFO :: data size: 50000
+2020-08-23 21:32:04,738,738 util INFO :: data dimension: 2
+2020-08-23 21:32:04,738,738 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:32:04,738,738 util INFO :: rebalancing: False
+2020-08-23 21:32:04,738,738 util INFO :: margin: 0.5
+2020-08-23 21:32:04,738,738 util INFO :: one_vs_others True
+2020-08-23 21:32:05,128,128 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:07,232,232 util INFO :: Time used (s):1.5223169326782227
+2020-08-23 21:32:08,807,807 util INFO :: Time used (s):1.5744917392730713
+2020-08-23 21:32:10,318,318 util INFO :: Time used (s):1.51069974899292
+2020-08-23 21:32:10,915,915 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:32:11,152,152 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:32:11,152,152 util INFO :: classification dimwise start level: 2
+2020-08-23 21:32:11,152,152 util INFO :: classification dimwise rebalance False
+2020-08-23 21:32:11,153,153 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:32:16,370,370 util INFO :: Number of refinements 25
+2020-08-23 21:32:16,370,370 util INFO :: Number of distinct points used during the refinement: 223
+2020-08-23 21:32:16,370,370 util INFO :: Time used adaptive (s): 4.661947965621948
+2020-08-23 21:32:16,370,370 util INFO :: Final error: [11.78125]
+2020-08-23 21:32:19,091,91 util INFO :: Number of refinements 22
+2020-08-23 21:32:19,091,91 util INFO :: Number of distinct points used during the refinement: 154
+2020-08-23 21:32:19,091,91 util INFO :: Time used adaptive (s): 2.7178001403808594
+2020-08-23 21:32:19,091,91 util INFO :: Final error: [3.5625]
+2020-08-23 21:32:21,678,678 util INFO :: Number of refinements 19
+2020-08-23 21:32:21,678,678 util INFO :: Number of distinct points used during the refinement: 202
+2020-08-23 21:32:21,678,678 util INFO :: Time used adaptive (s): 2.5846779346466064
+2020-08-23 21:32:21,679,679 util INFO :: Final error: 10.5625
+2020-08-23 21:32:22,117,117 util INFO :: Percentage of correct mappings: 98.71%
+2020-08-23 21:32:22,135,135 util INFO :: iteration end
+2020-08-23 21:32:22,135,135 util INFO :: next iteration
+2020-08-23 21:32:22,135,135 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:22,135,135 util INFO :: data size: 50000
+2020-08-23 21:32:22,135,135 util INFO :: data dimension: 2
+2020-08-23 21:32:22,135,135 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:32:22,135,135 util INFO :: rebalancing: True
+2020-08-23 21:32:22,135,135 util INFO :: margin: 0.5
+2020-08-23 21:32:22,135,135 util INFO :: one_vs_others False
+2020-08-23 21:32:22,520,520 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:23,273,273 util INFO :: Time used (s):0.6768712997436523
+2020-08-23 21:32:23,948,948 util INFO :: Time used (s):0.6747081279754639
+2020-08-23 21:32:24,612,612 util INFO :: Time used (s):0.6642122268676758
+2020-08-23 21:32:25,108,108 util INFO :: Percentage of correct mappings: 98.18%
+2020-08-23 21:32:25,352,352 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:32:25,352,352 util INFO :: classification dimwise start level: 3
+2020-08-23 21:32:25,352,352 util INFO :: classification dimwise rebalance True
+2020-08-23 21:32:25,352,352 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:32:25,706,706 util INFO :: Number of refinements 12
+2020-08-23 21:32:25,706,706 util INFO :: Number of distinct points used during the refinement: 130
+2020-08-23 21:32:25,707,707 util INFO :: Time used adaptive (s): 0.28091859817504883
+2020-08-23 21:32:25,707,707 util INFO :: Final error: 0.31264338269164116
+2020-08-23 21:32:26,107,107 util INFO :: Number of refinements 16
+2020-08-23 21:32:26,107,107 util INFO :: Number of distinct points used during the refinement: 138
+2020-08-23 21:32:26,107,107 util INFO :: Time used adaptive (s): 0.39936304092407227
+2020-08-23 21:32:26,107,107 util INFO :: Final error: 0.6308269783325355
+2020-08-23 21:32:26,553,553 util INFO :: Number of refinements 18
+2020-08-23 21:32:26,553,553 util INFO :: Number of distinct points used during the refinement: 151
+2020-08-23 21:32:26,553,553 util INFO :: Time used adaptive (s): 0.444594144821167
+2020-08-23 21:32:26,553,553 util INFO :: Final error: 0.1814851680761606
+2020-08-23 21:32:26,865,865 util INFO :: Percentage of correct mappings: 98.21%
+2020-08-23 21:32:26,882,882 util INFO :: iteration end
+2020-08-23 21:32:26,882,882 util INFO :: next iteration
+2020-08-23 21:32:26,882,882 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:26,882,882 util INFO :: data size: 50000
+2020-08-23 21:32:26,882,882 util INFO :: data dimension: 2
+2020-08-23 21:32:26,883,883 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:32:26,883,883 util INFO :: rebalancing: False
+2020-08-23 21:32:26,883,883 util INFO :: margin: 0.5
+2020-08-23 21:32:26,883,883 util INFO :: one_vs_others False
+2020-08-23 21:32:27,259,259 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:27,981,981 util INFO :: Time used (s):0.6466155052185059
+2020-08-23 21:32:28,655,655 util INFO :: Time used (s):0.6736438274383545
+2020-08-23 21:32:29,334,334 util INFO :: Time used (s):0.678645133972168
+2020-08-23 21:32:29,869,869 util INFO :: Percentage of correct mappings: 98.18%
+2020-08-23 21:32:30,122,122 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:32:30,122,122 util INFO :: classification dimwise start level: 3
+2020-08-23 21:32:30,122,122 util INFO :: classification dimwise rebalance False
+2020-08-23 21:32:30,122,122 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:32:30,638,638 util INFO :: Number of refinements 14
+2020-08-23 21:32:30,638,638 util INFO :: Number of distinct points used during the refinement: 144
+2020-08-23 21:32:30,638,638 util INFO :: Time used adaptive (s): 0.43851161003112793
+2020-08-23 21:32:30,639,639 util INFO :: Final error: 0.26399275115232157
+2020-08-23 21:32:31,068,68 util INFO :: Number of refinements 16
+2020-08-23 21:32:31,068,68 util INFO :: Number of distinct points used during the refinement: 185
+2020-08-23 21:32:31,068,68 util INFO :: Time used adaptive (s): 0.428741455078125
+2020-08-23 21:32:31,068,68 util INFO :: Final error: 0.607025120561181
+2020-08-23 21:32:31,598,598 util INFO :: Number of refinements 18
+2020-08-23 21:32:31,598,598 util INFO :: Number of distinct points used during the refinement: 207
+2020-08-23 21:32:31,598,598 util INFO :: Time used adaptive (s): 0.5279626846313477
+2020-08-23 21:32:31,598,598 util INFO :: Final error: 0.17746186942477712
+2020-08-23 21:32:32,023,23 util INFO :: Percentage of correct mappings: 98.15%
+2020-08-23 21:32:32,042,42 util INFO :: iteration end
+2020-08-23 21:32:32,043,43 util INFO :: next iteration
+2020-08-23 21:32:32,043,43 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:32,043,43 util INFO :: data size: 50000
+2020-08-23 21:32:32,043,43 util INFO :: data dimension: 2
+2020-08-23 21:32:32,043,43 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:32:32,043,43 util INFO :: rebalancing: True
+2020-08-23 21:32:32,043,43 util INFO :: margin: 0.5
+2020-08-23 21:32:32,043,43 util INFO :: one_vs_others True
+2020-08-23 21:32:32,442,442 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:34,448,448 util INFO :: Time used (s):1.4470024108886719
+2020-08-23 21:32:36,003,3 util INFO :: Time used (s):1.55436110496521
+2020-08-23 21:32:37,594,594 util INFO :: Time used (s):1.59102201461792
+2020-08-23 21:32:38,115,115 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:32:38,352,352 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:32:38,352,352 util INFO :: classification dimwise start level: 3
+2020-08-23 21:32:38,352,352 util INFO :: classification dimwise rebalance True
+2020-08-23 21:32:38,352,352 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:32:40,588,588 util INFO :: Number of refinements 26
+2020-08-23 21:32:40,588,588 util INFO :: Number of distinct points used during the refinement: 206
+2020-08-23 21:32:40,588,588 util INFO :: Time used adaptive (s): 1.673537254333496
+2020-08-23 21:32:40,588,588 util INFO :: Final error: 0.20327767727548834
+2020-08-23 21:32:41,634,634 util INFO :: Number of refinements 14
+2020-08-23 21:32:41,634,634 util INFO :: Number of distinct points used during the refinement: 154
+2020-08-23 21:32:41,635,635 util INFO :: Time used adaptive (s): 1.0428111553192139
+2020-08-23 21:32:41,635,635 util INFO :: Final error: 0.4429056895760485
+2020-08-23 21:32:43,482,482 util INFO :: Number of refinements 26
+2020-08-23 21:32:43,482,482 util INFO :: Number of distinct points used during the refinement: 277
+2020-08-23 21:32:43,482,482 util INFO :: Time used adaptive (s): 1.8444502353668213
+2020-08-23 21:32:43,482,482 util INFO :: Final error: 0.23154438548451736
+2020-08-23 21:32:43,996,996 util INFO :: Percentage of correct mappings: 98.14%
+2020-08-23 21:32:44,016,16 util INFO :: iteration end
+2020-08-23 21:32:44,016,16 util INFO :: next iteration
+2020-08-23 21:32:44,016,16 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:44,016,16 util INFO :: data size: 50000
+2020-08-23 21:32:44,016,16 util INFO :: data dimension: 2
+2020-08-23 21:32:44,016,16 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:32:44,016,16 util INFO :: rebalancing: False
+2020-08-23 21:32:44,016,16 util INFO :: margin: 0.5
+2020-08-23 21:32:44,016,16 util INFO :: one_vs_others True
+2020-08-23 21:32:44,393,393 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:46,582,582 util INFO :: Time used (s):1.6321685314178467
+2020-08-23 21:32:48,174,174 util INFO :: Time used (s):1.5920257568359375
+2020-08-23 21:32:49,599,599 util INFO :: Time used (s):1.4246695041656494
+2020-08-23 21:32:50,143,143 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:32:50,392,392 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:32:50,392,392 util INFO :: classification dimwise start level: 3
+2020-08-23 21:32:50,392,392 util INFO :: classification dimwise rebalance False
+2020-08-23 21:32:50,392,392 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:32:52,646,646 util INFO :: Number of refinements 26
+2020-08-23 21:32:52,646,646 util INFO :: Number of distinct points used during the refinement: 206
+2020-08-23 21:32:52,647,647 util INFO :: Time used adaptive (s): 1.6515560150146484
+2020-08-23 21:32:52,647,647 util INFO :: Final error: 0.19794107941595374
+2020-08-23 21:32:53,726,726 util INFO :: Number of refinements 16
+2020-08-23 21:32:53,726,726 util INFO :: Number of distinct points used during the refinement: 153
+2020-08-23 21:32:53,726,726 util INFO :: Time used adaptive (s): 1.076615810394287
+2020-08-23 21:32:53,726,726 util INFO :: Final error: 0.4666224655178901
+2020-08-23 21:32:55,489,489 util INFO :: Number of refinements 26
+2020-08-23 21:32:55,489,489 util INFO :: Number of distinct points used during the refinement: 277
+2020-08-23 21:32:55,489,489 util INFO :: Time used adaptive (s): 1.7592651844024658
+2020-08-23 21:32:55,489,489 util INFO :: Final error: 0.23790778109739708
+2020-08-23 21:32:56,000,0 util INFO :: Percentage of correct mappings: 98.32%
+2020-08-23 21:32:56,018,18 util INFO :: iteration end
+2020-08-23 21:32:56,018,18 util INFO :: next iteration
+2020-08-23 21:32:56,018,18 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:32:56,018,18 util INFO :: data size: 50000
+2020-08-23 21:32:56,018,18 util INFO :: data dimension: 2
+2020-08-23 21:32:56,018,18 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:32:56,018,18 util INFO :: rebalancing: True
+2020-08-23 21:32:56,018,18 util INFO :: margin: 0.5
+2020-08-23 21:32:56,018,18 util INFO :: one_vs_others True
+2020-08-23 21:32:56,409,409 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:32:58,558,558 util INFO :: Time used (s):1.5618577003479004
+2020-08-23 21:33:00,059,59 util INFO :: Time used (s):1.5007591247558594
+2020-08-23 21:33:01,477,477 util INFO :: Time used (s):1.4176881313323975
+2020-08-23 21:33:02,045,45 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:33:02,296,296 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:33:02,296,296 util INFO :: classification dimwise start level: 3
+2020-08-23 21:33:02,296,296 util INFO :: classification dimwise rebalance True
+2020-08-23 21:33:02,296,296 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:33:05,358,358 util INFO :: Number of refinements 13
+2020-08-23 21:33:05,358,358 util INFO :: Number of distinct points used during the refinement: 130
+2020-08-23 21:33:05,359,359 util INFO :: Time used adaptive (s): 2.475215435028076
+2020-08-23 21:33:05,359,359 util INFO :: Final error: [12.53125]
+2020-08-23 21:33:07,765,765 util INFO :: Number of refinements 9
+2020-08-23 21:33:07,765,765 util INFO :: Number of distinct points used during the refinement: 136
+2020-08-23 21:33:07,767,767 util INFO :: Time used adaptive (s): 2.4054782390594482
+2020-08-23 21:33:07,767,767 util INFO :: Final error: [3.96875]
+2020-08-23 21:33:11,025,25 util INFO :: Number of refinements 15
+2020-08-23 21:33:11,025,25 util INFO :: Number of distinct points used during the refinement: 134
+2020-08-23 21:33:11,025,25 util INFO :: Time used adaptive (s): 3.2546796798706055
+2020-08-23 21:33:11,025,25 util INFO :: Final error: [10.84375]
+2020-08-23 21:33:11,319,319 util INFO :: Percentage of correct mappings: 98.76%
+2020-08-23 21:33:11,336,336 util INFO :: iteration end
+2020-08-23 21:33:11,336,336 util INFO :: next iteration
+2020-08-23 21:33:11,336,336 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:33:11,336,336 util INFO :: data size: 50000
+2020-08-23 21:33:11,336,336 util INFO :: data dimension: 2
+2020-08-23 21:33:11,336,336 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal
+2020-08-23 21:33:11,336,336 util INFO :: rebalancing: False
+2020-08-23 21:33:11,336,336 util INFO :: margin: 0.5
+2020-08-23 21:33:11,336,336 util INFO :: one_vs_others True
+2020-08-23 21:33:11,710,710 util INFO :: classification standardCombi max_level: 5
+2020-08-23 21:33:13,756,756 util INFO :: Time used (s):1.4613418579101562
+2020-08-23 21:33:15,167,167 util INFO :: Time used (s):1.410292387008667
+2020-08-23 21:33:16,697,697 util INFO :: Time used (s):1.5304052829742432
+2020-08-23 21:33:17,249,249 util INFO :: Percentage of correct mappings: 97.84%
+2020-08-23 21:33:17,498,498 util INFO :: classification dimwise max_evaluations: 129
+2020-08-23 21:33:17,498,498 util INFO :: classification dimwise start level: 3
+2020-08-23 21:33:17,498,498 util INFO :: classification dimwise rebalance False
+2020-08-23 21:33:17,498,498 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:33:21,088,88 util INFO :: Number of refinements 19
+2020-08-23 21:33:21,088,88 util INFO :: Number of distinct points used during the refinement: 258
+2020-08-23 21:33:21,089,89 util INFO :: Time used adaptive (s): 3.002255439758301
+2020-08-23 21:33:21,089,89 util INFO :: Final error: [15.65625]
+2020-08-23 21:33:23,482,482 util INFO :: Number of refinements 9
+2020-08-23 21:33:23,482,482 util INFO :: Number of distinct points used during the refinement: 137
+2020-08-23 21:33:23,482,482 util INFO :: Time used adaptive (s): 2.39070987701416
+2020-08-23 21:33:23,483,483 util INFO :: Final error: [4.6875]
+2020-08-23 21:33:25,999,999 util INFO :: Number of refinements 12
+2020-08-23 21:33:26,000,0 util INFO :: Number of distinct points used during the refinement: 194
+2020-08-23 21:33:26,000,0 util INFO :: Time used adaptive (s): 2.514153242111206
+2020-08-23 21:33:26,000,0 util INFO :: Final error: 11.5625
+2020-08-23 21:33:26,424,424 util INFO :: Percentage of correct mappings: 98.75%
+2020-08-23 21:33:26,442,442 util INFO :: iteration end
+2020-08-23 21:33:26,442,442 util INFO :: next iteration
+2020-08-23 21:33:26,442,442 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:33:26,442,442 util INFO :: data size: 50000
+2020-08-23 21:33:26,442,442 util INFO :: data dimension: 2
+2020-08-23 21:33:26,442,442 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:33:26,442,442 util INFO :: rebalancing: True
+2020-08-23 21:33:26,443,443 util INFO :: margin: 0.5
+2020-08-23 21:33:26,443,443 util INFO :: one_vs_others False
+2020-08-23 21:33:26,823,823 util INFO :: classification standardCombi max_level: 6
+2020-08-23 21:33:29,903,903 util INFO :: Time used (s):3.0040369033813477
+2020-08-23 21:33:32,871,871 util INFO :: Time used (s):2.9675536155700684
+2020-08-23 21:33:35,840,840 util INFO :: Time used (s):2.96852707862854
+2020-08-23 21:33:37,376,376 util INFO :: Percentage of correct mappings: 98.41%
+2020-08-23 21:33:37,624,624 util INFO :: classification dimwise max_evaluations: 273
+2020-08-23 21:33:37,624,624 util INFO :: classification dimwise start level: 2
+2020-08-23 21:33:37,624,624 util INFO :: classification dimwise rebalance True
+2020-08-23 21:33:37,624,624 util INFO :: classification dimwise margin 0.5
+2020-08-23 21:33:39,607,607 util INFO :: Number of refinements 62
+2020-08-23 21:33:39,607,607 util INFO :: Number of distinct points used during the refinement: 508
+2020-08-23 21:33:39,607,607 util INFO :: Time used adaptive (s): 1.9014616012573242
+2020-08-23 21:33:39,607,607 util INFO :: Final error: 0.061991164823606566
+2020-08-23 21:33:40,704,704 util INFO :: Number of refinements 44
+2020-08-23 21:33:40,704,704 util INFO :: Number of distinct points used during the refinement: 369
+2020-08-23 21:33:40,704,704 util INFO :: Time used adaptive (s): 1.095522165298462
+2020-08-23 21:33:40,704,704 util INFO :: Final error: 0.08000555534697056
+2020-08-23 21:33:41,765,765 util INFO :: Number of refinements 40
+2020-08-23 21:33:41,765,765 util INFO :: Number of distinct points used during the refinement: 338
+2020-08-23 21:33:41,765,765 util INFO :: Time used adaptive (s): 1.0602638721466064
+2020-08-23 21:33:41,765,765 util INFO :: Final error: 0.10291565474767353
+2020-08-23 21:33:42,706,706 util INFO :: Percentage of correct mappings: 99.16%
+2020-08-23 21:33:42,725,725 util INFO :: iteration end
+2020-08-23 21:33:42,725,725 util INFO :: next iteration
+2020-08-23 21:33:42,725,725 util INFO :: do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)
+2020-08-23 21:33:42,725,725 util INFO :: data size: 50000
+2020-08-23 21:33:42,725,725 util INFO :: data dimension: 2
+2020-08-23 21:33:42,725,725 util INFO :: error_calculator ErrorCalculator.ErrorCalculatorSingleDimVolumeGuided
+2020-08-23 21:33:42,725,725 util INFO :: rebalancing: False
+2020-08-23 21:33:42,726,726 util INFO :: margin: 0.5
+2020-08-23 21:33:42,726,726 util INFO :: one_vs_others False
+2020-08-23 21:33:43,115,115 util INFO :: classification standardCombi max_level: 6
+2020-08-23 21:33:46,286,286 util INFO :: Time used (s):3.091522216796875
+2020-08-23 21:33:49,202,202 util INFO :: Time used (s):2.9157164096832275
+2020-08-23 21:33:52,124,124 util INFO :: Time used (s):2.9217658042907715
+2020-08-23 21:33:53,663,663 util INFO :: Percentage of correct mappings: 98.41%
+2020-08-23 21:33:53,909,909 util INFO :: classification dimwise max_evaluations: 273
+2020-08-23 21:33:53,909,909 util INFO :: classification dimwise start level: 2
+2020-08-23 21:33:53,909,909 util INFO :: classification dimwise rebalance False
+2020-08-23 21:33:53,910,910 util INFO :: classification dimwise margin 0.5
