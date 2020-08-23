@@ -4,7 +4,7 @@ path.append('../SGDE')
 path.append('../SGDE/Datasets')
 
 # sgde tut
-from src.Utils import *
+from Utils import *
 
 from shutil import copyfile
 import os
@@ -22,12 +22,14 @@ def prev_level(l, d):
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
+change_log_file('logs/log_classification_various')
+
 clear_log()
 print_log_info = False
 logger.setLevel(logging.INFO)
 
 log_info('--- Classification_eval start ---', True)
-for data_set in [3, 5]:
+for data_set in [4]:
     for dimension in [3, 4, 5]:
 
         # generate a Circle-Dataset of size with the sklearn library
@@ -36,7 +38,7 @@ for data_set in [3, 5]:
         if data_set == 3:
             sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
         elif data_set == 4:
-            sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=6)
+            sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=3)
         elif data_set == 5:
             sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
 
@@ -46,8 +48,10 @@ for data_set in [3, 5]:
         data_range = (0.0, 1.0)
         data.scale_range(data_range)
 
+        reuse_old_values = False
+
         max_levels = [2,3,4,5,6]
-        start_levels = [x-3 for x in max_levels if x-3 > 1]
+        start_levels = [x - 3 for x in max_levels if 1 < x - 3 < 4]
         if len(start_levels) == 0:
             start_levels = [2]
         for level_max in max_levels:
@@ -112,7 +116,7 @@ for data_set in [3, 5]:
                         max_level = level_max
                         print('classification max_level', max_level)
                         log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
-                        classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=False)
+                        classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                         # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                         # now we can perform some other operations on this classification object
@@ -170,7 +174,7 @@ for data_set in [3, 5]:
                         classification_dimwise.perform_classification_dimension_wise(masslumping=False,
                                                                                      lambd=0.0,
                                                                                      minimum_level=1, maximum_level=start_level,
-                                                                                     reuse_old_values=True,
+                                                                                     reuse_old_values=reuse_old_values,
                                                                                      numeric_calculation=False,
                                                                                      boundary=False,
                                                                                      modified_basis=False,

@@ -9,20 +9,22 @@ def prev_level(l, d):
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
-with open('log_sg_real-data_backup_2') as f:
+with open('logs/log_classification_blobs') as f:
     content = f.readlines()
 content = [x.split('::')[1] for x in content]
 content = [x.strip() for x in content]
 filterDelimiters = lambda x: not ('|||' in x or '~~~' in x or '###' in x or '---' in x)
 content = [x for x in content if filterDelimiters(x)]
-data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
-if True in ['do.datasets' in x for x in content]:
-    data_set_indices = [i for i, x in enumerate(content) if 'do.datasets' in x]
-elif True in ['data set' in x for x in content]:
-    data_set_indices = [i for i, x in enumerate(content) if 'data set' in x]
-elif True in ['next iteration' in x for x in content]:
-    data_set_indices = [i for i, x in enumerate(content) if 'next iteration' in x]
-else:
+#if True in ['do.datasets' in x for x in content]:
+data_set_indices_byDatasets = [i for i, x in enumerate(content) if 'do.datasets' in x]
+#elif True in ['data set' in x for x in content]:
+data_set_indices_bySet = [i for i, x in enumerate(content) if 'data set' in x]
+#elif True in ['next iteration' in x for x in content]:
+data_set_indices_byIteration = [i for i, x in enumerate(content) if 'next iteration' in x]
+#else:
+#
+data_set_indices = max([data_set_indices_byDatasets, data_set_indices_byIteration, data_set_indices_byIteration], key=len)
+if len(data_set_indices) == 0:
     print('couldn\'t parse log')
 data_sets = [content[data_set_indices[x]:data_set_indices[x+1]] for x in range(len(data_set_indices)) if (x+1) < len(data_set_indices)]
 
@@ -64,8 +66,8 @@ for tup in data_sets:
         eval_avg[data_type] = {}
     std_info = namedtuple('std_info', 'stdTimeAvg stdPointAvg stdAcc')
     dim_info = namedtuple('dim_info', 'dimTimeAvg dimPointAvg dimAcc')
-    entry = (std_info(sum(stdTime)/len(stdTime), sum(stdPoints)/len(stdPoints), stdAcc, ),
-             dim_info(sum(dimTime)/len(dimTime), sum(dimPoints)/len(dimPoints), dimAcc))
+    entry = (std_info(sum(stdTime)/max(1, len(stdTime)), sum(stdPoints)/max(1, len(stdPoints)), stdAcc, ),
+             dim_info(sum(dimTime)/max(1, len(dimTime)), sum(dimPoints)/max(1, len(dimPoints)), dimAcc))
 
     #if old log file type
     # key = data_dim
@@ -175,11 +177,11 @@ for dtype in eval_avg.keys():
             plt.bar([time_dim_x[0]], [point_y_dim[0]], label='dimwise combi', width=bar_width)
             plt.legend(loc="upper center")
         else:
-            plt.plot(time_std_x, point_y_std, label='StdCombi', linewidth=line_width)
-            plt.plot(time_dim_x, point_y_dim, label='DimCombi', color='red', linewidth=line_width)
+            plt.plot(point_y_std, time_std_x, label='StdCombi', linewidth=line_width)
+            plt.plot(point_y_dim, time_dim_x, label='DimCombi', color='red', linewidth=line_width)
             plt.legend(loc="upper right")
-        plt.xlabel("Runtime")
-        plt.ylabel("# Points")
+        plt.ylabel("Runtime")
+        plt.xlabel("# Points")
         plt.title(name + '\ndimensions: ' + str(dimension) + '\ndimWise start level : ' + str(dimStartLevel) + '\n'+ovo_str + '\nerror_calculator: '+error_calculator + '\nmargin: '+margin.replace('p', '.')+'\nrebalancing: '+('True' if rebalancing is not '' else 'False'))
         plt.savefig('eval_figs/time_point/'+name+'_'+str(dimension)+'_time_points'+dimStartLevel_str+ovo_str+'_'+error_calculator+'_'+margin+'_'+rebalancing, bbox_inches='tight')
         plt.show()

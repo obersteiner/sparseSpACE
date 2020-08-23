@@ -126,9 +126,8 @@ print('error tolerance:', tolerance)
 margin = 0.5
 print('error margin: ', margin)
 # maximum amount of new grid_points
-max_evaluations = 256
-max_levels = 4
 #max_evaluations = 256
+max_levels = 4
 max_evaluations = ((2 ** max_levels) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_levels, dim)
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
@@ -221,39 +220,32 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 
 ### Standard Combi
 #for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
-for i in [max_levels]:
-    maximum_level = i
-    # define operation to be performed
-    operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)
-
-    # create the combiObject and initialize it with the operation
-    combiObject = StandardCombi(a, b, operation=operation)
-
-    if do_plot:
-        print("Plot of dataset:")
-        operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
-    # perform the density estimation operation, has to be done before the printing and plotting
-    combiObject.perform_operation(minimum_level, maximum_level)
-    if do_plot:
-        print("Combination Scheme:")
-        # when you pass the operation the function also plots the contour plot of each component grid
-        combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
-    if do_plot:
-        print("Sparse Grid:")
-        combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
-    if do_plot:
-        print("Plot of density estimation")
-        # when contour = True, the contour plot is shown next to the 3D plot
-        combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
-
-    # print("Plot of comparison between sparseSpACE and SG++")
-    # plot comparison between sparseSpACE and SG++ result if path to SG++ values is given
-    # plot_comparison(dim=dim, data=data, values=values, combiObject=combiObject, plot_data=False, minimum_level=minimum_level, maximum_level=maximum_level, lambd=lambd, pointsPerDim=100)
+# for i in [max_levels]:
+#     maximum_level = i
+#     # define operation to be performed
+#     operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)
+#
+#     # create the combiObject and initialize it with the operation
+#     combiObject = StandardCombi(a, b, operation=operation)
+#
+#     if do_plot:
+#         print("Plot of dataset:")
+#         operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
+#     # perform the density estimation operation, has to be done before the printing and plotting
+#     combiObject.perform_operation(minimum_level, maximum_level)
+#     if do_plot:
+#         print("Combination Scheme:")
+#         # when you pass the operation the function also plots the contour plot of each component grid
+#         combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
+#     if do_plot:
+#         print("Sparse Grid:")
+#         combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
+#     if do_plot:
+#         print("Plot of density estimation")
+#         # when contour = True, the contour plot is shown next to the 3D plot
+#         combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
 
 ################## dimension wise
-print("### Dimension wise evaluation begins here ###")
-print("### Dimension wise evaluation begins here ###")
-print("### Dimension wise evaluation begins here ###")
 #############
 timings = {}  # pass this dict to the operation and grid scheme to collect execution time information
 
@@ -294,7 +286,7 @@ if reuse_old_values and op.debug:
     print('reuse abs avg rel_diffs: ', sum([abs(x[1]) for x in op.reuse_rel_diff]) / len(op.reuse_rel_diff))
     print('reuse max min rel_diffs: ', max([x[1] for x in op.reuse_rel_diff]), min([x[1] for x in op.reuse_rel_diff]))
 
-op.post_processing()
+#op.post_processing()
 if do_plot:
     print("Combination Scheme:")
     # when you pass the operation the function also plots the contour plot of each component grid

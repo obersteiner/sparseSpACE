@@ -272,7 +272,7 @@ import matplotlib.colors as colors
 
 class DensityEstimation(AreaOperation):
 
-    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, validation_set_size=0.15,reuse_old_values=False, numeric_calculation=False, pre_scaled_data=False):
+    def __init__(self, data, dim, grid=None, masslumping=False, print_output=False, lambd=0.0, classes=None, validation_set_size=0.20, reuse_old_values=False, numeric_calculation=False, pre_scaled_data=False):
         self.data = data
         self.validation_set = None
         self.validation_classes = None
@@ -361,18 +361,6 @@ class DensityEstimation(AreaOperation):
                 #self.data = scaler.transform(self.data)
                 data = scaler.transform(self.data)
                 self.scaled = True
-
-        if self.classes is not None:
-            class_a = np.where(self.classes > 0)[0]
-            class_b = np.where(self.classes < 0)[0]
-            picks = (int(len(self.classes) * (self.validation_set_size / 2)), 1)
-            validation_a = np.random.choice(class_a, size=picks, replace=False).flatten()
-            validation_b = np.random.choice(class_b, size=picks, replace=False).flatten()
-            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
-            self.validation_set = self.data[validation_indices]
-            self.validation_classes = self.classes[validation_indices]
-            self.data = np.delete(self.data, validation_indices, axis=0)
-            self.classes = np.delete(self.classes, validation_indices)
         self.initialized = True
 
 
@@ -592,11 +580,33 @@ class DensityEstimation(AreaOperation):
         self.dimension_wise = True
 
     def initialize_evaluation_dimension_wise(self, refinement_container):
-        # TODO
+        self.initialize()
+        if self.classes is not None:
+            if self.validation_set is not None:
+                # readd the validation set to the data set, otherwise the data set will get smaller and smaller with each iteration
+                self.data = np.concatenate((self.data, self.validation_set))
+                self.classes = np.concatenate((self.classes, self.validation_classes))
+            class_a = np.where(self.classes > 0)[0]
+            class_b = np.where(self.classes < 0)[0]
+            picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
+            picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
+            validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
+            validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
+            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+            self.validation_set = np.copy(self.data[validation_indices])
+            self.validation_classes = np.copy(self.classes[validation_indices])
+            self.data = np.delete(self.data, validation_indices, axis=0)
+            self.classes = np.delete(self.classes, validation_indices)
+
+            # DEBUG: add deleted data back to check if removed data and labels were misaligned
+            # self.data = np.concatenate((self.data, self.validation_set))
+            # self.classes = np.concatenate((self.classes, self.validation_classes))
+            # DEBUG: comment out the delete stuff above and use this for completely unaltered data set
+            # self.validation_set = self.data
+            # self.validation_classes = self.classes
+
         refinement_container.value = np.zeros(1)
         self.sorted_data = [np.argsort(self.data[:,d]) for d in range(self.data.shape[1])]
-        #if self.reuse_old_values:
-        #    self.create_new_data_bins()
         self.max_levels = [max(self.lmax) for x in range(self.dim)]
 
     # def get_existing_indices(self, levelvec):
@@ -1042,15 +1052,12 @@ class DensityEstimation(AreaOperation):
         #cg0 = timing()
         scaling_factor = 1.0/np.max(R)
         alphas = time_func(self.print_output, "OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
-        #alphas = np.linalg.solve(R*scaling_factor, b*scaling_factor)
-        #cg1 = timing()
-        #log_debug('OP: conjugate_gradient time taken: {0}'.format((cg1 - cg0) / 1000000), self.print_output)
         #if self.classes is not None:
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            integral = np.inner(alphas.clip(min=0), weights)
-            #integral = 1.0
+            #integral = np.inner(alphas.clip(min=0), weights)
+            integral = 1.0
         else:
             integral = np.inner(alphas, weights)
         if integral != 0.0:

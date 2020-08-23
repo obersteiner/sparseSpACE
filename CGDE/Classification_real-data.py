@@ -23,28 +23,28 @@ def prev_level(l, d):
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
+change_log_file('logs/log_classification_real_data')
+
 clear_log()
 print_log_info = False
 logger.setLevel(logging.INFO)
 
 log_info('--- Classification_eval start ---', True)
-for data_set in [0, 1]:
+for data_set in [2]:
 
-    # generate a Circle-Dataset of size with the sklearn library
-
-    # if data_set == 0:
-    #     sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
-    # elif data_set == 1:
-    #     sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
+    data_set_name = 'Testset'
     if data_set == 0:
         iris = do.datasets.load_iris()
         sklearn_dataset = (iris.data, iris.target)
+        data_set_name = 'iris data set'
     elif data_set == 1:
         wine = do.datasets.load_wine()
         sklearn_dataset = (wine.data, wine.target)
+        data_set_name = 'wine data set'
     elif data_set == 2:
         breast_cancer = do.datasets.load_breast_cancer()
         sklearn_dataset = (breast_cancer.data, breast_cancer.target)
+        data_set_name = 'breast cancer data set'
 
     iris = do.datasets.load_iris()
     iris_data = (iris.data, iris.target)
@@ -56,7 +56,7 @@ for data_set in [0, 1]:
                                                       n_informative=2, n_classes=3)
 
     # now we can transform this dataset into a DataSet object and give it an appropriate name
-    data = do.DataSet(sklearn_dataset, name='Testset')
+    data = do.DataSet(sklearn_dataset, name=data_set_name)
     data_range = (0.0, 1.0)
     data.scale_range(data_range)
 
@@ -68,15 +68,15 @@ for data_set in [0, 1]:
     #max_level = 4
     #max_evals = ((2 ** max_level) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_level, dim)
 
-    max_levels = [2,3]
+    max_levels = [2, 3]
     start_levels = [x-3 for x in max_levels if x-3 > 1]
     if len(start_levels) == 0:
         start_levels = [2]
-    for reuse_old_values in [True, False]:
+    for reuse_old_values in [False]:
         for level_max in max_levels:
             for start_level in start_levels:
                 for error_config in [(False, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimMisclassificationGlobal())]:
-                    for rebalancing in [True]:
+                    for rebalancing in [True, False]:
                         for margin in [0.5]:
                             one_vs_others = error_config[0]
                             error_calc = error_config[1]
@@ -171,10 +171,7 @@ for data_set in [0, 1]:
                             classification_dimwise = do.Classification(data_dimCombi, split_percentage=0.8, split_evenly=True)
                             #max_evals = (((2**(max_level-1)) - 1) * dim)
 
-                            if data_set == 2:
-                                max_evals = 10000
-                            else:
-                                max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
+                            max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
                             print('classification max_evaluations', max_evals)
                             log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
                             log_info('classification dimwise start level: ' + str(start_level), print_log_info)
@@ -230,7 +227,7 @@ for data_set in [0, 1]:
 log_info('--- Classification_eval end ---', print_log_info)
 
 # make a backup of the log without overwriting old ones
-log_backup = 'log_sg_backup'
+log_backup = 'log_backup'
 while os.path.isfile(log_backup):
     log_backup = log_backup + '+'
 copyfile(log_filename, log_backup)
