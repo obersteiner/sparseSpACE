@@ -220,30 +220,34 @@ plot_dataset(data, dim, 'dataPlot_'+data_set)
 
 ### Standard Combi
 #for i in range(max(minimum_level+1, maximum_level-2), maximum_level+1):
-# for i in [max_levels]:
-#     maximum_level = i
-#     # define operation to be performed
-#     operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)
-#
-#     # create the combiObject and initialize it with the operation
-#     combiObject = StandardCombi(a, b, operation=operation)
-#
-#     if do_plot:
-#         print("Plot of dataset:")
-#         operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
-#     # perform the density estimation operation, has to be done before the printing and plotting
-#     combiObject.perform_operation(minimum_level, maximum_level)
-#     if do_plot:
-#         print("Combination Scheme:")
-#         # when you pass the operation the function also plots the contour plot of each component grid
-#         combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
-#     if do_plot:
-#         print("Sparse Grid:")
-#         combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
-#     if do_plot:
-#         print("Plot of density estimation")
-#         # when contour = True, the contour plot is shown next to the 3D plot
-#         combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
+for i in [max_levels]:
+    maximum_level = i
+    # define operation to be performed
+    operation = DensityEstimation(data, dim, lambd=lambd, reuse_old_values=reuse_old_values, classes=class_signs)
+
+    # create the combiObject and initialize it with the operation
+    combiObject = StandardCombi(a, b, operation=operation)
+
+    if do_plot:
+        print("Plot of dataset:")
+        operation.plot_dataset(filename='stdCombi_'+data_set+'_dataSet_')
+    # perform the density estimation operation, has to be done before the printing and plotting
+    #combiObject.perform_operation(minimum_level, maximum_level)
+    cProfile.run(
+        'combiObject.perform_operation(minimum_level, maximum_level)',
+        filename='StandardCombiProfile.txt')
+    std_p_stat = pstats.Stats('StandardCombiProfile.txt')
+    if do_plot:
+        print("Combination Scheme:")
+        # when you pass the operation the function also plots the contour plot of each component grid
+        combiObject.print_resulting_combi_scheme(filename='stdCombi_'+data_set+'_scheme_'+'lmax-'+str(maximum_level), operation=operation)
+    if do_plot:
+        print("Sparse Grid:")
+        combiObject.print_resulting_sparsegrid(filename='stdCombi_'+data_set+'_grid'+'lmax-'+str(maximum_level), markersize=20)
+    if do_plot:
+        print("Plot of density estimation")
+        # when contour = True, the contour plot is shown next to the 3D plot
+        combiObject.plot(filename='stdCombi_'+data_set+'_contour'+'lmax-'+str(maximum_level), contour=True)
 
 ################## dimension wise
 #############
@@ -268,7 +272,7 @@ if do_plot:
 # perform the density estimation operation, has to be done before the printing and plotting
 cProfile.run('SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=max_evaluations, do_plot=do_plot)',
              filename='DimWiseAdaptivProfile.txt')
-p_stat = pstats.Stats('DimWiseAdaptivProfile.txt')
+dimWise_p_stat = pstats.Stats('DimWiseAdaptivProfile.txt')
 
 
 
@@ -459,4 +463,9 @@ if kde_vals is not None:
     print('Pearsson corr kde - grid:', scipy.stats.pearsonr(grid_vals, kde_vals))
 
 
-p_stat.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
+print("############# Standard Combi Profiling #############")
+std_p_stat.sort_stats(pstats.SortKey.TIME).print_stats(100)
+std_p_stat.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
+print("############# DimWise Adaptive Profiling #############")
+dimWise_p_stat.sort_stats(pstats.SortKey.TIME).print_stats(100)
+dimWise_p_stat.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)

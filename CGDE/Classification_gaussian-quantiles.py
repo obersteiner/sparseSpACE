@@ -38,7 +38,7 @@ test2 = ((2 ** max_level) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_l
 tolerance = -1.0
 
 log_info('--- Classification_eval start ---', True)
-for dimension in [4, 5]:
+for dimension in [2, 3, 4]:
 
     # generate a Circle-Dataset of size with the sklearn library
     size = 50000
@@ -48,7 +48,6 @@ for dimension in [4, 5]:
     # elif data_set == 1:
     #     sklearn_dataset = do.datasets.make_moons(n_samples=size, noise=0.3)
     sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=3)
-    log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)', print_log_info)
 
     # now we can transform this dataset into a DataSet object and give it an appropriate name
     data = do.DataSet(sklearn_dataset, name='gaussian quantiles')
@@ -57,19 +56,20 @@ for dimension in [4, 5]:
 
     reuse_old_values = False
 
-    max_levels = [2, 3, 4, 5]
-    start_levels = [3,5]
+    max_levels = [2, 3, 4, 5, 6]
+    start_levels = [x - 3 for x in max_levels if 1 < x - 3 < 4]
     if len(start_levels) == 0:
         start_levels = [2]
     for level_max in max_levels:
         for start_level in start_levels:
             for error_config in [(False, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimVolumeGuided()), (True, ErrorCalculatorSingleDimMisclassificationGlobal())]:
-                for rebalancing in [True]:
+                for rebalancing in [True, False]:
                     for margin in [0.5]:
                         one_vs_others = error_config[0]
                         error_calc = error_config[1]
                         log_info('next iteration', print_log_info)
-
+                        log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)',
+                                 print_log_info)
                         log_info('data size: ' + str(size), print_log_info)
                         log_info('data dimension: ' + str(data.get_dim()), print_log_info)
                         t = [i for i, x in enumerate(str(type(error_calc))) if '\'' in x]

@@ -9,7 +9,7 @@ def prev_level(l, d):
     else:
         return (2**(l-2) - 1) * d + prev_level(l-2, d)
 
-with open('logs/log_classification_blobs') as f:
+with open('logs/log_classification_random') as f:
     content = f.readlines()
 content = [x.split('::')[1] for x in content]
 content = [x.strip() for x in content]
@@ -23,7 +23,7 @@ data_set_indices_bySet = [i for i, x in enumerate(content) if 'data set' in x]
 data_set_indices_byIteration = [i for i, x in enumerate(content) if 'next iteration' in x]
 #else:
 #
-data_set_indices = max([data_set_indices_byDatasets, data_set_indices_byIteration, data_set_indices_byIteration], key=len)
+data_set_indices = max([data_set_indices_byDatasets, data_set_indices_bySet, data_set_indices_byIteration], key=len)
 if len(data_set_indices) == 0:
     print('couldn\'t parse log')
 data_sets = [content[data_set_indices[x]:data_set_indices[x+1]] for x in range(len(data_set_indices)) if (x+1) < len(data_set_indices)]
@@ -52,7 +52,7 @@ for tup in data_sets:
     max_level_std = [int(s.split(':')[1]) for s in stdCombi if 'max_level' in s][0] if str_exists(stdCombi, 'max_level') else None
     point_num = ((2**max_level_std) - 1) * data_dim - (data_dim - 1) + (2**data_dim) * prev_level(max_level_std, data_dim) if max_level_std is not None else 0
     #stdPoints = [((2 ** int(s.split(':')[1])) - 1) * data_dim for s in stdCombi if 'max_level' in s]
-    stdPoints = [point_num*len(stdTime)]
+    stdPoints = [point_num]*len(stdTime)
     stdAcc = [float(s.split(':')[1].replace('%', '')) for s in stdCombi if 'Percentage' in s] if str_exists(stdCombi, 'Percentage') else None
 
     dimCombi = tup[2]
@@ -66,6 +66,14 @@ for tup in data_sets:
         eval_avg[data_type] = {}
     std_info = namedtuple('std_info', 'stdTimeAvg stdPointAvg stdAcc')
     dim_info = namedtuple('dim_info', 'dimTimeAvg dimPointAvg dimAcc')
+    # if (sum(stdTime)/max(1, len(stdTime))) > sum(dimTime)/max(1, len(dimTime)):
+    #     test1 = sum(stdTime)
+    #     test2 = max(1, len(stdTime))
+    #     test3 = sum(dimTime)
+    #     test4 = max(1, len(dimTime))
+    #     test5 = sum(stdTime) / max(1, len(stdTime))
+    #     test6 = sum(dimTime) / max(1, len(dimTime))
+    #     print('stop here')
     entry = (std_info(sum(stdTime)/max(1, len(stdTime)), sum(stdPoints)/max(1, len(stdPoints)), stdAcc, ),
              dim_info(sum(dimTime)/max(1, len(dimTime)), sum(dimPoints)/max(1, len(dimPoints)), dimAcc))
 
@@ -113,7 +121,13 @@ for dtype in eval_avg.keys():
             name = match.group(0)
             name = name.replace('make_', '').replace('(', '')
         else:
-            name = dtype.replace(' ', '_')
+            regex = r".* data set"
+            match = re.search(regex, str(dtype))
+            if match is not None:
+                name = match.group(0)
+                name = name.strip().replace(' ', '_')
+            else:
+                name = dtype.replace(' ', '_')
 
         entries = eval_avg[dtype][keys]
         stdTimes = [t[0].stdTimeAvg for t in entries]

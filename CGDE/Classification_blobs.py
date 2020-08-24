@@ -38,7 +38,7 @@ test2 = ((2 ** max_level) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_l
 tolerance = -1.0
 
 log_info('--- Classification_eval start ---', True)
-for dimension in [2, 3]:
+for dimension in [2, 3, 4]:
 
     # generate a Circle-Dataset of size with the sklearn library
     size = 50000

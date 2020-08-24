@@ -30,7 +30,7 @@ print_log_info = False
 logger.setLevel(logging.INFO)
 
 log_info('--- Classification_eval start ---', True)
-for data_set in [2]:
+for data_set in [0, 1, 2]:
 
     data_set_name = 'Testset'
     if data_set == 0:
