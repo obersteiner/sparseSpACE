@@ -303,7 +303,8 @@ class DensityEstimation(AreaOperation):
         self.max_levels = []
         self.numeric_calculation = numeric_calculation
         self.dimension_wise = False
-        log_debug('DensityEstimation debug: {0}'.format(self.debug), self.print_output)
+        if self.debug:
+            log_debug('DensityEstimation debug: {0}'.format(self.debug), self.print_output)
 
     def min_max_scale_surplusses(self):
         #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
@@ -437,7 +438,8 @@ class DensityEstimation(AreaOperation):
         max = np.max(surpluses)
         min = np.min(surpluses)
         #if self.print_output:
-        log_debug("Max: {0} Max{1}".format(max,min), self.print_output)
+        if self.debug:
+            log_debug("Max: {0} Max{1}".format(max,min), self.print_output)
         self.extrema = (min, max)
         return self.extrema
 
@@ -888,9 +890,9 @@ class DensityEstimation(AreaOperation):
         grid_size = len(points)
         R = np.zeros((grid_size, grid_size))
 
-        #if self.print_output:
-        log_debug("Point list: {0}".format(points), self.print_output)
-        log_debug("Point levels: {0}".format(grid_point_levels), self.print_output)
+        if self.debug:
+            log_debug("Point list: {0}".format(points), self.print_output)
+            log_debug("Point levels: {0}".format(grid_point_levels), self.print_output)
         if self.reuse_old_values and not self.masslumping:
             # get overlap of domains between points in each dimension in sequence; sort sequence;
             # the string of the sequence
@@ -1023,8 +1025,8 @@ class DensityEstimation(AreaOperation):
                                 (self.hat_function_non_symmetric(h, self.get_hat_domain(h, gridPointCoordsAsStripes), data[i]) * sign)
             b *= (1 / M)
 
-        #if self.print_output:
-        log_debug("B vector: {0}".format(b), self.print_output)
+        if self.debug:
+            log_debug("B vector: {0}".format(b), self.print_output)
         max_levels = [max(x) for x in grid_point_levels]
         self.max_levels = [max(max_levels[d]+1, self.max_levels[d]) for d in range(self.dim)]
         self.new_B[str(max_levels)] = np.array(b)  # copy the values, not the reference
@@ -1038,18 +1040,8 @@ class DensityEstimation(AreaOperation):
         :param levelvec: Levelvector of the component grid
         :return: Surpluses of the component grid for the specified dataset
         """
-        #numGridCoord = sum((len(l) for l in gridPointCoordsAsStripes))
-        #r0 = timing()
         R = time_func(self.print_output, "OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
-        #R = self.build_R_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
-        #r1 = timing()
-        #log_debug('OP: build_R_matrix_dimension_wise time taken: {0}'.format((r1 - r0) / 1000000), self.print_output)
-        #b0 = timing()
         b = time_func(self.print_output, "OP: calculate_B_dimension_wise time taken", self.calculate_B_dimension_wise, self.data, gridPointCoordsAsStripes, grid_point_levels)
-        #b = self.calculate_B_dimension_wise(self.data, gridPointCoordsAsStripes, grid_point_levels)
-        #b1 = timing()
-        #log_debug('OP: calculate_B_dimension_wise time taken: {0}'.format((b1 - b0) / 1000000), self.print_output)
-        #cg0 = timing()
         scaling_factor = 1.0/np.max(R)
         alphas = time_func(self.print_output, "OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
         #if self.classes is not None:
@@ -1066,9 +1058,9 @@ class DensityEstimation(AreaOperation):
         #    raise ValueError("Integral is zero!")
         #alphas = alphas.clip(max=avg_value*10)
         #print(alphas, R*scaling_factor, b*scaling_factor)
-        #if self.print_output:
-        log_debug("Alphas: {0} {1}".format(component_grid.levelvector, alphas), self.print_output)
-        log_debug("-" * 100, self.print_output)
+        if self.debug:
+            log_debug("Alphas: {0} {1}".format(component_grid.levelvector, alphas), self.print_output)
+            log_debug("-" * 100, self.print_output)
         return alphas
 
     def calculate_L2_scalarproduct(self, point_i: Tuple[int, ...], domain_i: Sequence[Tuple[int, int]],
@@ -1088,11 +1080,11 @@ class DensityEstimation(AreaOperation):
             f = lambda *x: (self.hat_function_non_symmetric(point_i, domain_i, [*x]) * self.hat_function_non_symmetric(point_j, domain_j, [*x]))
             start = [min(domain_i[d][0], domain_j[d][0]) for d in range(self.dim)]
             end = [max(domain_i[d][1], domain_j[d][1]) for d in range(self.dim)]
-            #if self.print_output:
-            log_debug("-" * 100, self.print_output)
-            log_debug("Calculating", self.print_output)
-            log_debug("Gridpoints: {0} {1}".format(point_i, point_j), self.print_output)
-            log_debug("Domain: {0} {1}".format(start, end), self.print_output)
+            if self.debug:
+                log_debug("-" * 100, self.print_output)
+                log_debug("Calculating", self.print_output)
+                log_debug("Gridpoints: {0} {1}".format(point_i, point_j), self.print_output)
+                log_debug("Domain: {0} {1}".format(start, end), self.print_output)
             return nquad(f, [[start[d], end[d]] for d in range(self.dim)],
                          opts={"epsabs": 10 ** (-15), "epsrel": 1 ** (-15)})
         else:
@@ -1423,10 +1415,10 @@ class DensityEstimation(AreaOperation):
 
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
         R[np.diag_indices_from(R)] += (diag_val + self.lambd)
-        #if self.print_output:
-        log_debug("Indexlist: {0}".format(index_list), self.print_output)
-        log_debug("Levelvector: {0}".format(levelvec), self.print_output)
-        log_debug("Diagonal value: {0}".format(diag_val), self.print_output)
+        if self.debug:
+            log_debug("Indexlist: {0}".format(index_list), self.print_output)
+            log_debug("Levelvector: {0}".format(levelvec), self.print_output)
+            log_debug("Diagonal value: {0}".format(diag_val), self.print_output)
         if self.masslumping == False:
             for i in range(grid_size - 1):
                 for j in range(i + 1, grid_size):
@@ -1448,19 +1440,18 @@ class DensityEstimation(AreaOperation):
                         else:
                             res *= 1 / (2 ** (levelvec[k] - 1) * 12)
 
-                    if res == 0:
-                        #if self.print_output:
+                    if res == 0 and self.debug:
                         log_debug("-" * 100, self.print_output)
                         log_debug("Skipping calculation", self.print_output)
                         log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]), self.print_output)
                     else:
-                        #if self.print_output:
-                        log_debug("-" * 100, self.print_output)
-                        log_debug("Calculating", self.print_output)
-                        log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]), self.print_output)
-                        log_debug("Result: {0}".format(res), self.print_output)
                         R[i, j] = res
                         R[j, i] = res
+                        if self.debug:
+                            log_debug("-" * 100, self.print_output)
+                            log_debug("Calculating", self.print_output)
+                            log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]), self.print_output)
+                            log_debug("Result: {0}".format(res), self.print_output)
         return R
 
     def solve_density_estimation(self, levelvec: Sequence[int]) -> Sequence[float]:
@@ -1479,9 +1470,9 @@ class DensityEstimation(AreaOperation):
             alphas = b
         else:
             alphas, info = cg(R, b)
-        #if self.print_output:
-        log_debug("Alphas: ".format(levelvec, alphas), self.print_output)
-        log_debug("-" * 100, self.print_output)
+        if self.debug:
+            log_debug("Alphas: ".format(levelvec, alphas), self.print_output)
+            log_debug("-" * 100, self.print_output)
 
         if self.classes is not None:
             return alphas
@@ -1493,8 +1484,9 @@ class DensityEstimation(AreaOperation):
         else:
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
-        log_debug(alphas, self.print_output)
-        if integral == 0 or self.debug:
+        if self.debug:
+            log_debug(alphas, self.print_output)
+        if integral == 0 and self.debug:
             # integral should not be zero!
             log_debug("Matrix: ".format(R), self.print_output)
             log_debug("b Vector: ".format(b), self.print_output)
@@ -1607,8 +1599,8 @@ class DensityEstimation(AreaOperation):
                     # for j in range(len(hats)):
                     #    b[index_list.index(hats[j])] += self.hat_function_in_support(np.array(hats[j], dtype=int), np.array(levelvec, dtype=int), data[i])
             b *= (1 / M)
-            #if self.print_output:
-            log_debug("B vector: {0}".format(b), self.print_output)
+            if self.debug:
+                log_debug("B vector: {0}".format(b), self.print_output)
         return b
 
     def hat_function(self, ivec: Sequence[int], lvec: Sequence[int], x: Sequence[float]) -> float:

@@ -15,7 +15,7 @@ class StandardCombi(object):
 
     """
 
-    def __init__(self, a, b, operation: GridOperation, print_output=True, norm=2):
+    def __init__(self, a, b, operation: GridOperation, print_output=False, norm=2):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -182,7 +182,7 @@ class StandardCombi(object):
         :param lmax: Maximum level of combination technique.
         :return: Combination scheme, error, and combination result.
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
         assert self.operation is not None
 
         # initializtation
@@ -203,20 +203,20 @@ class StandardCombi(object):
         reference_solution = self.operation.get_reference_solution()
 
         # output combi_result
-        #if self.print_output:
-        log_debug("CombiSolution".format(combi_result), self.print_output)
+        if self.print_output:
+            log_debug("CombiSolution".format(combi_result), self.print_output)
 
         if plot:
             print("Combi scheme:")
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        log_info("Time used (s):" + str(time.time() - start_time), self.print_output)
+        log_info("Time used (s):" + str(time.perf_counter() - start_time), True)
         # return results
         if reference_solution is not None:
-            #if self.print_output:
-            log_debug("Analytic Solution ".format(reference_solution), self.print_output)
-            log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
+            if self.print_output:
+                log_debug("Analytic Solution ".format(reference_solution), self.print_output)
+                log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
