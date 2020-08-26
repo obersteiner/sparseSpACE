@@ -1191,7 +1191,7 @@ class GlobalRombergGrid(GlobalGrid):
 
 
 class GlobalBalancedRombergGrid(GlobalGrid):
-    def __init__(self, a, b, boundary=True, modified_basis=False):
+    def __init__(self, a, b, boundary=False, modified_basis=False):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGridScalarProduct(self)
         self.a = a
@@ -1200,8 +1200,8 @@ class GlobalBalancedRombergGrid(GlobalGrid):
         self.length = np.array(b) - np.array(a)
         self.modified_basis = modified_basis
 
-        assert not(modified_basis)
-        assert boundary
+        assert not modified_basis
+        assert not boundary
 
         self.weight_cache = {}
 

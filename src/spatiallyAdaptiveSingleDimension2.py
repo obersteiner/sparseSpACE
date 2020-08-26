@@ -1048,7 +1048,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
 
-        size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+        size_slize = np.prod([self.grid_surplusses.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             if isinf(right_parent):
