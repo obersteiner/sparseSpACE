@@ -14,6 +14,9 @@ from Grid import GlobalTrapezoidalGrid
 from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
 from Utils import *
+import cProfile
+import pstats
+import os
 
 
 class DataSet:
@@ -488,20 +491,44 @@ class DataSet:
         :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
         :param plot_de_dataset: Optional. Conditional Parameter which indicates whether this DataSet should be plotted for DensityEstimation
         :param plot_density_estimation: Optional. Conditional Parameter which indicates whether results of DensityEstimation should be plotted
         :param plot_combi_scheme: Optional. Conditional Parameter which indicates whether resulting combi scheme of DensityEstimation should be
         plotted
         :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
         :return:
+
+        Parameters
+        ----------
         """
         a = np.zeros(self.__dim)
         b = np.ones(self.__dim)
         if one_vs_others:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, classes=self.__data[1], pre_scaled_data=pre_scaled_data)
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, classes=self.__data[1], pre_scaled_data=pre_scaled_data, print_output=False)
         else:
-            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, pre_scaled_data=pre_scaled_data)
+            de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values, pre_scaled_data=pre_scaled_data, print_output=False)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
+
+        # For profiling:
+        # pStuff.increment_class_counter()
+        # cls = '__class-' + str(pStuff.get_class_counter())
+        # profileName = 'profiles/pStd_' + pStuff.get_data_set_used() + '_' + pStuff.get_file_name_extension()+cls
+        # while os.path.isfile(profileName):
+        #     profileName = profileName + '+'
+        # cProfile.runctx('combi_object.perform_operation(minimum_level, maximum_level)', globals(), locals(), filename=profileName)
+        # with open(profileName+'_TIME.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.TIME)
+        #     ps.print_stats()
+        # with open(profileName+'_CUMU.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.CUMULATIVE)
+        #     ps.print_stats()
+        # os.remove(profileName)
+
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
             if de_object.scaled:
@@ -513,6 +540,7 @@ class DataSet:
             combi_object.print_resulting_combi_scheme(operation=de_object)
         if plot_sparsegrid:
             combi_object.print_resulting_sparsegrid(markersize=20)
+        #log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(combi_object.get_total_num_points()), True)
         return combi_object, de_object
 
     def density_estimation_dimension_wise(self,
@@ -535,6 +563,7 @@ class DataSet:
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
                                           plot_sparsegrid: bool = True,
+                                          single_step_refinement: bool = False,
                                           filename: str = None) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation on this DataSet.
 
@@ -546,13 +575,22 @@ class DataSet:
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
         :param margin: Optional.
-        :param numeric_calculation: Optional.
-        :param reuse_old_values: Optional.
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param rebalancing: Optional. Activate rebalancing of refinement trees.
+        :param modified_basis: Optional. Use the modified basis function.
+        :param boundary: Optional. Put points on the boundary.
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
+        :param numeric_calculation: Optional. Use numerical calculation for the integral.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
         :param plot_de_dataset: Optional. Conditional Parameter which indicates whether this DataSet should be plotted for DensityEstimation
         :param plot_density_estimation: Optional. Conditional Parameter which indicates whether results of DensityEstimation should be plotted
         :param plot_combi_scheme: Optional. Conditional Parameter which indicates whether resulting combi scheme of DensityEstimation should be
         plotted
         :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
+        :param single_step_refinement: Optional. Regardless of max_evaluations or tolerance, only a single refinement step will be executed
         :return:
 
         Parameters
@@ -579,8 +617,26 @@ class DataSet:
                                       print_output=False,
                                       pre_scaled_data=pre_scaled_data)
         combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing)
+
+        # pStuff.increment_class_counter()
+        # cls = '__class-' + str(pStuff.get_class_counter())
+        # profileName = 'profiles/pStd_' + pStuff.get_data_set_used() + '_' + pStuff.get_file_name_extension()+cls
+        # while os.path.isfile(profileName):
+        #     profileName = profileName + '+'
+        # cProfile.runctx('combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme, print_output=False)', globals(), locals(), filename=profileName)
+        # with open(profileName+'_TIME.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.TIME)
+        #     ps.print_stats()
+        # with open(profileName+'_CUMU.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.CUMULATIVE)
+        #     ps.print_stats()
+        # os.remove(profileName)
+
         combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance,
-                                             max_evaluations=max_evaluations, do_plot=plot_combi_scheme, print_output=False)
+                                             max_evaluations=max_evaluations, do_plot=plot_combi_scheme, print_output=False,
+                                             single_step=single_step_refinement)
         if plot_de_dataset:
             if de_object.scaled:
                 self.scale_range((0, 1), override_scaling=True)
@@ -599,7 +655,7 @@ class DataSet:
         #combi_object.min_max_scale_surplusses()
         return combi_object, de_object
 
-    def plot(self, plot_labels: bool = True) -> plt.Figure:
+    def plot(self, plot_labels: bool = True, filename: str = None) -> plt.Figure:
         """Plot DataSet.
 
         Plotting is only available for dimensions 2 and 3.
@@ -663,6 +719,8 @@ class DataSet:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
 
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
         return fig
 
@@ -882,19 +940,33 @@ class Classification:
                                                 one_vs_others: bool = False,
                                                 error_calculator: ErrorCalculator = None,
                                                 pre_scaled_data: bool = False,
+                                                single_step_refinement: bool = False,
                                                 filename: str = None) -> None:
-        """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
+        """Perform the GridOperation DensityEstimation on this DataSet.
 
-        This method is only called once.
-        First the learning dataset is split into its classes in separate DataSets and then the DataSet.density_estimation() function is called for
-        each of the single-class-DataSets.
-        The DensityEstimation objects are mainly used for plotting the combi scheme.
+        Also is able to plot the DensityEstimation results directly.
+        For more information on DensityEstimation refer to the class DensityEstimation in the GridOperation module.
 
-        :param _masslumping: Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
-        :param _lambd: Parameter which adjusts the 'smoothness' of DensityEstimation results
-        :param _minimum_level: Minimum Level of Sparse Grids on which to perform DensityEstimation
-        :param _maximum_level: Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :return: None
+        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param margin: Optional.
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param rebalancing: Optional. Activate rebalancing of refinement trees.
+        :param modified_basis: Optional. Use the modified basis function.
+        :param boundary: Optional. Put points on the boundary.
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
+        :param numeric_calculation: Optional. Use numerical calculation for the integral.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :param single_step_refinement: Optional. Regardless of max_evaluations or tolerance, only a single refinement step will be executed
+        :return:
+
+        Parameters
+        ----------
         """
         if one_vs_others:
             learning_data_classes = self.__data.split_one_vs_others()
@@ -921,13 +993,26 @@ class Classification:
                                                         plot_combi_scheme=False,
                                                         plot_sparsegrid=False,
                                                         filename=filename,
-                                                        pre_scaled_data=pre_scaled_data)
+                                                        pre_scaled_data=pre_scaled_data,
+                                                        single_step_refinement=single_step_refinement)
                           for x in learning_data_classes]
         self.__classificators = [x[0] for x in operation_list]
         self.__de_objects = [x[1] for x in operation_list]
         log_debug("Performed Classification of '{0}' DataSet.".format(self.__data.get_name()), self.__print_output)
         log_debug("_________________________________________________________________________________________________________________________________", self.__print_output)
         log_debug("---------------------------------------------------------------------------------------------------------------------------------", self.__print_output)
+
+    def continue_dimension_wise_refinement(self,
+                                           tolerance: float = 0.01,
+                                           max_time: float = None,
+                                           max_evaluations: int = 256,
+                                           min_evaluations: int = 1):
+        if self.__classificators is not None and self.__de_objects is not None:
+            for combi_object in self.__classificators:
+                combi_object.continue_adaptive_refinement(tol=tolerance, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
+            log_debug("Continued Classification of '{0}' DataSet.".format(self.__data.get_name()), self.__print_output)
+            log_debug("_________________________________________________________________________________________________________________________________", self.__print_output)
+            log_debug("---------------------------------------------------------------------------------------------------------------------------------", self.__print_output)
 
     def __classificate(self, data_to_classificate: 'DataSet') -> List[int]:
         """Calculate classes for samples of input data.
@@ -1060,16 +1145,30 @@ class Classification:
                                               error_calculator: ErrorCalculator = None,
                                               pre_scaled_data: bool = False,
                                               filename: str = None) -> None:
-        """Should be called immediately after creation of Classification object; create GridOperation and DensityEstimation objects for each class.
+        """Perform the GridOperation DensityEstimation on this DataSet.
 
-        Classification can only be performed once. After performing, the private attribute self.__performed_classification is set to True.
-        If this method is called a second time, a ValueError is raised.
+        Also is able to plot the DensityEstimation results directly.
+        For more information on DensityEstimation refer to the class DensityEstimation in the GridOperation module.
 
         :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
         :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :return: None
+        :param margin: Optional.
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param rebalancing: Optional. Activate rebalancing of refinement trees.
+        :param modified_basis: Optional. Use the modified basis function.
+        :param boundary: Optional. Put points on the boundary.
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
+        :param numeric_calculation: Optional. Use numerical calculation for the integral.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :return:
+
+        Parameters
+        ----------
         """
         if not self.__performed_classification:
             self.__perform_classification_dimension_wise(masslumping=masslumping,
@@ -1120,7 +1219,8 @@ class Classification:
              plot_class_dataset: bool = True,
              plot_class_density_estimation: bool = True,
              plot_class_combi_scheme: bool = True,
-             plot_class_sparsegrid: bool = False) -> None:
+             plot_class_sparsegrid: bool = False,
+             file_path: str = None) -> None:
         """Plot a Classification object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -1136,19 +1236,29 @@ class Classification:
         plotted. Default True
         :return: None
         """
+
         if not self.__performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if plot_class_dataset:
             self.__learning_data.plot()
         if plot_class_density_estimation:
+            filename = file_path + '_contour'
             for x in self.__classificators:
-                x.plot(contour=True)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.plot(contour=True, filename=filename)
         if plot_class_combi_scheme:
+            filename = file_path + '_combi_scheme'
             for x, y in zip(self.__classificators, self.__de_objects):
-                x.print_resulting_combi_scheme(operation=y)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.print_resulting_combi_scheme(operation=y, filename=filename)
         if plot_class_sparsegrid:
+            filename = file_path + '_sparsegrid'
             for x in self.__classificators:
-                x.print_resulting_sparsegrid(markersize=20)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.print_resulting_sparsegrid(markersize=20, filename=filename)
 
     def test_data(self, new_testing_data: 'DataSet',
                   print_output: bool = True,

@@ -112,7 +112,8 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
                         np.array(misses * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
-                    refinement_obj.add_volume(np.zeros(1))
+                    #refinement_obj.add_volume(np.zeros(1))
+                    refinement_obj.add_volume(np.array(0.0))
         # hits = sum((1 for i in range(0, len(data))
         #             if copysign(1.0, f(data[i])) == copysign(1.0, grid_scheme.operation.classes[i])))
         # misses = sum((1 for i in range(0, len(data))

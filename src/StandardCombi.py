@@ -212,6 +212,8 @@ class StandardCombi(object):
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
         log_info("Time used (s):" + str(time.perf_counter() - start_time), True)
+        log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(
+            self.get_total_num_points()), True)
         # return results
         if reference_solution is not None:
             if self.print_output:
@@ -276,8 +278,12 @@ class StandardCombi(object):
         nrows = self.lmax[1] - self.lmin[1] + 1
         fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
-        #    spine = axis.spines.values()
-        #    spine.set_visible(False)
+            # spine = axis.spines.values()
+            # spine.set_visible(False)
+        # for axis in fig.axes:
+            # for key, value in axis.spines.items():
+                # spine = value
+                # spine.set_visible(False)
         # get points of each component grid and plot them individually
         if lmax == lmin:
             component_grid = scheme[0]
@@ -324,9 +330,15 @@ class StandardCombi(object):
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
         # plt.tight_layout()
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
 
+        # hide the outer x- and y-axis cutting through the sub-plots
+        plt.axis('off')  # only hides the label for some reason
+        axes = plt.gca()
+        axes.set_position([0, 0, 0, 0])  # hides the axis arrows as well
+
+        if filename is not None:
+            plt.savefig(filename)
+        fig.set_tight_layout(False)
         plt.show()
         # reset fontsize to default so it does not affect other figures
         #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})

@@ -31,7 +31,7 @@ def get_cross_product_range(one_d_arrays: Sequence[Sequence[int]]) -> Generator[
 def get_cross_product_range_list(one_d_arrays: Sequence[Sequence[int]]) -> List[Tuple[int, ...]]:
     return get_cross_product_list([range(one_d_array) for one_d_array in one_d_arrays])
 
-
+# Default log config
 log_filename = 'log_sg'
 log_format = '%(asctime)s,%(msecs)d %(name)s %(levelname)s :: %(message)s'
 log_date_format = '%H:%M:%S'
@@ -86,8 +86,60 @@ def change_log_file(name):
 
 
 def time_func(print_output, message, function, *kwargs):
-    start = timing()
-    ret = function(*kwargs)
-    result = timing() - start
-    log_debug("{0} : {1}".format(message, result), print_output)
-    return ret
+    """
+    Wrapper function for timing functions
+    Parameters
+    ----------
+    print_output: Print the ouptut to console
+    message: The message to print to log (and to console)
+    function: The function to be timed
+    kwargs: Arguments for the function to be timed
+
+    Returns
+    -------
+
+    """
+    if print_output:
+        start = timing()
+        ret = function(*kwargs)
+        result = timing() - start
+        log_debug("{0} : {1}".format(message, result), print_output)
+        return ret
+    else:
+        return function(*kwargs)
+
+
+class ProfileStuff:
+    """ Helper class for keeping profiling files in order.
+    """
+    def __init__(self):
+        self.data_set_used = 'Unnamed'
+        self.fileNameExtension = ''
+        self.class_counter = 0
+        self.used_std_points = 0
+
+    def set_data_set_used(self, n):
+        self.data_set_used = n
+
+    def set_file_name_extension(self, n):
+        self.fileNameExtension = n
+
+    def get_data_set_used(self):
+        return self.data_set_used
+
+    def get_file_name_extension(self):
+        return self.fileNameExtension
+
+    def get_class_counter(self):
+        return self.class_counter
+
+    def increment_class_counter(self):
+        self.class_counter += 1
+
+    def reset_class_counter(self):
+        self.class_counter = 0
+
+pStuff = ProfileStuff()
+
+
+

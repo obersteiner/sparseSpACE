@@ -196,7 +196,7 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
                                 refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None, single_step: bool=False) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         """This is the main method for the spatially adaptive refinement strategy
 
         :param lmin: Minimum level for truncated combination technique (equal for all dimensions)
@@ -235,6 +235,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.calculated_solution = None
         self.solutions_storage = solutions_storage
         self.evaluation_points = evaluation_points
+        self.single_step = single_step
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
@@ -248,6 +249,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         start_time = time.perf_counter()
         while True:
+            if self.single_step:
+                max_evaluations = self.last_point_count + 1 if self.last_point_count is not None else max_evaluations
             error, surplus_error = time_func(self.print_output, "spatialAdaptBase: evaluate_operation time taken ", self.evaluate_operation)
             self.error_array.append(error)
             self.surplus_error_array.append(surplus_error)
@@ -264,7 +267,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 log_debug("Current error: {0}".format(error), self.print_output)
             if self.do_plot:
                 print("Contour plot:")
-                filename = 'dimWise_contour'
+                filename = 'figures/dimWise_contour'
                 import os
                 while os.path.isfile(filename+'.png'):
                     filename = filename + '+'
@@ -281,22 +284,24 @@ class SpatiallyAdaptivBase(StandardCombi):
                 break
             if max_time is not None and time.time() - start_time > max_time:
                 break
+            if self.single_step:
+                self.last_point_count = self.get_total_num_points()
             # refine further
             time_func(self.print_output, "spatialAdaptBase: refine time taken", self.refine)
             if self.do_plot:
                 import os
                 print("Refinement Graph:")
-                filename = 'dimWise_refinementGraph'
+                filename = 'figures/dimWise_refinementGraph'
                 while os.path.isfile(filename+'.png'):
                     filename = filename + '+'
                 self.draw_refinement(filename=filename)
                 print("Combi Scheme:")
-                filename = 'dimWise_combiScheme'
+                filename = 'figures/dimWise_combiScheme'
                 while os.path.isfile(filename+'.png'):
                     filename = filename + '+'
                 self.print_resulting_combi_scheme(filename=filename, markersize=5)
                 print("Resulting Sparse Grid:")
-                filename = 'dimWise_gridResult'
+                filename = 'figures/dimWise_gridResult'
                 while os.path.isfile(filename+'.png'):
                     filename = filename + '+'
                 self.print_resulting_sparsegrid(filename=filename, markersize=10)

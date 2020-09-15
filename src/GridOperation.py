@@ -722,9 +722,9 @@ class DensityEstimation(AreaOperation):
 
     def get_neighbors(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) -> Sequence[Tuple[float, float]]:
         """
-        This method
+        This method returns the points neighboring the given grid point.
         :param point: d-dimensional Sequence containing the coordinates of the grid point
-        :param gridPointCoordsAsStripes:
+        :gridPointCoordsAsStripes: grid coordinates as 1D sequences
         :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
         """
         # check if the coordinate is on the boundary and if we have points on the boundary
@@ -749,9 +749,9 @@ class DensityEstimation(AreaOperation):
 
     def get_neighbors_optimized(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) -> Tuple[Sequence[Tuple[float, ...]], Sequence[Tuple[int, ...]]]:
         """
-        This method
+        This method returns the domain for the basis function centered on the given grid point. Vectorized with numpy
         :param point: d-dimensional Sequence containing the coordinates of the grid point
-        :param gridPointCoordsAsStripes:
+        :gridPointCoordsAsStripes: grid coordinates as 1D sequences
         :return: d-dimenisional Sequence of 2-dimensional tuples containing the nrighbouring points in support + an array with their indices
         """
         # create a tuple for each point whose elements are the coordinates that are within the domain
@@ -766,9 +766,9 @@ class DensityEstimation(AreaOperation):
 
     def get_hat_domain(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]):
         """
-        This method
+        This method returns the domain for the basis function centered on the given grid point
         :param point: d-dimensional tuple containing the indices of the point
-        :param xxx: Sequence of length d with the maximum level for each dimension
+        :gridPointCoordsAsStripes: grid coordinates as 1D sequences
         :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
         """
         # go through stripes and collect 2 coordinates with lowest distance to the point for each dimension
@@ -950,7 +950,8 @@ class DensityEstimation(AreaOperation):
         """
         This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
         :param data: dataset specified for the operation
-        :param levelvec: Levelvector of the component grid
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Levelvector of the component grid
         :return: b vector of the component grid
         """
         if not self.grid.boundary:
@@ -1037,7 +1038,9 @@ class DensityEstimation(AreaOperation):
             -> Sequence[float]:
         """
         Calculates the surpluses of the component grid for the specified dataset
-        :param levelvec: Levelvector of the component grid
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Gridpoint levels as list of 1D lists
+        :param component_grid:  component grid
         :return: Surpluses of the component grid for the specified dataset
         """
         R = time_func(self.print_output, "OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
@@ -1068,9 +1071,10 @@ class DensityEstimation(AreaOperation):
             -> Tuple[float, float]:
         """
         This method calculates the L2-scalarproduct of the two hat functions
-        :param ivec: Index of the first hat function
-        :param jvec: Index of the second hat function
-        :param lvec: Levelvector of the component grid
+        :param point_i: first point
+        :param point_j: second point
+        :param domain_i: domain of first point
+        :param domain_i: domain of second point
         :return: L2-scalarproduct of the two hat functions plus the error of the calculation
         """
         if not (len(point_i) == len(point_j) == len(domain_i) == len(domain_j)):
@@ -1091,6 +1095,14 @@ class DensityEstimation(AreaOperation):
             return (0, 0)
 
     def calculate_R_value_analytically(self, point_i, domain_i, point_j, domain_j):
+        """
+        This method calculates the R-value between two hat functions analytically.
+        :param point_i: first point
+        :param point_j: second point
+        :param domain_i: domain of first point
+        :param domain_i: domain of second point
+        :return: R-value of the two hat functions.
+        """
         # check adjacency
         if not all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(self.dim))):
             return 0.0
@@ -1289,15 +1301,12 @@ class DensityEstimation(AreaOperation):
 
     def find_closest_old_B(self, gridPointCoordinatesAsStripes):
         """
-        This method looks for the closest match of old B vectors for the current grid and returns it, along with
-        a range of indices that need to be changed/updated
+        This method looks for the closest match of old B vectors for the current grid and returns its key
         Parameters
         ----------
-        gridPointCoordinatesAsStripes
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
 
-        Returns
-        -------
-
+        :return: key for the closest matching b-vector
         """
 
         if len(self.old_B) == 0:
@@ -1334,13 +1343,12 @@ class DensityEstimation(AreaOperation):
 
         return closest_match_key
 
-
     def find_enclosing_bin(self, domain: Tuple[float, float], dim: int):
         """
         This function looks for indices in the bins for the given dimension that are the closest to the given domain.
         (Only relevant for reuse of old B vectors)
-        domain: 2-dimensional Sequence; Domain for which the closest indices should be found in the sorted data
-        dim:    The dimension for which the enclosing bin should be found
+        :param domain: 2-dimensional Sequence; Domain for which the closest indices should be found in the sorted data
+        :param dim:    The dimension for which the enclosing bin should be found
         :return: 2-dimensional Sequence; Closest indices to the given domain, in the given dimension within the sorted data
         """
         enclosing_bin = [0, len(self.sorted_data[dim] - 1)]
@@ -1365,9 +1373,9 @@ class DensityEstimation(AreaOperation):
 
     def find_data_in_domain(self, domain: Sequence[Tuple[float, float]]):
         """
-        This method finds all data points
-        domain:
-        :return:
+        This method returns all data points within the given domain
+        :param domain: the domain for the data
+        :return: numpy array with indices for the points in the domain
         """
         data_ranges = []
 
