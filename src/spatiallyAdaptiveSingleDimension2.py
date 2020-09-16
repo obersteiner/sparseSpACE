@@ -179,8 +179,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         :param levelvec:
         :return:
         """
-        if levelvec[d] - subtraction_value == max_level and levelvec[d] < self.lmax[d]:
-            subtraction_value += 1
+        if levelvec[d] - subtraction_value >= max_level and levelvec[d] < self.lmax[d]:
+            subtraction_value = levelvec[d] - max_level + 1
         subtraction_value = min(subtraction_value, levelvec[d] - self.lmin[d])
         return subtraction_value
 
@@ -300,7 +300,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         max_dimensions = [1 if coarsening == max_coarsening else 0 for coarsening in
                                           max_coarsenings_temp]
                         num_max_coarsening = min(sum(max_dimensions), min((max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)])))
-                        print("num_max_coarsening", num_max_coarsening, sum(max_dimensions), (max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)]))
+                        #print("num_max_coarsening", num_max_coarsening, sum(max_dimensions), (max_level - 1), sum([1 if self.lmax[k] > 2 else 0 for k in range(self.dim)]))
                         #print(num_max_coarsening, self.combischeme.lmax_adaptive - max(sum([1 if self.lmax[k] <= 2 else 0 for k in range(self.dim)]), 1), self.combischeme.lmax_adaptive, self.lmax)
                         my_position = sum(max_dimensions[:d])
                         if remainder >= (max_coarsening - second_largest_coarsening) * num_max_coarsening:
