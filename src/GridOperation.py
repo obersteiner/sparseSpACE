@@ -986,15 +986,15 @@ class Interpolation(Integration):
         function_value_dim = len(values[0])
         interpolated_values_array = []
         for d in range(function_value_dim):
-            values_1D = np.asarray([value[d] for value in values])
+            values_1D = values[:,d] #np.asarray([value[d] for value in values])
 
             values_1D = values_1D.reshape(*[len(mesh_points_grid[d]) for d in (range(dim))])
 
             # interpolate evaluation points from mesh points with bilinear interpolation
             interpolated_values = interpn(mesh_points_grid, values_1D, evaluation_points, method='linear')
 
-            interpolated_values = np.asarray([[value] for value in interpolated_values])
-            interpolated_values_array.append(interpolated_values)
+            #interpolated_values = np.asarray([[value] for value in interpolated_values])
+            interpolated_values_array.append(interpolated_values.reshape((len(interpolated_values),1)))
         return np.hstack(interpolated_values_array)
 
 
