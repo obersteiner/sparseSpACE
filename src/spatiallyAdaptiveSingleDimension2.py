@@ -197,17 +197,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         :param grid_levels: Contains levels of the grid as array
         :return: Returns grid and grid levels that have a full binary tree structure
         """
-        is_full_binary_tree = True
-        level_counter = Counter(grid_levels)  # Counts occurences of each level in the list
-        critical_levels = []
-
-        for (level, count) in level_counter.items():
-            if (level >= 2) and (count % 2 == 1):
-                is_full_binary_tree = False
-                critical_levels.append(level)
-
-        if is_full_binary_tree:
-            return grid, grid_levels
 
         # print("This grid has no full binary tree structure. Critical levels are {}.".format(critical_levels))
         # print("    Grid: {}".format(grid))
