@@ -1,5 +1,7 @@
 from spatiallyAdaptiveBase import *
 from GridOperation import *
+from collections import Counter
+from Extrapolation import GridBinaryTree
 
 def sortToRefinePosition(elem):
     # sort by depth
@@ -21,10 +23,18 @@ class NodeInfo(object):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False, use_volume_weighting=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True,
+                 version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True,
+                 chebyshev_points=False, use_volume_weighting=False, force_balanced_refinement_tree: bool=False,
+                 grid_surplusses=None):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
         assert self.grid is not None
-        self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
+
+        if grid_surplusses is None:
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True, modified_basis=False)
+        else:
+            self.grid_surplusses = self.grid
+
         self.dim_adaptive = dim_adaptive
         #self.evaluationCounts = None
         self.version = version
@@ -44,6 +54,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.chebyshev_points = chebyshev_points
         self.use_volume_weighting = use_volume_weighting
 
+        # If set to true, all grid points have either 0 or two children
+        self.force_balanced_refinement_tree = force_balanced_refinement_tree
+        self.grid_binary_tree = GridBinaryTree()
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -121,9 +134,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         children_indices = []
         points_level = []
         max_coarsenings = np.zeros(self.dim, dtype=int) #only for dimensions with level > 1
+
         for d in range(self.dim):
             #if levelvec[d] > self.lmin[d]:
             max_coarsenings[d] = refinement.get_max_coarsening(d)
+
         for d in range(0, self.dim):
             max_coarsenings_dim = list(max_coarsenings)
             refineContainer = refinement.get_refinement_container_for_dim(d)
@@ -151,10 +166,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     else:
                         points_level_dim.append(refineObj.levels[1])
 
+            # Force full binary tree (each non-boundary grid point should have either 0 or 2 children)
+            if self.force_balanced_refinement_tree:
+                points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim)
+
+            # Compute children indices
             if self.use_local_children:
                 for i in range(1,len(points_level_dim)-1):
                     if self.is_child(points_level_dim[i-1], points_level_dim[i], points_level_dim[i+1]):
                         children_indices_dim.append((self.get_node_info(i, points_dim, points_level_dim, d)))
+
             point_coordinates.append(points_dim)
             children_indices.append(children_indices_dim)
             points_level.append(points_level_dim)
@@ -168,6 +189,35 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         return point_coordinates, points_level, children_indices
 
+    def transform_to_full_binary_tree_grid(self, grid, grid_levels):
+        """ This method expands a grid so that it becomes a full binary tree.
+        This means each grid point has either 0 or 2 children.
+
+        :param grid: Contains grid points as array
+        :param grid_levels: Contains levels of the grid as array
+        :return: Returns grid and grid levels that have a full binary tree structure
+        """
+        is_full_binary_tree = True
+        level_counter = Counter(grid_levels)  # Counts occurences of each level in the list
+        critical_levels = []
+
+        for (level, count) in level_counter.items():
+            if (level >= 2) and (count % 2 == 1):
+                is_full_binary_tree = False
+                critical_levels.append(level)
+
+        if is_full_binary_tree:
+            return grid, grid_levels
+
+        # print("This grid has no full binary tree structure. Critical levels are {}.".format(critical_levels))
+        # print("    Grid: {}".format(grid))
+        # print("    Levels: {}".format(grid_levels))
+
+        # Build up full binary tree structure
+        self.grid_binary_tree.init_tree(grid, grid_levels)
+        self.grid_binary_tree.force_full_tree_invariant()
+
+        return self.grid_binary_tree.get_grid(), self.grid_binary_tree.get_grid_levels()
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
         """This method updates subtraction value so that the maximum level is only reached if level is max. We also
@@ -998,7 +1048,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         left_parent_in_grid = self.grid_surplusses.boundary or not(isclose(left_parent, self.a[d]))
         right_parent_in_grid = self.grid_surplusses.boundary or not(isclose(right_parent, self.b[d]))
 
-        size_slize = np.prod([self.grid.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+        size_slize = np.prod([self.grid_surplusses.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
         # avoid evaluating on boundary points if grids has none
         if left_parent_in_grid:
             if isinf(right_parent):
@@ -1196,6 +1246,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
                 '''
 
-
-
-
+    def initialize_grid(self):
+        # Reinitialize grid
+        self.grid.initialize_grid()

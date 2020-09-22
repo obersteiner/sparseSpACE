@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 *.svg
 Untitled.ipynb
+.idea/*
