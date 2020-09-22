@@ -8,7 +8,7 @@ install:
   - pip3 install sympy
   - git clone https://github.com/jonathf/chaospy.git
   - cd chaospy
-  - git checkout development
+  - git checkout master
   - pip3 install .
   - cd ..
 script:
