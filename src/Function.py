@@ -573,14 +573,14 @@ class Polynomial1d(Function):
         for i in range(1, len(self.coefficients) + 1):
             self.anti_derivative_coefficients[i] = self.coefficients[i - 1] * 1 / i
 
-    def getAnalyticSolutionIntegral(self, start: float, end: float):
-        return self.eval_anti_derivative(end) - self.eval_anti_derivative(start)
+    def getAnalyticSolutionIntegral(self, start: Sequence[float], end: Sequence[float]):
+        return self.eval_anti_derivative(end[0]) - self.eval_anti_derivative(start[0])
 
-    def eval(self, coordinates: float):
+    def eval(self, coordinates: Tuple[float, ...]):
         value = 0
 
         for i in range(len(self.coefficients)):
-            value += self.coefficients[i] * (coordinates ** i)
+            value += self.coefficients[i] * (coordinates[0] ** i)
 
         return value
 

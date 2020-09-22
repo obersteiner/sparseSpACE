@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from abc import ABC, abstractmethod
 from scipy.interpolate import interp1d
-from sympy import *
 import sympy as sym
+from typing import Sequence, Tuple, Dict, List
 
+from sympy import symbols
+import Function
 
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Extrapolation Coefficients
@@ -21,18 +23,18 @@ class ExtrapolationVersion(Enum):
 
 # This class controls the coefficients for the extrapolation
 class ExtrapolationCoefficients(ABC):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         self.a = a
         self.b = b
 
     @abstractmethod
-    def get_coefficient(self, m, j):
+    def get_coefficient(self, m: int, j: int) -> float:
         pass
 
-    def get_step_width(self, j):
+    def get_step_width(self, j: int) -> float:
         return (self.b - self.a) / (2 ** j)
 
-    def get_romberg_coefficient(self, m, j, exponent):
+    def get_romberg_coefficient(self, m: int, j: int, exponent: int) -> float:
         coefficient = 1
         h_j = self.get_step_width(j)
 
@@ -44,26 +46,26 @@ class ExtrapolationCoefficients(ABC):
 
 
 class RombergLinearCoefficients(ExtrapolationCoefficients):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         super(RombergLinearCoefficients, self).__init__(a, b)
 
-    def get_coefficient(self, m, j):
+    def get_coefficient(self, m: int, j: int) -> float:
         return self.get_romberg_coefficient(m, j, 1)
 
 
 class RombergDefaultCoefficients(ExtrapolationCoefficients):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         super(RombergDefaultCoefficients, self).__init__(a, b)
 
-    def get_coefficient(self, m, j):
+    def get_coefficient(self, m: int, j: int) -> float:
         return self.get_romberg_coefficient(m, j, 2)
 
 
 class RombergSimpsonCoefficients(ExtrapolationCoefficients):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         super(RombergSimpsonCoefficients, self).__init__(a, b)
 
-    def get_coefficient(self, m, j):
+    def get_coefficient(self, m: int, j: int) -> float:
         return self.get_romberg_coefficient(m, j, 3)
 
 
@@ -71,7 +73,8 @@ class ExtrapolationCoefficientsFactory:
     def __init__(self, extrapolation_version: ExtrapolationVersion):
         self.extrapolation_version = extrapolation_version
 
-    def get(self, a, b, support_sequence=None) -> ExtrapolationCoefficients:
+    def get(self, a: float, b: float, support_sequence: Sequence[Tuple[float, float]] =None) \
+            -> ExtrapolationCoefficients:
         if self.extrapolation_version == ExtrapolationVersion.ROMBERG_DEFAULT:
             return RombergDefaultCoefficients(a, b)
 
@@ -88,7 +91,7 @@ class ExtrapolationCoefficientsFactory:
 # Returns the correct class for the computation of weights
 class RombergWeightFactory:
     @staticmethod
-    def get(a, b, version):
+    def get(a: float, b: float, version: ExtrapolationVersion) -> 'RombergWeights':
         if version == ExtrapolationVersion.ROMBERG_DEFAULT or version == ExtrapolationVersion.ROMBERG_LINEAR:
             return RombergTrapezoidalWeights(a, b, version)
 
@@ -100,32 +103,32 @@ class RombergWeightFactory:
 
 
 class RombergWeights(ABC):
-    def __init__(self, a, b, version: ExtrapolationVersion):
+    def __init__(self, a: float, b: float, version: ExtrapolationVersion):
         self.a = a
         self.b = b
         self.version = version
         self.extrapolation_factory = ExtrapolationCoefficientsFactory(version).get(a, b)
 
     @abstractmethod
-    def get_boundary_point_weight(self, max_level):
+    def get_boundary_point_weight(self, max_level: int) -> float:
         pass
 
     @abstractmethod
-    def get_inner_point_weight(self, level, max_level):
+    def get_inner_point_weight(self, level: int, max_level: int) -> float:
         pass
 
-    def get_extrapolation_coefficient(self, m, j):
+    def get_extrapolation_coefficient(self, m: int, j: int) -> float:
         return self.extrapolation_factory.get_coefficient(m, j)
 
-    def get_step_width(self, j):
+    def get_step_width(self, j: int) -> float:
         return self.extrapolation_factory.get_step_width(j)
 
 
 class RombergTrapezoidalWeights(RombergWeights):
-    def __init__(self, a, b, version: ExtrapolationVersion = ExtrapolationVersion.ROMBERG_DEFAULT):
+    def __init__(self, a: float, b: float, version: ExtrapolationVersion = ExtrapolationVersion.ROMBERG_DEFAULT):
         super(RombergTrapezoidalWeights, self).__init__(a, b, version)
 
-    def get_boundary_point_weight(self, max_level):
+    def get_boundary_point_weight(self, max_level: int) -> float:
         weight = 0
 
         for j in range(max_level + 1):
@@ -135,7 +138,7 @@ class RombergTrapezoidalWeights(RombergWeights):
 
         return weight
 
-    def get_inner_point_weight(self, level, max_level):
+    def get_inner_point_weight(self, level: int, max_level: int) -> float:
         assert 1 <= level <= max_level
 
         weight = 0
@@ -149,10 +152,10 @@ class RombergTrapezoidalWeights(RombergWeights):
 
 
 class RombergSimpsonWeights(RombergWeights):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         super(RombergSimpsonWeights, self).__init__(a, b, ExtrapolationVersion.ROMBERG_SIMPSON)
 
-    def get_boundary_point_weight(self, max_level):
+    def get_boundary_point_weight(self, max_level: int) -> float:
         weight = 0
 
         for j in range(max_level + 1):
@@ -162,7 +165,7 @@ class RombergSimpsonWeights(RombergWeights):
 
         return weight / 3
 
-    def get_inner_point_weight(self, level, max_level):
+    def get_inner_point_weight(self, level: int, max_level: int) -> float:
         assert 1 <= level <= max_level
         factory = self.extrapolation_factory
 
@@ -185,7 +188,7 @@ class RombergSimpsonWeights(RombergWeights):
 # Singleton wrapper is defined below
 class GridBinaryTree:
     class __GridBinaryTree:
-        def __init__(self, use_caching=False, print_debug=False):
+        def __init__(self, use_caching: bool = False, print_debug: bool = False):
             self.grid = None
             self.grid_levels = None
             self.a = None
@@ -201,7 +204,7 @@ class GridBinaryTree:
             self.use_caching = use_caching
             self.print_debug = print_debug
 
-        def __init_attributes(self, grid, grid_levels):
+        def __init_attributes(self, grid: Sequence[float], grid_levels: Sequence[int]) -> None:
             self.grid = grid
             self.grid_levels = grid_levels
             self.a = grid[0]
@@ -212,7 +215,7 @@ class GridBinaryTree:
             self.full_tree_dict = {}
 
         # Given a grid level array, this method initializes a appropriate binary tree structure
-        def init_tree(self, grid, grid_levels):
+        def init_tree(self, grid: Sequence[float], grid_levels: Sequence[int]) -> None:
             self.__init_attributes(grid, grid_levels)
 
             # Remove boundary levels
@@ -223,9 +226,9 @@ class GridBinaryTree:
 
             assert self.root_node is not None
 
-        def __init_tree_rec(self, node, grid, grid_levels,
-                            start_index, stop_index,
-                            inside_left_subtree=None):
+        def __init_tree_rec(self, node: 'Node', grid: Sequence[float], grid_levels: Sequence[int],
+                            start_index: int, stop_index: int,
+                            inside_left_subtree=None) -> None:
             # Find index of minimal element in active interval
             current_grid_level_slice = grid_levels[start_index:stop_index + 1]
             if start_index < stop_index:
@@ -258,7 +261,7 @@ class GridBinaryTree:
                                      split_index + 1, stop_index, inside_left_subtree=False)
 
         # Expand tree until it is a full binary tree
-        def force_full_tree_invariant(self):
+        def force_full_tree_invariant(self) -> None:
             if self.root_node is None:
                 return
 
@@ -285,7 +288,7 @@ class GridBinaryTree:
 
         # Method for numerical experiments and testing
         # This method initialises a perfect binary tee (each node has two children, all leafs are on max_level)
-        def init_perfect_tree_with_max_level(self, a, b, max_level):
+        def init_perfect_tree_with_max_level(self, a: float, b: float, max_level: int) -> None:
             queue = []
 
             self.a = a
@@ -305,12 +308,12 @@ class GridBinaryTree:
         #   => level of each subtree is increased by one
         # Note: This works for each tree type (default, full, perfect)
         # Important: non-leaf nodes (e.g. nodes with one children) are not considered!!!
-        def increment_level_in_each_subtree(self):
+        def increment_level_in_each_subtree(self) -> None:
             leafs = self.__get_leafs()
 
             self.__increment_level_in_each_subtree(leafs)
 
-        def __increment_level_in_each_subtree(self, node_queue=[]):
+        def __increment_level_in_each_subtree(self, node_queue: Sequence['Node'] = []) -> Sequence['Node']:
             new_queue = []
             H = self.b - self.a
 
@@ -331,7 +334,7 @@ class GridBinaryTree:
             return new_queue
 
         # Return grid with boundary points
-        def get_grid(self):
+        def get_grid(self) -> Sequence[float]:
             if not self.use_caching:
                 return self.__get_grid()
 
@@ -344,11 +347,11 @@ class GridBinaryTree:
 
             return self.__get_grid_from_cache(dict_key)
 
-        def __get_grid(self):
+        def __get_grid(self) -> Sequence[float]:
             return [self.a] + self.root_node.get_grid() + [self.b]
 
         # Return levels, with boundaries
-        def get_grid_levels(self):
+        def get_grid_levels(self) -> Sequence[int]:
             if not self.use_caching:
                 return self.__get_grid_levels()
 
@@ -360,10 +363,10 @@ class GridBinaryTree:
             self.__cache_grid()
             return self.__get_grid_levels_from_cache(dict_key)
 
-        def __get_grid_levels(self):
+        def __get_grid_levels(self) -> Sequence[int]:
             return [0] + self.root_node.get_grid_levels() + [0]
 
-        def __get_leafs(self):
+        def __get_leafs(self) -> Sequence['Node']:
             if self.root_node is None:
                 return []
 
@@ -377,33 +380,33 @@ class GridBinaryTree:
             return leafs
 
         # Caching
-        def __is_cached(self, grid):
+        def __is_cached(self, grid) -> bool:
             dict_key = self.__get_dict_key(grid)
 
             return dict_key in self.full_tree_dict
 
-        def __cache_grid(self):
+        def __cache_grid(self) -> None:
             dict_key = self.__get_dict_key(self.grid)
             self.full_tree_dict[dict_key] = (self.__get_grid(), self.__get_grid_levels())
 
-        def __get_grid_from_cache(self, dict_key):
+        def __get_grid_from_cache(self, dict_key: Sequence[float]) -> Sequence[float]:
             grid, _ = self.full_tree_dict[dict_key]
 
             return grid
 
-        def __get_grid_levels_from_cache(self, dict_key):
+        def __get_grid_levels_from_cache(self, dict_key: Tuple[float]) -> Sequence[int]:
             _, grid_levels = self.full_tree_dict[dict_key]
 
             return grid_levels
 
         @staticmethod
-        def __get_dict_key(grid):
+        def __get_dict_key(grid: Sequence[float]) -> Tuple[float, ...]:
             return tuple(grid)
 
         class Node:
-            def __init__(self, point, left_child=None, right_child=None,
-                         parent=None, start_level=1,
-                         print_debug=False):
+            def __init__(self, point: float, left_child: 'Node' = None, right_child: 'Node' = None,
+                         parent: 'Node' = None, start_level: int = 1,
+                         print_debug: bool = False):
                 self.point = point
                 self.left_child = left_child
                 self.right_child = right_child
@@ -412,10 +415,10 @@ class GridBinaryTree:
 
                 self.print_debug = print_debug
 
-            def get_nodes_using_dfs_in_order(self, max_level=None):
+            def get_nodes_using_dfs_in_order(self, max_level: int = None) -> Sequence['Node']:
                 return self.__get_nodes_using_dfs_in_order_rec(self, max_level)
 
-            def __get_nodes_using_dfs_in_order_rec(self, node, max_level=None):
+            def __get_nodes_using_dfs_in_order_rec(self, node: 'Node', max_level: int = None) -> List['node']:
                 if node is None or (max_level is not None and node.level > max_level):
                     return []
 
@@ -425,89 +428,89 @@ class GridBinaryTree:
                 return left_subtree + [node] + right_subtree
 
             # Returns the grid of current subtree
-            def get_grid(self, max_level=None):
+            def get_grid(self, max_level: int = None) -> Sequence[float]:
                 return list(map(lambda node: node.point, self.get_nodes_using_dfs_in_order(max_level)))
 
             # Returns the levels of the current subtree
-            def get_grid_levels(self, max_level=None):
+            def get_grid_levels(self, max_level: int = None) -> Sequence[int]:
                 return list(map(lambda node: node.level, self.get_nodes_using_dfs_in_order(max_level)))
 
             # Setter methods for children nodes
-            def set_left_child(self, left_child):
+            def set_left_child(self, left_child: 'Node') -> None:
                 self.left_child = left_child
                 left_child.level = self.level + 1
 
-            def set_right_child(self, right_child):
+            def set_right_child(self, right_child: 'Node') -> None:
                 self.right_child = right_child
                 right_child.level = self.level + 1
 
             # Getter methods
-            def get_left_child(self):
+            def get_left_child(self) -> 'Node':
                 return self.left_child
 
-            def get_right_child(self):
+            def get_right_child(self) -> 'Node':
                 return self.right_child
 
-            def has_left_child(self):
+            def has_left_child(self) -> bool:
                 return self.get_left_child() is not None
 
-            def has_right_child(self):
+            def has_right_child(self) -> bool:
                 return self.get_right_child() is not None
 
-            def has_both_children(self):
+            def has_both_children(self) -> bool:
                 return self.has_left_child() and self.has_right_child()
 
-            def has_only_one_child(self):
+            def has_only_one_child(self) -> bool:
                 return (self.has_left_child() and (not self.has_right_child())) \
                        or (self.has_right_child() and (not self.has_left_child()))
 
-            def is_leaf(self):
+            def is_leaf(self) -> bool:
                 return (not self.has_left_child()) and (not self.has_right_child())
 
-            def is_root_node(self):
+            def is_root_node(self) -> bool:
                 return self.parent is None
 
-            def has_parent(self):
+            def has_parent(self) -> bool:
                 return not self.is_root_node()
 
-            def is_left_child(self):
+            def is_left_child(self) -> bool:
                 return self.parent.get_left_child() is self
 
-            def is_right_child(self):
+            def is_right_child(self) -> bool:
                 return self.parent.get_right_child() is self
 
             @staticmethod
-            def node_to_string(node):
+            def node_to_string(node) -> str:
                 return "Node: Point {} of level {})".format(node.point, node.level)
 
     instance = None
 
-    def __init__(self, print_debug=False):
+    def __init__(self, print_debug: bool = False):
         if not GridBinaryTree.instance:
             GridBinaryTree.instance = GridBinaryTree.__GridBinaryTree(print_debug=print_debug)
         else:
             GridBinaryTree.instance.print_debug = print_debug
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         return getattr(self.instance, name)
 
     # Interface methods
-    def init_tree(self, grid, grid_levels):
+    def init_tree(self, grid: Sequence[float], grid_levels: Sequence[int]) -> None:
         return self.instance.init_tree(grid, grid_levels)
 
-    def force_full_tree_invariant(self):
+    def force_full_tree_invariant(self) -> None:
         self.instance.force_full_tree_invariant()
 
-    def init_perfect_tree_with_max_level(self, a, b, max_level):
+    def init_perfect_tree_with_max_level(self, a: float, b: float, max_level: int) -> None:
         self.instance.init_perfect_tree_with_max_level(a, b, max_level)
 
-    def increment_level_in_each_subtree(self):
+    def increment_level_in_each_subtree(self) -> None:
         self.instance.increment_level_in_each_subtree()
 
-    def get_grid(self):
+    def get_grid(self) -> Sequence[float]:
         return self.instance.get_grid()
 
-    def get_grid_levels(self):
+    def get_grid_levels(self) -> Sequence[int]:
         return self.instance.get_grid_levels()
 
 
@@ -559,8 +562,8 @@ class ExtrapolationGrid:
                  slice_grouping: SliceGrouping = SliceGrouping.UNIT,
                  slice_version: SliceVersion = SliceVersion.ROMBERG_DEFAULT,
                  container_version: SliceContainerVersion = SliceContainerVersion.ROMBERG_DEFAULT,
-                 force_balanced_refinement_tree=False,
-                 print_debug=False):
+                 force_balanced_refinement_tree: bool = False,
+                 print_debug: bool = False):
         self.print_debug = print_debug
 
         self.a = None
@@ -588,12 +591,12 @@ class ExtrapolationGrid:
         else:
             self.max_interpolation_step_width_delta = 2 ** 1
 
-    def interpolation_is_enabled(self):
+    def interpolation_is_enabled(self) -> bool:
         return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG or \
                self.container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG
 
     # Integration
-    def integrate(self, function: Function = None):
+    def integrate(self, function: Function = None) -> float:
         """
         This method integrates a given function over a grid that has been specified before.
 
@@ -624,13 +627,13 @@ class ExtrapolationGrid:
 
         value = 0
         for i in range(len(self.grid)):
-            value += self.weights[i] * self.function.eval(self.grid[i])
+            value += self.weights[i] * self.function.eval([self.grid[i]])
 
         self.integral_approximation = value
 
         return value
 
-    def set_grid(self, grid, grid_levels):
+    def set_grid(self, grid: Sequence[float], grid_levels: Sequence[float]) -> None:
         """
         This method updates the grid and initializes the new slices.
 
@@ -666,7 +669,7 @@ class ExtrapolationGrid:
         if self.print_debug:
             print("The grid slices have been initialized \n")
 
-    def __init_grid_slices(self):
+    def __init_grid_slices(self) -> None:
         """
         This method partitions the integration area into slices (based on the provided grid).
         The slices are grouped into containers.
@@ -711,7 +714,8 @@ class ExtrapolationGrid:
         # Enable possibility for inheriting classes to do a postprocessing step
         self.grid_init_post_processing()
 
-    def compute_support_sequence(self, final_slice_start_index, final_slice_stop_index):
+    def compute_support_sequence(self, final_slice_start_index: int, final_slice_stop_index: int) \
+            -> List[Tuple[float, float]]:
         """
         This method computes the sequence of support points for the sliced trapezoid.
 
@@ -727,8 +731,9 @@ class ExtrapolationGrid:
 
         return [(self.grid[element[0]], self.grid[element[1]]) for element in sequence]
 
-    def __compute_support_sequence_rec(self, start_index, stop_index,
-                                       final_slice_start_index, final_slice_stop_index):
+    def __compute_support_sequence_rec(self, start_index: int, stop_index: int,
+                                       final_slice_start_index: int, final_slice_stop_index: int) \
+            -> List[Tuple[int, int]]:
         """
         This method recursively computes the support sequence.
 
@@ -763,7 +768,7 @@ class ExtrapolationGrid:
                                                                                  final_slice_start_index,
                                                                                  final_slice_stop_index)
 
-    def initialize_containers_with_slices(self, step_width, step_width_buffer, grid_slice):
+    def initialize_containers_with_slices(self, step_width: float, step_width_buffer: float, grid_slice) -> None:
         """
         Group  >= 1 slices into a container, which spans a partial full grid
 
@@ -779,7 +784,8 @@ class ExtrapolationGrid:
         else:
             self.__initialize_default_containers(step_width, step_width_buffer, grid_slice)
 
-    def __initialize_containers_with_interpolated_slices(self, step_width, step_width_buffer, grid_slice):
+    def __initialize_containers_with_interpolated_slices(self, step_width: float, step_width_buffer: float, grid_slice)\
+            -> None:
         """
         Group  >= 1 slices into a container, which spans a partial full grid
 
@@ -815,7 +821,7 @@ class ExtrapolationGrid:
         container.append_slice(grid_slice)
         self.slice_containers.append(container)
 
-    def __initialize_default_containers(self, step_width, step_width_buffer, grid_slice):
+    def __initialize_default_containers(self, step_width: float, step_width_buffer: float, grid_slice) -> None:
         """
         Group  >= 1 slices into a container, which spans a partial full grid
 
@@ -844,7 +850,7 @@ class ExtrapolationGrid:
             container = self.slice_containers[-1]
             container.append_slice(grid_slice)
 
-    def grid_init_post_processing(self):
+    def grid_init_post_processing(self) -> None:
         """
         This method executes post processing steps
 
@@ -862,7 +868,7 @@ class ExtrapolationGrid:
         # Add information about all slices to the left & right for each slice in each container
         self.set_adjacent_slices_for_all_slices()
 
-    def insert_interpolating_slices(self):
+    def insert_interpolating_slices(self) -> None:
         """
         This method computes missing grid points and updates the container accordingly
 
@@ -873,7 +879,7 @@ class ExtrapolationGrid:
         for container in self.slice_containers:
             container.insert_interpolating_slices()
 
-    def adjust_containers(self):
+    def adjust_containers(self) -> None:
         """
         Split containers if necessary into unit slices. Each container should contain 2^k slices for k > 0.
         It updates the attributes accordingly.
@@ -908,7 +914,7 @@ class ExtrapolationGrid:
 
         self.slice_containers = new_containers
 
-    def set_adjacent_containers_for_all_slice_containers(self):
+    def set_adjacent_containers_for_all_slice_containers(self) -> None:
         """
         This method determines for each slice container all (indirect) adjacent containers to the left and right
         of the container.
@@ -927,7 +933,7 @@ class ExtrapolationGrid:
             container.set_adjacent_containers(left=list(reversed(containers_to_left)),
                                               right=containers_to_right)
 
-    def set_adjacent_slices_for_all_slices(self):
+    def set_adjacent_slices_for_all_slices(self) -> None:
         """
         This method initializes the adjacent slices for all slices in each container.
 
@@ -938,7 +944,7 @@ class ExtrapolationGrid:
             container.initialize_adjacent_slices_for_all_slices()
 
     @staticmethod
-    def assert_container_size(container):
+    def assert_container_size(container) -> None:
         """
         This method assures that the container has a size of 2^k (Assert).
 
@@ -956,7 +962,7 @@ class ExtrapolationGrid:
         """
         self.weights = self.get_weights()
 
-    def get_weights(self):
+    def get_weights(self) -> Sequence[float]:
         """
         Get extrapolated weights as array (sorted by grid points in increasing order).
 
@@ -970,7 +976,7 @@ class ExtrapolationGrid:
 
         return grid_weights
 
-    def __get_final_weights_from_all_slices(self):
+    def __get_final_weights_from_all_slices(self) -> Dict[float, Sequence[float]]:
         """
         This method iterates over all containers and collects their weights in a single dictionary.
 
@@ -996,12 +1002,12 @@ class ExtrapolationGrid:
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Setter
 
-    def set_function(self, function):
+    def set_function(self, function: Function) -> None:
         self.function = function
 
         self.update_function_in_containers()
 
-    def update_function_in_containers(self):
+    def update_function_in_containers(self) -> None:
         # Update function in slices
         if self.slice_containers is not None:
             for container in self.slice_containers:
@@ -1010,30 +1016,30 @@ class ExtrapolationGrid:
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Getter
 
-    def get_grid(self):
+    def get_grid(self) -> Sequence[float]:
         return self.grid
 
-    def get_grid_levels(self):
+    def get_grid_levels(self) -> Sequence[int]:
         return self.grid_levels
 
-    def get_error(self):
+    def get_error(self) -> float:
         actual_result = self.integral_approximation
 
         if actual_result is None:
             actual_result = self.integrate()
 
-        return actual_result - self.function.getAnalyticSolutionIntegral(self.a, self.b)
+        return actual_result - self.function.getAnalyticSolutionIntegral([self.a], [self.b])
 
-    def get_absolute_error(self):
+    def get_absolute_error(self) -> float:
         return abs(self.get_error())
 
-    def get_step_width(self, level):
+    def get_step_width(self, level: int) -> float:
         return (self.b - self.a) / (2 ** level)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Plot
 
-    def plot_slices_with_function(self):
+    def plot_slices_with_function(self) -> None:
         """
         This method plots the function as well as the grid slices/containers.
 
@@ -1064,7 +1070,7 @@ class ExtrapolationGrid:
 
         plt.show()
 
-    def plot_support_sequence_for_each_slice(self, filename=None):
+    def plot_support_sequence_for_each_slice(self, filename: str = None) -> None:
         """
         This method plots the support sequence for each slice slices.
 
@@ -1114,6 +1120,7 @@ class ExtrapolationGrid:
                     plt.text(x[-1] - 0.05, y[-1] - 0.7, "f", color="blue")
                     plt.title("Slice [{}, {}] with support ({}, {})".format(slice.left_point, slice.right_point,
                                                                             left_supp, right_supp))
+                    plt.xticks(self.grid, self.grid)
 
                     if filename is not None:
                         plt.savefig("{}_slice_{}_support_{}".format(filename, i, j), bbox_inches='tight', dpi=300)
@@ -1121,7 +1128,7 @@ class ExtrapolationGrid:
                     plt.show()
                 i += 1
 
-    def plot_slice_refinement_levels(self, filename=None):
+    def plot_slice_refinement_levels(self, filename: str = None) -> None:
         """
         This method plots the support sequence for each slice slices.
 
@@ -1169,12 +1176,14 @@ class ExtrapolationGrid:
             plt.plot([grid[-1], grid[-1]], [0, self.function.eval(grid[-1])], '--', color="grey")
             plt.plot([grid[-1]], [self.function.eval(grid[-1])], marker='o', markersize=5, color="green")
 
+            plt.xticks(self.grid, self.grid)
+
             if filename is not None:
                 plt.savefig("{}_slice_refinement_level_{}".format(filename, i), bbox_inches='tight', dpi=300)
 
             plt.show()
 
-    def plot_grid_with_containers(self, filename=None, highlight_containers=True):
+    def plot_grid_with_containers(self, filename: str = None, highlight_containers: bool = True) -> None:
         markersize = 20
         fontsize = 60
 
@@ -1282,9 +1291,9 @@ class ExtrapolationGridSlice(ABC):
     :param function: for error computation.
     """
 
-    def __init__(self, interval, levels, support_sequence,
-                 extrapolation_version: ExtrapolationVersion = None,
-                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+    def __init__(self, interval: Sequence[float], levels: Sequence[int],
+                 support_sequence: Sequence[Tuple[float, float]], extrapolation_version: ExtrapolationVersion = None,
+                 left_point_is_interpolated: bool = False, right_point_is_interpolated: bool = False,
                  function: Function = None):
         assert interval[0] < interval[1]
 
@@ -1320,7 +1329,8 @@ class ExtrapolationGridSlice(ABC):
     # ---  Weights
 
     @abstractmethod
-    def get_weight_for_left_and_right_support_point(self, left_support_point, right_support_point):
+    def get_weight_for_left_and_right_support_point(self, left_support_point: float, right_support_point: float)\
+            -> Tuple[float, float]:
         """
         This methods computes the weights for the support points, that correspond to the area of this slice
 
@@ -1331,7 +1341,7 @@ class ExtrapolationGridSlice(ABC):
 
         pass
 
-    def get_support_points_with_their_weights(self, level):
+    def get_support_points_with_their_weights(self, level: int) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """
         This method returns the left/right support point with its corresponding weight for a given level
 
@@ -1350,13 +1360,13 @@ class ExtrapolationGridSlice(ABC):
         left_point, right_point = self.support_sequence[level]
         left_weight, right_weight = self.get_weight_for_left_and_right_support_point(left_point, right_point)
 
-        return [(left_point, left_weight), (right_point, right_weight)]
+        return (left_point, left_weight), (right_point, right_weight)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Extrapolation of weights
 
     @abstractmethod
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, float]:
         """
         This method computes the final (extrapolated) weights.
 
@@ -1368,7 +1378,7 @@ class ExtrapolationGridSlice(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Errors
 
-    def get_absolute_error_at_level(self, level):
+    def get_absolute_error_at_level(self, level: int) -> float:
         """
         This method computes the absolute error at a given level
 
@@ -1386,7 +1396,7 @@ class ExtrapolationGridSlice(ABC):
 
         return abs(slice_approximation_value - self.analytical_solution)
 
-    def get_extrapolated_error(self):
+    def get_extrapolated_error(self) -> float:
         """
         This method computes the absolute final error.
 
@@ -1408,7 +1418,7 @@ class ExtrapolationGridSlice(ABC):
 
         return abs(slice_approximation_value - self.analytical_solution)
 
-    def print_error_evolution(self):
+    def print_error_evolution(self) -> None:
         # Print default error
         for level in range(self.max_level + 1):
             error = self.get_absolute_error_at_level(level)
@@ -1421,33 +1431,33 @@ class ExtrapolationGridSlice(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Getter & Setter
 
-    def set_function(self, function):
+    def set_function(self, function: Function) -> None:
         self.function = function
 
         if function is not None:
-            self.analytical_solution = function.getAnalyticSolutionIntegral(self.left_point, self.right_point)
+            self.analytical_solution = function.getAnalyticSolutionIntegral([self.left_point], [self.right_point])
         else:
             self.analytical_solution = None
 
-    def is_interpolated(self):
+    def is_interpolated(self) -> bool:
         return self.left_point_is_interpolated or self.right_point_is_interpolated
 
-    def is_left_point_interpolated(self):
+    def is_left_point_interpolated(self) -> bool:
         return self.left_point_is_interpolated
 
-    def is_right_point_interpolated(self):
+    def is_right_point_interpolated(self) -> bool:
         return self.right_point_is_interpolated
 
-    def set_adjacent_slice_left(self, slice):
+    def set_adjacent_slice_left(self, slice: 'ExtrapolationGridSlice') -> None:
         self.adjacent_slice_left = slice
 
-    def set_adjacent_slice_right(self, slice):
+    def set_adjacent_slice_right(self, slice: 'ExtrapolationGridSlice') -> None:
         self.adjacent_slice_right = slice
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
-    def to_string(self, name="ExtrapolationGridSlice"):
+    def to_string(self, name="ExtrapolationGridSlice") -> str:
         return "{} [{}, {}]".format(name, self.left_point, self.right_point)
 
 
@@ -1482,7 +1492,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         self.max_interpolation_support_points = 0
 
-    def append_slice(self, slice: ExtrapolationGridSlice):
+    def append_slice(self, slice: ExtrapolationGridSlice) -> None:
         """
         This method appends a slice of arbitrary type to the container.
 
@@ -1505,7 +1515,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         self.slices.append(slice)
 
-    def initialize_adjacent_slices_for_all_slices(self):
+    def initialize_adjacent_slices_for_all_slices(self) -> None:
         # First slice of this container
         container_left = self.get_adjacent_container_left()
         slice_left = container_left.slices[-1] if container_left is not None else None
@@ -1522,7 +1532,7 @@ class ExtrapolationGridSliceContainer(ABC):
             slices[i].set_adjacent_slice_right(slices[i+1])
 
     @abstractmethod
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, float]:
         """
         This method computes the final (extrapolated) slices in this container.
 
@@ -1531,7 +1541,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         pass
 
-    def get_grid(self):
+    def get_grid(self) -> Sequence[float]:
         """
         This method returns all grid points in this container (interpolated ones included).
 
@@ -1540,7 +1550,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return list(map(lambda s: s.left_point, self.slices)) + [self.slices[-1].right_point]
 
-    def get_grid_levels(self):
+    def get_grid_levels(self) -> Sequence[int]:
         """
         This method returns all grid levels in this container (interpolated ones included).
 
@@ -1549,7 +1559,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return list(map(lambda s: s.levels[0], self.slices)) + [self.slices[-1].levels[1]]
 
-    def get_grid_without_interpolated_points(self):
+    def get_grid_without_interpolated_points(self) -> Sequence[float]:
         """
         This method returns only grid points that have not been interpolated.
 
@@ -1562,7 +1572,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return truncated_grid
 
-    def get_grid_levels_without_interpolated_points(self):
+    def get_grid_levels_without_interpolated_points(self) -> Sequence[int]:
         """
         This method returns all grid levels in this container (without interpolated grid levels).
 
@@ -1575,7 +1585,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return truncated_grid_levels
 
-    def get_full_grid_levels_between(self, left_level, right_level, max_level):
+    def get_full_grid_levels_between(self, left_level: int, right_level: int, max_level: int) -> Sequence[int]:
         """
         This method computes the grid levels of the full grid between two given levels.
 
@@ -1592,7 +1602,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return [left_level] + interpolated_levels + [right_level]
 
-    def __get_full_grid_levels_between(self, start_level, max_level):
+    def __get_full_grid_levels_between(self, start_level: int, max_level: int) -> Sequence[int]:
         if start_level > max_level:
             return []
 
@@ -1601,7 +1611,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return left_levels + [start_level] + right_levels
 
-    def get_normalized_grid_levels(self):
+    def get_normalized_grid_levels(self) -> Sequence[int]:
         """
         This method normalizes the grid levels (with interpolated levels)
 
@@ -1629,7 +1639,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return [0] + self.__get_normalized_grid_levels(1, len(grid) - 2) + [0]
 
-    def __get_normalized_grid_levels(self, start, stop, level=1):
+    def __get_normalized_grid_levels(self, start: float, stop: float, level: int = 1) -> Sequence[int]:
         middle = int((start + stop) / 2)
 
         if start > stop:
@@ -1642,7 +1652,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return left_levels + [level] + right_levels
 
-    def get_normalized_non_interpolated_grid_levels(self):
+    def get_normalized_non_interpolated_grid_levels(self) -> Sequence[int]:
         """
         This method normalizes the grid levels while skipping the level of an interpolated grid point
 
@@ -1656,7 +1666,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return truncated_normalized_levels
 
-    def get_interpolated_grid_points_indicator(self):
+    def get_interpolated_grid_points_indicator(self) -> Sequence[bool]:
         """
         This method computes an indicator for interpolated grid points as array.
         If the i-th element in this array is true, the corresponding grid point at this index is interpolated
@@ -1671,7 +1681,7 @@ class ExtrapolationGridSliceContainer(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Errors
 
-    def get_extrapolated_error(self):
+    def get_extrapolated_error(self) -> float:
         """
         Computes the absolute final error.
 
@@ -1689,11 +1699,11 @@ class ExtrapolationGridSliceContainer(ABC):
         # Compute value
         slice_approximation_value = 0
         for grid_point, weights in weight_dict.items():
-            slice_approximation_value += sum(weights) * self.function.eval(grid_point)
+            slice_approximation_value += sum(weights) * self.function.eval([grid_point])
 
         return abs(slice_approximation_value - self.analytical_solution)
 
-    def print_error_evolution(self, name="SliceContainer"):
+    def print_error_evolution(self, name: str = "SliceContainer") -> None:
         print("The {} [{}, {}] has the following error evolution:".format(name, self.left_point, self.right_point))
 
         # Print unit slice error evolution
@@ -1706,15 +1716,16 @@ class ExtrapolationGridSliceContainer(ABC):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Getter & Setter
 
-    def set_adjacent_containers(self, left, right):
+    def set_adjacent_containers(self, left: 'ExtrapolationGridSliceContainer',
+                                right: 'ExtrapolationGridSliceContainer') -> None:
         self.adjacent_containers_left = left
         self.adjacent_containers_right = right
 
-    def set_function(self, function):
+    def set_function(self, function) -> None:
         self.function = function
 
         if function is not None and self.left_point is not None and self.right_point is not None:
-            self.analytical_solution = function.getAnalyticSolutionIntegral(self.left_point, self.right_point)
+            self.analytical_solution = function.getAnalyticSolutionIntegral([self.left_point], [self.right_point])
         else:
             self.analytical_solution = None
 
@@ -1722,23 +1733,23 @@ class ExtrapolationGridSliceContainer(ABC):
         for slice in self.slices:
             slice.set_function(function)
 
-    def get_slices(self):
+    def get_slices(self) -> Sequence[ExtrapolationGridSlice]:
         return self.slices
 
-    def get_adjacent_container_left(self):
+    def get_adjacent_container_left(self) -> 'ExtrapolationGridSliceContainer':
         return self.adjacent_containers_left[0] if len(self.adjacent_containers_left) >= 1 else None
 
-    def get_adjacent_container_right(self):
+    def get_adjacent_container_right(self) -> 'ExtrapolationGridSliceContainer':
         return self.adjacent_containers_right[0] if len(self.adjacent_containers_right) >= 1 else None
 
     # Returns the amount of slices in this container
-    def size(self):
+    def size(self) -> int:
         return len(self.slices)
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
-    def split_into_containers_with_power_two_sizes(self):
+    def split_into_containers_with_power_two_sizes(self) -> Sequence['ExtrapolationGridSliceContainer']:
         """
         This method implements a optimized container splitting.
         The size of the container is considered as a sum of powers of 2.
@@ -1765,7 +1776,7 @@ class ExtrapolationGridSliceContainer(ABC):
         return split_containers
 
     @staticmethod
-    def find_closest_power_below(n, base=2):
+    def find_closest_power_below(n: int, base: int = 2) -> int:
         """
         This method determines the closest power below a given number for a given base and returns it.
 
@@ -1786,7 +1797,7 @@ class ExtrapolationGridSliceContainer(ABC):
         return 1
 
     @staticmethod
-    def assert_container_size(container):
+    def assert_container_size(container: 'ExtrapolationGridSliceContainer') -> None:
         """
         This method assures that the container has a size of 2^k (Assert).
 
@@ -1796,7 +1807,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         assert (math.log(container.size(), 2)).is_integer()
 
-    def update_container_information(self):
+    def update_container_information(self) -> None:
         self.left_point = self.slices[0].left_point
         self.right_point = self.slices[-1].right_point
         self.max_level = max(self.get_grid_levels())
@@ -1806,7 +1817,7 @@ class ExtrapolationGridSliceContainer(ABC):
                 self.slices[i].right_point - self.slices[i].left_point for i in range(len(self.slices))
             ]))
 
-    def to_string(self, name="SliceContainer"):
+    def to_string(self, name: str = "SliceContainer") -> str:
         str_builder = "{} [{}, {}] with the slices: \n".format(name, self.left_point, self.right_point)
 
         for i, slice in enumerate(self.slices):
@@ -1814,7 +1825,7 @@ class ExtrapolationGridSliceContainer(ABC):
 
         return str_builder
 
-    def __assert_size(self):
+    def __assert_size(self) -> None:
         assert (math.log(self.size(), 2)).is_integer()
 
 
@@ -1828,9 +1839,9 @@ class RombergGridSlice(ExtrapolationGridSlice):
     :param function: for error computation.
     """
 
-    def __init__(self, interval, levels, support_sequence,
+    def __init__(self, interval: Tuple[float, float], levels: Tuple[float, float], support_sequence: Sequence[Tuple[float, ...]],
                  extrapolation_version: ExtrapolationVersion,
-                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+                 left_point_is_interpolated: bool = False, right_point_is_interpolated: bool = False,
                  function: Function = None):
         super(RombergGridSlice, self).__init__(interval, levels, support_sequence,
                                                extrapolation_version,
@@ -1846,7 +1857,8 @@ class RombergGridSlice(ExtrapolationGridSlice):
     # Based on generalized sliced trapezoidal rule
     # See thesis, for the derivation of this weights
     # This methods computes the weights for the support points, that correspond to the area of this slice
-    def get_weight_for_left_and_right_support_point(self, left_support_point, right_support_point):
+    def get_weight_for_left_and_right_support_point(self, left_support_point: float, right_support_point: float)\
+            -> Tuple[float, float]:
         # Support points may only be located outside of this slice, or on the boundaries itself
         assert left_support_point <= self.left_point and right_support_point >= self.right_point
         assert left_support_point != right_support_point
@@ -1872,7 +1884,7 @@ class RombergGridSlice(ExtrapolationGridSlice):
     # ---  Extrapolation of weights
 
     # This method returns a dictionary that maps grid points to a list of their extrapolated weights
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         # The first element of the support sequence contains the integration domain boundaries
         (a, b) = self.support_sequence[0]
 
@@ -1903,7 +1915,7 @@ class RombergGridSlice(ExtrapolationGridSlice):
 
         return weight_dictionary
 
-    def subtract_constants(self, weight_dictionary):
+    def subtract_constants(self, weight_dictionary: Dict[float, Sequence[float]]) -> None:
         """
         This is an interface for constant subtraction based on the extrapolation expansion
 
@@ -1915,12 +1927,12 @@ class RombergGridSlice(ExtrapolationGridSlice):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
-    def to_string(self, name=None):
+    def to_string(self, name: str = None) -> str:
         return super().to_string("RombergGridSlice")
 
 
 class RombergGridSliceConstantSubtraction(RombergGridSlice):
-    def subtract_constants(self, weight_dictionary):
+    def subtract_constants(self, weight_dictionary: Dict[float, Sequence[float]]) -> None:
         constants = SlicedRombergConstants(self)
         constant_dict = constants.get_final_extrapolation_constant_weights()
 
@@ -1945,7 +1957,7 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
         """
         super(RombergGridSliceContainer, self).__init__(function)
 
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         assert len(self.slices) > 0
 
         # This container has only one slice. => Extrapolate this unit slice
@@ -1979,7 +1991,7 @@ class RombergGridSliceContainer(ExtrapolationGridSliceContainer):
     # ---  Helpers
 
     # See parent class
-    def to_string(self, name=None):
+    def to_string(self, name: str = None) -> str:
         return super().to_string("RombergGridSliceContainer")
 
 
@@ -2000,7 +2012,7 @@ class SimpsonRombergGridSliceContainer(ExtrapolationGridSliceContainer):
         """
         super(SimpsonRombergGridSliceContainer, self).__init__(function)
 
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         assert len(self.slices) > 0
 
         # This container has only one slice. => Extrapolate this unit slice
@@ -2034,7 +2046,7 @@ class SimpsonRombergGridSliceContainer(ExtrapolationGridSliceContainer):
     # ---  Helpers
 
     # See parent class
-    def to_string(self, name=None):
+    def to_string(self, name: str = None) -> str:
         return super().to_string("SimpsonRombergGridSliceContainer")
 
 
@@ -2055,7 +2067,7 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
         super(InterpolationGridSliceContainer, self).__init__(function)
         self.max_interpolation_support_points = 7
 
-    def get_support_points_for_interpolation_by_levels(self, max_point_count):
+    def get_support_points_for_interpolation_by_levels(self, max_point_count: int) -> Sequence[float]:
         """
         This method computes support points that are used in the interpolation of grid points.
         The support points are distributed to the left containers, middle container and right containers.
@@ -2108,7 +2120,8 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
         return support_points
 
     @staticmethod
-    def get_interpolation_support_point_count(max_count_left, max_count_middle, max_count_right, max_count_total):
+    def get_interpolation_support_point_count(max_count_left: int, max_count_middle: int, max_count_right: int,
+                                              max_count_total: int) -> Tuple[int, int, int]:
         max_iter = max_count_left + max_count_middle + max_count_right
         i = 0
 
@@ -2140,7 +2153,7 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
         return left_count, middle_count, right_count
 
     @staticmethod
-    def get_grid_with_max_point_count(grid, grid_levels, count):
+    def get_grid_with_max_point_count(grid: Sequence[float], grid_levels: Sequence[int], count: int) -> Sequence[float]:
         """
         This method computes a truncated grid with <= count points. Points of a level are only added to the truncated
         grid if all available points on this level (+ previous points) fit below the point count.
@@ -2172,7 +2185,8 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
             current_grid = current_grid_tmp
             current_level += 1
 
-    def get_support_points_for_interpolation_geometrically(self, interp_point, max_point_count, adaptive=True):
+    def get_support_points_for_interpolation_geometrically(self, interp_point: float, max_point_count: int,
+                                                           adaptive: bool = True) -> Sequence[float]:
         """
         This method computes support points that are used in the interpolation of grid points.
         The algorithms chooses the geometrical closest neighbours first.
@@ -2262,7 +2276,7 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
 
         return support_points
 
-    def insert_interpolating_slices(self):
+    def insert_interpolating_slices(self) -> None:
         """
         This method inserts interpolation slices into the container.
 
@@ -2331,7 +2345,7 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
 
         self.slices = new_slices
 
-    def get_interpolation_points(self):
+    def get_interpolation_points(self) -> Sequence[float]:
         """
         This methods returns the interpolated grid points as a list of points.
 
@@ -2351,10 +2365,11 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
         return interpolation_points
 
     @abstractmethod
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         pass
 
-    def get_interpolation_weight(self, support_points, basis_point, evaluation_point):
+    def get_interpolation_weight(self, support_points: Sequence[float], basis_point: float, evaluation_point: float)\
+            -> float:
         pass
 
 
@@ -2375,11 +2390,11 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
         super(LagrangeRombergGridSliceContainer, self).__init__(function)
         self.max_interpolation_support_points = 7
 
-    def get_interpolation_weights(self, support_points, basis_point, evaluation_point):
+    def get_interpolation_weights(self, support_points, basis_point, evaluation_point) -> float:
         return self.get_langrange_basis(support_points, basis_point, evaluation_point)
 
     @staticmethod
-    def get_langrange_basis(support_points, basis_point, evaluation_point):
+    def get_langrange_basis(support_points: Sequence[float], basis_point: float, evaluation_point: float) -> float:
         """
         This method computes a lambda expression for the lagrange basis function at basis_point.
         Specifically: Let support_points = [x_0, x_1, ... , x_n]
@@ -2399,7 +2414,7 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
 
         return evaluated_basis
 
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         assert len(self.slices) > 0
 
         if len(self.slices) == 1 and not self.slices[0].is_interpolated():
@@ -2421,7 +2436,8 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
 
         return weight_dictionary
 
-    def populate_non_interpolated_point_weights(self, factory, weight_dictionary):
+    def populate_non_interpolated_point_weights(self, factory: RombergWeights,
+                                                weight_dictionary: Dict[float, Sequence[float]]) -> None:
         grid = self.get_grid_without_interpolated_points()
         normalized_grid_levels = self.get_normalized_non_interpolated_grid_levels()
         normalized_max_level = max(normalized_grid_levels)
@@ -2436,7 +2452,8 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
 
             weight_dictionary[point].append(weight)
 
-    def populate_interpolated_point_weights(self, factory, weight_dictionary):
+    def populate_interpolated_point_weights(self, factory: RombergWeights,
+                                            weight_dictionary: Dict[float, Sequence[float]]) -> None:
         indicator = self.get_interpolated_grid_points_indicator()
         grid = [point for i, point in enumerate(self.get_grid()) if indicator[i]]
         normalized_grid_levels = [level for i, level in enumerate(self.get_normalized_grid_levels())
@@ -2471,8 +2488,8 @@ class TrapezoidalGridSlice(ExtrapolationGridSlice):
      :param function: for error computation.
      """
 
-    def __init__(self, interval, levels, support_sequence,
-                 left_point_is_interpolated=False, right_point_is_interpolated=False,
+    def __init__(self, interval: Tuple[float, float], levels: Tuple[float, float], support_sequence: Sequence[Tuple[float, float]],
+                 left_point_is_interpolated: bool = False, right_point_is_interpolated: bool = False,
                  function: Function = None):
         super(TrapezoidalGridSlice, self).__init__(interval, levels, support_sequence,
                                                    left_point_is_interpolated=left_point_is_interpolated,
@@ -2484,13 +2501,14 @@ class TrapezoidalGridSlice(ExtrapolationGridSlice):
 
     # See thesis, for the derivation of this weights
     # This methods computes the weights for the support points, that correspond to the area of this slice
-    def get_weight_for_left_and_right_support_point(self, left_support_point, right_support_point):
+    def get_weight_for_left_and_right_support_point(self, left_support_point: float, right_support_point: float)\
+            -> Tuple[float, float]:
         return self.width / 2, self.width / 2
 
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Final weights
 
-    def get_final_weights(self):
+    def get_final_weights(self) -> Dict[float, Sequence[float]]:
         # Dictionary that maps grid points to their extrapolated weights
         weight_dictionary = defaultdict(list)
 
@@ -2510,7 +2528,7 @@ class TrapezoidalGridSlice(ExtrapolationGridSlice):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Helpers
 
-    def to_string(self, name=None):
+    def to_string(self, name: str = None) -> str:
         return super().to_string("TrapezoidalGridSlice")
 
 
@@ -2524,8 +2542,9 @@ class ExtrapolationGridSliceFactory:
     def __init__(self, slice_version: SliceVersion):
         self.slice_version = slice_version
 
-    def get_grid_slice(self, interval, levels, support_sequence = None,
-                       left_point_is_interpolated=False, right_point_is_interpolated=False,
+    def get_grid_slice(self, interval: Tuple[float, float], levels: Tuple[float, float],
+                       support_sequence: Sequence[Tuple[float, float]] = None,
+                       left_point_is_interpolated: bool = False, right_point_is_interpolated: bool = False,
                        function: Function = None) -> ExtrapolationGridSlice:
         if self.slice_version == SliceVersion.ROMBERG_DEFAULT:
             return RombergGridSlice(interval, levels, support_sequence,
@@ -2548,7 +2567,7 @@ class ExtrapolationGridSliceFactory:
             raise RuntimeError("Wrong SliceVersion provided.")
 
     @staticmethod
-    def get_slice_version(slice):
+    def get_slice_version(slice: ExtrapolationGridSlice) -> SliceVersion:
         if isinstance(slice, RombergGridSlice):
             if slice.extrapolation_version == ExtrapolationVersion.ROMBERG_DEFAULT:
                 return SliceVersion.ROMBERG_DEFAULT
@@ -2592,7 +2611,7 @@ class ExtrapolationConstants:
         self.slice = slice
         self.midpoint = (self.slice.left_point + self.slice.right_point) / 2
 
-    def get_nth_derivative_approximation(self, support_points, max_level):
+    def get_nth_derivative_approximation(self, support_points: Sequence[Tuple[float, float]], max_level: int):
         assert 0 <= max_level <= self.slice.max_level + 1
 
         variable = symbols('t')
@@ -2607,7 +2626,7 @@ class ExtrapolationConstants:
 
         return lagrange_weights_derivative
 
-    def get_interpolation_support_points(self, max_level):
+    def get_interpolation_support_points(self, max_level: int) -> Sequence[float]:
         support_points = []
 
         # Geometrically add points left and right from the slice
@@ -2626,7 +2645,7 @@ class ExtrapolationConstants:
         return support_points
 
     @staticmethod
-    def get_lagrange_interpolation_weights(support_points, variable=None):
+    def get_lagrange_interpolation_weights(support_points: Sequence[float], variable=None):
         """
         This methods computes the symbolic factors for each support point through lagrange interpolation.
 
@@ -2690,7 +2709,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
             self.derivatives.append(derivative)
             self.support_points_for_derivatives.append(support_points)
 
-    def get_final_extrapolation_constant_weights(self):
+    def get_final_extrapolation_constant_weights(self) -> Dict[float, float]:
         """
         This method returns a dictionary that maps grid points to their summarized constants.
         (Only constants for right boundary refinement)
@@ -2759,7 +2778,8 @@ class SlicedRombergConstants(ExtrapolationConstants):
         return dict_list[0]
 
     @staticmethod
-    def __subtract_constant_dicts(dict1, dict2, factor1, factor2):
+    def __subtract_constant_dicts(dict1: Dict[float, float], dict2: Dict[float, float], factor1: float, factor2: float) \
+            -> Dict[float, float]:
         """
         This method combines two dictionaries with factors.
 
@@ -2781,7 +2801,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return combined_dict
 
-    def compute_taylor_derivative_factor(self, k):
+    def compute_taylor_derivative_factor(self, k: int):
         """
         This method computes and returns f^{(k)}(m) / k!.
 
@@ -2792,7 +2812,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return derivative_factors / math.factorial(k)
 
-    def get_integration_constant_weights(self, k):
+    def get_integration_constant_weights(self, k: int):
         """
 
         :param k: extrapolation level
@@ -2812,7 +2832,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Right boundary extrapolation
 
-    def __get_constants_for_right_boundary_extrapolation(self, level):
+    def __get_constants_for_right_boundary_extrapolation(self, level: int):
         """
         Adds constants for a extrapolation of the right boundary.
 
@@ -2859,7 +2879,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return constant_weights_dict
 
-    def get_constant_1_for_right_boundary_extrapolation(self, k):
+    def get_constant_1_for_right_boundary_extrapolation(self, k: int):
         """
         Computes C_{1,k} for right refinement extrapolation step
 
@@ -2876,7 +2896,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return support_points, constant_weights
 
-    def get_constant_2_for_right_boundary_extrapolation(self, k):
+    def get_constant_2_for_right_boundary_extrapolation(self, k: int):
         """
         Computes C_{2,k}=C_{1,k}*(a-m) for right refinement extrapolation step
 
@@ -2887,7 +2907,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return support_points, constant_weights * (self.slice.left_point - self.midpoint)
 
-    def get_constant_3_for_right_boundary_extrapolation(self, k):
+    def get_constant_3_for_right_boundary_extrapolation(self, k: int):
         """
         Computes C_{3,k}=C_{1,k} for right refinement extrapolation step
 
@@ -2907,7 +2927,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
     # -----------------------------------------------------------------------------------------------------------------
     # ---  Left boundary extrapolation
 
-    def __get_constants_for_left_boundary_extrapolation(self, level):
+    def __get_constants_for_left_boundary_extrapolation(self, level: int):
         """
         Adds constants for a extrapolation of the left boundary.
 
@@ -2965,7 +2985,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return constant_weights_dict
 
-    def get_constant_1_for_left_boundary_extrapolation(self, k):
+    def get_constant_1_for_left_boundary_extrapolation(self, k: int):
         """
         Computes C_{1,k} for left refinement extrapolation step
 
@@ -2981,7 +3001,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return support_points, constant_weights
 
-    def get_constant_2_for_left_boundary_extrapolation(self, k):
+    def get_constant_2_for_left_boundary_extrapolation(self, k: int):
         """
         Computes C_{2,k}=C_{1,k} for left refinement extrapolation step
 
@@ -2992,7 +3012,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
         return support_points, constant_weights
 
-    def get_constant_3_for_left_boundary_extrapolation(self, k):
+    def get_constant_3_for_left_boundary_extrapolation(self, k: int):
         """
         Computes C_{3,k}=C_{1,k}*(b-m)^k for left refinement extrapolation step
 
@@ -3009,7 +3029,7 @@ class SlicedRombergConstants(ExtrapolationConstants):
 
 # Extrapolation for balanced binary trees
 class BalancedExtrapolationGrid:
-    def __init__(self, print_debug=False):
+    def __init__(self, print_debug: bool = False):
         # Root node has level 1, since boundary points are note store in the tree
         self.root_node = None
         self.active_node_queue = []
@@ -3020,7 +3040,7 @@ class BalancedExtrapolationGrid:
 
         self.print_debug = print_debug
 
-    def set_grid(self, grid, grid_levels):
+    def set_grid(self, grid: Sequence[float], grid_levels: Sequence[int]) -> None:
         """
         Given a grid level array, this method initializes a appropriate binary tree structure
         Example input:    grid [0, 0.125, 0.25, 0.375, 0.5, 0.75, 1]
@@ -3045,8 +3065,8 @@ class BalancedExtrapolationGrid:
         for node in self.root_node.get_nodes_using_dfs_in_order():
             assert node.has_both_children() or node.is_leaf(), "The grid is not balanced!"
 
-    def init_tree_rec(self, node, grid, grid_levels, start_index, stop_index,
-                      inside_left_subtree=None):
+    def init_tree_rec(self, node: 'GridNode', grid: Sequence[float], grid_levels: Sequence[int],
+                      start_index: int, stop_index: int, inside_left_subtree: bool = None) -> None:
         # Find index of minimal element in active interval
         current_grid_level_slice = grid_levels[start_index:stop_index + 1]
         if start_index < stop_index:
@@ -3078,7 +3098,7 @@ class BalancedExtrapolationGrid:
             self.init_tree_rec(node, grid, grid_levels,
                                split_index + 1, stop_index, inside_left_subtree=False)
 
-    def get_weights(self):
+    def get_weights(self) -> Sequence[float]:
         assert self.grid is not None
         assert self.grid_levels is not None
         assert self.root_node is not None
@@ -3129,7 +3149,7 @@ class BalancedExtrapolationGrid:
         return weights
 
     @staticmethod
-    def extrapolate_dicts_one_step(left_dict, top_left_dict, k):
+    def extrapolate_dicts_one_step(left_dict: Dict[float, float], top_left_dict, k) -> Dict[float, float]:
         new_dict = defaultdict(np.float64)
 
         # Compute a_k
@@ -3150,19 +3170,19 @@ class BalancedExtrapolationGrid:
         return new_dict
 
     # Return grid with boundary points
-    def get_grid(self, max_level=None):
+    def get_grid(self, max_level: int = None) -> Sequence[float]:
         return [self.grid[0]] + self.root_node.get_grid(max_level) + [self.grid[-1]]
 
     # Return levels, with boundaries
-    def get_grid_levels(self, max_level=None):
+    def get_grid_levels(self, max_level: int = None) -> Sequence[int]:
         return [0] + self.root_node.get_grid_levels(max_level) + [0]
 
 
 class GridNode:
-    # a: left bound, b: right bound of interval, root node has no parent
-    def __init__(self, boundary_left, boundary_right,
-                 left_child=None, right_child=None, parent_node=None, start_level=1,
-                 print_debug=False):
+    # left bound, right bound of interval, root node has no parent
+    def __init__(self, boundary_left: float, boundary_right: float,
+                 left_child: 'GridNode' = None, right_child: 'GridNode' = None, parent_node: 'GridNode' = None,
+                 start_level: int = 1, print_debug: bool = False):
         self.boundary_left = boundary_left
         self.boundary_right = boundary_right
         self.grid_point = self.get_midpoint(boundary_left, boundary_right)
@@ -3174,10 +3194,10 @@ class GridNode:
 
         self.print_debug = print_debug
 
-    def get_leafs_or_max_level_nodes(self, max_level=None):
+    def get_leafs_or_max_level_nodes(self, max_level: int = None) -> List['GridNode']:
         return self.__get_leafs_or_max_level_nodes(self, max_level)
 
-    def __get_leafs_or_max_level_nodes(self, node, max_level=None):
+    def __get_leafs_or_max_level_nodes(self, node: 'GridNode', max_level: int = None) -> List['GridNode']:
         """
         Assumption: Balanced tree
 
@@ -3196,10 +3216,10 @@ class GridNode:
 
         return left_subtree + right_subtree
 
-    def get_nodes_using_dfs_in_order(self, max_level=None):
+    def get_nodes_using_dfs_in_order(self, max_level: int = None) -> List['GridNode']:
         return self.__get_nodes_using_dfs_in_order_rec(self, max_level)
 
-    def __get_nodes_using_dfs_in_order_rec(self, node, max_level=None):
+    def __get_nodes_using_dfs_in_order_rec(self, node: 'GridNode', max_level: int = None) -> List['GridNode']:
         if node is None or (max_level is not None and node.level > max_level):
             return []
 
@@ -3209,57 +3229,57 @@ class GridNode:
         return left_subtree + [node] + right_subtree
 
     # Returns the grid of current subtree
-    def get_grid(self, max_level=None):
+    def get_grid(self, max_level: int = None) -> Sequence[float]:
         return list(map(lambda node: node.grid_point, self.get_nodes_using_dfs_in_order(max_level)))
 
     # Returns the levels of the current subtree
-    def get_grid_levels(self, max_level=None):
+    def get_grid_levels(self, max_level: int = None) -> Sequence[int]:
         return list(map(lambda node: node.level, self.get_nodes_using_dfs_in_order(max_level)))
 
     # Setter methods for children nodes
-    def set_left_child(self, left_child):
+    def set_left_child(self, left_child: 'GridNode') -> None:
         self.left_child = left_child
 
-    def set_right_child(self, right_child):
+    def set_right_child(self, right_child: 'GridNode') -> None:
         self.right_child = right_child
 
     # Getter methods
-    def get_step_width(self):
+    def get_step_width(self) -> float:
         return self.boundary_right - self.boundary_left
 
-    def get_left_child(self):
+    def get_left_child(self) -> None:
         return self.left_child
 
-    def get_right_child(self):
+    def get_right_child(self) -> None:
         return self.right_child
 
-    def has_left_child(self):
+    def has_left_child(self) -> bool:
         return self.get_left_child() is not None
 
-    def has_right_child(self):
+    def has_right_child(self) -> bool:
         return self.get_right_child() is not None
 
-    def has_both_children(self):
+    def has_both_children(self) -> bool:
         return self.has_left_child() and self.has_right_child()
 
     def has_only_one_child(self):
         return (self.has_left_child() and (not self.has_right_child())) \
                or (self.has_right_child() and (not self.has_left_child()))
 
-    def is_root_node(self):
+    def is_root_node(self) -> bool:
         return self.parent_node is None
 
-    def has_parent_node(self):
+    def has_parent_node(self) -> bool:
         return not self.is_root_node()
 
-    def is_left_child(self):
+    def is_left_child(self) -> bool:
         return self.parent_node.get_left_child() is self
 
-    def is_right_child(self):
+    def is_right_child(self) -> bool:
         return self.parent_node.get_right_child() is self
 
     # Return sibling of current node
-    def get_sibling(self):
+    def get_sibling(self) -> 'GridNode':
         if self.is_root_node():
             return None
 
@@ -3267,13 +3287,13 @@ class GridNode:
 
         return parent_node.right_child if parent_node.left_child is self else parent_node.left_child
 
-    def is_leaf(self):
+    def is_leaf(self) -> bool:
         return not self.has_left_child() and not self.has_right_child()
 
     @staticmethod
-    def get_midpoint(a, b):
+    def get_midpoint(a: float, b: float) -> float:
         return (a + b) / 2
 
     @staticmethod
-    def node_to_string(node):
+    def node_to_string(node: 'GridNode') -> str:
         return "[{}, {}] (point {} of level {})".format(node.a, node.b, node.point, node.level)
