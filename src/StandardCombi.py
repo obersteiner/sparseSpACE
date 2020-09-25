@@ -343,6 +343,8 @@ class StandardCombi(object):
         overax.set_yticks([], [])
         overax.set_xlabel("$l_1$")
         overax.set_ylabel("$l_2$")
+        overax.set_xlim([0, 1])
+        overax.set_ylim([0, 1])
         # plt.rcParams['axes.linewidth'] = 1
         for direction in ["left", "bottom"]:
             # adds arrows at the ends of each axis
