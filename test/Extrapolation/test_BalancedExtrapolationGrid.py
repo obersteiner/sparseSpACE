@@ -1,10 +1,9 @@
 import math
 import unittest
 from sys import path
+path.append('../../src/')
 
 from Extrapolation import BalancedExtrapolationGrid
-
-path.append('../../src/')
 
 
 class TestBalancedExtrapolationGrid(unittest.TestCase):
