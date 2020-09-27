@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
 import warnings
 import time
 import random as rnd
@@ -8,7 +7,7 @@ from StandardCombi import StandardCombi
 from GridOperation import DensityEstimation
 from sklearn import datasets, preprocessing, neighbors
 from sklearn.utils import shuffle
-from typing import List, Tuple, Union, Iterable, Dict
+from typing import List, Tuple, Union, Iterable
 
 from ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
 from Grid import GlobalTrapezoidalGrid
@@ -16,21 +15,22 @@ from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
 
 class DataSet:
-    """Type of datasets on which to perform DensityEstimation, Classification and Clustering.
+    """Type of data sets on which to perform DensityEstimation, Classification and Clustering.
 
-    All DataSets have data in form of a tuple of length 2 with one ndarray each:
-    The samples in arbitrary dimension, then the corresponding labels in dimension 1.
-    Unknown labels are labelled with -1.
+    All DataSets contain data in the form of a tuple of length 2 with one ndarray each:
+    The samples in arbitrary dimension and the corresponding labels in dimension 1.
+    Unknown labels are labeled with -1.
     """
 
     def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown', label: str = 'class'):
-        """Constructor of DataSet.
+        """Constructor of the DataSet class.
 
-        Takes raw data and optionally a name as parameter and initializes raw data to the form of a tuple with length 2.
+        Takes raw data and optionally a name or label-description as parameter and initializes the original data in the form of a tuple of legnth 2.
         Scaling attributes are unassigned until scaling occurs.
 
         :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
-        :param name: Optional. Name of this DataSet
+        :param name: Optional. Name of this DataSet.
+        :param label: Optional. Type of labels for this DataSet.
         """
         self._name = name
         self._label = label
@@ -126,17 +126,14 @@ class DataSet:
         return self._scaling_factor
 
     def _initialize(self, raw_data: Union[Tuple[np.ndarray, np.ndarray], np.ndarray, str]) -> None:
-        """Private initialization method for DataSet.
+        """Initialization method for the DataSet class.
 
-        Provides several checks of the input parameter raw_data of the constructor and raises an error if raw_data can't be converted to
+        Provides several checks of the input parameter raw_data passed by the constructor and raises an error if raw_data can't be converted to an
         appropriate form.
 
-        :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
+        :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels or only labelless samples.
         :return: None
         """
-        if isinstance(raw_data, str):
-            # raw_data = read_csv_file()
-            pass  # TODO implement DataSet csv reader
         if isinstance(raw_data, np.ndarray):
             if raw_data.size == 0:
                 self._dim = 0
@@ -166,12 +163,12 @@ class DataSet:
             raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
 
     def _update_internal(self, to_update: 'DataSet') -> 'DataSet':
-        """Update all internal attributes which can normally only be changed through DataSet methods or should be changed automatically.
+        """Update all internal attributes, which can normally only be changed through DataSet methods or should be changed automatically.
 
         Mainly used to keep scaling of DataSets after methods that change the internal data.
 
-        :param to_update: DataSet whose internal attributes need to updated
-        :return: Input DataSet with updated internal attributes
+        :param to_update: DataSet, whose internal attributes need to updated.
+        :return: Input DataSet with updated internal attributes.
         """
         to_update._label = self._label
         to_update._shuffled = self._shuffled
@@ -187,12 +184,12 @@ class DataSet:
         return to_update
 
     def same_scaling(self, to_check: 'DataSet') -> bool:
-        """Check whether self and to_check have the same scaling.
+        """Check, whether self and to_check have the same scaling.
 
         Compares the scaling range and factor of self and to_check and returns False if anything doesn't match.
 
-        :param to_check: DataSet whose internal scaling should be compared to self's internal scaling
-        :return: Boolean value which indicates whether the internal scaling of input DataSet and self are completely equal
+        :param to_check: DataSet, whose internal scaling should be compared to self's internal scaling.
+        :return: Boolean value, which indicates whether the internal scaling of input DataSet and self are completely equal.
         """
         if not self._scaled == to_check._scaled:
             return False
@@ -216,12 +213,12 @@ class DataSet:
         return scaling_range and scaling_factor
 
     def remove_samples(self, indices: List[int]) -> 'DataSet':
-        """Remove samples of DataSet at specified indices.
+        """Remove samples of a DataSet object at specified indices.
 
         If the list of indices is empty, no samples are removed.
 
-        :param indices: List of indices at which to remove samples
-        :return: New DataSet in which samples are removed
+        :param indices: List of indices at which to remove samples.
+        :return: New DataSet in which samples are removed.
         """
         if any([(i < 0) or (i > self.get_length()) for i in indices]):
             raise ValueError("Can't remove samples out of bounds of DataSet.")
@@ -230,13 +227,13 @@ class DataSet:
         return DataSet.list_concatenate(removed_samples)
 
     def scale_range(self, scaling_range: Tuple[float, float], override_scaling: bool = False) -> None:
-        """Scale DataSet to a specified range.
+        """Scale DataSet data to a specified range.
 
         If override_scaling is set, current scaling (if available) is turned into the original scaling of this DataSet and the new scaling
         specified by the input parameter is applied.
 
-        :param scaling_range: Range to which all samples should be scaled
-        :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
+        :param scaling_range: Range to which all samples should be scaled.
+        :param override_scaling: Optional. Conditional parameter, which indicates whether old scaling (if available) should be overridden.
         :return: None
         """
         if not self._scaled or override_scaling:
@@ -262,8 +259,8 @@ class DataSet:
         specified by the input parameter is applied.
 
         :param scaling_factor: Factor by which all samples should be scaled. Can either be a float value for general scaling or np.ndarray with
-        dimension self._dim to scale each dimension individually
-        :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
+        dimension self._dim to scale each dimension individually.
+        :param override_scaling: Optional. Conditional parameter, which indicates whether old scaling (if available) should be overridden.
         :return: None
         """
         if not self._scaled or override_scaling:
@@ -287,8 +284,8 @@ class DataSet:
         specified by the input parameter is applied.
 
         :param shift_val: Value by which all samples should be shifted. Can either be a float value for general shifting or np.ndarray with
-        dimension self._dim to shift each dimension individually
-        :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
+        dimension self._dim to shift each dimension individually.
+        :param override_scaling: Optional. Conditional parameter, which indicates whether old scaling (if available) should be overridden.
         :return: None
         """
         if not self._scaled or override_scaling:
@@ -305,7 +302,7 @@ class DataSet:
             self._scaling_range = (np.amin(self._data[0], axis=0), np.amax(self._data[0], axis=0))
 
     def shuffle(self) -> None:
-        """Shuffle DataSet randomly.
+        """Shuffle data samples of DataSet object randomly.
 
         :return: None
         """
@@ -314,13 +311,13 @@ class DataSet:
         self._shuffled = True
 
     def concatenate(self, other_dataset: 'DataSet') -> 'DataSet':
-        """Concatenate this DataSet's data with the data of specified DataSet.
+        """Concatenate this DataSet's data with the data of a specified DataSet.
 
         If either this or the specified DataSet are empty, the other one is returned.
         Only data of DataSets with equal dimension can be concatenated.
 
-        :param other_dataset: DataSet whose data should be concatenated with data of this DataSet
-        :return: New DataSet with concatenated data
+        :param other_dataset: DataSet, whose data should be concatenated with data of this DataSet.
+        :return: New DataSet with concatenated data.
         """
         if not (self._dim == other_dataset.get_dim()):
             if other_dataset.is_empty():
@@ -345,7 +342,7 @@ class DataSet:
         If an empty list is received as a parameter, an empty DataSet is returned.
 
         :param list_datasets: List of DataSet's which to concatenate.
-        :return: New DataSet which contains the concatenated data of all DataSets within the list
+        :return: New DataSet, which contains the concatenated data of all DataSets within the list.
         """
         if len(list_datasets) == 0:
             return DataSet(tuple([np.array([]), np.array([])]))
@@ -360,7 +357,7 @@ class DataSet:
         Creates a DataSet for each label and puts all samples with corresponding label into this DataSet.
         Stores all of those single-label-DataSets into a list.
 
-        :return: A List which contains all single-label-DataSets
+        :return: A List, which contains all single-label-DataSets.
         """
         set_labels = []
         for j in self.get_labels():
@@ -372,13 +369,13 @@ class DataSet:
         return set_labels
 
     def split_without_labels(self) -> Tuple['DataSet', 'DataSet']:
-        """Separates samples without labels from samples with labels.
+        """Separates samples without from samples with labels.
 
         Creates a DataSet for samples with and without labels each.
         Samples are stored in the respective DataSet.
         If there are no labelless samples and/ or samples with labels, the respective DataSet stays empty.
 
-        :return: A Tuple of two new DataSets which contain all labelless samples and all samples with labels
+        :return: A Tuple of two new DataSets, which contain all labelless samples and all samples with labels.
         """
         labelless_values = np.array([x for i, x in enumerate(self._data[0]) if self._data[1][i] == -1])
         labelfull_values = np.array([x for i, x in enumerate(self._data[0]) if self._data[1][i] >= 0])
@@ -389,14 +386,14 @@ class DataSet:
         return set_labelless, set_labelfull
 
     def split_pieces(self, percentage: float) -> Tuple['DataSet', 'DataSet']:
-        """Splits this DataSet's data into two uneven pieces.
+        """Splits this DataSet's data into two pieces specified by the percentage parameter.
 
         The first split piece contains all samples until index (percentage * this data's length) rounded down to the next integer.
         The second split piece contains all other samples.
         Before the splitting is performed, percentage is checked if in range (0, 1) and if not is set to 1.
 
-        :param percentage: Percentage of this DataSet's data at whose last index the split occurs
-        :return: A Tuple of two new DataSets which contain all samples before and after the index at which the data was splitted
+        :param percentage: Percentage of this DataSet's data at whose last index the split occurs.
+        :return: A Tuple of two new DataSets, which contain all samples before and after the index at which the data was split.
         """
         percentage = percentage if 0 <= percentage < 1 else 1.0
         set0 = DataSet(tuple([np.array(self._data[0][:(round(self.get_length() * percentage))]),
@@ -413,7 +410,7 @@ class DataSet:
         Before removal of labels, percentage is checked if in range (0, 1) and if not is set to 1.
         Mainly used for testing purposes.
 
-        :param percentage: Percentage of random indices at which to remove labels
+        :param percentage: Percentage of random indices at which to remove labels.
         :return: None
         """
         labelless, labelfull = self.split_without_labels()
@@ -442,7 +439,7 @@ class DataSet:
             self._data[1][[i, x]] = self._data[1][[x, i]]
 
     def revert_scaling(self) -> None:
-        """Revert this DataSet's data to its original scaling.
+        """Revert the scaling of this DataSet's data to its original scaling.
 
         Scaling is applied in reverse to this DataSet's data and scaling attributes are returned to their initial setting.
 
@@ -468,19 +465,19 @@ class DataSet:
                            plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation on this DataSet.
 
-        Also is able to plot the DensityEstimation results directly.
-        For more information on DensityEstimation refer to the class DensityEstimation in the GridOperation module.
+        This method can also plot the DensityEstimation results directly.
+        For more information on DensityEstimation, please refer to the DensityEstimation class in the GridOperation module.
 
-        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
-        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
-        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
-        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :param plot_de_dataset: Optional. Conditional Parameter which indicates whether this DataSet should be plotted for DensityEstimation
-        :param plot_density_estimation: Optional. Conditional Parameter which indicates whether results of DensityEstimation should be plotted
-        :param plot_combi_scheme: Optional. Conditional Parameter which indicates whether resulting combi scheme of DensityEstimation should be
-        plotted
-        :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
-        :return:
+        :param masslumping: Optional. Conditional Parameter, which indicates whether masslumping should be enabled for DensityEstimation.
+        :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
+        :param plot_de_dataset: Optional. Conditional Parameter, which indicates whether this DataSet should be plotted for DensityEstimation.
+        :param plot_density_estimation: Optional. Conditional Parameter, which indicates whether results of DensityEstimation should be plotted.
+        :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
+        plotted.
+        :param plot_sparsegrid: Optional. Conditional Parameter, which indicates whether resulting sparsegrid of DensityEstimation should be plotted.
+        :return: Tuple of the resulting StandardCombi and DensityEstimation objects.
         """
         a = np.zeros(self._dim)
         b = np.ones(self._dim)
@@ -515,15 +512,15 @@ class DataSet:
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
                                           plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
-        """Perform the GridOperation DensityEstimation on this DataSet.
+        """Perform the GridOperation DensityEstimation dimension-wise on this DataSet.
 
-        Also is able to plot the DensityEstimation results directly.
-        For more information on DensityEstimation refer to the class DensityEstimation in the GridOperation module.
+        This method can also plot the DensityEstimation results directly.
+        For more information on DensityEstimation, please refer to the DensityEstimation class in the GridOperation module.
 
-        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
-        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
-        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
-        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param masslumping: Optional. Conditional Parameter, which indicates whether masslumping should be enabled for DensityEstimation.
+        :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
         :param reuse_old_values: Optional.
         :param numeric_calculation: Optional.
         :param margin: Optional.
@@ -531,15 +528,12 @@ class DataSet:
         :param max_evaluations: Optional.
         :param modified_basis: Optional.
         :param boundary: Optional.
-        :param plot_de_dataset: Optional. Conditional Parameter which indicates whether this DataSet should be plotted for DensityEstimation
-        :param plot_density_estimation: Optional. Conditional Parameter which indicates whether results of DensityEstimation should be plotted
-        :param plot_combi_scheme: Optional. Conditional Parameter which indicates whether resulting combi scheme of DensityEstimation should be
-        plotted
-        :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
-        :return:
-
-        Parameters
-        ----------
+        :param plot_de_dataset: Optional. Conditional Parameter, which indicates whether this DataSet should be plotted for DensityEstimation.
+        :param plot_density_estimation: Optional. Conditional Parameter, which indicates whether results of DensityEstimation should be plotted.
+        :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
+        plotted.
+        :param plot_sparsegrid: Optional. Conditional Parameter, which indicates whether resulting sparsegrid of DensityEstimation should be plotted.
+        :return: Tuple of the resulting StandardCombi and DensityEstimation objects.
         """
         a = np.zeros(self._dim)
         b = np.ones(self._dim)
@@ -562,14 +556,13 @@ class DataSet:
             combi_object.print_resulting_sparsegrid(markersize=20)
         return combi_object, de_object
 
-    def plot(self, plot_labels: bool = True, plot_directly: bool = True) -> plt.Figure:
+    def plot(self, plot_labels: bool = True) -> plt.Figure:
         """Plot DataSet.
 
         Plotting is only available for dimensions 2 and 3.
 
-        :param plot_directly: Optional. Conditional parameter which indicates whether this function should actually plot the data.
-        :param plot_labels: Optional. Conditional parameter which indicates whether labels should be coloured for plotting.
-        :return: Figure which is plotted
+        :param plot_labels: Optional. Conditional parameter, which indicates whether labels should be coloured for plotting.
+        :return: Figure, which is plotted.
         """
         plt.rc('font', size=30)
         plt.rc('axes', titlesize=40)
@@ -626,20 +619,12 @@ class DataSet:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
 
-        if plot_directly:
-            plt.show()
+        plt.show()
         return fig
-
-    def write_csv(self) -> None:
-        """Write this DataSet to a CSV file.
-
-        :return: None
-        """
-        pass  # TODO implement DataSet csv writer
 
 
 class Classification:
-    """Type of objects that classify data based on some learning dataset.
+    """Type of objects, that classify data based on some previously performed learning.
     """
 
     def __init__(self,
@@ -648,28 +633,30 @@ class Classification:
                  split_percentage: float = 1.0,
                  split_evenly: bool = True,
                  shuffle_data: bool = True):
-        """Constructor of Classification.
+        """Constructor of the Classification class.
 
-        Takes raw_data as necessary parameter and some more optional parameters which are specified below.
-        Initializes data for this object.
-        Stores the following values as private attributes:
-        + self._data: original data, all new testing data is stored here as well
-        + self._omitted_data: during initialization and testing omitted classless data
-        + self._learning_data: in _initialize() assigned learning data
-        + self._testing_data: in _initialize() assigned testing data, all new testing data is stored here as well
-        + self._data_range: the original range of all data samples in each dimension
-        + self._scale_factor: the scaling factor for each dimension with which all samples in this object were scaled
-        + self._calculated_classes_testset: All calculated classes for samples in self._testing_data in the same order (useful for printing)
-        + self._classificators: List of all in _perform_classification() computed classificators. One for each class
-        + self._de_objects: List of all in in _perform_classification() computed DensityEstimation Objects (useful for plotting)
-        + self._performed_classification: Check if classfication was already performed for this object
+        Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
+        Stores the following values as protected attributes:
+        + self._original_data: Original data.
+        + self._scaled_data: Scaled original data.
+        + self._omitted_data: During initialization and testing omitted classless data.
+        + self._learning_data: In _initialize() assigned learning data.
+        + self._testing_data: In _initialize() assigned testing data, all new testing data is stored here as well.
+        + self._data_range: The original range of all data samples in each dimension.
+        + self._scale_factor: The scaling factor for each dimension, with which all samples in this object were scaled.
+        + self._calculated_classes_testset: All calculated classes for samples in self._testing_data in the same order (useful for printing).
+        + self._densities_testset: All estimated densities for the samples in the testing data set.
+        + self._classificators: List of all in _perform_classification() computed classificators. One for each class.
+        + self._de_objects: List of all in in _perform_classification() computed DensityEstimation objects (useful for plotting).
+        + self._performed_classification: Check, if classfication was already performed for this object.
+        + self._time_used: Time used for the learning process.
 
-        :param raw_data: DataSet on which to perform learning (and if 0 < percentage < 1 also testing)
+        :param raw_data: DataSet on which to perform learning (and if 0 < percentage < 1 also testing).
         :param data_range: Optional. If the user knows the original range of the dataset, they can specify it here.
-        :param split_percentage: Optional. If a percentage of the raw data should be used as testing data: 0 < percentage < 1. Default 1.0
-        :param split_evenly: Optional. Only relevant when 0 < percentage < 1. Conditional parameter which indicates whether the learning datasets
-        for each class should be of near equal size. Default True
-        :param shuffle_data: ...
+        :param split_percentage: Optional. If a percentage of raw data should be used as testing data: 0 < percentage < 1. Default 1.0.
+        :param split_evenly: Optional. Only relevant when 0 < percentage < 1. Conditional parameter, which indicates whether the learning data sets
+        for each class should be of near equal size. Default True.
+        :param shuffle_data: Optional. Indicates, whether the data should be randomly shuffled in the initialization step. Default True.
         """
         self._original_data = raw_data
         self._scaled_data = None
@@ -695,9 +682,9 @@ class Classification:
         Before classification, input data is scaled to match the scaling of learning data of this object; samples out of bounds after scaling are
         removed and by default printed to stdout.
 
-        :param data_to_evaluate: Data whose samples are to be classified
-        :param print_removed: Optional. Conditional parameter which specifies whether during scaling removed samples should be printed
-        :return: New DataSet which consists of samples from input DataSet and for those samples computed classes
+        :param data_to_evaluate: Data whose samples are to be classified.
+        :param print_removed: Optional. Conditional parameter, which specifies whether during scaling removed samples should be printed.
+        :return: New DataSet, which consists of samples from input DataSet and for those samples computed classes.
         """
         if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
@@ -724,16 +711,16 @@ class Classification:
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
         AttributeError is raised.
         In case the input testing data is empty, a ValueError is raised.
-        Test data is scaled with the same factors as the original data (self._data) and samples out of bounds after scaling are removed.
-        Only test data samples with known classes can be used for testing; the omitted rest ist stored into self._omitted_data.
+        Test data is scaled with the same factors as the scaled original data (self._scaled_data) and samples out of bounds after scaling are removed.
+        Only test data samples with known classes can be used for testing; the omitted rest is stored into self._omitted_data.
         Test data with known classes and samples only inside of bounds is stored into self._testing_data, results are calculated and printed
         (default) if the user specified it.
 
-        :param new_testing_data: Test DataSet for which classificators should be tested
-        :param print_output: Optional. Conditional parameter which specifies whether results of testing should be printed. Default True
-        :param print_removed: Optional. Conditional parameter which specifies whether during scaling removed samples should be printed. Default True
-        :param print_incorrect_points: Conditional parameter whick specifies whether the incorrectly mapped points should be printed. Default False
-        :return: DataSet which contains all classless samples that were omitted
+        :param new_testing_data: Test DataSet for which classificators should be tested.
+        :param print_output: Optional. Conditional parameter, which specifies whether results of testing should be printed. Default True.
+        :param print_removed: Optional. Conditional parameter, which specifies whether during scaling removed samples should be printed. Default True.
+        :param print_incorrect_points: Conditional parameter, which specifies whether the incorrectly mapped points should be printed. Default False.
+        :return: DataSet, which contains all classless samples that were omitted.
         """
         if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
@@ -799,18 +786,18 @@ class Classification:
     def _initialize(self, percentage: float, split_evenly: bool, shuffle_data: bool) -> None:
         """Initialize data for performing classification.
 
-        Calculates which parts of the original data (self._data) should be used as learning and testing data.
+        Calculates, which parts of the original data should be used as learning and testing data.
         If percentage is 1, all of the original data is used as learning data.
         Any classless samples in the original dataset are removed and stored in self._omitted_data first.
         Scaling to range (0.005, 0.995) is performed either simply based on boundary samples (default) or by the original data range (if
         specified by the user in the constructor). If the latter, samples out of bounds are removed, printed to stdout and the user is notified.
-        Before splitting the data, it is shuffled to ensure random splitting and the boundary samples are moved to the front to guarantee that
-        they are in the learning dataset.
+        Before splitting the data, it is shuffled (if corresponding constructor parameter is set) to ensure random splitting and the boundary samples
+        are moved to the front to guarantee that they are in the learning dataset.
 
-        :param percentage: Percentage of original data (self._data) which to use as learning dataset.
-        :param split_evenly: Only relevant when 0 < percentage < 1. Conditional parameter which indicates whether the learning datasets
-        for each class should be of near equal size
-        :param shuffle_data: Conditional parameter which indicates whether the learning set should be shuffled before initialization
+        :param percentage: Percentage of original data, which to use as learning dataset.
+        :param split_evenly: Only relevant when 0 < percentage < 1. Conditional parameter, which indicates whether the learning data sets
+        for each class should be of near equal size.
+        :param shuffle_data: Conditional parameter, which indicates whether the learning set should be shuffled before initialization.
         :return: None
         """
         self._scaled_data = self._original_data.copy()
@@ -855,28 +842,26 @@ class Classification:
     def _classificate(self, data_to_classificate: DataSet) -> np.ndarray:
         """Calculate classes for samples of input data.
 
-        Computes the densities of each class for every sample. The class which corresponds to the highest density for a sample is assigned to it.
+        Computes the densities of each class for every sample. The class, which corresponds to the highest density for a sample is assigned to it.
         Classes are stored into a list in the same order as the corresponding samples occur in the input data.
 
-        :param data_to_classificate: DataSet whose samples are to be classified
-        :return: List of computed classes in the same order as their corresponding samples
+        :param data_to_classificate: DataSet whose samples are to be classified.
+        :return: List of computed classes in the same order as their corresponding samples.
         """
         density_data = list(zip(*[x(data_to_classificate[0]) for x in self._classificators]))
         self._densities_testset += density_data
         return np.argmax(density_data, axis=1).flatten()
-        # return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
 
     def _internal_scaling(self, data_to_check: DataSet, print_removed: bool = False) -> 'DataSet':
-        """Scale data with the same factors as the original data (self._data) was scaled.
+        """Scale data with the same factors as the original data was scaled (self._scaled_data).
 
-        If the input data is already scaled, it is assumed that its scaling matches that of the original data.
-        If that's not the case, the user should first revert the scaling of all input data before applying it to a Classification object.
-        If not already scaled, the input data will be scaled with the same factors the original data was.
+        If the input data to check is already scaled and its scaling doesn't match that of the original scaled data, a ValueError is raised.
+        If not already scaled, the input data to check will be scaled with the same factors the original data was.
         Any samples out of bounds after scaling are removed, printed to stdout if print_removed is True and a the user is notified.
 
-        :param data_to_check: DataSet which needs to be checked for scaling and scaled if necessary
-        :param print_removed: Optional. Conditional parameter which indicates whether any during scaling removed samples should be printed
-        :return: Scaled input dataset without samples out of bounds
+        :param data_to_check: DataSet, which needs to be checked for scaling and scaled if necessary.
+        :param print_removed: Optional. Conditional parameter, which indicates whether any during scaling removed samples should be printed.
+        :return: Scaled input dataset without samples out of bounds.
         """
         if data_to_check.is_scaled():
             if not self._scaled_data.same_scaling(data_to_check):
@@ -905,12 +890,15 @@ class Classification:
                           print_incorrect_points: bool = True) -> None:
         """Print the results of some specified testing data to stdout.
 
-        Only prints evaluation if input is valid.
+        Only prints the evaluation, if the input is valid.
         Prints the number and percentage of incorrectly computed samples.
-        Prints all samples of input test data that were classified incorrectly.
+        Prints all samples of input test data that were classified incorrectly, if the corresponding parameter is set.
 
-        :param testing_data: Input testing data for which to print the results
-        :param calculated_classes: Input calculated classes for specified testing data
+        :param testing_data: Input testing data for which to print the results.
+        :param calculated_classes: Input calculated classes for specified testing data.
+        :param density_testdata: List of densities for the corresponding testing data.
+        :param print_incorrect_points: Optional. Conditional parameter, which indicates whether the incorrectly mapped points should be printed to
+        stdout.
         :return: None
         """
         if testing_data.is_empty():
@@ -944,15 +932,15 @@ class Classification:
                                           operation_list: List[Tuple[StandardCombi, DensityEstimation]],
                                           start_time: float,
                                           print_metrics: bool) -> None:
-        """Extract StandardCombi and DensityEstimation objects from operation list for every class and store them in private attributes.
+        """Perform the last core-steps of the classification process.
 
-        Revert the scaling of the original dataset, so there is no confusion for the user when looking at the samples' values.
-        Print the time used for performing classification.
-        Already evaluate testing data if the original data was split into learning and testing data in _initialize().
+        Prints the time used for performing classification.
+        Already evaluates testing data, if the original data was split into learning and testing data in _initialize().
 
-        :param operation_list: List of Tuples of StandardCombi and DensityEstimation objects which each can be assigned to a class.
+        :param operation_list: List of Tuples of StandardCombi and DensityEstimation objects, which each can be assigned to a class.
         :param start_time: Time when the performing of classification of this object started.
-        :param print_metrics: ...
+        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing
+        the learning process.
         :return:
         """
         self._classificators = [x[0] for x in operation_list]
@@ -976,18 +964,19 @@ class Classification:
                                minimum_level: int = 1,
                                maximum_level: int = 5,
                                print_metrics: bool = True) -> None:
-        """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
+        """Create GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
         This method is only called once.
         First the learning dataset is split into its classes in separate DataSets and then the DataSet.density_estimation() function is called for
         each of the single-class-DataSets.
-        The DensityEstimation objects are mainly used for plotting the combi scheme.
+        The DensityEstimation objects are mainly used for plotting the combination-scheme later.
 
-        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
-        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
-        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
-        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :param print_metrics: ...
+        :param masslumping: Optional. Conditional Parameter, which indicates whether masslumping should be enabled for DensityEstimation.
+        :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
+        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing
+        the learning process.
         :return: None
         """
         if self._performed_classification:
@@ -1012,25 +1001,25 @@ class Classification:
                                               modified_basis: bool = False,
                                               boundary: bool = False,
                                               print_metrics: bool = True) -> None:
-        """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
+        """Create dimension-wise GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
         This method is only called once.
         First the learning dataset is split into its classes in separate DataSets and then the DataSet.density_estimation() function is called for
         each of the single-class-DataSets.
-        The DensityEstimation objects are mainly used for plotting the combi scheme.
+        The DensityEstimation objects are mainly used for plotting the combination-scheme later.
 
         :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
         :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :param reuse_old_values: ...
-        :param numeric_calculation: ...
-        :param margin: ...
-        :param tolerance: ...
-        :param max_evaluations: ...
-        :param modified_basis: ...
-        :param boundary: ...
-        :param print_metrics: ...
+        :param reuse_old_values: Optional.
+        :param numeric_calculation: Optional.
+        :param margin: Optional.
+        :param tolerance: Optional.
+        :param max_evaluations: Optional.
+        :param modified_basis: Optional.
+        :param boundary: Optional.
+        :param print_metrics: Optional.
         :return: None
         """
         if self._performed_classification:
@@ -1055,6 +1044,14 @@ class Classification:
         self._process_performed_classification(operation_list, start_time, print_metrics)
 
     def evaluate(self) -> dict:
+        """Evaluate results of all testing data stored within this object.
+
+        As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
+        AttributeError is raised.
+        In case self._testing_data is empty, a warning is issued and the method returns without printing anything.
+
+        :return: Dictionary of all results.
+        """
         if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if self._testing_data.is_empty():
@@ -1096,15 +1093,15 @@ class Classification:
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
         AttributeError is raised.
-        The user can specify exactly what to plot with conditional parameters to this method.
+        The user can specify exactly what to plot with conditional parameters of this method.
 
-        :param plot_class_dataset: Optional. Conditional parameter which specifies whether the learning DataSet should be plotted. Default True
-        :param plot_class_density_estimation: Optional. Conditional parameter which specifies whether the density estimation of each class should be
-        plotted. Default True
-        :param plot_class_combi_scheme: Optional. Conditional parameter which specifies whether the resulting combi schemes of each class should be
-        plotted. Default True
-        :param plot_class_sparsegrid: Optional. Conditional parameter which specifies whether the resulting sparsegrids of each class should be
-        plotted. Default True
+        :param plot_class_dataset: Optional. Conditional parameter, which specifies whether the learning DataSet should be plotted. Default False.
+        :param plot_class_density_estimation: Optional. Conditional parameter, which specifies whether the density estimation of each class should be
+        plotted. Default False.
+        :param plot_class_combi_scheme: Optional. Conditional parameter, which specifies whether the resulting combi schemes of each class should be
+        plotted. Default False.
+        :param plot_class_sparsegrid: Optional. Conditional parameter, which specifies whether the resulting sparsegrids of each class should be
+        plotted. Default False.
         :return: None
         """
         if not self._performed_classification:
@@ -1123,16 +1120,45 @@ class Classification:
 
 
 class Clustering:
+    """Type of objects, that cluster data based on some previously performed learning.
+    """
 
     def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25):
+        """Constructor of the Clustering class.
+
+        Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
+        Stores the following values as protected attributes:
+        + self._original_data: Original data.
+        + self._scaled_data: Scaled original data.
+        + self._clustered_data: Original data with computed labels.
+        + self._label: Name-type of the assigned labels.
+        + self._number_nn: Number of nearest neighbors for the connected graph.
+        + self._threshold: Edge cutting threshold.
+        + self._clusterinator: The in _perform_clustering() computed density function for the scaled data.
+        + self._de_objects: The in _perform_clustering() computed DensityEstimation object (useful for plotting).
+        + self._density_range: The range of minimal and maximal possible densities in the density function.
+        + self._all_edges: All edges in the initial nearest neighbor graph.
+        + self._remaining_edges: AAll edges of the cut nearest neighbor graph after the threshold is applied. With noise samples.
+        + self._connected_components: List of ndarrays of samples, which form the connected components computed in _compute_connected_components().
+        + self._connected_edges: All edges of the cut nearest neighbor graph after the threshold is applied. Without noise samples.
+        + self._connected_samples: All samples within _connected_edges.
+        + self._noise_edges: All edges of detected noise samples after the threshold is applied.
+        + self._noise_samples: All samples within _noise_edges.
+        + self._performed_clustering: Check, if clustering was already performed for this object.
+        + self._time_used: Time used for the learning process.
+
+        :param raw_data: DataSet on which to perform learning (and if 0 < percentage < 1 also testing).
+        :param number_nearest_neighbors: Optional. Specifies the number of neighbors for the connected graph. Default 5.
+        :param edge_cutting_threshold: Optional. Specifies the edge cutting threshold, which later assists in omitting some edges. Default 0.25.
+        """
         self._original_data = raw_data
         self._scaled_data = None
         self._clustered_data = None
         self._label = 'cluster'
-        self._number_nb = number_nearest_neighbors + 1
+        self._number_nn = number_nearest_neighbors + 1
         self._threshold = edge_cutting_threshold
-        self._de_object = None
         self._clustertinator = None
+        self._de_object = None
         self._density_range = None
         self._all_edges = None
         self._remaining_edges = None
@@ -1166,7 +1192,7 @@ class Clustering:
         return ret_val
 
     def get_max_number_nearest_neighbors(self) -> int:
-        return self._number_nb
+        return self._number_nn
 
     def get_edge_cutting_threshold(self) -> float:
         return self._threshold
@@ -1180,6 +1206,12 @@ class Clustering:
         return ret_val
 
     def _initialize(self) -> None:
+        """Initialize data for performing clustering.
+
+        The original data is scaled to range (0.005, 0.995) for the learning process occurring later.
+
+        :return: None
+        """
         if self._original_data.is_empty():
             raise ValueError("Can't perform clustering on empty DataSet.")
         self._scaled_data = self._original_data.copy()
@@ -1188,8 +1220,16 @@ class Clustering:
         self._scaled_data.scale_range((0.005, 0.995), override_scaling=True)
 
     def _compute_nearest_neighbors_connected(self) -> None:
+        """Build the initial nearest neighbor graph without noise.
+
+        The sklearn.neighbors.Neighbors functionality is used to fit the scaled data onto itself and detect all nearest neighbors.
+        All this way computed edges are ridded of redundancy and then all edges with a medium density below the threshold are omitted.
+        This results in some samples without any connecting edges (noise), whose will be handled in _compute_nearest_neighbors_noise().
+
+        :return: None
+        """
         # search for nearest neighbors and store edges which weren't cut
-        neigh = neighbors.NearestNeighbors(n_neighbors=self._number_nb)
+        neigh = neighbors.NearestNeighbors(n_neighbors=self._number_nn)
         neigh.fit(self._scaled_data[0])
         self._all_edges = list(set(tuple(sorted(x)) for x in [[x[0], y] for x in neigh.kneighbors(self._scaled_data[0], return_distance=False)
                                                               for y in x[1:]]))
@@ -1203,6 +1243,13 @@ class Clustering:
         self._connected_edges = [e for i, e in enumerate(self._all_edges) if (centralvalues_dens_percentage[i] > self._threshold)]
 
     def _compute_nearest_neighbors_noise(self) -> None:
+        """Detect all noise samples within the initial nearest neighbor graph.
+
+        The noise samples created in _compute_nearest_neighbors_connected() are detected and for each of them exactly one edge to the nearest
+        connected sample is created. Those edges are then added to the ones previously computed.
+
+        :return: None
+        """
         # filter single samples
         singles_indices = [i for i in np.arange(self._scaled_data.get_length()) if i not in np.unique(self._connected_edges)]
         self._connected_samples = self._scaled_data.copy()
@@ -1220,16 +1267,33 @@ class Clustering:
             self._remaining_edges = np.array(sorted(self._noise_edges + self._connected_edges))
 
     def _compute_connected_components(self) -> None:
+        """Detect all connected components or clusters.
+
+        If only noise samples were detected while building the nearest neighbor graph, every sample is its own connected component. Else recursive
+        depth-first-search is used to detect the connected components.
+
+        :return: None
+        """
         noisy = self._connected_samples.is_empty()
         self._connected_components = [np.array([x]) for x in range(self._scaled_data.get_length())] if noisy else self._depth_first_search()
 
     def _label_samples(self) -> None:
+        """Assign each sample of the original data a label based on detected clusters.
+
+        :return: None
+        """
         clusters = np.empty((self._scaled_data.get_length(),), dtype=np.int64)
         for i, all_indices_component in enumerate(self._connected_components):
             clusters[all_indices_component] = i
         self._clustered_data = DataSet((self._original_data[0], clusters), name="Clustered_%s" % self._original_data.get_name(), label=self._label)
 
     def _depth_first_search(self) -> List[np.ndarray]:
+        """Depth-first-search for detecting the connected components.
+
+        For each connected component, recursive depth-first-search is used to detect all samples within this component.
+
+        :return: List of ndarrays of samples (List of connected components).
+        """
         # depth first search
         all_nodes = np.arange(self._scaled_data.get_length())
         visited_nodes = np.full((self._scaled_data.get_length(),), False)
@@ -1246,6 +1310,16 @@ class Clustering:
                              visited_nodes: np.ndarray,
                              edges: np.ndarray,
                              connected_component: np.ndarray) -> List[np.ndarray]:
+        """Inner helper-function for recursive depth-first-search.
+
+        After every recursive step of this function, one connected component is returned.
+
+        :param current_node: Active sample.
+        :param visited_nodes: All already visited samples.
+        :param edges: All possible edges from the active sample.
+        :param connected_component: Current connected component.
+        :return: Completed current connected component.
+        """
         connected_component = np.concatenate((connected_component, np.array([current_node])))
         visited_nodes[current_node] = True
         current_edges = edges[np.where(edges == current_node)[0]]
@@ -1257,12 +1331,22 @@ class Clustering:
         return connected_component
 
     def _process_performed_clustering(self, start_time: float, print_metrics: bool) -> None:
+        """Perform the last core-steps of the clustering process.
+
+        Prints the time used for performing clustering.
+        Performs all important steps of building and cutting the nearest neighbor graph and detecting the connected components.
+
+        :param start_time: Time when the performing of classification of this object started.
+        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing
+        the learning process.
+        :return:
+        """
         self._density_range = self._de_object.extrema
         self._compute_nearest_neighbors_connected()
         self._compute_nearest_neighbors_noise()
         self._compute_connected_components()
         self._label_samples()
-        # post processing
+        # additional post processing could be done here
         self._performed_clustering = True
         self._time_used = time.time() - start_time
         if print_metrics:
@@ -1278,6 +1362,19 @@ class Clustering:
                            minimum_level: int = 1,
                            maximum_level: int = 5,
                            print_metrics: bool = True) -> None:
+        """Create GridOperation and DensityEstimation objects for the clustering learning process.
+
+        This method is only called once.
+        The DensityEstimation objects are mainly used for plotting the combination-scheme later.
+
+        :param masslumping: Optional. Conditional Parameter, which indicates whether masslumping should be enabled for DensityEstimation.
+        :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
+        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing
+        the learning process.
+        :return: None
+        """
         if self._performed_clustering:
             raise ValueError("Can't perform clustering for the same object twice.")
         start_time = time.time()
@@ -1301,6 +1398,25 @@ class Clustering:
                                           modified_basis: bool = False,
                                           boundary: bool = False,
                                           print_metrics: bool = True) -> None:
+        """Create dimension-wise GridOperation and DensityEstimation objects for the clustering learning process.
+
+        This method is only called once.
+        The DensityEstimation objects are mainly used for plotting the combination-scheme later.
+
+        :param masslumping: Optional. Conditional Parameter which indicates whether masslumping should be enabled for DensityEstimation
+        :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
+        :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param reuse_old_values: Optional.
+        :param numeric_calculation: Optional.
+        :param margin: Optional.
+        :param tolerance: Optional.
+        :param max_evaluations: Optional.
+        :param modified_basis: Optional.
+        :param boundary: Optional.
+        :param print_metrics: Optional.
+        :return: None
+        """
         if self._performed_clustering:
             raise ValueError("Can't perform clustering for the same object twice.")
         start_time = time.time()
@@ -1322,6 +1438,14 @@ class Clustering:
         self._process_performed_clustering(start_time, print_metrics)
 
     def evaluate(self) -> dict:
+        """Evaluate results of all to the original samples assigned labels (if they have original labels to compare to).
+
+        As most of other public methods of Clustering, clustering already has to be performed before this method is called. Otherwise an
+        AttributeError is raised.
+        In case the original data has no labels to compare to, a ValueError is raised.
+
+        :return: Dictionary of all results.
+        """
         if not self._performed_clustering:
             raise AttributeError("Clustering needs to be performed on this object first.")
         omitted, original_data_to_evaluate = self._scaled_data.split_without_labels()
@@ -1362,6 +1486,14 @@ class Clustering:
                 "Percentage correct (str)": "%2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100)}
 
     def print_evaluation(self, print_clusters: bool = True) -> None:
+        """Print results of all to the original samples assigned labels (if they have original labels to compare to).
+
+        As most of other public methods of Clustering, clustering already has to be performed before this method is called. Otherwise an
+        AttributeError is raised.
+        In case the original data has no labels to compare to, a ValueError is raised.
+
+        :return: None
+        """
         evaluation = self.evaluate()
         number_wrong = evaluation.get("Wrong mappings")
         omitted = evaluation.get("Omitted data")
@@ -1393,6 +1525,25 @@ class Clustering:
              plot_cluster_combi_scheme: bool = False,
              plot_cluster_sparsegrid: bool = False,
              plot_nearest_neighbor_graphs: bool = False) -> None:
+        """Plot a Clustering object.
+
+        As most of other public methods of Clustering, clustering already has to be performed before this method is called. Otherwise an
+        AttributeError is raised.
+        The user can specify exactly what to plot with conditional parameters of this method.
+
+        :param plot_original_dataset: Optional. Conditional parameter, which specifies whether the original data set should be plotted. Default False.
+        :param plot_clustered_dataset: Optional. Conditional parameter, which specifies whether the original data set with computed clusters should be
+        plotted. Default False.
+        :param plot_cluster_density_estimation: Optional. Conditional parameter, which specifies whether the density function based on the
+        original data set should be plotted. Default False.
+        :param plot_cluster_combi_scheme: Optional. Conditional parameter, which specifies whether the combi scheme of the density function should
+        be plotted. Default False.
+        :param plot_cluster_sparsegrid: Optional. Conditional parameter, which specifies whether the underlying sparse grid of the density function
+        should be plotted. Default False.
+        :param plot_nearest_neighbor_graphs: Optional. Conditional parameter, which specifies whether the initial and cut nearest neighbor graph
+        should be plotted. Default False.
+        :return: None
+        """
         if not self._performed_clustering:
             raise AttributeError("Clustering needs to be performed on this object first.")
         if plot_original_dataset:
@@ -1452,94 +1603,3 @@ class Clustering:
                     ax0.set_zlabel('z')
                     ax1.set_zlabel('z')
                 plt.show()
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.path.append('../src/')
-
-    # generate a dataset of size with the sklearn library
-    size = 500
-    # sklearn_dataset = datasets.make_circles(n_samples=size, noise=0.05)
-    sklearn_dataset = datasets.make_moons(n_samples=size, noise=0.1)
-    # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
-    # sklearn_dataset = datasets.make_classification(size, n_features=3, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=4)
-    # sklearn_dataset = datasets.make_blobs(n_samples=size, n_features=2, centers=10)
-    # sklearn_dataset = datasets.make_gaussian_quantiles(n_samples=size, n_features=2, n_classes=6)
-    # sklearn_dataset = datasets.load_digits(return_X_y=True)
-    # sklearn_dataset = datasets.make_biclusters((2, 2), n_clusters=3)
-    # sklearn_dataset = datasets.load_iris(return_X_y=True)
-    # sklearn_dataset = datasets.load_breast_cancer(return_X_y=True)
-    # sklearn_dataset = datasets.load_wine(return_X_y=True)
-    # sklearn_dataset = datasets.make_checkerboard()
-
-    # now we can transform this dataset into a DataSet object and give it an appropriate name
-    data = DataSet(sklearn_dataset, name='Testset')
-
-    # ----------------------------------------------------------------------------------------------------------------------------------------------
-    # now let's look at some functions of the DataSet class
-
-    # DataSet objects can e.g. be ...
-    data_copy = data.copy()  # deepcopied
-    data_copy.scale_range((0.005, 0.995))  # scaled
-    part0, part1 = data_copy.split_pieces(0.5)  # split
-    data_copy = part0.concatenate(part1)  # concatenated
-    data_copy.set_name('2nd_Set')  # renamed
-    data_copy.remove_labels(0.2)  # freed of some class assignments to samples
-    without_classes, with_classes = data_copy.split_without_labels()  # seperated into samples with and without classes
-    data_copy.plot()  # plotted
-
-    # and of course we can perform a regular density estimation on a DataSet object:
-    de_retval = data_copy.density_estimation(plot_de_dataset=True, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
-
-    # ==============================================================================================================================================
-
-    # initialize Classification object with our original unedited data, 80% of this data is going to be used as learning data which has equally
-    # distributed classes
-    classification = Classification(data, split_percentage=0.8, split_evenly=True)
-
-    # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really
-    # call any other method before that without raising an error
-    classification.perform_classification(masslumping=True, lambd=0.0, minimum_level=1, maximum_level=5)
-
-    # ----------------------------------------------------------------------------------------------------------------------------------------------
-    # now we can perform some other operations on this classification object
-
-    # we could e.g. plot its classificators and corresponding density estimations
-    classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
-
-    # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing
-    # samples), we can print the current evaluation
-    classification.print_evaluation(print_incorrect_points=True)
-
-    # we can also add more testing data and print the results immediately
-    with_classes.set_name("Test_new_data")
-    classification.test_data(with_classes, print_output=True, print_incorrect_points=False)
-
-    # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-    data_copy.remove_labels(1.0)
-    calcult_classes = classification(data_copy)
-
-    # because we used 2D datasets before we can plot the results to easily see which samples were classified correctly and which not
-    correct_classes = data.copy()
-    correct_classes.scale_range((0.005, 0.995))
-    correct_classes.set_name('Correct_classes')
-    calcult_classes.set_name('Calculated_classes')
-    correct_classes.plot()
-    calcult_classes.plot()
-
-    # ==============================================================================================================================================
-
-    # initialize Clustering object with our original data, the number of nearest neighbors for the initial nearest neighbor graph (before cutting
-    # the edges) and an edge cutting threshold (edges with lower estimated density than the threshold will be cut)
-    clus = Clustering(data, number_nearest_neighbors=15, edge_cutting_threshold=0.4)
-
-    # as with the Classification object we should now immediately perform clustering on our Clustering object
-    clus.perform_clustering()
-
-    # but different than the Classification object we can't really do anything after performing clustering since all computations were already
-    # done. What we can do however is printing or plotting (if the raw dataset was 2d or 3d) the results
-    clus.print_evaluation(print_clusters=True)
-    clus.plot(plot_original_dataset=True, plot_cluster_density_estimation=True, plot_cluster_combi_scheme=False, plot_cluster_sparsegrid=False,
-              plot_nearest_neighbor_graphs=True)
