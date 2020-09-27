@@ -238,7 +238,7 @@ if do_plot:
 
 from sys import path
 path.append('../src/')
-import DatasetOperation as do
+import DEMachineLearning as do
 
 
 # generate a Circle-Dataset of size with the sklearn library

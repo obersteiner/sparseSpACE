@@ -26,7 +26,7 @@ import pstats
 
 from sys import path
 path.append('../src/')
-import DatasetOperation as do
+import DEMachineLearning as do
 
 log_info('--- Classification_eval start ---')
 for data_set in range(6):

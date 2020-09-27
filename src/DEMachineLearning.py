@@ -8,7 +8,7 @@ from StandardCombi import StandardCombi
 from GridOperation import DensityEstimation
 from sklearn import datasets, preprocessing, neighbors
 from sklearn.utils import shuffle
-from typing import List, Tuple, Union, Iterable
+from typing import List, Tuple, Union, Iterable, Dict
 
 from ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
 from Grid import GlobalTrapezoidalGrid
@@ -32,100 +32,100 @@ class DataSet:
         :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
         :param name: Optional. Name of this DataSet
         """
-        self.__name = name
-        self.__label = label
-        self.__data = None
-        self.__dim = None
-        self.__shape = None
-        self.__shuffled = False
-        self.__scaled = False
-        self.__scaling_range = None
-        self.__scaling_factor = None
-        self.__original_min = None
-        self.__original_max = None
-        self.__initialize(raw_data)
-        assert ((self.__data is not None) and (self.__dim is not None) and (self.__shape is not None))
-        assert (isinstance(self.__data, tuple) and len(self.__data) == 2 and
-                isinstance(self.__data[0], np.ndarray) and isinstance(self.__data[1], np.ndarray))
+        self._name = name
+        self._label = label
+        self._data = None
+        self._dim = None
+        self._shape = None
+        self._shuffled = False
+        self._scaled = False
+        self._scaling_range = None
+        self._scaling_factor = None
+        self._original_min = None
+        self._original_max = None
+        self._initialize(raw_data)
+        assert ((self._data is not None) and (self._dim is not None) and (self._shape is not None))
+        assert (isinstance(self._data, tuple) and len(self._data) == 2 and
+                isinstance(self._data[0], np.ndarray) and isinstance(self._data[1], np.ndarray))
 
     def __getitem__(self, item: int) -> np.ndarray:
-        return self.__data[item]
+        return self._data[item]
 
     def __str__(self) -> str:
-        return str(self.__data)
+        return str(self._data)
 
     def copy(self) -> 'DataSet':
-        copied = DataSet(self.__data)
+        copied = DataSet(self._data)
         copied.__dict__.update(self.__dict__)
         copied.set_name("%s_copy" % self.get_name())
         return copied
 
     def set_name(self, name: str) -> None:
-        self.__name = name
+        self._name = name
 
     def set_label(self, label: str) -> None:
-        self.__label = label
+        self._label = label
 
     def get_name(self) -> str:
-        return self.__name
+        return self._name
 
     def get_label(self) -> str:
-        return self.__label
+        return self._label
 
     def get_data(self) -> Tuple[np.ndarray, ...]:
-        return self.__data
+        return self._data
 
     def get_min_data(self) -> Union[np.ndarray, None]:
         if not self.is_empty():
-            return np.amin(self.__data[0], axis=0)
+            return np.amin(self._data[0], axis=0)
         else:
             return None
 
     def get_max_data(self) -> Union[np.ndarray, None]:
         if not self.is_empty():
-            return np.amax(self.__data[0], axis=0)
+            return np.amax(self._data[0], axis=0)
         else:
             return None
 
     def get_original_min(self) -> Union[np.ndarray, None]:
-        return self.__original_min
+        return self._original_min
 
     def get_original_max(self) -> Union[np.ndarray, None]:
-        return self.__original_max
+        return self._original_max
 
     def get_length(self) -> int:
-        length = round(self.__data[0].size / self.__dim) if (self.__dim != 0) else 0
-        assert ((length * self.__dim) == self.__data[0].size)
+        length = round(self._data[0].size / self._dim) if (self._dim != 0) else 0
+        assert ((length * self._dim) == self._data[0].size)
         return length
 
     def get_dim(self) -> int:
-        return self.__dim
+        return self._dim
 
     def get_number_labels(self) -> int:
-        return len([x for x in set(self.__data[1]) if x >= 0])
+        return len([x for x in set(self._data[1]) if x >= 0])
 
     def get_labels(self) -> List[int]:
-        return list(set(self.__data[1]))
+        return list(set(self._data[1]))
 
     def has_labelless_samples(self) -> bool:
-        return -1 in self.__data[1]
+        return -1 in self._data[1]
 
     def is_empty(self) -> bool:
-        return self.__data[0].size == 0
+        return self._data[0].size == 0
 
     def is_shuffled(self) -> bool:
-        return self.__shuffled
+        return self._shuffled
 
     def is_scaled(self) -> bool:
-        return self.__scaled
+        return self._scaled
 
     def get_scaling_range(self) -> Tuple[float, float]:
-        return self.__scaling_range
+        return self._scaling_range
 
     def get_scaling_factor(self) -> float:
-        return self.__scaling_factor
+        return self._scaling_factor
 
-    def __initialize(self, raw_data: Union[Tuple[np.ndarray, np.ndarray], np.ndarray, str]) -> None:
+    def _initialize(self, raw_data: Union[Tuple[np.ndarray, np.ndarray], np.ndarray, str]) -> None:
         """Private initialization method for DataSet.
 
         Provides several checks of the input parameter raw_data of the constructor and raises an error if raw_data can't be converted to
@@ -139,31 +139,33 @@ class DataSet:
             pass  # TODO implement DataSet csv reader
         if isinstance(raw_data, np.ndarray):
             if raw_data.size == 0:
-                self.__dim = 0
-                self.__shape = 0
+                self._dim = 0
+                self._shape = 0
                 raw_data = np.reshape(raw_data, 0)
             else:
-                self.__dim = round(raw_data.size / len(raw_data))
-                self.__shape = (len(raw_data), self.__dim)
-                assert ((len(raw_data) * self.__dim) == raw_data.size)
-                raw_data = np.reshape(raw_data, self.__shape)
-            self.__data = raw_data, np.array(([-1] * len(raw_data)), dtype=np.int64)
+                self._dim = round(raw_data.size / len(raw_data))
+                self._shape = (len(raw_data), self._dim)
+                assert ((len(raw_data) * self._dim) == raw_data.size)
+                raw_data = np.reshape(raw_data, self._shape)
+            self._data = raw_data, np.array(([-1] * len(raw_data)), dtype=np.int64)
         elif isinstance(raw_data, tuple) and (len(raw_data) == 2):
+            if isinstance(raw_data[0], list):
+                raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
             if raw_data[0].size == 0:
-                self.__dim = 0
-                self.__shape = 0
-                self.__data = tuple([np.reshape(raw_data[0], 0), raw_data[1]])
+                self._dim = 0
+                self._shape = 0
+                self._data = tuple([np.reshape(raw_data[0], 0), raw_data[1]])
             elif raw_data[1].ndim == 1 and not any([x < -1 for x in list(set(raw_data[1]))]) and (len(raw_data[0]) == len(raw_data[1])):
-                self.__dim = round(raw_data[0].size / len(raw_data[0]))
-                self.__shape = (len(raw_data[0]), self.__dim)
-                assert ((len(raw_data[0]) * self.__dim) == raw_data[0].size)
-                self.__data = tuple([np.reshape(raw_data[0], self.__shape), raw_data[1]])
+                self._dim = round(raw_data[0].size / len(raw_data[0]))
+                self._shape = (len(raw_data[0]), self._dim)
+                assert ((len(raw_data[0]) * self._dim) == raw_data[0].size)
+                self._data = tuple([np.reshape(raw_data[0], self._shape), raw_data[1]])
             else:
                 raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
         else:
             raise ValueError("Invalid raw_data parameter in DataSet Constructor.")
 
-    def __update_internal(self, to_update: 'DataSet') -> 'DataSet':
+    def _update_internal(self, to_update: 'DataSet') -> 'DataSet':
         """Update all internal attributes which can normally only be changed through DataSet methods or should be changed automatically.
 
         Mainly used to keep scaling of DataSets after methods that change the internal data.
@@ -171,17 +173,17 @@ class DataSet:
         :param to_update: DataSet whose internal attributes need to updated
         :return: Input DataSet with updated internal attributes
         """
-        to_update.__label = self.__label
-        to_update.__shuffled = self.__shuffled
-        to_update.__scaled = self.__scaled
-        to_update.__scaling_range = self.__scaling_range
-        to_update.__scaling_factor = self.__scaling_factor
-        if self.__scaled:
-            to_update.__original_min = self.__original_min.copy()
-            to_update.__original_max = self.__original_max.copy()
+        to_update._label = self._label
+        to_update._shuffled = self._shuffled
+        to_update._scaled = self._scaled
+        to_update._scaling_range = self._scaling_range
+        to_update._scaling_factor = self._scaling_factor
+        if self._scaled:
+            to_update._original_min = self._original_min.copy()
+            to_update._original_max = self._original_max.copy()
         else:
-            to_update.__original_min = self.__original_min
-            to_update.__original_max = self.__original_max
+            to_update._original_min = self._original_min
+            to_update._original_max = self._original_max
         return to_update
 
     def same_scaling(self, to_check: 'DataSet') -> bool:
@@ -192,23 +194,23 @@ class DataSet:
         :param to_check: DataSet whose internal scaling should be compared to self's internal scaling
         :return: Boolean value which indicates whether the internal scaling of input DataSet and self are completely equal
         """
-        if not self.__scaled == to_check.__scaled:
+        if not self._scaled == to_check._scaled:
             return False
-        if not self.__scaled and not to_check.__scaled:
+        if not self._scaled and not to_check._scaled:
             return True
-        assert (self.__scaled == to_check.__scaled)
-        if not (isinstance(self.__scaling_range[0], Iterable) != isinstance(to_check.__scaling_range[0], Iterable)):
-            if isinstance(self.__scaling_range[0], Iterable):
-                scaling_range = all([(x[0] == y[0]) and (x[1] == y[1]) for x, y in zip(self.__scaling_range, to_check.__scaling_range)])
+        assert (self._scaled == to_check._scaled)
+        if not (isinstance(self._scaling_range[0], Iterable) != isinstance(to_check._scaling_range[0], Iterable)):
+            if isinstance(self._scaling_range[0], Iterable):
+                scaling_range = all([(x[0] == y[0]) and (x[1] == y[1]) for x, y in zip(self._scaling_range, to_check._scaling_range)])
             else:
-                scaling_range = all([x == y for x, y in zip(self.__scaling_range, to_check.__scaling_range)])
+                scaling_range = all([x == y for x, y in zip(self._scaling_range, to_check._scaling_range)])
         else:
             return False
-        if not (isinstance(self.__scaling_factor, Iterable) != isinstance(to_check.__scaling_factor, Iterable)):
-            if isinstance(self.__scaling_factor, Iterable):
-                scaling_factor = all([x == y for x, y in zip(self.__scaling_factor, to_check.__scaling_factor)])
+        if not (isinstance(self._scaling_factor, Iterable) != isinstance(to_check._scaling_factor, Iterable)):
+            if isinstance(self._scaling_factor, Iterable):
+                scaling_factor = all([x == y for x, y in zip(self._scaling_factor, to_check._scaling_factor)])
             else:
-                scaling_factor = self.__scaling_factor == to_check.__scaling_factor
+                scaling_factor = self._scaling_factor == to_check._scaling_factor
         else:
             return False
         return scaling_range and scaling_factor
@@ -223,8 +225,8 @@ class DataSet:
         """
         if any([(i < 0) or (i > self.get_length()) for i in indices]):
             raise ValueError("Can't remove samples out of bounds of DataSet.")
-        removed_samples = [self.__update_internal(DataSet((np.array([self.__data[0][i]]), np.array([self.__data[1][i]])))) for i in indices]
-        self.__data = tuple([np.delete(self.__data[0], indices, axis=0), np.delete(self.__data[1], indices, axis=0)])
+        removed_samples = [self._update_internal(DataSet((np.array([self._data[0][i]]), np.array([self._data[1][i]])))) for i in indices]
+        self._data = tuple([np.delete(self._data[0], indices, axis=0), np.delete(self._data[1], indices, axis=0)])
         return DataSet.list_concatenate(removed_samples)
 
     def scale_range(self, scaling_range: Tuple[float, float], override_scaling: bool = False) -> None:
@@ -237,21 +239,21 @@ class DataSet:
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if not self.__scaled or override_scaling:
+        if not self._scaled or override_scaling:
             scaler = preprocessing.MinMaxScaler(feature_range=scaling_range)
-            scaler.fit(self.__data[0])
-            self.__data = tuple([scaler.transform(self.__data[0]), np.array([c for c in self.__data[1]])])
-            self.__scaled = True
-            self.__scaling_range = scaling_range
-            self.__scaling_factor = scaler.scale_
-            self.__original_min = scaler.data_min_
-            self.__original_max = scaler.data_max_
+            scaler.fit(self._data[0])
+            self._data = tuple([scaler.transform(self._data[0]), np.array([c for c in self._data[1]])])
+            self._scaled = True
+            self._scaling_range = scaling_range
+            self._scaling_factor = scaler.scale_
+            self._original_min = scaler.data_min_
+            self._original_max = scaler.data_max_
         else:
             scaler = preprocessing.MinMaxScaler(feature_range=scaling_range)
-            scaler.fit(self.__data[0])
-            self.__data = tuple([scaler.transform(self.__data[0]), np.array([c for c in self.__data[1]])])
-            self.__scaling_range = scaling_range
-            self.__scaling_factor *= scaler.scale_
+            scaler.fit(self._data[0])
+            self._data = tuple([scaler.transform(self._data[0]), np.array([c for c in self._data[1]])])
+            self._scaling_range = scaling_range
+            self._scaling_factor *= scaler.scale_
 
     def scale_factor(self, scaling_factor: Union[float, np.ndarray], override_scaling: bool = False) -> None:
         """Scale DataSet by a specified factor.
@@ -260,23 +262,23 @@ class DataSet:
         specified by the input parameter is applied.
 
         :param scaling_factor: Factor by which all samples should be scaled. Can either be a float value for general scaling or np.ndarray with
-        dimension self.__dim to scale each dimension individually
+        dimension self._dim to scale each dimension individually
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if not self.__scaled or override_scaling:
-            self.__original_min = self.get_min_data()
-            self.__original_max = self.get_max_data()
-            self.__data = tuple([np.array(list(map(lambda x: x * scaling_factor, self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
-            self.__scaling_factor = scaling_factor
-            self.__scaled = True
+        if not self._scaled or override_scaling:
+            self._original_min = self.get_min_data()
+            self._original_max = self.get_max_data()
+            self._data = tuple([np.array(list(map(lambda x: x * scaling_factor, self._data[0]))), self._data[1]])
+            self._scaling_range = (np.amin(self._data[0], axis=0), np.amax(self._data[0], axis=0))
+            self._scaling_factor = scaling_factor
+            self._scaled = True
         else:
-            if isinstance(scaling_factor, np.ndarray) and len(scaling_factor) != self.__dim:
+            if isinstance(scaling_factor, np.ndarray) and len(scaling_factor) != self._dim:
                 raise ValueError("Multidimensional scaling factor needs to have the same dimension as DataSet it is applied to.")
-            self.__data = tuple([np.array(list(map(lambda x: x * scaling_factor, self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
-            self.__scaling_factor *= scaling_factor
+            self._data = tuple([np.array(list(map(lambda x: x * scaling_factor, self._data[0]))), self._data[1]])
+            self._scaling_range = (np.amin(self._data[0], axis=0), np.amax(self._data[0], axis=0))
+            self._scaling_factor *= scaling_factor
 
     def shift_value(self, shift_val: Union[float, np.ndarray], override_scaling: bool = False) -> None:
         """Shift DataSet by a specified value.
@@ -285,31 +287,31 @@ class DataSet:
         specified by the input parameter is applied.
 
         :param shift_val: Value by which all samples should be shifted. Can either be a float value for general shifting or np.ndarray with
-        dimension self.__dim to shift each dimension individually
+        dimension self._dim to shift each dimension individually
         :param override_scaling: Optional. Conditional parameter which indicates whether old scaling (if available) should be overridden
         :return: None
         """
-        if not self.__scaled or override_scaling:
-            self.__original_min = self.get_min_data()
-            self.__original_max = self.get_max_data()
-            self.__data = tuple([np.array(list(map(lambda x: (x + shift_val), self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
-            self.__scaling_factor = 1.0
-            self.__scaled = True
+        if not self._scaled or override_scaling:
+            self._original_min = self.get_min_data()
+            self._original_max = self.get_max_data()
+            self._data = tuple([np.array(list(map(lambda x: (x + shift_val), self._data[0]))), self._data[1]])
+            self._scaling_range = (np.amin(self._data[0], axis=0), np.amax(self._data[0], axis=0))
+            self._scaling_factor = 1.0
+            self._scaled = True
         else:
-            if isinstance(shift_val, np.ndarray) and len(shift_val) != self.__dim:
+            if isinstance(shift_val, np.ndarray) and len(shift_val) != self._dim:
                 raise ValueError("Multidimensional shifting value needs to have the same dimension as DataSet it is applied to.")
-            self.__data = tuple([np.array(list(map(lambda x: (x + shift_val), self.__data[0]))), self.__data[1]])
-            self.__scaling_range = (np.amin(self.__data[0], axis=0), np.amax(self.__data[0], axis=0))
+            self._data = tuple([np.array(list(map(lambda x: (x + shift_val), self._data[0]))), self._data[1]])
+            self._scaling_range = (np.amin(self._data[0], axis=0), np.amax(self._data[0], axis=0))
 
     def shuffle(self) -> None:
         """Shuffle DataSet randomly.
 
         :return: None
         """
-        shuffled = shuffle(tuple(zip(self.__data[0], self.__data[1])))
-        self.__data = tuple([np.array([[v for v in x[0]] for x in shuffled]), np.array([y[1] for y in shuffled])])
-        self.__shuffled = True
+        shuffled = shuffle(tuple(zip(self._data[0], self._data[1])))
+        self._data = tuple([np.array([[v for v in x[0]] for x in shuffled]), np.array([y[1] for y in shuffled])])
+        self._shuffled = True
 
     def concatenate(self, other_dataset: 'DataSet') -> 'DataSet':
         """Concatenate this DataSet's data with the data of specified DataSet.
@@ -320,17 +322,17 @@ class DataSet:
         :param other_dataset: DataSet whose data should be concatenated with data of this DataSet
         :return: New DataSet with concatenated data
         """
-        if not (self.__dim == other_dataset.get_dim()):
+        if not (self._dim == other_dataset.get_dim()):
             if other_dataset.is_empty():
                 return self
             elif self.is_empty():
                 return other_dataset
             else:
                 raise ValueError("DataSets must have the same dimensions for concatenation.")
-        values = np.concatenate((self.__data[0], other_dataset[0]), axis=0)
-        labels = np.concatenate((self.__data[1], other_dataset[1]))
+        values = np.concatenate((self._data[0], other_dataset[0]), axis=0)
+        labels = np.concatenate((self._data[1], other_dataset[1]))
         concatenated_set = DataSet((values, labels))
-        self.__update_internal(concatenated_set)
+        self._update_internal(concatenated_set)
         equal_scaling = self.same_scaling(concatenated_set)
         if not equal_scaling:
             raise ValueError("Can't concatenate DataSets with different scaling")
@@ -362,10 +364,10 @@ class DataSet:
         """
         set_labels = []
         for j in self.get_labels():
-            current_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == j])
+            current_values = np.array([x for i, x in enumerate(self._data[0]) if self._data[1][i] == j])
             current_label = np.array(([j] * len(current_values)), dtype=np.int64)
             current_set = DataSet(tuple([current_values, current_label]))
-            self.__update_internal(current_set)
+            self._update_internal(current_set)
             set_labels.append(current_set)
         return set_labels
 
@@ -378,12 +380,12 @@ class DataSet:
 
         :return: A Tuple of two new DataSets which contain all labelless samples and all samples with labels
         """
-        labelless_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] == -1])
-        labelfull_values = np.array([x for i, x in enumerate(self.__data[0]) if self.__data[1][i] >= 0])
+        labelless_values = np.array([x for i, x in enumerate(self._data[0]) if self._data[1][i] == -1])
+        labelfull_values = np.array([x for i, x in enumerate(self._data[0]) if self._data[1][i] >= 0])
         set_labelless = DataSet(labelless_values)
-        set_labelfull = DataSet(tuple([labelfull_values, np.array([c for c in self.__data[1] if c >= 0], dtype=np.int64)]))
-        self.__update_internal(set_labelless)
-        self.__update_internal(set_labelfull)
+        set_labelfull = DataSet(tuple([labelfull_values, np.array([c for c in self._data[1] if c >= 0], dtype=np.int64)]))
+        self._update_internal(set_labelless)
+        self._update_internal(set_labelfull)
         return set_labelless, set_labelfull
 
     def split_pieces(self, percentage: float) -> Tuple['DataSet', 'DataSet']:
@@ -397,12 +399,12 @@ class DataSet:
         :return: A Tuple of two new DataSets which contain all samples before and after the index at which the data was splitted
         """
         percentage = percentage if 0 <= percentage < 1 else 1.0
-        set0 = DataSet(tuple([np.array(self.__data[0][:(round(self.get_length() * percentage))]),
-                              self.__data[1][:(round(self.get_length() * percentage))]]))
-        set1 = DataSet(tuple([np.array(self.__data[0][(round(self.get_length() * percentage)):]),
-                              self.__data[1][(round(self.get_length() * percentage)):]]))
-        self.__update_internal(set0)
-        self.__update_internal(set1)
+        set0 = DataSet(tuple([np.array(self._data[0][:(round(self.get_length() * percentage))]),
+                              self._data[1][:(round(self.get_length() * percentage))]]))
+        set1 = DataSet(tuple([np.array(self._data[0][(round(self.get_length() * percentage)):]),
+                              self._data[1][(round(self.get_length() * percentage)):]]))
+        self._update_internal(set0)
+        self._update_internal(set1)
         return set0, set1
 
     def remove_labels(self, percentage: float) -> None:
@@ -416,14 +418,14 @@ class DataSet:
         """
         labelless, labelfull = self.split_without_labels()
         indices = rnd.sample(range(0, labelfull.get_length()), round((percentage if (1 > percentage >= 0) else 1.0) * labelfull.get_length()))
-        labels = labelfull.__data[1]
+        labels = labelfull._data[1]
         labels[indices] = -1
         if labelless.is_empty():
-            self.__data = tuple([labelfull.__data[0], labels])
+            self._data = tuple([labelfull._data[0], labels])
         elif labelfull.is_empty():
-            self.__data = tuple([labelless.__data[0], labelless.__data[1]])
+            self._data = tuple([labelless._data[0], labelless._data[1]])
         else:
-            self.__data = tuple([np.concatenate((labelfull.__data[0], labelless.__data[0])), np.concatenate((labels, labelless.__data[1]))])
+            self._data = tuple([np.concatenate((labelfull._data[0], labelless._data[0])), np.concatenate((labels, labelless._data[1]))])
 
     def move_boundaries_to_front(self) -> None:
         """Move samples with lowest and highest value in each dimension to the front of this DataSet's data.
@@ -432,12 +434,12 @@ class DataSet:
 
         :return: None
         """
-        search_indices_min = np.where(self.__data[0] == self.get_min_data())
-        search_indices_max = np.where(self.__data[0] == self.get_max_data())
+        search_indices_min = np.where(self._data[0] == self.get_min_data())
+        search_indices_max = np.where(self._data[0] == self.get_max_data())
         indices = list(set(search_indices_min[0]) | set(search_indices_max[0]))
         for i, x in enumerate(indices):
-            self.__data[0][[i, x]] = self.__data[0][[x, i]]
-            self.__data[1][[i, x]] = self.__data[1][[x, i]]
+            self._data[0][[i, x]] = self._data[0][[x, i]]
+            self._data[1][[i, x]] = self._data[1][[x, i]]
 
     def revert_scaling(self) -> None:
         """Revert this DataSet's data to its original scaling.
@@ -446,14 +448,14 @@ class DataSet:
 
         :return:
         """
-        self.shift_value(-self.__scaling_range[0], override_scaling=False)
-        self.scale_factor(1.0 / self.__scaling_factor, override_scaling=False)
-        self.shift_value(self.__original_min, override_scaling=False)
-        self.__scaled = False
-        self.__scaling_range = None
-        self.__scaling_factor = None
-        self.__original_min = None
-        self.__original_max = None
+        self.shift_value(-self._scaling_range[0], override_scaling=False)
+        self.scale_factor(1.0 / self._scaling_factor, override_scaling=False)
+        self.shift_value(self._original_min, override_scaling=False)
+        self._scaled = False
+        self._scaling_range = None
+        self._scaling_factor = None
+        self._original_min = None
+        self._original_max = None
 
     def density_estimation(self,
                            masslumping: bool = True,
@@ -480,9 +482,9 @@ class DataSet:
         :param plot_sparsegrid: Optional. Conditional Parameter which indicates whether resulting sparsegrid of DensityEstimation should be plotted
         :return:
         """
-        a = np.zeros(self.__dim)
-        b = np.ones(self.__dim)
-        de_object = DensityEstimation(self.__data, self.__dim, masslumping=masslumping, lambd=lambd)
+        a = np.zeros(self._dim)
+        b = np.ones(self._dim)
+        de_object = DensityEstimation(self._data, self._dim, masslumping=masslumping, lambd=lambd)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
         combi_object.perform_operation(minimum_level, maximum_level, print_time=False)
         if plot_de_dataset:
@@ -539,10 +541,10 @@ class DataSet:
         Parameters
         ----------
         """
-        a = np.zeros(self.__dim)
-        b = np.ones(self.__dim)
+        a = np.zeros(self._dim)
+        b = np.ones(self._dim)
         grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=modified_basis, boundary=boundary)
-        de_object = DensityEstimation(self.__data, self.__dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values,
+        de_object = DensityEstimation(self._data, self._dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values,
                                       numeric_calculation=numeric_calculation, print_output=False)
         error_calculator = ErrorCalculatorSingleDimVolumeGuided()
         combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
@@ -574,47 +576,47 @@ class DataSet:
         plt.rc('figure', figsize=(12.0, 12.0))
         fig = plt.figure()
 
-        if self.__dim == 2:
+        if self._dim == 2:
             ax = fig.add_subplot(111)
             if plot_labels:
                 if self.has_labelless_samples():
                     data_labelless, data_labelfull = self.split_without_labels()
                     list_labels = data_labelfull.split_labels()
                     x, y = zip(*data_labelless[0])
-                    ax.scatter(x, y, s=125, label='%s_?' % self.__label, c='gray')
+                    ax.scatter(x, y, s=125, label='%s_?' % self._label, c='gray')
                 else:
                     list_labels = self.split_labels()
                 for i, v in enumerate(list_labels):
                     x, y = zip(*v[0])
-                    ax.scatter(x, y, s=125, label='%s_%d' % (self.__label, i))
+                    ax.scatter(x, y, s=125, label='%s_%d' % (self._label, i))
                 ax.legend(fontsize=22, loc='upper left', borderaxespad=0.0, bbox_to_anchor=(1.05, 1))
             else:
-                x, y = zip(*self.__data[0])
+                x, y = zip(*self._data[0])
                 ax.scatter(x, y, s=125)
-            ax.set_title(self.__name)
+            ax.set_title(self._name)
             ax.title.set_position([0.5, 1.025])
             ax.grid(True)
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-        elif self.__dim == 3:
+        elif self._dim == 3:
             ax = fig.add_subplot(111, projection='3d')
             if plot_labels:
                 if self.has_labelless_samples():
                     data_labelless, data_labelfull = self.split_without_labels()
                     list_labels = data_labelfull.split_labels()
                     x, y, z = zip(*data_labelless[0])
-                    ax.scatter(x, y, z, s=125, label='%s_?' % self.__label, c='gray')
+                    ax.scatter(x, y, z, s=125, label='%s_?' % self._label, c='gray')
                 else:
                     list_labels = self.split_labels()
                 for i, v in enumerate(list_labels):
                     x, y, z = zip(*v[0])
-                    ax.scatter(x, y, z, s=125, label='%s_%d' % (self.__label, i))
+                    ax.scatter(x, y, z, s=125, label='%s_%d' % (self._label, i))
                 ax.legend(fontsize=22, loc='upper left', borderaxespad=0.0, bbox_to_anchor=(1.05, 1))
             else:
                 fig.set_figwidth(10.0)
-                x, y, z = zip(*self.__data[0])
+                x, y, z = zip(*self._data[0])
                 ax.scatter(x, y, z, s=125)
-            ax.set_title(self.__name)
+            ax.set_title(self._name)
             ax.title.set_position([0.5, 1.025])
             ax.grid(True)
             ax.set_xlabel('x')
@@ -644,42 +646,46 @@ class Classification:
                  raw_data: 'DataSet',
                  data_range: Tuple[np.ndarray, np.ndarray] = None,
                  split_percentage: float = 1.0,
-                 split_evenly: bool = True):
+                 split_evenly: bool = True,
+                 shuffle_data: bool = True):
         """Constructor of Classification.
 
         Takes raw_data as necessary parameter and some more optional parameters which are specified below.
         Initializes data for this object.
         Stores the following values as private attributes:
-        + self.__data: original data, all new testing data is stored here as well
-        + self.__omitted_data: during initialization and testing omitted classless data
-        + self.__learning_data: in __initialize() assigned learning data
-        + self.__testing_data: in __initialize() assigned testing data, all new testing data is stored here as well
-        + self.__data_range: the original range of all data samples in each dimension
-        + self.__scale_factor: the scaling factor for each dimension with which all samples in this object were scaled
-        + self.__calculated_classes_testset: All calculated classes for samples in self.__testing_data in the same order (useful for printing)
-        + self.__classificators: List of all in __perform_classification() computed classificators. One for each class
-        + self.__de_objects: List of all in in __perform_classification() computed DensityEstimation Objects (useful for plotting)
-        + self.__performed_classification: Check if classfication was already performed for this object
+        + self._data: original data, all new testing data is stored here as well
+        + self._omitted_data: during initialization and testing omitted classless data
+        + self._learning_data: in _initialize() assigned learning data
+        + self._testing_data: in _initialize() assigned testing data, all new testing data is stored here as well
+        + self._data_range: the original range of all data samples in each dimension
+        + self._scale_factor: the scaling factor for each dimension with which all samples in this object were scaled
+        + self._calculated_classes_testset: All calculated classes for samples in self._testing_data in the same order (useful for printing)
+        + self._classificators: List of all in _perform_classification() computed classificators. One for each class
+        + self._de_objects: List of all in in _perform_classification() computed DensityEstimation Objects (useful for plotting)
+        + self._performed_classification: Check if classfication was already performed for this object
 
         :param raw_data: DataSet on which to perform learning (and if 0 < percentage < 1 also testing)
         :param data_range: Optional. If the user knows the original range of the dataset, they can specify it here.
         :param split_percentage: Optional. If a percentage of the raw data should be used as testing data: 0 < percentage < 1. Default 1.0
         :param split_evenly: Optional. Only relevant when 0 < percentage < 1. Conditional parameter which indicates whether the learning datasets
         for each class should be of near equal size. Default True
+        :param shuffle_data: ...
         """
-        self.__original_data = raw_data
-        self.__scaled_data = None
-        self.__omitted_data = None
-        self.__learning_data = None
-        self.__testing_data = None
-        self.__data_range = data_range
-        self.__scale_factor = None
-        self.__calculated_classes_testset = np.array([])
-        self.__densities_testset = []
-        self.__classificators = []
-        self.__de_objects = []
-        self.__performed_classification = False
-        self.__initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly)
+        self._original_data = raw_data
+        self._scaled_data = None
+        self._omitted_data = None
+        self._learning_data = None
+        self._testing_data = None
+        self._data_range = data_range
+        self._scale_factor = None
+        self._calculated_classes_testset = np.array([])
+        self._densities_testset = []
+        self._classificators = []
+        self._de_objects = []
+        self._performed_classification = False
+        self._time_used = None
+        self._initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly,
+                         shuffle_data)
 
     def __call__(self, data_to_evaluate: 'DataSet', print_removed: bool = True) -> 'DataSet':
         """Evaluate classes for samples in input data and create a new DataSet from those same samples and classes.
@@ -693,20 +699,20 @@ class Classification:
         :param print_removed: Optional. Conditional parameter which specifies whether during scaling removed samples should be printed
         :return: New DataSet which consists of samples from input DataSet and for those samples computed classes
         """
-        if not self.__performed_classification:
+        if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if data_to_evaluate.is_empty():
             raise ValueError("Can't classificate empty dataset.")
         print("---------------------------------------------------------------------------------------------------------------------------------")
         print("Evaluating classes of %s DataSet..." % data_to_evaluate.get_name())
-        evaluate = self.__internal_scaling(data_to_evaluate, print_removed=print_removed)
+        evaluate = self._internal_scaling(data_to_evaluate, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
-                             (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
-        evaluated_data = DataSet(tuple([evaluate[0], np.array(self.__classificate(evaluate))]), name="%s_evaluated_classes" %
-                                                                                                     data_to_evaluate.get_name(), label="class")
-        del self.__densities_testset[(len(self.__densities_testset) - data_to_evaluate.get_length()):]
+                             (', '.join([str(x) for x in self._data_range[0]]), ', '.join([str(x) for x in self._data_range[1]])))
+        evaluated_data = DataSet(tuple([evaluate[0], np.array(self._classificate(evaluate))]), name="%s_evaluated_classes" %
+                                                                                                    data_to_evaluate.get_name(), label="class")
+        del self._densities_testset[(len(self._densities_testset) - data_to_evaluate.get_length()):]
         return evaluated_data
 
     def test_data(self, new_testing_data: DataSet,
@@ -718,9 +724,9 @@ class Classification:
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
         AttributeError is raised.
         In case the input testing data is empty, a ValueError is raised.
-        Test data is scaled with the same factors as the original data (self.__data) and samples out of bounds after scaling are removed.
-        Only test data samples with known classes can be used for testing; the omitted rest ist stored into self.__omitted_data.
-        Test data with known classes and samples only inside of bounds is stored into self.__testing_data, results are calculated and printed
+        Test data is scaled with the same factors as the original data (self._data) and samples out of bounds after scaling are removed.
+        Only test data samples with known classes can be used for testing; the omitted rest ist stored into self._omitted_data.
+        Test data with known classes and samples only inside of bounds is stored into self._testing_data, results are calculated and printed
         (default) if the user specified it.
 
         :param new_testing_data: Test DataSet for which classificators should be tested
@@ -729,116 +735,124 @@ class Classification:
         :param print_incorrect_points: Conditional parameter whick specifies whether the incorrectly mapped points should be printed. Default False
         :return: DataSet which contains all classless samples that were omitted
         """
-        if not self.__performed_classification:
+        if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
         print("---------------------------------------------------------------------------------------------------------------------------------")
         print("Testing classes of %s DataSet..." % new_testing_data.get_name())
         new_testing_data.set_label("class")
-        evaluate = self.__internal_scaling(new_testing_data, print_removed=print_removed)
+        evaluate = self._internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for testing were out of bounds. Please only test samples in unscaled range: "
                              "\n[%s]\n[%s]\nwith this classification object" %
-                             (', '.join([str(x) for x in self.__data_range[0]]), ', '.join([str(x) for x in self.__data_range[1]])))
+                             (', '.join([str(x) for x in self._data_range[0]]), ', '.join([str(x) for x in self._data_range[1]])))
         omitted_data, used_data = evaluate.split_without_labels()
         if not omitted_data.is_empty():
             print("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
-        self.__omitted_data.concatenate(omitted_data)
-        self.__scaled_data.concatenate(used_data)
-        self.__testing_data.concatenate(used_data)
-        calculated_new_testclasses = self.__classificate(used_data)
-        self.__calculated_classes_testset = np.concatenate((self.__calculated_classes_testset, calculated_new_testclasses))
+        self._omitted_data.concatenate(omitted_data)
+        self._scaled_data.concatenate(used_data)
+        self._testing_data.concatenate(used_data)
+        calculated_new_testclasses = self._classificate(used_data)
+        self._calculated_classes_testset = np.concatenate((self._calculated_classes_testset, calculated_new_testclasses))
         if print_output:
-            self.__print_evaluation(used_data, calculated_new_testclasses,
-                                    self.__densities_testset[(len(self.__densities_testset) - new_testing_data.get_length()):],
-                                    print_incorrect_points)
+            self._print_evaluation(used_data, calculated_new_testclasses,
+                                   self._densities_testset[(len(self._densities_testset) - new_testing_data.get_length()):],
+                                   print_incorrect_points)
         return omitted_data
 
     def get_original_data(self) -> 'DataSet':
-        ret_val = self.__original_data.copy()
-        ret_val.set_name(self.__original_data.get_name())
+        ret_val = self._original_data.copy()
+        ret_val.set_name(self._original_data.get_name())
         return ret_val
 
     def get_omitted_data(self) -> 'DataSet':
-        ret_val = self.__omitted_data.copy()
-        ret_val.set_name(self.__omitted_data.get_name())
+        ret_val = self._omitted_data.copy()
+        ret_val.set_name(self._omitted_data.get_name())
         return ret_val
 
     def get_learning_data(self) -> 'DataSet':
-        ret_val = self.__learning_data.copy()
-        ret_val.set_name(self.__learning_data.get_name())
+        ret_val = self._learning_data.copy()
+        ret_val.set_name(self._learning_data.get_name())
         return ret_val
 
     def get_testing_data(self) -> 'DataSet':
-        ret_val = self.__testing_data.copy()
-        ret_val.set_name(self.__testing_data.get_name())
+        ret_val = self._testing_data.copy()
+        ret_val.set_name(self._testing_data.get_name())
         return ret_val
 
     def get_dataset_range(self) -> Tuple[np.ndarray, np.ndarray]:
-        return self.__data_range
+        return self._data_range
 
     def get_scale_factor(self) -> float:
-        return self.__scale_factor
+        return self._scale_factor
 
     def get_calculated_classes_testset(self) -> List[int]:
-        return self.__calculated_classes_testset.copy()
+        return self._calculated_classes_testset.copy()
 
-    def __initialize(self, percentage: float, split_evenly: bool) -> None:
+    def get_time_used(self) -> float:
+        return self._time_used
+
+    def get_density_estimation_results(self) -> Tuple[List[StandardCombi], List[DensityEstimation]]:
+        return self._classificators, self._de_objects
+
+    def _initialize(self, percentage: float, split_evenly: bool, shuffle_data: bool) -> None:
         """Initialize data for performing classification.
 
-        Calculates which parts of the original data (self.__data) should be used as learning and testing data.
+        Calculates which parts of the original data (self._data) should be used as learning and testing data.
         If percentage is 1, all of the original data is used as learning data.
-        Any classless samples in the original dataset are removed and stored in self.__omitted_data first.
+        Any classless samples in the original dataset are removed and stored in self._omitted_data first.
         Scaling to range (0.005, 0.995) is performed either simply based on boundary samples (default) or by the original data range (if
         specified by the user in the constructor). If the latter, samples out of bounds are removed, printed to stdout and the user is notified.
         Before splitting the data, it is shuffled to ensure random splitting and the boundary samples are moved to the front to guarantee that
         they are in the learning dataset.
 
-        :param percentage: Percentage of original data (self.__data) which to use as learning dataset.
+        :param percentage: Percentage of original data (self._data) which to use as learning dataset.
         :param split_evenly: Only relevant when 0 < percentage < 1. Conditional parameter which indicates whether the learning datasets
         for each class should be of near equal size
+        :param shuffle_data: Conditional parameter which indicates whether the learning set should be shuffled before initialization
         :return: None
         """
-        self.__scaled_data = self.__original_data.copy()
-        self.__scaled_data.set_name(self.__original_data.get_name())
-        self.__scaled_data.set_label("class")
-        self.__omitted_data, used_data = self.__scaled_data.split_without_labels()
-        self.__omitted_data.set_name("%s_omitted" % self.__scaled_data.get_name())
-        used_data.set_name(self.__scaled_data.get_name())
-        self.__scaled_data = used_data
-        if self.__scaled_data.is_empty():
+        self._scaled_data = self._original_data.copy()
+        self._scaled_data.set_name(self._original_data.get_name())
+        self._scaled_data.set_label("class")
+        self._omitted_data, used_data = self._scaled_data.split_without_labels()
+        self._omitted_data.set_name("%s_omitted" % self._scaled_data.get_name())
+        used_data.set_name(self._scaled_data.get_name())
+        self._scaled_data = used_data
+        if self._scaled_data.is_empty():
             raise ValueError("Can't perform classification learning on empty or classless DataSet.")
-        if self.__data_range is not None:
-            if any(x <= y for x, y in zip(self.__data_range[1], self.__data_range[0])):
+        if self._data_range is not None:
+            if any(x <= y for x, y in zip(self._data_range[1], self._data_range[0])):
                 raise ValueError("Invalid dataset range.")
-            self.__scale_factor = 0.99 / (self.__data_range[1] - self.__data_range[0])
-            self.__scaled_data = self.__internal_scaling(self.__scaled_data, print_removed=True)
+            self._scale_factor = 0.99 / (self._data_range[1] - self._data_range[0])
+            self._scaled_data = self._internal_scaling(self._scaled_data, print_removed=True)
         else:
-            self.__scaled_data.scale_range((0.005, 0.995), override_scaling=True)
-            self.__data_range = (self.__scaled_data.get_original_min(), self.__scaled_data.get_original_max())
-            self.__scale_factor = self.__scaled_data.get_scaling_factor()
-        if not self.__omitted_data.is_empty():
+            self._scaled_data.scale_range((0.005, 0.995), override_scaling=True)
+            self._data_range = (self._scaled_data.get_original_min(), self._scaled_data.get_original_max())
+            self._scale_factor = self._scaled_data.get_scaling_factor()
+        if not self._omitted_data.is_empty():
             print("Omitted some classless samples during initialization and added them to omitted sample collection of this object.")
-            self.__omitted_data.shift_value(-self.__data_range[0], override_scaling=True)
-            self.__omitted_data.scale_factor(self.__scale_factor, override_scaling=True)
-            self.__omitted_data.shift_value(0.005, override_scaling=True)
-        self.__scaled_data.shuffle()
-        self.__scaled_data.move_boundaries_to_front()
+            self._omitted_data.shift_value(-self._data_range[0], override_scaling=True)
+            self._omitted_data.scale_factor(self._scale_factor, override_scaling=True)
+            self._omitted_data.shift_value(0.005, override_scaling=True)
+        if shuffle_data:
+            self._scaled_data.shuffle()
+        self._scaled_data.move_boundaries_to_front()
         if split_evenly:
-            data_classes = self.__scaled_data.split_labels()
+            data_classes = self._scaled_data.split_labels()
             data_learn_list = [x.split_pieces(percentage)[0] for x in data_classes]
             data_test_list = [x.split_pieces(percentage)[1] for x in data_classes]
             data_learn = DataSet.list_concatenate(data_learn_list)
             data_test = DataSet.list_concatenate(data_test_list)
         else:
-            data_learn, data_test = self.__scaled_data.split_pieces(percentage)
-        self.__learning_data = data_learn
-        self.__learning_data.set_name("%s_learning_data" % self.__scaled_data.get_name())
-        self.__testing_data = data_test
-        self.__testing_data.set_name("%s_testing_data" % self.__scaled_data.get_name())
+            data_learn, data_test = self._scaled_data.split_pieces(percentage)
+        self._learning_data = data_learn
+        self._learning_data.set_name("%s_learning_data" % self._scaled_data.get_name())
+        self._testing_data = data_test
+        self._testing_data.set_name("%s_testing_data" % self._scaled_data.get_name())
 
-    def __classificate(self, data_to_classificate: DataSet) -> np.ndarray:
+    def _classificate(self, data_to_classificate: DataSet) -> np.ndarray:
         """Calculate classes for samples of input data.
 
         Computes the densities of each class for every sample. The class which corresponds to the highest density for a sample is assigned to it.
@@ -847,13 +861,13 @@ class Classification:
         :param data_to_classificate: DataSet whose samples are to be classified
         :return: List of computed classes in the same order as their corresponding samples
         """
-        density_data = list(zip(*[x(data_to_classificate[0]) for x in self.__classificators]))
-        self.__densities_testset += density_data
+        density_data = list(zip(*[x(data_to_classificate[0]) for x in self._classificators]))
+        self._densities_testset += density_data
         return np.argmax(density_data, axis=1).flatten()
         # return [j for i, a in enumerate(density_data) for j, b in enumerate(a) if b == max_density_per_point[i]]
 
-    def __internal_scaling(self, data_to_check: DataSet, print_removed: bool = False) -> 'DataSet':
-        """Scale data with the same factors as the original data (self.__data) was scaled.
+    def _internal_scaling(self, data_to_check: DataSet, print_removed: bool = False) -> 'DataSet':
+        """Scale data with the same factors as the original data (self._data) was scaled.
 
         If the input data is already scaled, it is assumed that its scaling matches that of the original data.
         If that's not the case, the user should first revert the scaling of all input data before applying it to a Classification object.
@@ -865,11 +879,11 @@ class Classification:
         :return: Scaled input dataset without samples out of bounds
         """
         if data_to_check.is_scaled():
-            if not self.__scaled_data.same_scaling(data_to_check):
+            if not self._scaled_data.same_scaling(data_to_check):
                 raise ValueError("Provided DataSet's scaling doesn't match the internal scaling of Classification object.")
         else:
-            data_to_check.shift_value(-self.__data_range[0], override_scaling=False)
-            data_to_check.scale_factor(self.__scale_factor, override_scaling=False)
+            data_to_check.shift_value(-self._data_range[0], override_scaling=False)
+            data_to_check.scale_factor(self._scale_factor, override_scaling=False)
             data_to_check.shift_value(0.005, override_scaling=False)
         remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.0049) for y in x]) or any([(y > 0.9951) for y in x])]
         removed_samples = data_to_check.remove_samples(remove_indices)
@@ -885,10 +899,10 @@ class Classification:
         return data_to_check
 
     @staticmethod
-    def __print_evaluation(testing_data: DataSet,
-                           calculated_classes: np.ndarray,
-                           density_testdata: List[np.ndarray],
-                           print_incorrect_points: bool = True) -> None:
+    def _print_evaluation(testing_data: DataSet,
+                          calculated_classes: np.ndarray,
+                          density_testdata: List[np.ndarray],
+                          print_incorrect_points: bool = True) -> None:
         """Print the results of some specified testing data to stdout.
 
         Only prints evaluation if input is valid.
@@ -926,32 +940,42 @@ class Classification:
                     print(x, end=", ")
                 print()
 
-    def __process_performed_classification(self, operation_list: List[Tuple[StandardCombi, DensityEstimation]], start_time: float) -> None:
+    def _process_performed_classification(self,
+                                          operation_list: List[Tuple[StandardCombi, DensityEstimation]],
+                                          start_time: float,
+                                          print_metrics: bool) -> None:
         """Extract StandardCombi and DensityEstimation objects from operation list for every class and store them in private attributes.
 
         Revert the scaling of the original dataset, so there is no confusion for the user when looking at the samples' values.
         Print the time used for performing classification.
-        Already evaluate testing data if the original data was split into learning and testing data in __initialize().
+        Already evaluate testing data if the original data was split into learning and testing data in _initialize().
 
         :param operation_list: List of Tuples of StandardCombi and DensityEstimation objects which each can be assigned to a class.
         :param start_time: Time when the performing of classification of this object started.
+        :param print_metrics: ...
         :return:
         """
-        self.__classificators = [x[0] for x in operation_list]
-        self.__de_objects = [x[1] for x in operation_list]
-        self.__performed_classification = True
-        print()
-        print("=================================================================================================================================")
-        print("Performed Classification of '%s' DataSet." % self.__scaled_data.get_name())
-        print("Time used: %.10f seconds" % (time.time() - start_time))
-        if not self.__testing_data.is_empty():
-            self.__calculated_classes_testset = self.__classificate(self.__testing_data)
+        self._classificators = [x[0] for x in operation_list]
+        self._de_objects = [x[1] for x in operation_list]
+        self._performed_classification = True
+        self._time_used = time.time() - start_time
+        if print_metrics:
+            print()
+            print("=================================================================================================================================")
+        print("Performed Classification of '%s' DataSet." % self._scaled_data.get_name())
+        if print_metrics:
+            print("Time used: %.10f seconds" % self._time_used)
+        if not self._testing_data.is_empty():
+            start_time = time.time()
+            self._calculated_classes_testset = self._classificate(self._testing_data)
+            self._time_used += time.time() - start_time
 
     def perform_classification(self,
                                masslumping: bool = True,
                                lambd: float = 0.0,
                                minimum_level: int = 1,
-                               maximum_level: int = 5) -> None:
+                               maximum_level: int = 5,
+                               print_metrics: bool = True) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -963,16 +987,17 @@ class Classification:
         :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+        :param print_metrics: ...
         :return: None
         """
-        if self.__performed_classification:
+        if self._performed_classification:
             raise ValueError("Can't perform classification for the same object twice.")
         start_time = time.time()
-        learning_data_classes = self.__learning_data.split_labels()
+        learning_data_classes = self._learning_data.split_labels()
         operation_list = [x.density_estimation(masslumping=masslumping, lambd=lambd, minimum_level=minimum_level, maximum_level=maximum_level,
                                                plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
-        self.__process_performed_classification(operation_list, start_time)
+        self._process_performed_classification(operation_list, start_time, print_metrics)
 
     def perform_classification_dimension_wise(self,
                                               masslumping: bool = True,
@@ -985,7 +1010,8 @@ class Classification:
                                               tolerance: float = 0.01,
                                               max_evaluations: int = 256,
                                               modified_basis: bool = False,
-                                              boundary: bool = False) -> None:
+                                              boundary: bool = False,
+                                              print_metrics: bool = True) -> None:
         """Create GridOperation and DensityEstimation objects for each class of samples and store them into lists.
 
         This method is only called once.
@@ -1004,12 +1030,13 @@ class Classification:
         :param max_evaluations: ...
         :param modified_basis: ...
         :param boundary: ...
+        :param print_metrics: ...
         :return: None
         """
-        if self.__performed_classification:
+        if self._performed_classification:
             raise ValueError("Can't perform classification for the same object twice.")
         start_time = time.time()
-        learning_data_classes = self.__learning_data.split_labels()
+        learning_data_classes = self._learning_data.split_labels()
         operation_list = [x.density_estimation_dimension_wise(masslumping=masslumping,
                                                               lambd=lambd,
                                                               minimum_level=minimum_level,
@@ -1025,31 +1052,45 @@ class Classification:
                                                               plot_density_estimation=False,
                                                               plot_combi_scheme=False,
                                                               plot_sparsegrid=False) for x in learning_data_classes]
-        self.__process_performed_classification(operation_list, start_time)
+        self._process_performed_classification(operation_list, start_time, print_metrics)
+
+    def evaluate(self) -> dict:
+        if not self._performed_classification:
+            raise AttributeError("Classification needs to be performed on this object first.")
+        if self._testing_data.is_empty():
+            raise ValueError("Nothing to evaluate; test dataset of this object is empty.")
+        if self._testing_data.get_length() != len(self._calculated_classes_testset):
+            raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
+        number_wrong = sum([0 if (x == y) else 1 for x, y in zip(self._testing_data[1], self._calculated_classes_testset)])
+        return {"Time used": self._time_used,
+                "Wrong mappings": number_wrong,
+                "Total mappings": len(self._calculated_classes_testset),
+                "Percentage correct": 1.0 - (number_wrong / len(self._calculated_classes_testset)),
+                "Percentage correct (str)": ("%2.2f%%" % ((1.0 - (number_wrong / len(self._calculated_classes_testset))) * 100))}
 
     def print_evaluation(self, print_incorrect_points: bool = True) -> None:
         """Print results of all testing data that was evaluated with this object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
         AttributeError is raised.
-        In case self.__testing_data is empty, a warning is issued and the method returns without printing anything.
+        In case self._testing_data is empty, a warning is issued and the method returns without printing anything.
 
         :return: None
         """
-        if not self.__performed_classification:
+        if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
-        if self.__testing_data.is_empty():
+        if self._testing_data.is_empty():
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
         print("---------------------------------------------------------------------------------------------------------------------------------")
         print("Printing evaluation of all current testing data...")
-        self.__print_evaluation(self.__testing_data, np.array(self.__calculated_classes_testset), self.__densities_testset, print_incorrect_points)
+        self._print_evaluation(self._testing_data, np.array(self._calculated_classes_testset), self._densities_testset, print_incorrect_points)
 
     def plot(self,
-             plot_class_dataset: bool = True,
-             plot_class_density_estimation: bool = True,
-             plot_class_combi_scheme: bool = True,
+             plot_class_dataset: bool = False,
+             plot_class_density_estimation: bool = False,
+             plot_class_combi_scheme: bool = False,
              plot_class_sparsegrid: bool = False) -> None:
         """Plot a Classification object.
 
@@ -1066,18 +1107,18 @@ class Classification:
         plotted. Default True
         :return: None
         """
-        if not self.__performed_classification:
+        if not self._performed_classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if plot_class_dataset:
-            self.__learning_data.plot()
+            self._learning_data.plot()
         if plot_class_density_estimation:
-            for x in self.__classificators:
+            for x in self._classificators:
                 x.plot(contour=True)
         if plot_class_combi_scheme:
-            for x, y in zip(self.__classificators, self.__de_objects):
+            for x, y in zip(self._classificators, self._de_objects):
                 x.print_resulting_combi_scheme(operation=y)
         if plot_class_sparsegrid:
-            for x in self.__classificators:
+            for x in self._classificators:
                 x.print_resulting_sparsegrid(markersize=20)
 
 
@@ -1088,7 +1129,7 @@ class Clustering:
         self._scaled_data = None
         self._clustered_data = None
         self._label = 'cluster'
-        self._number_nb = number_nearest_neighbors
+        self._number_nb = number_nearest_neighbors + 1
         self._threshold = edge_cutting_threshold
         self._de_object = None
         self._clustertinator = None
@@ -1101,6 +1142,7 @@ class Clustering:
         self._noise_edges = []
         self._noise_samples = None
         self._performed_clustering = False
+        self._time_used = None
         self._initialize()
 
     def get_original_data(self) -> DataSet:
@@ -1128,6 +1170,14 @@ class Clustering:
 
     def get_edge_cutting_threshold(self) -> float:
         return self._threshold
+
+    def get_time_used(self) -> float:
+        return self._time_used
+
+    def get_scaled_data(self) -> DataSet:
+        ret_val = self._scaled_data.copy()
+        ret_val.set_name(self._scaled_data.get_name())
+        return ret_val
 
     def _initialize(self) -> None:
         if self._original_data.is_empty():
@@ -1206,7 +1256,7 @@ class Clustering:
             connected_component = self._dfs_inner_recursive(next_node, visited_nodes, edges, connected_component)
         return connected_component
 
-    def _process_performed_clustering(self, start_time: float) -> None:
+    def _process_performed_clustering(self, start_time: float, print_metrics: bool) -> None:
         self._density_range = self._de_object.extrema
         self._compute_nearest_neighbors_connected()
         self._compute_nearest_neighbors_noise()
@@ -1214,16 +1264,20 @@ class Clustering:
         self._label_samples()
         # post processing
         self._performed_clustering = True
-        print()
-        print("=================================================================================================================================")
+        self._time_used = time.time() - start_time
+        if print_metrics:
+            print()
+            print("=================================================================================================================================")
         print("Performed Clustering of '%s' DataSet." % self._scaled_data.get_name())
-        print("Time used: %.10f seconds" % (time.time() - start_time))
+        if print_metrics:
+            print("Time used: %.10f seconds" % self._time_used)
 
     def perform_clustering(self,
                            masslumping: bool = True,
                            lambd: float = 0.0,
                            minimum_level: int = 1,
-                           maximum_level: int = 5) -> None:
+                           maximum_level: int = 5,
+                           print_metrics: bool = True) -> None:
         if self._performed_clustering:
             raise ValueError("Can't perform clustering for the same object twice.")
         start_time = time.time()
@@ -1232,7 +1286,7 @@ class Clustering:
                                                                                      maximum_level=maximum_level, plot_de_dataset=False,
                                                                                      plot_density_estimation=False, plot_combi_scheme=False,
                                                                                      plot_sparsegrid=False)
-        self._process_performed_clustering(start_time)
+        self._process_performed_clustering(start_time, print_metrics)
 
     def perform_clustering_dimension_wise(self,
                                           masslumping: bool = True,
@@ -1245,7 +1299,8 @@ class Clustering:
                                           tolerance: float = 0.01,
                                           max_evaluations: int = 256,
                                           modified_basis: bool = False,
-                                          boundary: bool = False) -> None:
+                                          boundary: bool = False,
+                                          print_metrics: bool = True) -> None:
         if self._performed_clustering:
             raise ValueError("Can't perform clustering for the same object twice.")
         start_time = time.time()
@@ -1264,34 +1319,54 @@ class Clustering:
                                                                                                     plot_density_estimation=False,
                                                                                                     plot_combi_scheme=False,
                                                                                                     plot_sparsegrid=False)
-        self._process_performed_clustering(start_time)
+        self._process_performed_clustering(start_time, print_metrics)
 
-    def print_evaluation(self, print_clusters: bool = True) -> None:
+    def evaluate(self) -> dict:
         if not self._performed_clustering:
             raise AttributeError("Clustering needs to be performed on this object first.")
         omitted, original_data_to_evaluate = self._scaled_data.split_without_labels()
         if original_data_to_evaluate.is_empty():
-            raise ValueError("Dataset of this Clustering object doesn't have any labelled samples for comparison.")
-
+            raise ValueError("Dataset of this Clustering object doesn't have any labeled samples for comparison.")
+        start_time = time.time()
         cannot_evaluate = [(lambda x, y: x[y == 2])(*np.unique(np.where(self._scaled_data[0] == sample)[0], return_counts=True))[0] for sample in
                            omitted[0]]
         computed_data_to_evaluate = self._clustered_data.copy()
         computed_data_to_evaluate.remove_samples(cannot_evaluate)
-
         number_wrong = 0
         number_original_labels = original_data_to_evaluate.get_number_labels()
         number_computed_labels = computed_data_to_evaluate.get_number_labels()
-        number_min_labels = min(number_original_labels, number_computed_labels)
-        lesser_labels = self._scaled_data[1] if number_original_labels < number_computed_labels else self._clustered_data[1]
-        more_labels = self._clustered_data[1] if number_original_labels < number_computed_labels else self._scaled_data[1]
-
-        for i in range(number_min_labels):
-            current = np.where(lesser_labels == i)[0]
-            current_labels = more_labels[current]
+        # remove wrong clusters
+        if number_computed_labels - number_original_labels > 0:
+            computed_clusters = computed_data_to_evaluate.split_labels()
+            clusters_to_remove = sorted(computed_clusters, key=lambda cluster: cluster.get_length())[:-number_original_labels]
+            number_wrong = sum([clus_kept.get_length() for clus_kept in clusters_to_remove])
+            data_to_remove = DataSet.list_concatenate(clusters_to_remove)
+            definitely_wrong = [(lambda x, y: x[y >= 2])(*np.unique(np.where(computed_data_to_evaluate[0] == sample)[0], return_counts=True))[0]
+                                for sample in data_to_remove[0]]
+            computed_data_to_evaluate.remove_samples(definitely_wrong)
+            original_data_to_evaluate.remove_samples(definitely_wrong)
+        for label in computed_data_to_evaluate.get_labels():
+            current = np.where(computed_data_to_evaluate[1] == label)[0]
+            current_labels = original_data_to_evaluate[1][current]
             unq, count = np.unique(current_labels, return_counts=True)
             equal_label = np.max(count)
             number_wrong += (np.size(current) - equal_label)
+        self._time_used += time.time() - start_time
+        return {"Time used": self._time_used,
+                "Omitted data": omitted,
+                "Original data to evaluate": original_data_to_evaluate,
+                "Clustered data to evaluate": computed_data_to_evaluate,
+                "Wrong mappings": number_wrong,
+                "Total mappings": self._scaled_data.get_length(),
+                "Percentage correct": (1.0 - (number_wrong / self._scaled_data.get_length())),
+                "Percentage correct (str)": "%2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100)}
 
+    def print_evaluation(self, print_clusters: bool = True) -> None:
+        evaluation = self.evaluate()
+        number_wrong = evaluation.get("Wrong mappings")
+        omitted = evaluation.get("Omitted data")
+        original_data_to_evaluate = evaluation.get("Original data to evaluate")
+        clustered_data_to_evaluate = evaluation.get("Clustered data to evaluate")
         print("---------------------------------------------------------------------------------------------------------------------------------")
         print("Evaluating Clustering object ...")
         if not omitted.is_empty():
@@ -1302,22 +1377,22 @@ class Clustering:
         print("Percentage of correct mappings: %2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100))
         if print_clusters:
             print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            print("Number original clusters: %d" % number_original_labels)
-            print("Number computed clusters: %d" % number_computed_labels)
+            print("Number original clusters: %d" % original_data_to_evaluate.get_number_labels())
+            print("Number computed clusters: %d" % clustered_data_to_evaluate.get_number_labels())
             print("Original data (per label):")
             for label in original_data_to_evaluate.get_labels():
                 print("%d: %d samples" % (label, np.count_nonzero(original_data_to_evaluate[1] == label)))
             print("Clustered data (per cluster):")
-            for label in computed_data_to_evaluate.get_labels():
-                print("%d: %d samples" % (label, np.count_nonzero(computed_data_to_evaluate[1] == label)))
+            for label in clustered_data_to_evaluate.get_labels():
+                print("%d: %d samples" % (label, np.count_nonzero(clustered_data_to_evaluate[1] == label)))
 
     def plot(self,
-             plot_original_dataset: bool = True,
-             plot_clustered_dataset: bool = True,
-             plot_cluster_density_estimation: bool = True,
-             plot_cluster_combi_scheme: bool = True,
+             plot_original_dataset: bool = False,
+             plot_clustered_dataset: bool = False,
+             plot_cluster_density_estimation: bool = False,
+             plot_cluster_combi_scheme: bool = False,
              plot_cluster_sparsegrid: bool = False,
-             plot_nearest_neighbor_graphs: bool = True) -> None:
+             plot_nearest_neighbor_graphs: bool = False) -> None:
         if not self._performed_clustering:
             raise AttributeError("Clustering needs to be performed on this object first.")
         if plot_original_dataset:
@@ -1387,10 +1462,10 @@ if __name__ == "__main__":
     # generate a dataset of size with the sklearn library
     size = 500
     # sklearn_dataset = datasets.make_circles(n_samples=size, noise=0.05)
-    # sklearn_dataset = datasets.make_moons(n_samples=size, noise=0.1)
+    sklearn_dataset = datasets.make_moons(n_samples=size, noise=0.1)
     # sklearn_dataset = datasets.make_classification(size, n_features=2, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
     # sklearn_dataset = datasets.make_classification(size, n_features=3, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=4)
-    sklearn_dataset = datasets.make_blobs(n_samples=size, n_features=2, centers=10)
+    # sklearn_dataset = datasets.make_blobs(n_samples=size, n_features=2, centers=10)
     # sklearn_dataset = datasets.make_gaussian_quantiles(n_samples=size, n_features=2, n_classes=6)
     # sklearn_dataset = datasets.load_digits(return_X_y=True)
     # sklearn_dataset = datasets.make_biclusters((2, 2), n_clusters=3)
@@ -1413,10 +1488,10 @@ if __name__ == "__main__":
     data_copy.set_name('2nd_Set')  # renamed
     data_copy.remove_labels(0.2)  # freed of some class assignments to samples
     without_classes, with_classes = data_copy.split_without_labels()  # seperated into samples with and without classes
-    #data_copy.plot()  # plotted
+    data_copy.plot()  # plotted
 
     # and of course we can perform a regular density estimation on a DataSet object:
-    #de_retval = data_copy.density_estimation(plot_de_dataset=True, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
+    de_retval = data_copy.density_estimation(plot_de_dataset=True, plot_sparsegrid=False, plot_density_estimation=True, plot_combi_scheme=True)
 
     # ==============================================================================================================================================
 
@@ -1432,7 +1507,7 @@ if __name__ == "__main__":
     # now we can perform some other operations on this classification object
 
     # we could e.g. plot its classificators and corresponding density estimations
-    #classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
+    classification.plot(plot_class_sparsegrid=False, plot_class_combi_scheme=False, plot_class_dataset=True, plot_class_density_estimation=True)
 
     # if we already added some testing data to the Classification object (which we did in the initialization process, 20% of samples are testing
     # samples), we can print the current evaluation
@@ -1458,7 +1533,7 @@ if __name__ == "__main__":
 
     # initialize Clustering object with our original data, the number of nearest neighbors for the initial nearest neighbor graph (before cutting
     # the edges) and an edge cutting threshold (edges with lower estimated density than the threshold will be cut)
-    clus = Clustering(data, number_nearest_neighbors=10, edge_cutting_threshold=0.4)
+    clus = Clustering(data, number_nearest_neighbors=15, edge_cutting_threshold=0.4)
 
     # as with the Classification object we should now immediately perform clustering on our Clustering object
     clus.perform_clustering()
