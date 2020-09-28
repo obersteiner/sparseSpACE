@@ -1,0 +1,1510 @@
+18:00:11,366 root INFO :: --- Classification_eval start ---
+18:00:11,367 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+18:00:11,367 root INFO :: ~~~ DataSet Change ~~~
+18:00:11,367 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+18:00:11,367 root INFO :: ||||||||||||||||||||||||
+18:00:11,367 root INFO :: ||| Dimension Change |||
+18:00:11,367 root INFO :: ||||||||||||||||||||||||
+18:00:11,398 root INFO :: ########################
+18:00:11,398 root INFO :: ### Max Level Change ###
+18:00:11,398 root INFO :: ########################
+18:00:11,398 root INFO :: next iteration
+18:00:11,398 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:00:11,398 root INFO :: data size: 100000
+18:00:11,398 root INFO :: data dimension: 2
+18:00:11,398 root INFO :: one_vs_others False
+18:00:12,382 root INFO :: classification standardCombi max_level: 4
+18:00:28,651 root INFO :: Time used (s):16.158811569213867
+18:00:45,782 root INFO :: Time used (s):17.13003897666931
+18:00:46,381 root INFO :: Percentage of correct mappings: 87.03%
+18:00:51,593 root INFO :: classification dimwise max_evaluations: 265
+18:00:51,593 root INFO :: classification dimwise start level: 2
+18:01:11,314 root INFO :: Number of distinct points used during the refinement: 349
+18:01:11,314 root INFO :: Time used (s):19.604677200317383
+18:01:34,305 root INFO :: Number of distinct points used during the refinement: 363
+18:01:34,305 root INFO :: Time used (s):22.98862051963806
+18:01:35,196 root INFO :: Percentage of correct mappings: 93.88%
+18:01:40,299 root INFO :: iteration end
+18:01:40,299 root INFO :: next iteration
+18:01:40,299 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:01:40,299 root INFO :: data size: 100000
+18:01:40,299 root INFO :: data dimension: 2
+18:01:40,299 root INFO :: one_vs_others True
+18:01:41,301 root INFO :: classification standardCombi max_level: 4
+18:02:25,81 root INFO :: Time used (s):43.5404999256134
+18:03:09,117 root INFO :: Time used (s):44.035749435424805
+18:03:09,726 root INFO :: Percentage of correct mappings: 87.86%
+18:03:15,210 root INFO :: classification dimwise max_evaluations: 265
+18:03:15,210 root INFO :: classification dimwise start level: 2
+18:04:23,445 root INFO :: Number of distinct points used during the refinement: 346
+18:04:23,445 root INFO :: Time used (s):67.9898190498352
+18:05:30,467 root INFO :: Number of distinct points used during the refinement: 346
+18:05:30,467 root INFO :: Time used (s):67.01666331291199
+18:05:31,361 root INFO :: Percentage of correct mappings: 93.48%
+18:05:36,539 root INFO :: iteration end
+18:05:36,539 root INFO :: ########################
+18:05:36,539 root INFO :: ### Max Level Change ###
+18:05:36,539 root INFO :: ########################
+18:05:36,539 root INFO :: next iteration
+18:05:36,539 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:05:36,539 root INFO :: data size: 100000
+18:05:36,539 root INFO :: data dimension: 2
+18:05:36,539 root INFO :: one_vs_others False
+18:05:37,534 root INFO :: classification standardCombi max_level: 5
+18:05:59,923 root INFO :: Time used (s):22.273775100708008
+18:06:23,723 root INFO :: Time used (s):23.79927086830139
+18:06:24,448 root INFO :: Percentage of correct mappings: 97.10%
+18:06:30,274 root INFO :: classification dimwise max_evaluations: 649
+18:06:30,274 root INFO :: classification dimwise start level: 2
+18:07:05,691 root INFO :: Number of distinct points used during the refinement: 675
+18:07:05,691 root INFO :: Time used (s):35.30145835876465
+18:07:41,196 root INFO :: Number of distinct points used during the refinement: 733
+18:07:41,197 root INFO :: Time used (s):35.50334334373474
+18:07:42,257 root INFO :: Percentage of correct mappings: 94.16%
+18:07:48,70 root INFO :: iteration end
+18:07:48,70 root INFO :: next iteration
+18:07:48,70 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:07:48,70 root INFO :: data size: 100000
+18:07:48,70 root INFO :: data dimension: 2
+18:07:48,70 root INFO :: one_vs_others True
+18:07:49,32 root INFO :: classification standardCombi max_level: 5
+18:08:47,518 root INFO :: Time used (s):58.25259518623352
+18:09:46,993 root INFO :: Time used (s):59.47427272796631
+18:09:47,786 root INFO :: Percentage of correct mappings: 97.11%
+18:09:53,812 root INFO :: classification dimwise max_evaluations: 649
+18:09:53,813 root INFO :: classification dimwise start level: 2
+18:11:25,467 root INFO :: Number of distinct points used during the refinement: 676
+18:11:25,467 root INFO :: Time used (s):91.41286826133728
+18:12:57,436 root INFO :: Number of distinct points used during the refinement: 676
+18:12:57,436 root INFO :: Time used (s):91.96432614326477
+18:12:58,435 root INFO :: Percentage of correct mappings: 95.22%
+18:13:04,183 root INFO :: iteration end
+18:13:04,183 root INFO :: ########################
+18:13:04,183 root INFO :: ### Max Level Change ###
+18:13:04,184 root INFO :: ########################
+18:13:04,184 root INFO :: next iteration
+18:13:04,184 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:13:04,184 root INFO :: data size: 100000
+18:13:04,184 root INFO :: data dimension: 2
+18:13:04,184 root INFO :: one_vs_others False
+18:13:05,150 root INFO :: classification standardCombi max_level: 5
+18:13:27,309 root INFO :: Time used (s):22.044979095458984
+18:13:50,688 root INFO :: Time used (s):23.379428386688232
+18:13:51,405 root INFO :: Percentage of correct mappings: 97.08%
+18:13:57,128 root INFO :: classification dimwise max_evaluations: 649
+18:13:57,128 root INFO :: classification dimwise start level: 3
+18:14:37,884 root INFO :: Number of distinct points used during the refinement: 669
+18:14:37,884 root INFO :: Time used (s):40.64122724533081
+18:15:20,350 root INFO :: Number of distinct points used during the refinement: 745
+18:15:20,350 root INFO :: Time used (s):42.46306490898132
+18:15:21,392 root INFO :: Percentage of correct mappings: 94.18%
+18:15:27,88 root INFO :: iteration end
+18:15:27,88 root INFO :: next iteration
+18:15:27,88 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:15:27,88 root INFO :: data size: 100000
+18:15:27,88 root INFO :: data dimension: 2
+18:15:27,88 root INFO :: one_vs_others True
+18:15:28,61 root INFO :: classification standardCombi max_level: 5
+18:16:26,696 root INFO :: Time used (s):58.39946889877319
+18:17:25,455 root INFO :: Time used (s):58.759384870529175
+18:17:26,173 root INFO :: Percentage of correct mappings: 97.03%
+18:17:31,911 root INFO :: classification dimwise max_evaluations: 649
+18:17:31,911 root INFO :: classification dimwise start level: 3
+18:19:17,113 root INFO :: Number of distinct points used during the refinement: 675
+18:19:17,113 root INFO :: Time used (s):104.96264672279358
+18:21:02,587 root INFO :: Number of distinct points used during the refinement: 675
+18:21:02,587 root INFO :: Time used (s):105.469153881073
+18:21:03,603 root INFO :: Percentage of correct mappings: 94.97%
+18:21:09,216 root INFO :: iteration end
+18:21:09,216 root INFO :: ########################
+18:21:09,216 root INFO :: ### Max Level Change ###
+18:21:09,216 root INFO :: ########################
+18:21:09,216 root INFO :: next iteration
+18:21:09,216 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:21:09,216 root INFO :: data size: 100000
+18:21:09,216 root INFO :: data dimension: 2
+18:21:09,216 root INFO :: one_vs_others False
+18:21:10,182 root INFO :: classification standardCombi max_level: 6
+18:21:40,8 root INFO :: Time used (s):29.71272611618042
+18:22:10,954 root INFO :: Time used (s):30.945837259292603
+18:22:11,858 root INFO :: Percentage of correct mappings: 97.34%
+18:22:18,433 root INFO :: classification dimwise max_evaluations: 1417
+18:22:18,433 root INFO :: classification dimwise start level: 2
+18:23:38,223 root INFO :: Number of distinct points used during the refinement: 2026
+18:23:38,223 root INFO :: Time used (s):79.67410683631897
+18:25:08,14 root INFO :: Number of distinct points used during the refinement: 2306
+18:25:08,14 root INFO :: Time used (s):89.78849053382874
+18:25:09,226 root INFO :: Percentage of correct mappings: 96.67%
+18:25:15,782 root INFO :: iteration end
+18:25:15,782 root INFO :: next iteration
+18:25:15,783 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:25:15,783 root INFO :: data size: 100000
+18:25:15,783 root INFO :: data dimension: 2
+18:25:15,783 root INFO :: one_vs_others True
+18:25:16,785 root INFO :: classification standardCombi max_level: 6
+18:26:33,442 root INFO :: Time used (s):76.42118096351624
+18:27:49,963 root INFO :: Time used (s):76.52102017402649
+18:27:50,896 root INFO :: Percentage of correct mappings: 97.35%
+18:27:57,468 root INFO :: classification dimwise max_evaluations: 1417
+18:27:57,468 root INFO :: classification dimwise start level: 2
+18:30:26,740 root INFO :: Number of distinct points used during the refinement: 1905
+18:30:26,740 root INFO :: Time used (s):149.0307104587555
+18:32:57,225 root INFO :: Number of distinct points used during the refinement: 1905
+18:32:57,225 root INFO :: Time used (s):150.47931456565857
+18:32:58,654 root INFO :: Percentage of correct mappings: 96.32%
+18:33:05,936 root INFO :: iteration end
+18:33:05,936 root INFO :: ########################
+18:33:05,936 root INFO :: ### Max Level Change ###
+18:33:05,936 root INFO :: ########################
+18:33:05,936 root INFO :: next iteration
+18:33:05,936 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:33:05,936 root INFO :: data size: 100000
+18:33:05,936 root INFO :: data dimension: 2
+18:33:05,936 root INFO :: one_vs_others False
+18:33:06,956 root INFO :: classification standardCombi max_level: 6
+18:33:37,60 root INFO :: Time used (s):29.984121322631836
+18:34:08,447 root INFO :: Time used (s):31.38699173927307
+18:34:09,381 root INFO :: Percentage of correct mappings: 97.27%
+18:34:16,242 root INFO :: classification dimwise max_evaluations: 1417
+18:34:16,242 root INFO :: classification dimwise start level: 3
+18:36:02,362 root INFO :: Number of distinct points used during the refinement: 2577
+18:36:02,362 root INFO :: Time used (s):105.99811100959778
+18:37:27,13 root INFO :: Number of distinct points used during the refinement: 2327
+18:37:27,13 root INFO :: Time used (s):84.6488389968872
+18:37:28,268 root INFO :: Percentage of correct mappings: 97.55%
+18:37:35,18 root INFO :: iteration end
+18:37:35,19 root INFO :: next iteration
+18:37:35,19 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:37:35,19 root INFO :: data size: 100000
+18:37:35,19 root INFO :: data dimension: 2
+18:37:35,19 root INFO :: one_vs_others True
+18:37:36,55 root INFO :: classification standardCombi max_level: 6
+18:38:53,346 root INFO :: Time used (s):77.04260015487671
+18:40:11,592 root INFO :: Time used (s):78.24552464485168
+18:40:12,572 root INFO :: Percentage of correct mappings: 97.52%
+18:40:19,516 root INFO :: classification dimwise max_evaluations: 1417
+18:40:19,516 root INFO :: classification dimwise start level: 3
+18:43:06,45 root INFO :: Number of distinct points used during the refinement: 1904
+18:43:06,45 root INFO :: Time used (s):166.28182697296143
+18:45:49,978 root INFO :: Number of distinct points used during the refinement: 1904
+18:45:49,978 root INFO :: Time used (s):163.92738604545593
+18:45:51,293 root INFO :: Percentage of correct mappings: 95.91%
+18:45:58,223 root INFO :: iteration end
+18:45:58,223 root INFO :: ########################
+18:45:58,223 root INFO :: ### Max Level Change ###
+18:45:58,223 root INFO :: ########################
+18:45:58,223 root INFO :: next iteration
+18:45:58,223 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:45:58,223 root INFO :: data size: 100000
+18:45:58,223 root INFO :: data dimension: 2
+18:45:58,223 root INFO :: one_vs_others False
+18:45:59,200 root INFO :: classification standardCombi max_level: 6
+18:46:29,259 root INFO :: Time used (s):29.94146203994751
+18:47:00,185 root INFO :: Time used (s):30.925830364227295
+18:47:01,94 root INFO :: Percentage of correct mappings: 97.36%
+18:47:07,786 root INFO :: classification dimwise max_evaluations: 1417
+18:47:07,786 root INFO :: classification dimwise start level: 4
+18:48:52,268 root INFO :: Number of distinct points used during the refinement: 2192
+18:48:52,268 root INFO :: Time used (s):104.3655788898468
+18:50:42,430 root INFO :: Number of distinct points used during the refinement: 2570
+18:50:42,430 root INFO :: Time used (s):110.15933418273926
+18:50:43,670 root INFO :: Percentage of correct mappings: 96.92%
+18:50:50,222 root INFO :: iteration end
+18:50:50,222 root INFO :: next iteration
+18:50:50,222 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:50:50,222 root INFO :: data size: 100000
+18:50:50,222 root INFO :: data dimension: 2
+18:50:50,222 root INFO :: one_vs_others True
+18:50:51,193 root INFO :: classification standardCombi max_level: 6
+18:52:09,301 root INFO :: Time used (s):77.86999344825745
+18:53:26,567 root INFO :: Time used (s):77.26640892028809
+18:53:27,489 root INFO :: Percentage of correct mappings: 97.47%
+18:53:34,249 root INFO :: classification dimwise max_evaluations: 1417
+18:53:34,249 root INFO :: classification dimwise start level: 4
+18:56:33,218 root INFO :: Number of distinct points used during the refinement: 1535
+18:56:33,218 root INFO :: Time used (s):178.72835755348206
+18:59:30,870 root INFO :: Number of distinct points used during the refinement: 1535
+18:59:30,871 root INFO :: Time used (s):177.6474268436432
+18:59:32,46 root INFO :: Percentage of correct mappings: 96.50%
+18:59:38,501 root INFO :: iteration end
+18:59:38,501 root INFO :: ########################
+18:59:38,501 root INFO :: ### Max Level Change ###
+18:59:38,501 root INFO :: ########################
+18:59:38,501 root INFO :: next iteration
+18:59:38,501 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+18:59:38,501 root INFO :: data size: 100000
+18:59:38,501 root INFO :: data dimension: 2
+18:59:38,501 root INFO :: one_vs_others False
+18:59:39,476 root INFO :: classification standardCombi max_level: 7
+19:00:18,69 root INFO :: Time used (s):38.4775710105896
+19:00:57,643 root INFO :: Time used (s):39.57318997383118
+19:00:58,698 root INFO :: Percentage of correct mappings: 97.35%
+19:01:06,147 root INFO :: classification dimwise max_evaluations: 3017
+19:01:06,147 root INFO :: classification dimwise start level: 2
+19:03:09,943 root INFO :: Number of distinct points used during the refinement: 4121
+19:03:09,943 root INFO :: Time used (s):123.67765355110168
+19:05:18,438 root INFO :: Number of distinct points used during the refinement: 4159
+19:05:18,438 root INFO :: Time used (s):128.49301624298096
+19:05:19,684 root INFO :: Percentage of correct mappings: 97.46%
+19:05:26,612 root INFO :: iteration end
+19:05:26,612 root INFO :: next iteration
+19:05:26,612 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:05:26,612 root INFO :: data size: 100000
+19:05:26,612 root INFO :: data dimension: 2
+19:05:26,612 root INFO :: one_vs_others True
+19:05:27,580 root INFO :: classification standardCombi max_level: 7
+19:07:06,667 root INFO :: Time used (s):98.85029935836792
+19:08:45,546 root INFO :: Time used (s):98.87916970252991
+19:08:46,605 root INFO :: Percentage of correct mappings: 97.34%
+19:08:54,49 root INFO :: classification dimwise max_evaluations: 3017
+19:08:54,49 root INFO :: classification dimwise start level: 2
+19:12:49,27 root INFO :: Number of distinct points used during the refinement: 4350
+19:12:49,27 root INFO :: Time used (s):234.738685131073
+19:16:44,420 root INFO :: Number of distinct points used during the refinement: 4350
+19:16:44,420 root INFO :: Time used (s):235.3875699043274
+19:16:46,84 root INFO :: Percentage of correct mappings: 96.73%
+19:16:54,123 root INFO :: iteration end
+19:16:54,123 root INFO :: ########################
+19:16:54,123 root INFO :: ### Max Level Change ###
+19:16:54,123 root INFO :: ########################
+19:16:54,123 root INFO :: next iteration
+19:16:54,123 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:16:54,123 root INFO :: data size: 100000
+19:16:54,123 root INFO :: data dimension: 2
+19:16:54,123 root INFO :: one_vs_others False
+19:16:55,99 root INFO :: classification standardCombi max_level: 7
+19:17:33,399 root INFO :: Time used (s):38.18437051773071
+19:18:12,628 root INFO :: Time used (s):39.22866988182068
+19:18:13,668 root INFO :: Percentage of correct mappings: 97.33%
+19:18:21,110 root INFO :: classification dimwise max_evaluations: 3017
+19:18:21,110 root INFO :: classification dimwise start level: 3
+19:20:44,373 root INFO :: Number of distinct points used during the refinement: 4505
+19:20:44,373 root INFO :: Time used (s):143.1456229686737
+19:22:57,568 root INFO :: Number of distinct points used during the refinement: 4069
+19:22:57,569 root INFO :: Time used (s):133.19342851638794
+19:22:58,873 root INFO :: Percentage of correct mappings: 97.34%
+19:23:05,973 root INFO :: iteration end
+19:23:05,974 root INFO :: next iteration
+19:23:05,974 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:23:05,974 root INFO :: data size: 100000
+19:23:05,974 root INFO :: data dimension: 2
+19:23:05,974 root INFO :: one_vs_others True
+19:23:06,962 root INFO :: classification standardCombi max_level: 7
+19:24:45,851 root INFO :: Time used (s):98.64301562309265
+19:26:24,199 root INFO :: Time used (s):98.34749794006348
+19:26:25,258 root INFO :: Percentage of correct mappings: 97.26%
+19:26:32,730 root INFO :: classification dimwise max_evaluations: 3017
+19:26:32,730 root INFO :: classification dimwise start level: 3
+19:30:42,351 root INFO :: Number of distinct points used during the refinement: 4349
+19:30:42,351 root INFO :: Time used (s):249.38359951972961
+19:34:51,860 root INFO :: Number of distinct points used during the refinement: 4349
+19:34:51,860 root INFO :: Time used (s):249.50360488891602
+19:34:53,537 root INFO :: Percentage of correct mappings: 96.53%
+19:35:01,664 root INFO :: iteration end
+19:35:01,664 root INFO :: ########################
+19:35:01,664 root INFO :: ### Max Level Change ###
+19:35:01,664 root INFO :: ########################
+19:35:01,664 root INFO :: next iteration
+19:35:01,664 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:35:01,664 root INFO :: data size: 100000
+19:35:01,664 root INFO :: data dimension: 2
+19:35:01,664 root INFO :: one_vs_others False
+19:35:02,659 root INFO :: classification standardCombi max_level: 7
+19:35:41,398 root INFO :: Time used (s):38.61879014968872
+19:36:21,6 root INFO :: Time used (s):39.60845446586609
+19:36:22,80 root INFO :: Percentage of correct mappings: 97.14%
+19:36:29,478 root INFO :: classification dimwise max_evaluations: 3017
+19:36:29,478 root INFO :: classification dimwise start level: 4
+19:38:39,0 root INFO :: Number of distinct points used during the refinement: 4020
+19:38:39,1 root INFO :: Time used (s):129.40591168403625
+19:41:13,956 root INFO :: Number of distinct points used during the refinement: 4484
+19:41:13,956 root INFO :: Time used (s):154.9533576965332
+19:41:15,222 root INFO :: Percentage of correct mappings: 97.36%
+19:41:22,233 root INFO :: iteration end
+19:41:22,233 root INFO :: next iteration
+19:41:22,234 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:41:22,234 root INFO :: data size: 100000
+19:41:22,234 root INFO :: data dimension: 2
+19:41:22,234 root INFO :: one_vs_others True
+19:41:23,214 root INFO :: classification standardCombi max_level: 7
+19:43:02,961 root INFO :: Time used (s):99.50671005249023
+19:44:41,452 root INFO :: Time used (s):98.49088716506958
+19:44:42,516 root INFO :: Percentage of correct mappings: 97.35%
+19:44:50,51 root INFO :: classification dimwise max_evaluations: 3017
+19:44:50,51 root INFO :: classification dimwise start level: 4
+19:49:07,985 root INFO :: Number of distinct points used during the refinement: 3562
+19:49:07,985 root INFO :: Time used (s):257.69604873657227
+19:53:26,466 root INFO :: Number of distinct points used during the refinement: 3562
+19:53:26,466 root INFO :: Time used (s):258.4747757911682
+19:53:27,961 root INFO :: Percentage of correct mappings: 96.74%
+19:53:35,728 root INFO :: iteration end
+19:53:35,728 root INFO :: ########################
+19:53:35,728 root INFO :: ### Max Level Change ###
+19:53:35,728 root INFO :: ########################
+19:53:35,728 root INFO :: next iteration
+19:53:35,728 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+19:53:35,728 root INFO :: data size: 100000
+19:53:35,728 root INFO :: data dimension: 2
+19:53:35,728 root INFO :: one_vs_others False
+19:53:36,715 root INFO :: classification standardCombi max_level: 8
+19:54:29,859 root INFO :: Time used (s):53.03006339073181
+19:55:23,703 root INFO :: Time used (s):53.843708753585815
+19:55:24,972 root INFO :: Percentage of correct mappings: 97.47%
+19:55:33,220 root INFO :: classification dimwise max_evaluations: 6217
+19:55:33,220 root INFO :: classification dimwise start level: 2
+20:02:53,167 root INFO :: Number of distinct points used during the refinement: 8256
+20:02:53,167 root INFO :: Time used (s):439.8315591812134
+20:07:20,74 root INFO :: Number of distinct points used during the refinement: 9157
+20:07:20,74 root INFO :: Time used (s):266.90431118011475
+20:07:21,679 root INFO :: Percentage of correct mappings: 97.39%
+20:07:29,620 root INFO :: iteration end
+20:07:29,620 root INFO :: next iteration
+20:07:29,620 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+20:07:29,620 root INFO :: data size: 100000
+20:07:29,620 root INFO :: data dimension: 2
+20:07:29,620 root INFO :: one_vs_others True
+20:07:30,590 root INFO :: classification standardCombi max_level: 8
+20:09:40,797 root INFO :: Time used (s):129.96907210350037
+20:11:50,978 root INFO :: Time used (s):130.1805717945099
+20:11:52,235 root INFO :: Percentage of correct mappings: 97.47%
+20:12:00,433 root INFO :: classification dimwise max_evaluations: 6217
+20:12:00,433 root INFO :: classification dimwise start level: 2
+20:16:57,922 root INFO :: Number of distinct points used during the refinement: 6310
+20:16:57,922 root INFO :: Time used (s):297.2515707015991
+20:22:00,838 root INFO :: Number of distinct points used during the refinement: 6310
+20:22:00,838 root INFO :: Time used (s):302.91087770462036
+20:22:02,717 root INFO :: Percentage of correct mappings: 96.75%
+20:22:11,872 root INFO :: iteration end
+20:22:11,872 root INFO :: ########################
+20:22:11,872 root INFO :: ### Max Level Change ###
+20:22:11,872 root INFO :: ########################
+20:22:11,872 root INFO :: next iteration
+20:22:11,872 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+20:22:11,872 root INFO :: data size: 100000
+20:22:11,872 root INFO :: data dimension: 2
+20:22:11,872 root INFO :: one_vs_others False
+20:22:12,888 root INFO :: classification standardCombi max_level: 8
+20:23:05,347 root INFO :: Time used (s):52.34058356285095
+20:23:58,982 root INFO :: Time used (s):53.634275913238525
+20:24:00,232 root INFO :: Percentage of correct mappings: 97.39%
+20:24:08,888 root INFO :: classification dimwise max_evaluations: 6217
+20:24:08,888 root INFO :: classification dimwise start level: 3
+20:29:52,691 root INFO :: Number of distinct points used during the refinement: 9544
+20:29:52,691 root INFO :: Time used (s):343.68287539482117
+20:34:48,881 root INFO :: Number of distinct points used during the refinement: 7922
+20:34:48,881 root INFO :: Time used (s):296.1870720386505
+20:34:50,467 root INFO :: Percentage of correct mappings: 97.32%
+20:34:58,375 root INFO :: iteration end
+20:34:58,375 root INFO :: next iteration
+20:34:58,375 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+20:34:58,375 root INFO :: data size: 100000
+20:34:58,375 root INFO :: data dimension: 2
+20:34:58,375 root INFO :: one_vs_others True
+20:34:59,340 root INFO :: classification standardCombi max_level: 8
+20:37:10,147 root INFO :: Time used (s):130.57496404647827
+20:39:17,622 root INFO :: Time used (s):127.47471952438354
+20:39:18,888 root INFO :: Percentage of correct mappings: 97.58%
+20:39:27,210 root INFO :: classification dimwise max_evaluations: 6217
+20:39:27,210 root INFO :: classification dimwise start level: 3
+20:44:42,172 root INFO :: Number of distinct points used during the refinement: 6309
+20:44:42,172 root INFO :: Time used (s):314.7235903739929
+20:49:58,796 root INFO :: Number of distinct points used during the refinement: 6309
+20:49:58,796 root INFO :: Time used (s):316.6184504032135
+20:50:00,753 root INFO :: Percentage of correct mappings: 96.45%
+20:50:09,973 root INFO :: iteration end
+20:50:09,973 root INFO :: ########################
+20:50:09,973 root INFO :: ### Max Level Change ###
+20:50:09,973 root INFO :: ########################
+20:50:09,973 root INFO :: next iteration
+20:50:09,973 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+20:50:09,973 root INFO :: data size: 100000
+20:50:09,973 root INFO :: data dimension: 2
+20:50:09,974 root INFO :: one_vs_others False
+20:50:10,985 root INFO :: classification standardCombi max_level: 8
+20:51:04,621 root INFO :: Time used (s):53.51678419113159
+20:52:00,326 root INFO :: Time used (s):55.70419263839722
+20:52:01,655 root INFO :: Percentage of correct mappings: 97.29%
+20:52:10,118 root INFO :: classification dimwise max_evaluations: 6217
+20:52:10,118 root INFO :: classification dimwise start level: 4
+20:57:33,712 root INFO :: Number of distinct points used during the refinement: 7889
+20:57:33,712 root INFO :: Time used (s):323.4762816429138
+21:02:34,246 root INFO :: Number of distinct points used during the refinement: 8599
+21:02:34,246 root INFO :: Time used (s):300.5310254096985
+21:02:36,46 root INFO :: Percentage of correct mappings: 97.41%
+21:02:44,557 root INFO :: iteration end
+21:02:44,557 root INFO :: next iteration
+21:02:44,557 root INFO :: do.datasets.make_circles(n_samples=size, noise=0.05)
+21:02:44,557 root INFO :: data size: 100000
+21:02:44,557 root INFO :: data dimension: 2
+21:02:44,557 root INFO :: one_vs_others True
+21:02:45,548 root INFO :: classification standardCombi max_level: 8
+21:05:00,618 root INFO :: Time used (s):134.82844305038452
+21:07:09,959 root INFO :: Time used (s):129.3409264087677
+21:07:11,276 root INFO :: Percentage of correct mappings: 97.65%
+21:07:19,659 root INFO :: classification dimwise max_evaluations: 6217
+21:07:19,659 root INFO :: classification dimwise start level: 4
+21:13:43,503 root INFO :: Number of distinct points used during the refinement: 7492
+21:13:43,504 root INFO :: Time used (s):383.60207056999207
+21:20:07,420 root INFO :: Number of distinct points used during the refinement: 7492
+21:20:07,420 root INFO :: Time used (s):383.91173219680786
+21:20:09,303 root INFO :: Percentage of correct mappings: 96.83%
+21:20:18,400 root INFO :: iteration end
+21:20:18,400 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+21:20:18,400 root INFO :: ~~~ DataSet Change ~~~
+21:20:18,400 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+21:20:18,401 root INFO :: ||||||||||||||||||||||||
+21:20:18,401 root INFO :: ||| Dimension Change |||
+21:20:18,401 root INFO :: ||||||||||||||||||||||||
+21:20:18,433 root INFO :: ########################
+21:20:18,433 root INFO :: ### Max Level Change ###
+21:20:18,433 root INFO :: ########################
+21:20:18,433 root INFO :: next iteration
+21:20:18,433 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:20:18,433 root INFO :: data size: 100000
+21:20:18,433 root INFO :: data dimension: 2
+21:20:18,433 root INFO :: one_vs_others False
+21:20:19,411 root INFO :: classification standardCombi max_level: 4
+21:20:37,866 root INFO :: Time used (s):18.34097671508789
+21:20:55,768 root INFO :: Time used (s):17.901400089263916
+21:20:56,348 root INFO :: Percentage of correct mappings: 90.78%
+21:21:01,537 root INFO :: classification dimwise max_evaluations: 265
+21:21:01,537 root INFO :: classification dimwise start level: 2
+21:21:37,284 root INFO :: Number of distinct points used during the refinement: 379
+21:21:37,284 root INFO :: Time used (s):35.63063335418701
+21:22:06,734 root INFO :: Number of distinct points used during the refinement: 337
+21:22:06,734 root INFO :: Time used (s):29.447757482528687
+21:22:07,468 root INFO :: Percentage of correct mappings: 90.94%
+21:22:12,59 root INFO :: iteration end
+21:22:12,59 root INFO :: next iteration
+21:22:12,62 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:22:12,62 root INFO :: data size: 100000
+21:22:12,62 root INFO :: data dimension: 2
+21:22:12,62 root INFO :: one_vs_others True
+21:22:13,44 root INFO :: classification standardCombi max_level: 4
+21:22:58,900 root INFO :: Time used (s):45.61914682388306
+21:23:44,653 root INFO :: Time used (s):45.75278449058533
+21:23:45,218 root INFO :: Percentage of correct mappings: 90.59%
+21:23:50,321 root INFO :: classification dimwise max_evaluations: 265
+21:23:50,321 root INFO :: classification dimwise start level: 2
+21:24:57,169 root INFO :: Number of distinct points used during the refinement: 369
+21:24:57,169 root INFO :: Time used (s):66.60874485969543
+21:26:03,992 root INFO :: Number of distinct points used during the refinement: 369
+21:26:03,992 root INFO :: Time used (s):66.81836104393005
+21:26:04,860 root INFO :: Percentage of correct mappings: 91.15%
+21:26:09,883 root INFO :: iteration end
+21:26:09,883 root INFO :: ########################
+21:26:09,883 root INFO :: ### Max Level Change ###
+21:26:09,883 root INFO :: ########################
+21:26:09,883 root INFO :: next iteration
+21:26:09,883 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:26:09,883 root INFO :: data size: 100000
+21:26:09,883 root INFO :: data dimension: 2
+21:26:09,883 root INFO :: one_vs_others False
+21:26:10,868 root INFO :: classification standardCombi max_level: 5
+21:26:35,427 root INFO :: Time used (s):24.44388723373413
+21:27:00,140 root INFO :: Time used (s):24.712806701660156
+21:27:00,866 root INFO :: Percentage of correct mappings: 90.97%
+21:27:06,657 root INFO :: classification dimwise max_evaluations: 649
+21:27:06,657 root INFO :: classification dimwise start level: 2
+21:27:46,465 root INFO :: Number of distinct points used during the refinement: 442
+21:27:46,465 root INFO :: Time used (s):39.6906840801239
+21:28:18,704 root INFO :: Number of distinct points used during the refinement: 418
+21:28:18,704 root INFO :: Time used (s):32.236345529556274
+21:28:19,580 root INFO :: Percentage of correct mappings: 90.48%
+21:28:24,883 root INFO :: iteration end
+21:28:24,883 root INFO :: next iteration
+21:28:24,883 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:28:24,883 root INFO :: data size: 100000
+21:28:24,883 root INFO :: data dimension: 2
+21:28:24,883 root INFO :: one_vs_others True
+21:28:25,865 root INFO :: classification standardCombi max_level: 5
+21:29:28,955 root INFO :: Time used (s):62.85366606712341
+21:30:32,100 root INFO :: Time used (s):63.14521360397339
+21:30:32,826 root INFO :: Percentage of correct mappings: 91.11%
+21:30:38,647 root INFO :: classification dimwise max_evaluations: 649
+21:30:38,647 root INFO :: classification dimwise start level: 2
+21:32:17,255 root INFO :: Number of distinct points used during the refinement: 778
+21:32:17,255 root INFO :: Time used (s):98.36867880821228
+21:33:55,891 root INFO :: Number of distinct points used during the refinement: 778
+21:33:55,891 root INFO :: Time used (s):98.63089919090271
+21:33:56,888 root INFO :: Percentage of correct mappings: 90.91%
+21:34:02,645 root INFO :: iteration end
+21:34:02,645 root INFO :: ########################
+21:34:02,645 root INFO :: ### Max Level Change ###
+21:34:02,645 root INFO :: ########################
+21:34:02,646 root INFO :: next iteration
+21:34:02,646 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:34:02,646 root INFO :: data size: 100000
+21:34:02,646 root INFO :: data dimension: 2
+21:34:02,646 root INFO :: one_vs_others False
+21:34:03,684 root INFO :: classification standardCombi max_level: 5
+21:34:28,573 root INFO :: Time used (s):24.76915144920349
+21:34:53,111 root INFO :: Time used (s):24.53730082511902
+21:34:53,836 root INFO :: Percentage of correct mappings: 91.12%
+21:34:59,705 root INFO :: classification dimwise max_evaluations: 649
+21:34:59,705 root INFO :: classification dimwise start level: 3
+21:35:53,4 root INFO :: Number of distinct points used during the refinement: 691
+21:35:53,4 root INFO :: Time used (s):53.182068824768066
+21:36:32,799 root INFO :: Number of distinct points used during the refinement: 416
+21:36:32,799 root INFO :: Time used (s):39.792229413986206
+21:36:33,818 root INFO :: Percentage of correct mappings: 90.61%
+21:36:39,569 root INFO :: iteration end
+21:36:39,569 root INFO :: next iteration
+21:36:39,569 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:36:39,569 root INFO :: data size: 100000
+21:36:39,569 root INFO :: data dimension: 2
+21:36:39,569 root INFO :: one_vs_others True
+21:36:40,571 root INFO :: classification standardCombi max_level: 5
+21:37:43,301 root INFO :: Time used (s):62.48422694206238
+21:38:46,488 root INFO :: Time used (s):63.187230587005615
+21:38:47,268 root INFO :: Percentage of correct mappings: 91.11%
+21:38:53,665 root INFO :: classification dimwise max_evaluations: 649
+21:38:53,665 root INFO :: classification dimwise start level: 3
+21:40:53,173 root INFO :: Number of distinct points used during the refinement: 799
+21:40:53,173 root INFO :: Time used (s):119.26859521865845
+21:42:52,289 root INFO :: Number of distinct points used during the refinement: 799
+21:42:52,290 root INFO :: Time used (s):119.1113908290863
+21:42:53,308 root INFO :: Percentage of correct mappings: 91.31%
+21:42:59,39 root INFO :: iteration end
+21:42:59,39 root INFO :: ########################
+21:42:59,39 root INFO :: ### Max Level Change ###
+21:42:59,39 root INFO :: ########################
+21:42:59,39 root INFO :: next iteration
+21:42:59,39 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:42:59,39 root INFO :: data size: 100000
+21:42:59,39 root INFO :: data dimension: 2
+21:42:59,39 root INFO :: one_vs_others False
+21:43:00,22 root INFO :: classification standardCombi max_level: 6
+21:43:32,32 root INFO :: Time used (s):31.893451690673828
+21:44:03,464 root INFO :: Time used (s):31.431361436843872
+21:44:04,348 root INFO :: Percentage of correct mappings: 91.68%
+21:44:10,865 root INFO :: classification dimwise max_evaluations: 1417
+21:44:10,865 root INFO :: classification dimwise start level: 2
+21:44:57,479 root INFO :: Number of distinct points used during the refinement: 705
+21:44:57,479 root INFO :: Time used (s):46.49818158149719
+21:46:23,394 root INFO :: Number of distinct points used during the refinement: 1820
+21:46:23,394 root INFO :: Time used (s):85.91261553764343
+21:46:24,575 root INFO :: Percentage of correct mappings: 91.11%
+21:46:31,163 root INFO :: iteration end
+21:46:31,163 root INFO :: next iteration
+21:46:31,163 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:46:31,163 root INFO :: data size: 100000
+21:46:31,163 root INFO :: data dimension: 2
+21:46:31,163 root INFO :: one_vs_others True
+21:46:32,189 root INFO :: classification standardCombi max_level: 6
+21:47:52,847 root INFO :: Time used (s):80.41660237312317
+21:49:13,178 root INFO :: Time used (s):80.33149790763855
+21:49:14,96 root INFO :: Percentage of correct mappings: 91.48%
+21:49:20,756 root INFO :: classification dimwise max_evaluations: 1417
+21:49:20,757 root INFO :: classification dimwise start level: 2
+21:51:54,239 root INFO :: Number of distinct points used during the refinement: 1608
+21:51:54,239 root INFO :: Time used (s):153.24215626716614
+21:54:27,796 root INFO :: Number of distinct points used during the refinement: 1608
+21:54:27,797 root INFO :: Time used (s):153.55261325836182
+21:54:29,2 root INFO :: Percentage of correct mappings: 91.40%
+21:54:35,471 root INFO :: iteration end
+21:54:35,472 root INFO :: ########################
+21:54:35,472 root INFO :: ### Max Level Change ###
+21:54:35,472 root INFO :: ########################
+21:54:35,472 root INFO :: next iteration
+21:54:35,472 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:54:35,472 root INFO :: data size: 100000
+21:54:35,472 root INFO :: data dimension: 2
+21:54:35,472 root INFO :: one_vs_others False
+21:54:36,518 root INFO :: classification standardCombi max_level: 6
+21:55:08,771 root INFO :: Time used (s):32.12854051589966
+21:55:41,78 root INFO :: Time used (s):32.30713701248169
+21:55:42,4 root INFO :: Percentage of correct mappings: 91.44%
+21:55:48,741 root INFO :: classification dimwise max_evaluations: 1417
+21:55:48,741 root INFO :: classification dimwise start level: 3
+21:57:10,22 root INFO :: Number of distinct points used during the refinement: 1679
+21:57:10,22 root INFO :: Time used (s):81.16484355926514
+21:58:01,614 root INFO :: Number of distinct points used during the refinement: 689
+21:58:01,614 root INFO :: Time used (s):51.58922624588013
+21:58:02,632 root INFO :: Percentage of correct mappings: 90.90%
+21:58:08,673 root INFO :: iteration end
+21:58:08,673 root INFO :: next iteration
+21:58:08,674 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+21:58:08,674 root INFO :: data size: 100000
+21:58:08,674 root INFO :: data dimension: 2
+21:58:08,674 root INFO :: one_vs_others True
+21:58:09,664 root INFO :: classification standardCombi max_level: 6
+21:59:31,517 root INFO :: Time used (s):81.60546231269836
+22:00:52,20 root INFO :: Time used (s):80.50307250022888
+22:00:52,969 root INFO :: Percentage of correct mappings: 91.59%
+22:01:00,145 root INFO :: classification dimwise max_evaluations: 1417
+22:01:00,145 root INFO :: classification dimwise start level: 3
+22:03:57,681 root INFO :: Number of distinct points used during the refinement: 1649
+22:03:57,681 root INFO :: Time used (s):177.2866666316986
+22:06:56,438 root INFO :: Number of distinct points used during the refinement: 1649
+22:06:56,439 root INFO :: Time used (s):178.75216102600098
+22:06:57,639 root INFO :: Percentage of correct mappings: 91.09%
+22:07:04,285 root INFO :: iteration end
+22:07:04,285 root INFO :: ########################
+22:07:04,285 root INFO :: ### Max Level Change ###
+22:07:04,285 root INFO :: ########################
+22:07:04,285 root INFO :: next iteration
+22:07:04,285 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:07:04,285 root INFO :: data size: 100000
+22:07:04,285 root INFO :: data dimension: 2
+22:07:04,285 root INFO :: one_vs_others False
+22:07:05,331 root INFO :: classification standardCombi max_level: 6
+22:07:37,216 root INFO :: Time used (s):31.762871265411377
+22:08:08,919 root INFO :: Time used (s):31.702867031097412
+22:08:09,830 root INFO :: Percentage of correct mappings: 91.53%
+22:08:16,451 root INFO :: classification dimwise max_evaluations: 1417
+22:08:16,451 root INFO :: classification dimwise start level: 4
+22:09:04,103 root INFO :: Number of distinct points used during the refinement: 461
+22:09:04,103 root INFO :: Time used (s):47.53517174720764
+22:09:51,841 root INFO :: Number of distinct points used during the refinement: 425
+22:09:51,842 root INFO :: Time used (s):47.73599600791931
+22:09:52,714 root INFO :: Percentage of correct mappings: 90.64%
+22:09:58,381 root INFO :: iteration end
+22:09:58,381 root INFO :: next iteration
+22:09:58,381 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:09:58,381 root INFO :: data size: 100000
+22:09:58,381 root INFO :: data dimension: 2
+22:09:58,381 root INFO :: one_vs_others True
+22:09:59,357 root INFO :: classification standardCombi max_level: 6
+22:11:20,368 root INFO :: Time used (s):80.77657413482666
+22:12:41,45 root INFO :: Time used (s):80.67721271514893
+22:12:41,968 root INFO :: Percentage of correct mappings: 91.17%
+22:12:48,773 root INFO :: classification dimwise max_evaluations: 1417
+22:12:48,773 root INFO :: classification dimwise start level: 4
+22:16:33,273 root INFO :: Number of distinct points used during the refinement: 1987
+22:16:33,273 root INFO :: Time used (s):224.25051379203796
+22:20:16,451 root INFO :: Number of distinct points used during the refinement: 1987
+22:20:16,451 root INFO :: Time used (s):223.17260718345642
+22:20:17,658 root INFO :: Percentage of correct mappings: 91.14%
+22:20:24,367 root INFO :: iteration end
+22:20:24,367 root INFO :: ########################
+22:20:24,367 root INFO :: ### Max Level Change ###
+22:20:24,367 root INFO :: ########################
+22:20:24,367 root INFO :: next iteration
+22:20:24,367 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:20:24,367 root INFO :: data size: 100000
+22:20:24,367 root INFO :: data dimension: 2
+22:20:24,367 root INFO :: one_vs_others False
+22:20:25,374 root INFO :: classification standardCombi max_level: 7
+22:21:06,126 root INFO :: Time used (s):40.63242030143738
+22:21:47,280 root INFO :: Time used (s):41.154542446136475
+22:21:48,389 root INFO :: Percentage of correct mappings: 91.57%
+22:21:56,332 root INFO :: classification dimwise max_evaluations: 3017
+22:21:56,332 root INFO :: classification dimwise start level: 2
+22:22:36,912 root INFO :: Number of distinct points used during the refinement: 448
+22:22:36,912 root INFO :: Time used (s):40.44826626777649
+22:23:09,368 root INFO :: Number of distinct points used during the refinement: 418
+22:23:09,368 root INFO :: Time used (s):32.45320200920105
+22:23:10,211 root INFO :: Percentage of correct mappings: 91.05%
+22:23:16,265 root INFO :: iteration end
+22:23:16,265 root INFO :: next iteration
+22:23:16,266 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:23:16,266 root INFO :: data size: 100000
+22:23:16,266 root INFO :: data dimension: 2
+22:23:16,266 root INFO :: one_vs_others True
+22:23:17,235 root INFO :: classification standardCombi max_level: 7
+22:25:00,208 root INFO :: Time used (s):102.73905730247498
+22:26:42,263 root INFO :: Time used (s):102.05425214767456
+22:26:43,299 root INFO :: Percentage of correct mappings: 91.46%
+22:26:50,814 root INFO :: classification dimwise max_evaluations: 3017
+22:26:50,814 root INFO :: classification dimwise start level: 2
+22:31:06,419 root INFO :: Number of distinct points used during the refinement: 3313
+22:31:06,419 root INFO :: Time used (s):255.36532497406006
+22:35:22,838 root INFO :: Number of distinct points used during the refinement: 3313
+22:35:22,838 root INFO :: Time used (s):256.4137485027313
+22:35:24,331 root INFO :: Percentage of correct mappings: 91.20%
+22:35:31,894 root INFO :: iteration end
+22:35:31,894 root INFO :: ########################
+22:35:31,894 root INFO :: ### Max Level Change ###
+22:35:31,894 root INFO :: ########################
+22:35:31,894 root INFO :: next iteration
+22:35:31,894 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:35:31,894 root INFO :: data size: 100000
+22:35:31,894 root INFO :: data dimension: 2
+22:35:31,894 root INFO :: one_vs_others False
+22:35:32,952 root INFO :: classification standardCombi max_level: 7
+22:36:14,642 root INFO :: Time used (s):41.57301449775696
+22:36:55,614 root INFO :: Time used (s):40.97184467315674
+22:36:56,680 root INFO :: Percentage of correct mappings: 91.56%
+22:37:04,201 root INFO :: classification dimwise max_evaluations: 3017
+22:37:04,201 root INFO :: classification dimwise start level: 3
+22:38:26,460 root INFO :: Number of distinct points used during the refinement: 1302
+22:38:26,460 root INFO :: Time used (s):82.14082479476929
+22:39:08,423 root INFO :: Number of distinct points used during the refinement: 617
+22:39:08,423 root INFO :: Time used (s):41.96109342575073
+22:39:09,453 root INFO :: Percentage of correct mappings: 90.69%
+22:39:15,881 root INFO :: iteration end
+22:39:15,881 root INFO :: next iteration
+22:39:15,882 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:39:15,882 root INFO :: data size: 100000
+22:39:15,882 root INFO :: data dimension: 2
+22:39:15,882 root INFO :: one_vs_others True
+22:39:16,846 root INFO :: classification standardCombi max_level: 7
+22:40:58,767 root INFO :: Time used (s):101.68065094947815
+22:42:39,930 root INFO :: Time used (s):101.16322636604309
+22:42:40,974 root INFO :: Percentage of correct mappings: 91.58%
+22:42:48,443 root INFO :: classification dimwise max_evaluations: 3017
+22:42:48,444 root INFO :: classification dimwise start level: 3
+22:47:25,378 root INFO :: Number of distinct points used during the refinement: 3380
+22:47:25,380 root INFO :: Time used (s):276.69712471961975
+22:52:03,770 root INFO :: Number of distinct points used during the refinement: 3380
+22:52:03,771 root INFO :: Time used (s):278.3849730491638
+22:52:05,201 root INFO :: Percentage of correct mappings: 91.47%
+22:52:12,644 root INFO :: iteration end
+22:52:12,645 root INFO :: ########################
+22:52:12,645 root INFO :: ### Max Level Change ###
+22:52:12,645 root INFO :: ########################
+22:52:12,645 root INFO :: next iteration
+22:52:12,645 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:52:12,645 root INFO :: data size: 100000
+22:52:12,645 root INFO :: data dimension: 2
+22:52:12,645 root INFO :: one_vs_others False
+22:52:13,680 root INFO :: classification standardCombi max_level: 7
+22:52:54,884 root INFO :: Time used (s):41.08841156959534
+22:53:35,748 root INFO :: Time used (s):40.86372709274292
+22:53:36,850 root INFO :: Percentage of correct mappings: 91.09%
+22:53:44,618 root INFO :: classification dimwise max_evaluations: 3017
+22:53:44,618 root INFO :: classification dimwise start level: 4
+22:54:32,229 root INFO :: Number of distinct points used during the refinement: 449
+22:54:32,229 root INFO :: Time used (s):47.49001097679138
+22:55:44,459 root INFO :: Number of distinct points used during the refinement: 743
+22:55:44,459 root INFO :: Time used (s):72.22810053825378
+22:55:45,537 root INFO :: Percentage of correct mappings: 90.04%
+22:55:52,297 root INFO :: iteration end
+22:55:52,298 root INFO :: next iteration
+22:55:52,298 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+22:55:52,298 root INFO :: data size: 100000
+22:55:52,298 root INFO :: data dimension: 2
+22:55:52,298 root INFO :: one_vs_others True
+22:55:53,308 root INFO :: classification standardCombi max_level: 7
+22:57:36,143 root INFO :: Time used (s):102.5939564704895
+22:59:17,927 root INFO :: Time used (s):101.78391361236572
+22:59:18,967 root INFO :: Percentage of correct mappings: 91.43%
+22:59:26,340 root INFO :: classification dimwise max_evaluations: 3017
+22:59:26,340 root INFO :: classification dimwise start level: 4
+23:04:45,580 root INFO :: Number of distinct points used during the refinement: 3890
+23:04:45,580 root INFO :: Time used (s):319.00123620033264
+23:10:08,132 root INFO :: Number of distinct points used during the refinement: 3890
+23:10:08,132 root INFO :: Time used (s):322.5468227863312
+23:10:09,629 root INFO :: Percentage of correct mappings: 91.24%
+23:10:17,247 root INFO :: iteration end
+23:10:17,247 root INFO :: ########################
+23:10:17,247 root INFO :: ### Max Level Change ###
+23:10:17,247 root INFO :: ########################
+23:10:17,247 root INFO :: next iteration
+23:10:17,247 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+23:10:17,247 root INFO :: data size: 100000
+23:10:17,248 root INFO :: data dimension: 2
+23:10:17,248 root INFO :: one_vs_others False
+23:10:18,254 root INFO :: classification standardCombi max_level: 8
+23:11:14,109 root INFO :: Time used (s):55.73714852333069
+23:12:10,174 root INFO :: Time used (s):56.06488108634949
+23:12:11,516 root INFO :: Percentage of correct mappings: 91.03%
+23:12:20,481 root INFO :: classification dimwise max_evaluations: 6217
+23:12:20,482 root INFO :: classification dimwise start level: 2
+23:12:57,725 root INFO :: Number of distinct points used during the refinement: 376
+23:12:57,725 root INFO :: Time used (s):37.11954641342163
+23:13:47,505 root INFO :: Number of distinct points used during the refinement: 815
+23:13:47,505 root INFO :: Time used (s):49.77698731422424
+23:13:48,401 root INFO :: Percentage of correct mappings: 91.04%
+23:13:55,76 root INFO :: iteration end
+23:13:55,76 root INFO :: next iteration
+23:13:55,76 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+23:13:55,76 root INFO :: data size: 100000
+23:13:55,76 root INFO :: data dimension: 2
+23:13:55,76 root INFO :: one_vs_others True
+23:13:56,102 root INFO :: classification standardCombi max_level: 8
+23:16:14,544 root INFO :: Time used (s):138.19065070152283
+23:18:32,779 root INFO :: Time used (s):138.23473167419434
+23:18:34,218 root INFO :: Percentage of correct mappings: 91.47%
+23:18:43,359 root INFO :: classification dimwise max_evaluations: 6217
+23:18:43,360 root INFO :: classification dimwise start level: 2
+23:26:53,627 root INFO :: Number of distinct points used during the refinement: 6814
+23:26:53,627 root INFO :: Time used (s):490.013391494751
+23:34:48,222 root INFO :: Number of distinct points used during the refinement: 6814
+23:34:48,223 root INFO :: Time used (s):474.5896451473236
+23:34:50,94 root INFO :: Percentage of correct mappings: 91.27%
+23:34:59,4 root INFO :: iteration end
+23:34:59,4 root INFO :: ########################
+23:34:59,4 root INFO :: ### Max Level Change ###
+23:34:59,4 root INFO :: ########################
+23:34:59,4 root INFO :: next iteration
+23:34:59,4 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+23:34:59,4 root INFO :: data size: 100000
+23:34:59,4 root INFO :: data dimension: 2
+23:34:59,4 root INFO :: one_vs_others False
+23:35:00,43 root INFO :: classification standardCombi max_level: 8
+23:35:54,769 root INFO :: Time used (s):54.60432410240173
+23:36:52,761 root INFO :: Time used (s):57.99204134941101
+23:36:54,152 root INFO :: Percentage of correct mappings: 91.28%
+23:37:03,23 root INFO :: classification dimwise max_evaluations: 6217
+23:37:03,23 root INFO :: classification dimwise start level: 3
+23:37:45,221 root INFO :: Number of distinct points used during the refinement: 430
+23:37:45,221 root INFO :: Time used (s):42.0753014087677
+23:38:25,6 root INFO :: Number of distinct points used during the refinement: 416
+23:38:25,6 root INFO :: Time used (s):39.78215026855469
+23:38:25,933 root INFO :: Percentage of correct mappings: 90.33%
+23:38:32,680 root INFO :: iteration end
+23:38:32,681 root INFO :: next iteration
+23:38:32,681 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+23:38:32,681 root INFO :: data size: 100000
+23:38:32,681 root INFO :: data dimension: 2
+23:38:32,681 root INFO :: one_vs_others True
+23:38:33,692 root INFO :: classification standardCombi max_level: 8
+23:40:49,900 root INFO :: Time used (s):135.96357774734497
+23:43:07,312 root INFO :: Time used (s):137.4115927219391
+23:43:08,743 root INFO :: Percentage of correct mappings: 91.59%
+23:43:17,653 root INFO :: classification dimwise max_evaluations: 6217
+23:43:17,654 root INFO :: classification dimwise start level: 3
+23:51:48,859 root INFO :: Number of distinct points used during the refinement: 6925
+23:51:48,859 root INFO :: Time used (s):510.9519567489624
+00:00:19,42 root INFO :: Number of distinct points used during the refinement: 6925
+00:00:19,42 root INFO :: Time used (s):510.17824482917786
+00:00:20,855 root INFO :: Percentage of correct mappings: 91.75%
+00:00:29,610 root INFO :: iteration end
+00:00:29,610 root INFO :: ########################
+00:00:29,610 root INFO :: ### Max Level Change ###
+00:00:29,610 root INFO :: ########################
+00:00:29,610 root INFO :: next iteration
+00:00:29,610 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+00:00:29,610 root INFO :: data size: 100000
+00:00:29,610 root INFO :: data dimension: 2
+00:00:29,610 root INFO :: one_vs_others False
+00:00:30,613 root INFO :: classification standardCombi max_level: 8
+00:01:24,788 root INFO :: Time used (s):54.051714181900024
+00:02:21,692 root INFO :: Time used (s):56.90450143814087
+00:02:23,5 root INFO :: Percentage of correct mappings: 91.19%
+00:02:31,563 root INFO :: classification dimwise max_evaluations: 6217
+00:02:31,563 root INFO :: classification dimwise start level: 4
+00:03:20,556 root INFO :: Number of distinct points used during the refinement: 460
+00:03:20,556 root INFO :: Time used (s):48.87136435508728
+00:04:18,579 root INFO :: Number of distinct points used during the refinement: 717
+00:04:18,579 root INFO :: Time used (s):58.02023124694824
+00:04:19,564 root INFO :: Percentage of correct mappings: 90.59%
+00:04:26,646 root INFO :: iteration end
+00:04:26,646 root INFO :: next iteration
+00:04:26,646 root INFO :: do.datasets.make_moons(n_samples=size, noise=0.3)
+00:04:26,646 root INFO :: data size: 100000
+00:04:26,646 root INFO :: data dimension: 2
+00:04:26,646 root INFO :: one_vs_others True
+00:04:27,698 root INFO :: classification standardCombi max_level: 8
+00:06:43,420 root INFO :: Time used (s):135.47274231910706
+00:08:59,784 root INFO :: Time used (s):136.36393690109253
+00:09:01,80 root INFO :: Percentage of correct mappings: 91.47%
+00:09:09,489 root INFO :: classification dimwise max_evaluations: 6217
+00:09:09,489 root INFO :: classification dimwise start level: 4
+00:16:53,116 root INFO :: Number of distinct points used during the refinement: 6630
+00:16:53,116 root INFO :: Time used (s):463.3858721256256
+00:24:35,662 root INFO :: Number of distinct points used during the refinement: 6630
+00:24:35,662 root INFO :: Time used (s):462.540504693985
+00:24:37,334 root INFO :: Percentage of correct mappings: 91.26%
+00:24:45,765 root INFO :: iteration end
+00:24:45,765 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+00:24:45,765 root INFO :: ~~~ DataSet Change ~~~
+00:24:45,765 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+00:24:45,765 root INFO :: ||||||||||||||||||||||||
+00:24:45,765 root INFO :: ||| Dimension Change |||
+00:24:45,765 root INFO :: ||||||||||||||||||||||||
+00:24:45,819 root INFO :: ########################
+00:24:45,819 root INFO :: ### Max Level Change ###
+00:24:45,819 root INFO :: ########################
+00:24:45,819 root INFO :: next iteration
+00:24:45,819 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+00:24:45,819 root INFO :: data size: 100000
+00:24:45,820 root INFO :: data dimension: 4
+00:24:45,820 root INFO :: one_vs_others False
+00:24:46,861 root INFO :: classification standardCombi max_level: 4
+00:27:29,338 root INFO :: Time used (s):162.36233830451965
+00:30:12,633 root INFO :: Time used (s):163.29486656188965
+00:30:16,226 root INFO :: Percentage of correct mappings: 89.69%
+00:30:37,864 root INFO :: classification dimwise max_evaluations: 265
+00:30:37,864 root INFO :: classification dimwise start level: 2
+00:32:40,376 root INFO :: Number of distinct points used during the refinement: 503
+00:32:40,376 root INFO :: Time used (s):122.39671397209167
+00:34:33,1 root INFO :: Number of distinct points used during the refinement: 421
+00:34:33,3 root INFO :: Time used (s):112.62409734725952
+00:34:36,599 root INFO :: Percentage of correct mappings: 89.77%
+00:34:57,388 root INFO :: iteration end
+00:34:57,388 root INFO :: next iteration
+00:34:57,388 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+00:34:57,388 root INFO :: data size: 100000
+00:34:57,388 root INFO :: data dimension: 4
+00:34:57,388 root INFO :: one_vs_others True
+00:34:58,429 root INFO :: classification standardCombi max_level: 4
+00:41:51,695 root INFO :: Time used (s):413.02225136756897
+00:48:45,550 root INFO :: Time used (s):413.85442876815796
+00:48:49,315 root INFO :: Percentage of correct mappings: 89.61%
+00:49:11,24 root INFO :: classification dimwise max_evaluations: 265
+00:49:11,24 root INFO :: classification dimwise start level: 2
+00:54:47,985 root INFO :: Number of distinct points used during the refinement: 430
+00:54:47,985 root INFO :: Time used (s):336.6971130371094
+01:00:25,466 root INFO :: Number of distinct points used during the refinement: 430
+01:00:25,466 root INFO :: Time used (s):337.47489523887634
+01:00:29,81 root INFO :: Percentage of correct mappings: 91.21%
+01:00:49,347 root INFO :: iteration end
+01:00:49,347 root INFO :: ########################
+01:00:49,347 root INFO :: ### Max Level Change ###
+01:00:49,348 root INFO :: ########################
+01:00:49,348 root INFO :: next iteration
+01:00:49,348 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+01:00:49,348 root INFO :: data size: 100000
+01:00:49,348 root INFO :: data dimension: 4
+01:00:49,348 root INFO :: one_vs_others False
+01:00:50,365 root INFO :: classification standardCombi max_level: 5
+01:07:04,493 root INFO :: Time used (s):374.0119867324829
+01:13:21,456 root INFO :: Time used (s):376.9625072479248
+01:13:28,730 root INFO :: Percentage of correct mappings: 90.07%
+01:14:08,403 root INFO :: classification dimwise max_evaluations: 649
+01:14:08,403 root INFO :: classification dimwise start level: 2
+01:17:14,208 root INFO :: Number of distinct points used during the refinement: 1636
+01:17:14,210 root INFO :: Time used (s):185.68669271469116
+01:20:00,711 root INFO :: Number of distinct points used during the refinement: 1170
+01:20:00,712 root INFO :: Time used (s):166.49893164634705
+01:20:06,704 root INFO :: Percentage of correct mappings: 86.61%
+01:20:42,383 root INFO :: iteration end
+01:20:42,383 root INFO :: next iteration
+01:20:42,383 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+01:20:42,383 root INFO :: data size: 100000
+01:20:42,383 root INFO :: data dimension: 4
+01:20:42,383 root INFO :: one_vs_others True
+01:20:43,420 root INFO :: classification standardCombi max_level: 5
+01:36:33,654 root INFO :: Time used (s):950.0001046657562
+08:15:15,986 root INFO :: Time used (s):23922.331466436386
+08:15:23,29 root INFO :: Percentage of correct mappings: 90.19%
+08:16:01,446 root INFO :: classification dimwise max_evaluations: 649
+08:16:01,446 root INFO :: classification dimwise start level: 2
+08:22:46,437 root INFO :: Number of distinct points used during the refinement: 775
+08:22:46,437 root INFO :: Time used (s):404.74466609954834
+08:29:32,817 root INFO :: Number of distinct points used during the refinement: 775
+08:29:32,817 root INFO :: Time used (s):406.3742995262146
+08:29:36,594 root INFO :: Percentage of correct mappings: 91.61%
+08:30:05,781 root INFO :: iteration end
+08:30:05,781 root INFO :: ########################
+08:30:05,781 root INFO :: ### Max Level Change ###
+08:30:05,782 root INFO :: ########################
+08:30:05,782 root INFO :: next iteration
+08:30:05,782 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+08:30:05,782 root INFO :: data size: 100000
+08:30:05,782 root INFO :: data dimension: 4
+08:30:05,782 root INFO :: one_vs_others False
+08:30:06,780 root INFO :: classification standardCombi max_level: 5
+08:36:19,718 root INFO :: Time used (s):372.8246440887451
+08:42:36,704 root INFO :: Time used (s):376.9836654663086
+08:42:43,931 root INFO :: Percentage of correct mappings: 90.25%
+08:43:23,10 root INFO :: classification dimwise max_evaluations: 649
+08:43:23,10 root INFO :: classification dimwise start level: 3
+08:50:37,777 root INFO :: Number of distinct points used during the refinement: 1636
+08:50:37,777 root INFO :: Time used (s):434.64967036247253
+08:57:42,72 root INFO :: Number of distinct points used during the refinement: 1229
+08:57:42,72 root INFO :: Time used (s):424.2923917770386
+08:57:48,105 root INFO :: Percentage of correct mappings: 86.48%
+08:58:23,14 root INFO :: iteration end
+08:58:23,14 root INFO :: next iteration
+08:58:23,14 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+08:58:23,14 root INFO :: data size: 100000
+08:58:23,14 root INFO :: data dimension: 4
+08:58:23,14 root INFO :: one_vs_others True
+08:58:24,40 root INFO :: classification standardCombi max_level: 5
+09:14:06,863 root INFO :: Time used (s):942.5858931541443
+09:29:52,250 root INFO :: Time used (s):945.3867721557617
+09:29:59,322 root INFO :: Percentage of correct mappings: 90.51%
+09:30:37,769 root INFO :: classification dimwise max_evaluations: 649
+09:30:37,772 root INFO :: classification dimwise start level: 3
+09:48:09,904 root INFO :: Number of distinct points used during the refinement: 821
+09:48:09,904 root INFO :: Time used (s):1051.8870780467987
+10:05:37,215 root INFO :: Number of distinct points used during the refinement: 821
+10:05:37,218 root INFO :: Time used (s):1047.308075428009
+10:05:41,27 root INFO :: Percentage of correct mappings: 91.81%
+10:06:10,376 root INFO :: iteration end
+10:06:10,376 root INFO :: ########################
+10:06:10,376 root INFO :: ### Max Level Change ###
+10:06:10,376 root INFO :: ########################
+10:06:10,376 root INFO :: next iteration
+10:06:10,376 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+10:06:10,376 root INFO :: data size: 100000
+10:06:10,376 root INFO :: data dimension: 4
+10:06:10,376 root INFO :: one_vs_others False
+10:06:11,385 root INFO :: classification standardCombi max_level: 6
+10:18:45,773 root INFO :: Time used (s):754.2734949588776
+10:31:24,142 root INFO :: Time used (s):758.3686640262604
+10:31:36,953 root INFO :: Percentage of correct mappings: 90.85%
+10:32:42,935 root INFO :: classification dimwise max_evaluations: 1417
+10:32:42,936 root INFO :: classification dimwise start level: 2
+10:35:47,607 root INFO :: Number of distinct points used during the refinement: 1636
+10:35:47,607 root INFO :: Time used (s):184.55631566047668
+10:41:17,368 root INFO :: Number of distinct points used during the refinement: 5000
+10:41:17,368 root INFO :: Time used (s):329.75858998298645
+10:41:25,756 root INFO :: Percentage of correct mappings: 76.89%
+10:42:19,653 root INFO :: iteration end
+10:42:19,653 root INFO :: next iteration
+10:42:19,654 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+10:42:19,654 root INFO :: data size: 100000
+10:42:19,654 root INFO :: data dimension: 4
+10:42:19,654 root INFO :: one_vs_others True
+10:42:20,672 root INFO :: classification standardCombi max_level: 6
+11:14:17,835 root INFO :: Time used (s):1916.9287073612213
+11:46:13,990 root INFO :: Time used (s):1916.1529006958008
+11:46:26,867 root INFO :: Percentage of correct mappings: 91.00%
+11:47:33,168 root INFO :: classification dimwise max_evaluations: 1417
+11:47:33,168 root INFO :: classification dimwise start level: 2
+11:56:56,457 root INFO :: Number of distinct points used during the refinement: 1879
+11:56:56,458 root INFO :: Time used (s):563.0463132858276
+12:06:20,852 root INFO :: Number of distinct points used during the refinement: 1879
+12:06:20,852 root INFO :: Time used (s):564.388787984848
+12:06:24,715 root INFO :: Percentage of correct mappings: 91.61%
+12:07:08,409 root INFO :: iteration end
+12:07:08,409 root INFO :: ########################
+12:07:08,409 root INFO :: ### Max Level Change ###
+12:07:08,409 root INFO :: ########################
+12:07:08,409 root INFO :: next iteration
+12:07:08,409 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+12:07:08,409 root INFO :: data size: 100000
+12:07:08,409 root INFO :: data dimension: 4
+12:07:08,409 root INFO :: one_vs_others False
+12:07:09,435 root INFO :: classification standardCombi max_level: 6
+12:19:50,143 root INFO :: Time used (s):760.5913479328156
+12:32:38,214 root INFO :: Time used (s):768.067709684372
+12:32:51,111 root INFO :: Percentage of correct mappings: 90.93%
+12:33:57,969 root INFO :: classification dimwise max_evaluations: 1417
+12:33:57,969 root INFO :: classification dimwise start level: 3
+12:41:11,581 root INFO :: Number of distinct points used during the refinement: 1636
+12:41:11,581 root INFO :: Time used (s):433.4986217021942
+12:51:24,541 root INFO :: Number of distinct points used during the refinement: 5383
+12:51:24,543 root INFO :: Time used (s):612.9585568904877
+12:51:32,924 root INFO :: Percentage of correct mappings: 76.61%
+12:52:26,903 root INFO :: iteration end
+12:52:26,903 root INFO :: next iteration
+12:52:26,903 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+12:52:26,903 root INFO :: data size: 100000
+12:52:26,903 root INFO :: data dimension: 4
+12:52:26,903 root INFO :: one_vs_others True
+12:52:27,908 root INFO :: classification standardCombi max_level: 6
+13:24:53,224 root INFO :: Time used (s):1945.0828831195831
+13:57:13,741 root INFO :: Time used (s):1940.514820575714
+13:57:26,656 root INFO :: Percentage of correct mappings: 91.31%
+13:58:33,252 root INFO :: classification dimwise max_evaluations: 1417
+13:58:33,252 root INFO :: classification dimwise start level: 3
+14:19:05,480 root INFO :: Number of distinct points used during the refinement: 1925
+14:19:05,480 root INFO :: Time used (s):1231.9886598587036
+14:39:44,367 root INFO :: Number of distinct points used during the refinement: 1925
+14:39:44,369 root INFO :: Time used (s):1238.8832483291626
+14:39:48,301 root INFO :: Percentage of correct mappings: 91.92%
+14:40:31,972 root INFO :: iteration end
+14:40:31,972 root INFO :: ########################
+14:40:31,972 root INFO :: ### Max Level Change ###
+14:40:31,972 root INFO :: ########################
+14:40:31,972 root INFO :: next iteration
+14:40:31,972 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+14:40:31,972 root INFO :: data size: 100000
+14:40:31,972 root INFO :: data dimension: 4
+14:40:31,972 root INFO :: one_vs_others False
+14:40:33,20 root INFO :: classification standardCombi max_level: 6
+14:53:14,950 root INFO :: Time used (s):761.8115539550781
+15:05:55,167 root INFO :: Time used (s):760.2169749736786
+15:06:07,963 root INFO :: Percentage of correct mappings: 90.94%
+15:07:13,707 root INFO :: classification dimwise max_evaluations: 1417
+15:07:13,707 root INFO :: classification dimwise start level: 4
+15:28:18,106 root INFO :: Number of distinct points used during the refinement: 1425
+15:28:18,106 root INFO :: Time used (s):1264.283192873001
+15:49:32,260 root INFO :: Number of distinct points used during the refinement: 1824
+15:49:32,262 root INFO :: Time used (s):1274.1531264781952
+15:49:38,473 root INFO :: Percentage of correct mappings: 85.67%
+15:50:27,435 root INFO :: iteration end
+15:50:27,435 root INFO :: next iteration
+15:50:27,435 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+15:50:27,435 root INFO :: data size: 100000
+15:50:27,435 root INFO :: data dimension: 4
+15:50:27,435 root INFO :: one_vs_others True
+15:50:28,438 root INFO :: classification standardCombi max_level: 6
+16:22:30,394 root INFO :: Time used (s):1921.7208728790283
+16:54:25,631 root INFO :: Time used (s):1915.2370438575745
+16:54:38,495 root INFO :: Percentage of correct mappings: 91.31%
+16:55:44,507 root INFO :: classification dimwise max_evaluations: 1417
+16:55:44,507 root INFO :: classification dimwise start level: 4
+17:48:20,751 root INFO :: Number of distinct points used during the refinement: 1488
+17:48:20,751 root INFO :: Time used (s):3156.005648612976
+18:41:00,836 root INFO :: Number of distinct points used during the refinement: 1488
+18:41:00,836 root INFO :: Time used (s):3160.0790185928345
+18:41:07,343 root INFO :: Percentage of correct mappings: 91.20%
+18:41:58,346 root INFO :: iteration end
+18:41:58,346 root INFO :: ########################
+18:41:58,346 root INFO :: ### Max Level Change ###
+18:41:58,346 root INFO :: ########################
+18:41:58,346 root INFO :: next iteration
+18:41:58,346 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+18:41:58,346 root INFO :: data size: 100000
+18:41:58,346 root INFO :: data dimension: 4
+18:41:58,346 root INFO :: one_vs_others False
+18:41:59,381 root INFO :: classification standardCombi max_level: 7
+19:06:17,528 root INFO :: Time used (s):1458.0302772521973
+19:30:41,708 root INFO :: Time used (s):1464.1790597438812
+19:31:04,531 root INFO :: Percentage of correct mappings: 90.86%
+19:32:52,884 root INFO :: classification dimwise max_evaluations: 3017
+19:32:52,884 root INFO :: classification dimwise start level: 2
+19:39:20,750 root INFO :: Number of distinct points used during the refinement: 6620
+19:39:20,752 root INFO :: Time used (s):387.75144815444946
+19:44:57,337 root INFO :: Number of distinct points used during the refinement: 5000
+19:44:57,340 root INFO :: Time used (s):336.5853111743927
+19:45:08,866 root INFO :: Percentage of correct mappings: 91.33%
+19:46:37,554 root INFO :: iteration end
+19:46:37,554 root INFO :: next iteration
+19:46:37,554 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+19:46:37,554 root INFO :: data size: 100000
+19:46:37,554 root INFO :: data dimension: 4
+19:46:37,554 root INFO :: one_vs_others True
+19:46:38,604 root INFO :: classification standardCombi max_level: 7
+20:47:55,780 root INFO :: Time used (s):3676.936179161072
+21:48:57,227 root INFO :: Time used (s):3661.4452183246613
+21:49:20,478 root INFO :: Percentage of correct mappings: 91.44%
+21:51:11,576 root INFO :: classification dimwise max_evaluations: 3017
+21:51:11,576 root INFO :: classification dimwise start level: 2
+22:05:19,793 root INFO :: Number of distinct points used during the refinement: 4351
+22:05:19,796 root INFO :: Time used (s):847.9761433601379
+22:19:17,920 root INFO :: Number of distinct points used during the refinement: 4351
+22:19:17,920 root INFO :: Time used (s):838.1184902191162
+22:19:22,111 root INFO :: Percentage of correct mappings: 91.68%
+22:20:27,112 root INFO :: iteration end
+22:20:27,112 root INFO :: ########################
+22:20:27,112 root INFO :: ### Max Level Change ###
+22:20:27,112 root INFO :: ########################
+22:20:27,112 root INFO :: next iteration
+22:20:27,112 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+22:20:27,112 root INFO :: data size: 100000
+22:20:27,112 root INFO :: data dimension: 4
+22:20:27,112 root INFO :: one_vs_others False
+22:20:28,152 root INFO :: classification standardCombi max_level: 7
+22:44:50,820 root INFO :: Time used (s):1462.5528359413147
+23:09:41,692 root INFO :: Time used (s):1490.8713517189026
+23:10:05,320 root INFO :: Percentage of correct mappings: 90.55%
+23:11:55,718 root INFO :: classification dimwise max_evaluations: 3017
+23:11:55,719 root INFO :: classification dimwise start level: 3
+23:22:30,173 root INFO :: Number of distinct points used during the refinement: 6564
+23:22:30,173 root INFO :: Time used (s):634.3349530696869
+23:32:51,874 root INFO :: Number of distinct points used during the refinement: 5383
+23:32:51,874 root INFO :: Time used (s):621.698260307312
+23:33:03,963 root INFO :: Percentage of correct mappings: 91.33%
+23:34:30,669 root INFO :: iteration end
+23:34:30,669 root INFO :: next iteration
+23:34:30,669 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+23:34:30,669 root INFO :: data size: 100000
+23:34:30,669 root INFO :: data dimension: 4
+23:34:30,669 root INFO :: one_vs_others True
+23:34:31,719 root INFO :: classification standardCombi max_level: 7
+00:35:23,501 root INFO :: Time used (s):3651.54660820961
+01:36:12,430 root INFO :: Time used (s):3648.9258437156677
+01:36:35,335 root INFO :: Percentage of correct mappings: 91.20%
+01:38:23,619 root INFO :: classification dimwise max_evaluations: 3017
+01:38:23,619 root INFO :: classification dimwise start level: 3
+02:03:48,45 root INFO :: Number of distinct points used during the refinement: 4397
+02:03:48,45 root INFO :: Time used (s):1524.183524608612
+02:29:12,427 root INFO :: Number of distinct points used during the refinement: 4397
+02:29:12,427 root INFO :: Time used (s):1524.375489473343
+02:29:16,570 root INFO :: Percentage of correct mappings: 92.07%
+02:30:20,86 root INFO :: iteration end
+02:30:20,86 root INFO :: ########################
+02:30:20,86 root INFO :: ### Max Level Change ###
+02:30:20,86 root INFO :: ########################
+02:30:20,86 root INFO :: next iteration
+02:30:20,86 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+02:30:20,86 root INFO :: data size: 100000
+02:30:20,86 root INFO :: data dimension: 4
+02:30:20,86 root INFO :: one_vs_others False
+02:30:21,113 root INFO :: classification standardCombi max_level: 7
+02:54:31,978 root INFO :: Time used (s):1450.748248577118
+03:18:58,227 root INFO :: Time used (s):1466.2488176822662
+03:19:20,770 root INFO :: Percentage of correct mappings: 90.62%
+03:21:09,129 root INFO :: classification dimwise max_evaluations: 3017
+03:21:09,129 root INFO :: classification dimwise start level: 4
+03:44:50,620 root INFO :: Number of distinct points used during the refinement: 4135
+03:44:50,620 root INFO :: Time used (s):1421.375646352768
+04:10:18,735 root INFO :: Number of distinct points used during the refinement: 7651
+04:10:18,735 root INFO :: Time used (s):1528.1119179725647
+04:10:30,6 root INFO :: Percentage of correct mappings: 88.78%
+04:11:50,813 root INFO :: iteration end
+04:11:50,813 root INFO :: next iteration
+04:11:50,813 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+04:11:50,813 root INFO :: data size: 100000
+04:11:50,814 root INFO :: data dimension: 4
+04:11:50,814 root INFO :: one_vs_others True
+04:11:51,834 root INFO :: classification standardCombi max_level: 7
+05:12:38,626 root INFO :: Time used (s):3646.5573184490204
+06:14:02,310 root INFO :: Time used (s):3683.683661222458
+06:14:25,437 root INFO :: Percentage of correct mappings: 91.14%
+06:16:13,194 root INFO :: classification dimwise max_evaluations: 3017
+06:16:13,195 root INFO :: classification dimwise start level: 4
+07:14:08,622 root INFO :: Number of distinct points used during the refinement: 3500
+07:14:08,624 root INFO :: Time used (s):3475.1905262470245
+08:12:12,554 root INFO :: Number of distinct points used during the refinement: 3500
+08:12:12,557 root INFO :: Time used (s):3483.9257402420044
+08:12:23,333 root INFO :: Percentage of correct mappings: 91.57%
+08:13:44,427 root INFO :: iteration end
+08:13:44,427 root INFO :: ########################
+08:13:44,427 root INFO :: ### Max Level Change ###
+08:13:44,427 root INFO :: ########################
+08:13:44,427 root INFO :: next iteration
+08:13:44,427 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+08:13:44,428 root INFO :: data size: 100000
+08:13:44,428 root INFO :: data dimension: 4
+08:13:44,428 root INFO :: one_vs_others False
+08:13:45,437 root INFO :: classification standardCombi max_level: 8
+09:00:25,578 root INFO :: Time used (s):2800.0282254219055
+09:47:22,688 root INFO :: Time used (s):2817.109602212906
+09:48:01,697 root INFO :: Percentage of correct mappings: 89.41%
+09:50:46,297 root INFO :: classification dimwise max_evaluations: 6217
+09:50:46,297 root INFO :: classification dimwise start level: 2
+09:57:11,920 root INFO :: Number of distinct points used during the refinement: 6676
+09:57:11,920 root INFO :: Time used (s):385.50596284866333
+10:07:51,519 root INFO :: Number of distinct points used during the refinement: 12161
+10:07:51,519 root INFO :: Time used (s):639.5961349010468
+10:08:06,600 root INFO :: Percentage of correct mappings: 87.20%
+10:10:06,281 root INFO :: iteration end
+10:10:06,282 root INFO :: next iteration
+10:10:06,282 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+10:10:06,282 root INFO :: data size: 100000
+10:10:06,282 root INFO :: data dimension: 4
+10:10:06,282 root INFO :: one_vs_others True
+10:10:07,295 root INFO :: classification standardCombi max_level: 8
+12:03:59,517 root INFO :: Time used (s):6831.98362827301
+13:57:52,723 root INFO :: Time used (s):6833.2055876255035
+13:58:31,965 root INFO :: Percentage of correct mappings: 91.70%
+14:01:20,786 root INFO :: classification dimwise max_evaluations: 6217
+14:01:20,787 root INFO :: classification dimwise start level: 2
+14:19:04,422 root INFO :: Number of distinct points used during the refinement: 7087
+14:19:04,422 root INFO :: Time used (s):1063.3924460411072
+14:36:56,341 root INFO :: Number of distinct points used during the refinement: 7087
+14:36:56,341 root INFO :: Time used (s):1071.91339468956
+14:37:00,822 root INFO :: Percentage of correct mappings: 91.91%
+14:38:39,251 root INFO :: iteration end
+14:38:39,251 root INFO :: ########################
+14:38:39,251 root INFO :: ### Max Level Change ###
+14:38:39,251 root INFO :: ########################
+14:38:39,251 root INFO :: next iteration
+14:38:39,251 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+14:38:39,251 root INFO :: data size: 100000
+14:38:39,251 root INFO :: data dimension: 4
+14:38:39,251 root INFO :: one_vs_others False
+14:38:40,312 root INFO :: classification standardCombi max_level: 8
+15:25:19,823 root INFO :: Time used (s):2799.3916397094727
+16:12:18,719 root INFO :: Time used (s):2818.8936042785645
+16:12:57,893 root INFO :: Percentage of correct mappings: 89.59%
+16:15:44,414 root INFO :: classification dimwise max_evaluations: 6217
+16:15:44,414 root INFO :: classification dimwise start level: 3
+16:26:22,56 root INFO :: Number of distinct points used during the refinement: 6732
+16:26:22,56 root INFO :: Time used (s):637.5229649543762
+16:39:20,363 root INFO :: Number of distinct points used during the refinement: 6569
+16:39:20,363 root INFO :: Time used (s):778.3038370609283
+16:39:31,925 root INFO :: Percentage of correct mappings: 91.36%
+16:41:23,872 root INFO :: iteration end
+16:41:23,872 root INFO :: next iteration
+16:41:23,872 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+16:41:23,872 root INFO :: data size: 100000
+16:41:23,872 root INFO :: data dimension: 4
+16:41:23,872 root INFO :: one_vs_others True
+16:41:24,906 root INFO :: classification standardCombi max_level: 8
+18:35:30,833 root INFO :: Time used (s):6845.687181472778
+20:30:32,930 root INFO :: Time used (s):6902.094488859177
+20:31:12,907 root INFO :: Percentage of correct mappings: 91.36%
+20:34:05,698 root INFO :: classification dimwise max_evaluations: 6217
+20:34:05,698 root INFO :: classification dimwise start level: 3
+21:03:52,2 root INFO :: Number of distinct points used during the refinement: 7133
+21:03:52,3 root INFO :: Time used (s):1786.0649089813232
+21:33:36,88 root INFO :: Number of distinct points used during the refinement: 7133
+21:33:36,90 root INFO :: Time used (s):1784.0814189910889
+21:33:40,569 root INFO :: Percentage of correct mappings: 92.06%
+21:35:15,35 root INFO :: iteration end
+21:35:15,35 root INFO :: ########################
+21:35:15,35 root INFO :: ### Max Level Change ###
+21:35:15,35 root INFO :: ########################
+21:35:15,35 root INFO :: next iteration
+21:35:15,35 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+21:35:15,35 root INFO :: data size: 100000
+21:35:15,35 root INFO :: data dimension: 4
+21:35:15,35 root INFO :: one_vs_others False
+21:35:16,44 root INFO :: classification standardCombi max_level: 8
+22:22:46,446 root INFO :: Time used (s):2850.2858426570892
+23:10:40,458 root INFO :: Time used (s):2874.009040594101
+23:11:20,636 root INFO :: Percentage of correct mappings: 89.81%
+23:14:15,746 root INFO :: classification dimwise max_evaluations: 6217
+23:14:15,747 root INFO :: classification dimwise start level: 4
+23:42:31,406 root INFO :: Number of distinct points used during the refinement: 7581
+23:42:31,406 root INFO :: Time used (s):1695.540796995163
+00:08:19,421 root INFO :: Number of distinct points used during the refinement: 7453
+00:08:19,421 root INFO :: Time used (s):1548.0100948810577
+00:08:31,659 root INFO :: Percentage of correct mappings: 91.40%
+00:10:27,719 root INFO :: iteration end
+00:10:27,719 root INFO :: next iteration
+00:10:27,719 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)
+00:10:27,719 root INFO :: data size: 100000
+00:10:27,719 root INFO :: data dimension: 4
+00:10:27,719 root INFO :: one_vs_others True
+00:10:28,766 root INFO :: classification standardCombi max_level: 8
+02:04:46,141 root INFO :: Time used (s):6857.136639118195
+03:58:19,524 root INFO :: Time used (s):6813.382767915726
+03:58:59,202 root INFO :: Percentage of correct mappings: 91.62%
+04:01:47,730 root INFO :: classification dimwise max_evaluations: 6217
+04:01:47,730 root INFO :: classification dimwise start level: 4
+05:09:19,534 root INFO :: Number of distinct points used during the refinement: 7079
+05:09:19,534 root INFO :: Time used (s):4051.565284013748
+06:16:52,30 root INFO :: Number of distinct points used during the refinement: 7079
+06:16:52,33 root INFO :: Time used (s):4052.492040157318
+06:17:09,60 root INFO :: Percentage of correct mappings: 90.92%
+06:19:14,611 root INFO :: iteration end
+06:19:14,612 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+06:19:14,612 root INFO :: ~~~ DataSet Change ~~~
+06:19:14,612 root INFO :: ~~~~~~~~~~~~~~~~~~~~~~
+06:19:14,612 root INFO :: ||||||||||||||||||||||||
+06:19:14,612 root INFO :: ||| Dimension Change |||
+06:19:14,612 root INFO :: ||||||||||||||||||||||||
+06:19:14,680 root INFO :: ########################
+06:19:14,680 root INFO :: ### Max Level Change ###
+06:19:14,680 root INFO :: ########################
+06:19:14,680 root INFO :: next iteration
+06:19:14,680 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+06:19:14,680 root INFO :: data size: 100000
+06:19:14,680 root INFO :: data dimension: 4
+06:19:14,680 root INFO :: one_vs_others False
+06:19:15,768 root INFO :: classification standardCombi max_level: 4
+06:21:04,549 root INFO :: Time used (s):108.63606977462769
+06:22:51,424 root INFO :: Time used (s):106.87492060661316
+06:24:37,543 root INFO :: Time used (s):106.11874532699585
+06:24:42,956 root INFO :: Percentage of correct mappings: 85.52%
+06:25:12,833 root INFO :: classification dimwise max_evaluations: 265
+06:25:12,833 root INFO :: classification dimwise start level: 2
+06:26:23,585 root INFO :: Number of distinct points used during the refinement: 340
+06:26:23,585 root INFO :: Time used (s):70.60881519317627
+06:28:02,24 root INFO :: Number of distinct points used during the refinement: 621
+06:28:02,24 root INFO :: Time used (s):98.43699669837952
+06:29:41,978 root INFO :: Number of distinct points used during the refinement: 881
+06:29:41,978 root INFO :: Time used (s):99.95236206054688
+06:29:48,768 root INFO :: Percentage of correct mappings: 73.26%
+06:30:21,302 root INFO :: iteration end
+06:30:21,303 root INFO :: next iteration
+06:30:21,303 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+06:30:21,303 root INFO :: data size: 100000
+06:30:21,303 root INFO :: data dimension: 4
+06:30:21,303 root INFO :: one_vs_others True
+06:30:22,354 root INFO :: classification standardCombi max_level: 4
+06:37:12,815 root INFO :: Time used (s):410.1155569553375
+06:44:01,595 root INFO :: Time used (s):408.7797818183899
+06:50:49,162 root INFO :: Time used (s):407.5667359828949
+06:50:54,469 root INFO :: Percentage of correct mappings: 85.46%
+06:51:24,210 root INFO :: classification dimwise max_evaluations: 265
+06:51:24,210 root INFO :: classification dimwise start level: 2
+06:57:23,12 root INFO :: Number of distinct points used during the refinement: 632
+06:57:23,12 root INFO :: Time used (s):358.4527065753937
+07:02:26,947 root INFO :: Number of distinct points used during the refinement: 327
+07:02:26,947 root INFO :: Time used (s):303.9296612739563
+07:08:33,666 root INFO :: Number of distinct points used during the refinement: 633
+07:08:33,666 root INFO :: Time used (s):366.7131905555725
+07:08:40,506 root INFO :: Percentage of correct mappings: 81.54%
+07:09:13,682 root INFO :: iteration end
+07:09:13,682 root INFO :: ########################
+07:09:13,682 root INFO :: ### Max Level Change ###
+07:09:13,682 root INFO :: ########################
+07:09:13,682 root INFO :: next iteration
+07:09:13,682 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+07:09:13,682 root INFO :: data size: 100000
+07:09:13,682 root INFO :: data dimension: 4
+07:09:13,682 root INFO :: one_vs_others False
+07:09:14,748 root INFO :: classification standardCombi max_level: 5
+07:13:24,729 root INFO :: Time used (s):249.83849811553955
+07:17:30,211 root INFO :: Time used (s):245.48130893707275
+07:21:33,318 root INFO :: Time used (s):243.10516023635864
+07:21:43,941 root INFO :: Percentage of correct mappings: 84.91%
+07:22:40,191 root INFO :: classification dimwise max_evaluations: 649
+07:22:40,191 root INFO :: classification dimwise start level: 2
+07:24:21,159 root INFO :: Number of distinct points used during the refinement: 1120
+07:24:21,159 root INFO :: Time used (s):100.82716536521912
+07:27:36,503 root INFO :: Number of distinct points used during the refinement: 2638
+07:27:36,503 root INFO :: Time used (s):195.34239983558655
+07:29:16,390 root INFO :: Number of distinct points used during the refinement: 881
+07:29:16,390 root INFO :: Time used (s):99.88445472717285
+07:29:27,540 root INFO :: Percentage of correct mappings: 76.89%
+07:30:24,345 root INFO :: iteration end
+07:30:24,345 root INFO :: next iteration
+07:30:24,345 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+07:30:24,345 root INFO :: data size: 100000
+07:30:24,345 root INFO :: data dimension: 4
+07:30:24,345 root INFO :: one_vs_others True
+07:30:25,404 root INFO :: classification standardCombi max_level: 5
+07:45:59,972 root INFO :: Time used (s):934.2164301872253
+08:01:34,360 root INFO :: Time used (s):934.3874320983887
+08:17:14,287 root INFO :: Time used (s):939.9274108409882
+08:17:25,727 root INFO :: Percentage of correct mappings: 85.45%
+08:18:24,890 root INFO :: classification dimwise max_evaluations: 649
+08:18:24,891 root INFO :: classification dimwise start level: 2
+08:26:45,746 root INFO :: Number of distinct points used during the refinement: 1397
+08:26:45,746 root INFO :: Time used (s):500.49612164497375
+08:35:04,710 root INFO :: Number of distinct points used during the refinement: 1177
+08:35:04,710 root INFO :: Time used (s):498.9582176208496
+08:43:41,743 root INFO :: Number of distinct points used during the refinement: 1309
+08:43:41,743 root INFO :: Time used (s):517.0272271633148
+08:43:52,409 root INFO :: Percentage of correct mappings: 84.89%
+08:44:51,567 root INFO :: iteration end
+08:44:51,567 root INFO :: ########################
+08:44:51,567 root INFO :: ### Max Level Change ###
+08:44:51,567 root INFO :: ########################
+08:44:51,567 root INFO :: next iteration
+08:44:51,567 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+08:44:51,567 root INFO :: data size: 100000
+08:44:51,567 root INFO :: data dimension: 4
+08:44:51,568 root INFO :: one_vs_others False
+08:44:52,664 root INFO :: classification standardCombi max_level: 5
+08:49:05,278 root INFO :: Time used (s):252.46865034103394
+08:53:14,688 root INFO :: Time used (s):249.4094841480255
+08:57:19,930 root INFO :: Time used (s):245.23969912528992
+08:57:30,948 root INFO :: Percentage of correct mappings: 85.12%
+08:58:31,220 root INFO :: classification dimwise max_evaluations: 649
+08:58:31,220 root INFO :: classification dimwise start level: 3
+09:03:14,939 root INFO :: Number of distinct points used during the refinement: 1207
+09:03:14,939 root INFO :: Time used (s):283.57658863067627
+09:08:15,610 root INFO :: Number of distinct points used during the refinement: 1434
+09:08:15,610 root INFO :: Time used (s):300.66885232925415
+09:13:09,62 root INFO :: Number of distinct points used during the refinement: 1251
+09:13:09,62 root INFO :: Time used (s):293.4495098590851
+09:13:18,287 root INFO :: Percentage of correct mappings: 86.66%
+09:14:12,536 root INFO :: iteration end
+09:14:12,536 root INFO :: next iteration
+09:14:12,536 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+09:14:12,536 root INFO :: data size: 100000
+09:14:12,537 root INFO :: data dimension: 4
+09:14:12,537 root INFO :: one_vs_others True
+09:14:13,605 root INFO :: classification standardCombi max_level: 5
+09:30:05,410 root INFO :: Time used (s):951.4526515007019
+09:45:56,446 root INFO :: Time used (s):951.0334577560425
+10:01:38,657 root INFO :: Time used (s):942.2101604938507
+10:01:49,989 root INFO :: Percentage of correct mappings: 85.19%
+10:02:49,806 root INFO :: classification dimwise max_evaluations: 649
+10:02:49,806 root INFO :: classification dimwise start level: 3
+10:21:32,296 root INFO :: Number of distinct points used during the refinement: 1488
+10:21:32,299 root INFO :: Time used (s):1122.138207435608
+10:40:31,303 root INFO :: Number of distinct points used during the refinement: 1498
+10:40:31,304 root INFO :: Time used (s):1138.9989838600159
+10:58:16,237 root INFO :: Number of distinct points used during the refinement: 884
+10:58:16,238 root INFO :: Time used (s):1064.9271638393402
+10:58:25,930 root INFO :: Percentage of correct mappings: 86.64%
+10:59:19,144 root INFO :: iteration end
+10:59:19,144 root INFO :: ########################
+10:59:19,144 root INFO :: ### Max Level Change ###
+10:59:19,144 root INFO :: ########################
+10:59:19,145 root INFO :: next iteration
+10:59:19,145 root INFO :: do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
+10:59:19,145 root INFO :: data size: 100000
+10:59:19,145 root INFO :: data dimension: 4
+10:59:19,145 root INFO :: one_vs_others False
+10:59:20,208 root INFO :: classification standardCombi max_level: 6
+11:07:50,666 root INFO :: Time used (s):510.3160779476166
+11:16:05,582 root INFO :: Time used (s):494.9160416126251
+11:24:15,997 root INFO :: Time used (s):490.41451239585876
+11:24:35,795 root INFO :: Percentage of correct mappings: 85.16%
+11:26:14,987 root INFO :: classification dimwise max_evaluations: 1417
+11:26:14,987 root INFO :: classification dimwise start level: 2
+11:29:48,617 root INFO :: Number of distinct points used during the refinement: 4206
+11:29:48,617 root INFO :: Time used (s):213.48616909980774
+11:33:04,197 root INFO :: Number of distinct points used during the refinement: 2638
+11:33:04,198 root INFO :: Time used (s):195.5784547328949
+11:37:03,207 root INFO :: Number of distinct points used during the refinement: 4340
+11:37:03,210 root INFO :: Time used (s):239.010192155838
+11:37:19,905 root INFO :: Percentage of correct mappings: 82.22%
+11:38:52,331 root INFO :: iteration end
+11:38:52,331 root INFO :: next iteration

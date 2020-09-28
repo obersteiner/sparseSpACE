@@ -48,6 +48,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.use_volume_weighting = use_volume_weighting
         self.timings = timings
 
+    def min_max_scale_surplusses(self):
+        #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+        #test = self.grid_surplusses
+        self.operation.min_max_scale_surplusses()
+        #transform(self.data)
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -488,6 +493,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         #plt.show()
+        plt.close()
         return fig
 
     def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
@@ -580,17 +586,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            calc0 = timing()
-            self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
-            calc1 = timing()
-            print('DIM: calculate_operation_dimension_wise time taken: ', (calc1 - calc0) / 1000000)
+            time_func(self.print_output, "spatAdaptDimWise: calculate_operation_dimension_wise time taken " ,self.operation.calculate_operation_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, component_grid)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             if not self.errorEstimator.is_global:
-                err0 = timing()
-                self.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
-                err1 = timing()
-                print('DIM: compute_error_estimates_dimension_wise time taken: ', (err1 - err0) / 1000000)
+                time_func(self.print_output, "spatAdaptDimWise: compute_error_estimates_dimension_wise time taken ", self.compute_error_estimates_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
 
             # save the number of evaluations used per d-1 dimensional slice
             #for d in range(self.dim):
@@ -606,7 +606,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # TODO: global error calculation
         ### global error calc goes here
         if self.errorEstimator.is_global:
-            self.errorEstimator.calc_global_error(self.operation.data, self)
+            self.errorEstimator.calc_global_error(self.operation.validation_set, self)
         super().finalize_evaluation_operation(areas, evaluation_array)
         #self.refinement.print_containers_only()
         #if self.version == 1:
@@ -721,7 +721,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.lmax[d] += value
         if self.dim_adaptive:
             if self.print_output:
-                print("New lmax:", self.lmax)
+                log_debug("New lmax: {0}".format(self.lmax), self.print_output)
             while (True):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
@@ -763,33 +763,36 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             if refinement_object.levels[1] == level:
                 position_level = i
             if refinement_object.levels[1] == level + 1:
-                if position_level_1_left is None:
+                if position_level_1_left is None and position_level is None:
                     position_level_1_left = i
-                if position_level_1_left is not None:
+                elif position_level is not None:
                 #else:
                     #assert position_level_1_right is None
+                    assert position_level_1_right is None
                     position_level_1_right = i
-                if position_level is not None and position_level_1_left is not None and position_level_1_right is not None:
-                    break
+                else:
+                    assert False
+                #if position_level is not None and position_level_1_left is not None and position_level_1_right is not None:
+                #    break
 
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 10**-1#0#0.1
-        if position_level is None:
-            print('stop')
-        if position_level_1_left is None:
-            print('stop')
-        if position_level_1_right is None:
-            print('stop')
+        safetyfactor = 2*10**-1#0#0.1
+        # if position_level is None:
+        #     print('stop')
+        # if position_level_1_left is None:
+        #     print('stop')
+        # if position_level_1_right is None:
+        #     print('stop')
         assert position_level is not None
-        assert position_level_1_right is not None
-        assert position_level_1_left is not None
+        #assert position_level_1_right is not None
+        #assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
             if self.print_output:
-                print("Rebalancing!")
+                log_debug("Rebalancing!", self.print_output)
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -802,6 +805,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
                     else:
                         if refinement_object.levels[1] == level + 1:
+                            assert j == position_level_1_right
                             new_leaf_reached = True
                             position_new_leaf = start + j
                         if j > position_level and new_leaf_reached:
@@ -817,7 +821,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
             if self.print_output:
-                print("Rebalancing!")
+                log_debug("Rebalancing!", self.print_output)
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -835,6 +839,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                             refinement_object.levels[1] -= 1
                             next_refinement_object.levels[0] -= 1
                         if refinement_object.levels[1] == level:
+                            assert j == position_level_1_left
                             new_leaf_reached = False
                             position_new_leaf = start + j
             assert position_new_leaf is not None
@@ -1238,7 +1243,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                               if refinement_obj.start <= data[i][d] <= refinement_obj.end
                               and copysign(1.0, eval(data[i])) != copysign(1.0, self.operation.classes[i])))
                 if hits + misses > 0:
-                    refinement_obj.add_volume(np.array(misses / (hits + misses)))
+                    #refinement_obj.add_volume(np.array(misses / (hits + misses) * (refinement_obj.end - refinement_obj.start)))
+                    refinement_obj.add_volume(
+                        np.array(misses * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
                     refinement_obj.add_volume(np.zeros(1))

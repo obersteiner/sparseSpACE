@@ -3,6 +3,47 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
+def calculate_R_value_analytically(point_i, domain_i, point_j, domain_j):
+    # check adjacency
+    if not all((domain_i[d][0] <= point_j[d] and domain_i[d][1] >= point_j[d] for d in range(len(point_i)))):
+        return 0.0
+    res = 1.0
+    for d in range(0, len(point_i)):
+        if point_i[d] != point_j[d]:
+            m = 1.0 / abs(point_i[d] - point_j[d])  # slope
+            # f_2(x) = 1 - slope * (x - min(point_i[d], point_j[d])) = c - slope * x
+            a = min(point_i[d], point_j[d])  # lower end of integral
+            b = max(point_i[d], point_j[d])  # upper end of integral
+
+            # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
+            integral_calc = lambda x, m, p, q: 0.5 * (m ** 2) * (x ** 2) * (p + q) - (1 / 3) * (m ** 2) * (
+                        x ** 3) - x * (m * p + 1) * (m * q - 1)
+            # integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
+
+            integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
+
+            res *= integral
+        else:
+            m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
+            m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
+
+            a = domain_i[d][0]  # lower end of first integral
+            p = point_i[d]  # upper end of first integral, lower end of second integral
+            c = domain_i[d][1]  # upper end of second integral
+
+            # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
+            integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
+            # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+
+            # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
+            integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
+            # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+
+            integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (integral_2(c, m2, p) - integral_2(p, m2, p))
+
+            res *= integral
+    return res
+
 def get_neighbors(point, gridPointCoordsAsStripes, dim):
     """
     This method
@@ -194,6 +235,14 @@ def plot_non_symm_hat(point, dom):
     # Plot the surface.
     ax.plot_surface(X, Y, Z, rstride=1, cstride=1,
                     cmap='terrain', edgecolor='000', alpha=0.5)
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    from matplotlib import cm
+    cset = ax.contour(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
+
     ax.set(xlabel='x1', ylabel='y2', zlabel='f(x1, x2)',
            title='non symm hat')
 
@@ -203,7 +252,47 @@ dom = [(0.0, 1.0), (0.0, 1.0)]
 point = [0.25, 0.25]
 plot_non_symm_hat(point, dom)
 
-#######################ü
+# #######################
+# print('plotting of non-symmetric 1D full integral overlap')
+# def plot_overlap(dom_a, point_a, dom_b, point_b):
+#     func = lambda x: calculate_R_value_analytically(dom_a, point_a, dom_b, point_b)
+#
+#     X = [x / 100.0 for x in range(0, 100)]
+#     #Y = [y / 100.0 for y in range(0, 100)]
+#
+#     f_values = [func([x, y]) for x in X for y in Y]
+#
+#     # Make data.
+#     X = np.arange(0.0, 1.0, 0.01)
+#     #Y = np.arange(0.0, 1.0, 0.01)
+#     #X, Y = np.meshgrid(X, Y)
+#     #func = lambda x, y: hat_function_non_symmetric(point, dom, [x, y])
+#     #func_vectorized = np.vectorize(func)
+#     #Z = func_vectorized(X, Y)
+#
+#     plt.figure(figsize=(20, 10))
+#     from mpl_toolkits.mplot3d import Axes3D
+#     ax = plt.axes(projection='3d')
+#
+#     # Plot the surface.
+#     ax.plot_surface(X, Y, Z, rstride=1, cstride=1,
+#                     cmap='terrain', edgecolor='000', alpha=0.5)
+#     ax.set(xlabel='x1', ylabel='y2', zlabel='f(x1, x2)',
+#            title='non symm hat')
+#
+#     plt.show()
+#
+# dom_a = [(0.0, 0.5)]
+# point_a = [0.25]
+# dom_b = [(0.25, 0.75)]
+# point_b = [0.5]
+# plot_full_overlap(dom_a, point_a, dom_b, point_b)
+
+#######################
+print('plotting of non-symmetric 1D partial integral overlap')
+
+#######################
+
 from scipy.integrate import nquad
 
 def calculate_L2_scalarproduct(point_i, domain_i, point_j, domain_j):
@@ -373,35 +462,35 @@ def calculate_R_value_analytically_alt(point_i, domain_i, point_j, domain_j):
             res *= ((int_1_upper - int_1_lower) + (int_2_upper - int_2_lower))
     return res
 
-
-dom_1 = [(0.0, 1.0)]
-point_1 = [0.25]
-res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-print('A calculate_L2_scalarproduct', res)
-print('A calculate_L2_scalarproduct abs err', 1.0/3.0 - res[0])
-print('A calculate_L2_scalarproduct rel err', (1.0/3.0 - res[0]) / (1.0 / 3.0))
-
-dom_1 = [(0.0, 1.0), (0.0, 1.0)]
-point_1 = [0.25, 0.25]
-res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-print('A 2D calculate_L2_scalarproduct', res)
-# print('A 2D calculate_L2_scalarproduct abs err', (1.0/3.0)**2 - res[0])
-# print('A 2D calculate_L2_scalarproduct rel err', ((1.0/3.0)**2 - res[0]) / (1.0 / 3.0)**2)
-
-
-dom_1 = [(-1.0, 1.0)]
-point_1 = [0.0]
-res =  calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-print('B calculate_L2_scalarproduct', res)
-print('B calculate_L2_scalarproduct abs err', 2.0/3.0 - res[0])
-print('B calculate_L2_scalarproduct rel err', (2.0/3.0 - res[0]) / (2.0 / 3.0))
-
-dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
-point_1 = [0.0, 0.0]
-res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-print('B 2D calculate_L2_scalarproduct', res)
-print('B 2D calculate_L2_scalarproduct abs err', (4.0/9.0) - res[0])
-print('B 2D calculate_L2_scalarproduct rel err', ((4.0/9.0) - res[0]) / (2.0 / 3.0)**2)
+#
+# dom_1 = [(0.0, 1.0)]
+# point_1 = [0.25]
+# res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# print('A calculate_L2_scalarproduct', res)
+# print('A calculate_L2_scalarproduct abs err', 1.0/3.0 - res[0])
+# print('A calculate_L2_scalarproduct rel err', (1.0/3.0 - res[0]) / (1.0 / 3.0))
+#
+# dom_1 = [(0.0, 1.0), (0.0, 1.0)]
+# point_1 = [0.25, 0.25]
+# res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# print('A 2D calculate_L2_scalarproduct', res)
+# # print('A 2D calculate_L2_scalarproduct abs err', (1.0/3.0)**2 - res[0])
+# # print('A 2D calculate_L2_scalarproduct rel err', ((1.0/3.0)**2 - res[0]) / (1.0 / 3.0)**2)
+#
+#
+# dom_1 = [(-1.0, 1.0)]
+# point_1 = [0.0]
+# res =  calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# print('B calculate_L2_scalarproduct', res)
+# print('B calculate_L2_scalarproduct abs err', 2.0/3.0 - res[0])
+# print('B calculate_L2_scalarproduct rel err', (2.0/3.0 - res[0]) / (2.0 / 3.0))
+#
+# dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
+# point_1 = [0.0, 0.0]
+# res = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# print('B 2D calculate_L2_scalarproduct', res)
+# print('B 2D calculate_L2_scalarproduct abs err', (4.0/9.0) - res[0])
+# print('B 2D calculate_L2_scalarproduct rel err', ((4.0/9.0) - res[0]) / (2.0 / 3.0)**2)
 
 
 ########
@@ -425,139 +514,139 @@ def get_domain_overlap_width(point_i, domain_i, point_j, domain_j):
 ######################################################
 ########
 ######################################################
-print('#'*100)
-print('compare calculate_L2_scalarproduct for rotated points')
-dom_1 = [(0.0, 0.25), (0.0, 1.0)]
-point_1 = [0.125, 0.5]
-dom_2 = [(0.0, 0.25), (0.0, 1.0)]
-point_2 = [0.125, 0.5]
-res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct', res_1)
-dom_1 = [(0.0, 1.0), (0.0, 0.25)]
-point_1 = [0.5, 0.125]
-dom_2 = [(1.0, 0.0), (0.0, 0.25)]
-point_2 = [0.5, 0.125]
-res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct rotated', res_2)
-print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
-print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
-print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
-
-print('#'*100)
-print('compare calculate_L2_scalarproduct for translated points')
-dom_1 = [(0.0, 0.25), (0.0, 1.0)]
-point_1 = [0.125, 0.5]
-dom_2 = [(0.0, 0.25), (0.0, 1.0)]
-point_2 = [0.125, 0.5]
-res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct', res_1)
-dom_1 = [(0.125, 0.375), (0.0, 1.0)]
-point_1 = [0.25, 0.5]
-dom_2 = [(0.125, 0.375), (0.0, 1.0)]
-point_2 = [0.25, 0.5]
-res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct rotated', res_2)
-print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
-print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
-print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
-
-print('#'*100)
-print('compare calculate_L2_scalarproduct for translated and rotated points')
-dom_1 = [(0.0, 0.25), (0.0, 1.0)]
-point_1 = [0.125, 0.5]
-dom_2 = [(0.0, 0.25), (0.0, 1.0)]
-point_2 = [0.125, 0.5]
-res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct', res_1)
-dom_1 = [(0.0, 1.0), (0.125, 0.375)]
-point_1 = [0.5, 0.25]
-dom_2 = [(0.0, 1.0), (0.125, 0.375)]
-point_2 = [0.5, 0.25]
-res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct rotated', res_2)
-print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
-print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
-print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
-
-
-print('~'*100)
-print('~'*100)
-print('~'*100)
-
-dom_1 = [(0.0, 0.5), (0.0, 0.5)]
-point_1 = (0.25, 0.25)
-dom_2 = [(0.25, 0.75), (0.0, 0.5)]
-point_2 = (0.5, 0.25)
-res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('C 2D calculate_L2_scalarproduct', res_1)
-dom_1 = [(0.0, 0.375), (0.0, 0.5)]
-point_1 = (0.25, 0.25)
-dom_2 = [(0.625, 1.0), (0.0, 0.5)]
-point_2 = (0.75, 0.25)
-res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
-print('D 2D calculate_L2_scalarproduct rotated', res_2)
-print('D 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
-print('D 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
-print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
-
-########################################################################################################################
-print('\n\n\n')
-print('~'*100)
-print('~'*100)
-print('~'*100)
-print('Analytical and Numerical R value calculation comparison')
-
-
-dom_1 = [(0.0, 0.5)]
-point_1 = [0.25]
-res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
-print('A calculate_L2_scalarproduct', res_n)
-print('A calculate_R_value_analytically', res_a)
-print('A calculate_L2_scalarproduct abs err', 1.0/3.0 - res_n[0])
-print('A calculate_L2_scalarproduct rel err', (1.0/3.0 - res_n[0]) / (1.0 / 3.0))
-print('A calculate_R_value_analytically abs err', 1.0/3.0 - res_a)
-print('A calculate_R_value_analytically rel err', (1.0/3.0 - res_a) / (1.0 / 3.0))
-
-dom_1 = [(0.0, 1.0), (0.0, 1.0)]
-point_1 = [0.25, 0.25]
-res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
-print('A 2D calculate_L2_scalarproduct', res_n)
-print('A 2D calculate_R_value_analytically', res_a)
-# print('A 2D calculate_L2_scalarproduct abs err', (1.0/3.0)**2 - res[0])
-# print('A 2D calculate_L2_scalarproduct rel err', ((1.0/3.0)**2 - res[0]) / (1.0 / 3.0)**2)
-
-
-dom_1 = [(-1.0, 1.0)]
-point_1 = [0.0]
-res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
-print('B calculate_L2_scalarproduct', res_n)
-print('B calculate_R_value_analytically', res_a)
-print('B calculate_L2_scalarproduct abs err', 2.0/3.0 - res_n[0])
-print('B calculate_L2_scalarproduct rel err', (2.0/3.0 - res_n[0]) / (2.0 / 3.0))
-print('B calculate_R_value_analytically abs err', 2.0/3.0 - res_a)
-print('B calculate_R_value_analytically rel err', (2.0/3.0 - res_a) / (2.0 / 3.0))
-
-dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
-point_1 = [0.0, 0.0]
-res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
-print('B 2D calculate_L2_scalarproduct', res_n)
-print('B 2D calculate_R_value_analytically', res_a)
-print('B 2D calculate_L2_scalarproduct abs err', (4.0/9.0) - res_n[0])
-print('B 2D calculate_L2_scalarproduct rel err', ((4.0/9.0) - res_n[0]) / (2.0 / 3.0)**2)
-print('B 2D calculate_R_value_analytically abs err', (4.0/9.0) - res_a)
-print('B 2D calculate_R_value_analytically rel err', ((4.0/9.0) - res_a) / (2.0 / 3.0)**2)
-
-dom_1 = [(0.0, 1.0), (0.0, 1.0)]
-point_1 = [0.25, 0.25]
-print('alt and analytically:')
-r_1 = calculate_R_value_analytically(point_1, dom_1, point_1, dom_1)
-r_2 = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
-print('ana: ', r_1)
-print('alt: ', r_2)
+# print('#'*100)
+# print('compare calculate_L2_scalarproduct for rotated points')
+# dom_1 = [(0.0, 0.25), (0.0, 1.0)]
+# point_1 = [0.125, 0.5]
+# dom_2 = [(0.0, 0.25), (0.0, 1.0)]
+# point_2 = [0.125, 0.5]
+# res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct', res_1)
+# dom_1 = [(0.0, 1.0), (0.0, 0.25)]
+# point_1 = [0.5, 0.125]
+# dom_2 = [(1.0, 0.0), (0.0, 0.25)]
+# point_2 = [0.5, 0.125]
+# res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct rotated', res_2)
+# print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
+# print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
+# print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
+#
+# print('#'*100)
+# print('compare calculate_L2_scalarproduct for translated points')
+# dom_1 = [(0.0, 0.25), (0.0, 1.0)]
+# point_1 = [0.125, 0.5]
+# dom_2 = [(0.0, 0.25), (0.0, 1.0)]
+# point_2 = [0.125, 0.5]
+# res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct', res_1)
+# dom_1 = [(0.125, 0.375), (0.0, 1.0)]
+# point_1 = [0.25, 0.5]
+# dom_2 = [(0.125, 0.375), (0.0, 1.0)]
+# point_2 = [0.25, 0.5]
+# res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct rotated', res_2)
+# print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
+# print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
+# print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
+#
+# print('#'*100)
+# print('compare calculate_L2_scalarproduct for translated and rotated points')
+# dom_1 = [(0.0, 0.25), (0.0, 1.0)]
+# point_1 = [0.125, 0.5]
+# dom_2 = [(0.0, 0.25), (0.0, 1.0)]
+# point_2 = [0.125, 0.5]
+# res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct', res_1)
+# dom_1 = [(0.0, 1.0), (0.125, 0.375)]
+# point_1 = [0.5, 0.25]
+# dom_2 = [(0.0, 1.0), (0.125, 0.375)]
+# point_2 = [0.5, 0.25]
+# res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct rotated', res_2)
+# print('C 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
+# print('C 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
+# print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
+#
+#
+# print('~'*100)
+# print('~'*100)
+# print('~'*100)
+#
+# dom_1 = [(0.0, 0.5), (0.0, 0.5)]
+# point_1 = (0.25, 0.25)
+# dom_2 = [(0.25, 0.75), (0.0, 0.5)]
+# point_2 = (0.5, 0.25)
+# res_1 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('C 2D calculate_L2_scalarproduct', res_1)
+# dom_1 = [(0.0, 0.375), (0.0, 0.5)]
+# point_1 = (0.25, 0.25)
+# dom_2 = [(0.625, 1.0), (0.0, 0.5)]
+# point_2 = (0.75, 0.25)
+# res_2 = calculate_L2_scalarproduct(point_1, dom_1, point_2, dom_2)
+# print('D 2D calculate_L2_scalarproduct rotated', res_2)
+# print('D 2D calculate_L2_scalarproduct abs err', res_1[0] - res_2[0])
+# print('D 2D calculate_L2_scalarproduct rel err', (res_1[0] - res_2[0]) / res_1[0])
+# print('domain overlap: ', get_domain_overlap_width(point_1, dom_1, point_2, dom_2))
+#
+# ########################################################################################################################
+# print('\n\n\n')
+# print('~'*100)
+# print('~'*100)
+# print('~'*100)
+# print('Analytical and Numerical R value calculation comparison')
+#
+#
+# dom_1 = [(0.0, 0.5)]
+# point_1 = [0.25]
+# res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
+# print('A calculate_L2_scalarproduct', res_n)
+# print('A calculate_R_value_analytically', res_a)
+# print('A calculate_L2_scalarproduct abs err', 1.0/3.0 - res_n[0])
+# print('A calculate_L2_scalarproduct rel err', (1.0/3.0 - res_n[0]) / (1.0 / 3.0))
+# print('A calculate_R_value_analytically abs err', 1.0/3.0 - res_a)
+# print('A calculate_R_value_analytically rel err', (1.0/3.0 - res_a) / (1.0 / 3.0))
+#
+# dom_1 = [(0.0, 1.0), (0.0, 1.0)]
+# point_1 = [0.25, 0.25]
+# res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
+# print('A 2D calculate_L2_scalarproduct', res_n)
+# print('A 2D calculate_R_value_analytically', res_a)
+# # print('A 2D calculate_L2_scalarproduct abs err', (1.0/3.0)**2 - res[0])
+# # print('A 2D calculate_L2_scalarproduct rel err', ((1.0/3.0)**2 - res[0]) / (1.0 / 3.0)**2)
+#
+#
+# dom_1 = [(-1.0, 1.0)]
+# point_1 = [0.0]
+# res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
+# print('B calculate_L2_scalarproduct', res_n)
+# print('B calculate_R_value_analytically', res_a)
+# print('B calculate_L2_scalarproduct abs err', 2.0/3.0 - res_n[0])
+# print('B calculate_L2_scalarproduct rel err', (2.0/3.0 - res_n[0]) / (2.0 / 3.0))
+# print('B calculate_R_value_analytically abs err', 2.0/3.0 - res_a)
+# print('B calculate_R_value_analytically rel err', (2.0/3.0 - res_a) / (2.0 / 3.0))
+#
+# dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
+# point_1 = [0.0, 0.0]
+# res_n = calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
+# res_a = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
+# print('B 2D calculate_L2_scalarproduct', res_n)
+# print('B 2D calculate_R_value_analytically', res_a)
+# print('B 2D calculate_L2_scalarproduct abs err', (4.0/9.0) - res_n[0])
+# print('B 2D calculate_L2_scalarproduct rel err', ((4.0/9.0) - res_n[0]) / (2.0 / 3.0)**2)
+# print('B 2D calculate_R_value_analytically abs err', (4.0/9.0) - res_a)
+# print('B 2D calculate_R_value_analytically rel err', ((4.0/9.0) - res_a) / (2.0 / 3.0)**2)
+#
+# dom_1 = [(0.0, 1.0), (0.0, 1.0)]
+# point_1 = [0.25, 0.25]
+# print('alt and analytically:')
+# r_1 = calculate_R_value_analytically(point_1, dom_1, point_1, dom_1)
+# r_2 = calculate_R_value_analytically_alt(point_1, dom_1, point_1, dom_1)
+# print('ana: ', r_1)
+# print('alt: ', r_2)
 
 def get_manhattan_distance(i, j, grid, dim):
     indices_i = [grid[x].index for x in range(0, dim)]

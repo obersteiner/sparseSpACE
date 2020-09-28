@@ -15,7 +15,7 @@ class StandardCombi(object):
 
     """
 
-    def __init__(self, a, b, operation: GridOperation, print_output=True, norm=2):
+    def __init__(self, a, b, operation: GridOperation, print_output=False, norm=2):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -105,7 +105,7 @@ class StandardCombi(object):
         :return: None
         """
         if self.dim != 2:
-            print("Can only plot 2D results")
+            log_warning("Can only plot 2D results", True)
             return
         fontsize = 30
         plt.rcParams.update({'font.size': fontsize})
@@ -175,15 +175,14 @@ class StandardCombi(object):
 
 
     # lmin = minimum level; lmax = target level
-    def perform_operation(self, lmin: int, lmax: int, plot: bool = False, print_time: bool = False) -> Tuple[Sequence[ComponentGridInfo], float,
-                                                                                                  Sequence[float]]:
+    def perform_operation(self, lmin: int, lmax: int, plot:bool=False) -> Tuple[Sequence[ComponentGridInfo], float, Sequence[float]]:
         """This method performs the standard combination scheme for the chosen operation.
 
         :param lmin: Minimum level of combination technique.
         :param lmax: Maximum level of combination technique.
         :return: Combination scheme, error, and combination result.
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
         assert self.operation is not None
 
         # initializtation
@@ -205,21 +204,21 @@ class StandardCombi(object):
 
         # output combi_result
         if self.print_output:
-            print("CombiSolution", combi_result)
+            log_debug("CombiSolution".format(combi_result), self.print_output)
 
         if plot:
             print("Combi scheme:")
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        if print_time:
-            print("Time used (s):", time.time() - start_time)
-        log_info("Time used (s):" + str(time.time() - start_time))
+        log_info("Time used (s):" + str(time.perf_counter() - start_time), True)
+        log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(
+            self.get_total_num_points()), True)
         # return results
         if reference_solution is not None:
             if self.print_output:
-                print("Analytic Solution", reference_solution)
-                print("Difference", self.operation.compute_difference(combi_result, reference_solution, self.norm))
+                log_debug("Analytic Solution ".format(reference_solution), self.print_output)
+                log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
@@ -273,14 +272,18 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            print("Cannot print combischeme of dimension > 2")
+            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
             return None
         ncols = self.lmax[0] - self.lmin[0] + 1
         nrows = self.lmax[1] - self.lmin[1] + 1
         fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
-        #    spine = axis.spines.values()
-        #    spine.set_visible(False)
+            # spine = axis.spines.values()
+            # spine.set_visible(False)
+        # for axis in fig.axes:
+            # for key, value in axis.spines.items():
+                # spine = value
+                # spine.set_visible(False)
         # get points of each component grid and plot them individually
         if lmax == lmin:
             component_grid = scheme[0]
@@ -327,9 +330,15 @@ class StandardCombi(object):
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
         # plt.tight_layout()
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
 
+        # hide the outer x- and y-axis cutting through the sub-plots
+        plt.axis('off')  # only hides the label for some reason
+        axes = plt.gca()
+        axes.set_position([0, 0, 0, 0])  # hides the axis arrows as well
+
+        if filename is not None:
+            plt.savefig(filename)
+        fig.set_tight_layout(False)
         plt.show()
         # reset fontsize to default so it does not affect other figures
         #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
@@ -451,7 +460,7 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            print("Cannot print combischeme of dimension > 2")
+            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
             return None
         fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
@@ -671,7 +680,7 @@ class StandardCombi(object):
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
-            print("Cannot print sparse grid of dimension > 3")
+            log_warning("Cannot print sparse grid of dimension > 3", self.print_output)
             return None
         if dim == 2:
             fig, ax = plt.subplots(figsize=(figsize, figsize))
@@ -789,10 +798,9 @@ class StandardCombi(object):
         for key, value in dictionary.items():
             # print(key, value)
             if value != 1:
-                print(dictionary)
-                print("Failed for:", key, " with value: ", value)
+                log_error("{0} Failed for: {1} with value: {2}".format(dictionary, key, value), True)
                 for area in self.refinement.get_objects():
-                    print("area dict", area.levelvec_dict)
+                    log_error("area dict {0}".format(area.levelvec_dict), True)
             assert (value == 1)
 
     def get_points_component_grid_not_null(self, levelvec: Sequence[int]) -> Sequence[Tuple[float, ...]]:
@@ -860,7 +868,7 @@ class StandardCombi(object):
                 total_surplusses.extend(surplusses)
             return np.asarray(total_surplusses)
         else:
-            print("Grid does not support surplusses")
+            log_warning("Grid does not support surplusses", True)
             return None
 
     def add_refinment_to_figure_axe(self, ax, linewidth: int=1) -> None:
@@ -886,7 +894,7 @@ class StandardCombi(object):
             with open(filename, 'rb') as f:
                 return dill.load(f)
         else:
-            print("Dill library not found! Please install dill using pip3 install dill.")
+            log_error("Dill library not found! Please install dill using pip3 install dill.", True)
 
     def save_to_file(self, filename: str) -> None:
         """This method can be used to store a StandardCombi object (or child class) in a file.
@@ -901,4 +909,4 @@ class StandardCombi(object):
             with open(filename, 'wb') as f:
                 dill.dump(self, f)
         else:
-            print("Dill library not found! Please install dill using pip3 install dill.")
+            log_error("Dill library not found! Please install dill using pip3 install dill.", True)

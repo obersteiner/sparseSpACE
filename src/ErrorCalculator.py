@@ -91,10 +91,6 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
         return abs(volumes * volume_weights)
 
     def calc_global_error(self, data, grid_scheme):
-        #test = grid_scheme.interpolate_points([data[0]], component_grid)
-        test = grid_scheme(data[0])[0]
-        #A[np.random.choice(A.shape[0], num_rows_2_sample, replace=False)]
-        #samples_test = np.random_choice(data, size=data.shape(), replace=False)
         samples = data
         f = lambda x: grid_scheme(x)
         values = f(samples)
@@ -104,17 +100,20 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
                 # get the misclassification rate between start and end of refinement_obj
                 hits = sum((1 for i in range(0, len(values))
                             if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                            and copysign(1.0, values[i][0] == copysign(1.0, grid_scheme.operation.classes[i]))))
+                            and copysign(1.0, values[i][0] == copysign(1.0, grid_scheme.operation.validation_classes[i]))))
 
                 misses = sum((1 for i in range(0, len(values))
                               if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                              and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.classes[i])))
+                              and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.validation_classes[i])))
 
                 if hits + misses > 0:
-                    refinement_obj.add_volume(np.array(misses / (hits + misses)))
+                    #refinement_obj.add_volume(np.array(misses / (hits + misses)))
+                    refinement_obj.add_volume(
+                        np.array(misses * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
-                    refinement_obj.add_volume(np.zeros(1))
+                    #refinement_obj.add_volume(np.zeros(1))
+                    refinement_obj.add_volume(np.array(0.0))
         # hits = sum((1 for i in range(0, len(data))
         #             if copysign(1.0, f(data[i])) == copysign(1.0, grid_scheme.operation.classes[i])))
         # misses = sum((1 for i in range(0, len(data))

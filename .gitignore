@@ -4,4 +4,11 @@ __pycache__/
 *.ipynb
 *.pyc
 *.svg
+*.png
+.idea
+*Profile.txt
+*profile.txt
 Untitled.ipynb
+.directory
+eval_figs_*
+logs_*
