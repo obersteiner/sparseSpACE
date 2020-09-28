@@ -267,8 +267,8 @@ data_copy.scale_range((0.005, 0.995))                                # scaled
 part0, part1 = data_copy.split_pieces(0.5)                           # split
 data_copy = part0.concatenate(part1)                                 # concatenated
 data_copy.set_name('2nd_Set')                                        # renamed
-data_copy.remove_classes(0.2)                                        # freed of some class assignments to samples
-without_classes, with_classes = data_copy.split_without_classes()    # seperated into samples with and without classes
+data_copy.remove_labels(0.2)                                        # freed of some class assignments to samples
+without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes
 data_copy.plot()                                                     # plotted
 
 # and of course we can perform a regular density estimation on a DataSet object:
@@ -299,7 +299,7 @@ with_classes.set_name("Test_new_data")
 classification.test_data(with_classes, print_output=False)
 
 # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-data_copy.remove_classes(1.0)
+data_copy.remove_labels(1.0)
 calcult_classes = classification(data_copy)
 
 # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
@@ -323,10 +323,10 @@ max_evals = (((2**max_level) - 1) * dim)
 print('classification max_evaluations', max_evals)
 log_info('classification dimwise max_evaluations: ' + str(max_evals))
 # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
-classification_dimwise.perform_classification_dimension_wise(_masslumping=False, _lambd=0.0, _minimum_level=1, _maximum_level=2,
-                                                     _reuse_old_values=True, _numeric_calculation=False,
-                                                     _boundary=boundary, _modified_basis=modified_basis,
-                                                     _tolerance=tolerance, _margin=margin, _max_evaluations=max_evals)
+classification_dimwise.perform_classification_dimension_wise(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=2,
+                                                     reuse_old_values=True, numeric_calculation=False,
+                                                     boundary=boundary, modified_basis=modified_basis,
+                                                     tolerance=tolerance, margin=margin, max_evaluations=max_evals)
 
 # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # now we can perform some other operations on this classification object
@@ -342,7 +342,7 @@ with_classes.set_name("Test_new_data")
 classification_dimwise.test_data(with_classes, print_output=False)
 
 # and we can call the Classification object to perform blind classification on a dataset with unknown class assignments to its samples
-data_copy.remove_classes(1.0)
+data_copy.remove_labels(1.0)
 calcult_classes_dimwise = classification(data_copy)
 
 # because we used 2D datasets before, we can plot the results to easily see which samples were classified correctly and which not
