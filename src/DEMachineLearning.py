@@ -483,7 +483,7 @@ class DataSet:
         b = np.ones(self._dim)
         de_object = DensityEstimation(self._data, self._dim, masslumping=masslumping, lambd=lambd)
         combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
-        combi_object.perform_operation(minimum_level, maximum_level, print_time=False)
+        combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
             if de_object.scaled:
                 self.scale_range((0, 1), override_scaling=True)
