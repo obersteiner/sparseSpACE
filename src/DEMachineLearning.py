@@ -884,8 +884,7 @@ class Classification:
         return data_to_check
 
     @staticmethod
-    def _evaluate(testing_data: DataSet, calculated_classes: np.ndarray, density_testdata: List[np.ndarray]) -> dict:
-
+    def _evaluate(testing_data: DataSet, calculated_classes: np.ndarray) -> dict:
         if testing_data.get_length() != len(calculated_classes):
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
