@@ -445,9 +445,8 @@ class DataSet:
 
         :return:
         """
-        self.shift_value(-self._scaling_range[0], override_scaling=False)
         self.scale_factor(1.0 / self._scaling_factor, override_scaling=False)
-        self.shift_value(self._original_min, override_scaling=False)
+        self.shift_value(-(self.get_min_data() - self._original_min), override_scaling=False)
         self._scaled = False
         self._scaling_range = None
         self._scaling_factor = None
@@ -705,7 +704,7 @@ class Classification:
     def test_data(self, new_testing_data: DataSet,
                   print_output: bool = True,
                   print_removed: bool = True,
-                  print_incorrect_points: bool = False) -> DataSet:
+                  print_incorrect_points: bool = False) -> dict:
         """Test new data with the classificators of a Classification object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -746,7 +745,8 @@ class Classification:
             self._print_evaluation(used_data, calculated_new_testclasses,
                                    self._densities_testset[(len(self._densities_testset) - new_testing_data.get_length()):],
                                    print_incorrect_points)
-        return omitted_data
+        return self._evaluate(used_data, calculated_new_testclasses,
+                              self._densities_testset[(len(self._densities_testset) - new_testing_data.get_length()):])
 
     def get_original_data(self) -> 'DataSet':
         ret_val = self._original_data.copy()
@@ -882,6 +882,17 @@ class Classification:
                     print(x, end=" | class: ")
                     print(removed_samples[1][i])
         return data_to_check
+
+    @staticmethod
+    def _evaluate(testing_data: DataSet, calculated_classes: np.ndarray, density_testdata: List[np.ndarray]) -> dict:
+
+        if testing_data.get_length() != len(calculated_classes):
+            raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
+        number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
+        return {"Wrong mappings": number_wrong,
+                "Total mappings": len(calculated_classes),
+                "Percentage correct": 1.0 - (number_wrong / len(calculated_classes)),
+                "Percentage correct (str)": ("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))}
 
     @staticmethod
     def _print_evaluation(testing_data: DataSet,
