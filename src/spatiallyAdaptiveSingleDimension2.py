@@ -486,7 +486,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None, fill_boundary_points:bool=False):  # update with meta container
         plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
@@ -518,7 +518,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 fontsize=fontsize-10, ha='center', color="blue")
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
-            axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            if fill_boundary_points:
+                axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            else:
+                axis.plot(xValues[1:-1], yValues[1:-1], 'bo', markersize=markersize, color="black")
+                axis.plot([xValues[0], xValues[-1]], [yValues[0], yValues[-1]], 'bo', markersize=markersize, color="black", fillstyle='none')
             if infinite_bounds:
                 start, end = objs[0].start, objs[-1].end
                 # offset_bound = (end - start) * 0.1
@@ -536,7 +540,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
+    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None, fill_boundary_points:bool=False):
         """This method plots the refinement trees of the current refinement structure.
 
         :param filename: Will save plot to specified filename if set.
@@ -558,11 +562,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
             ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
             max_level = max(starts_levels)
-            yvalues = np.zeros(len(starts) + 1)
+            yValues = np.zeros(len(starts) + 1)
             for i in range(len(starts)):
                 x_position = starts[i]
                 y_position = starts_levels[i]
-                yvalues[i] = y_position
+                yValues[i] = y_position
                 if i !=0:
                     for j in reversed(range(i)):
                         if starts_levels[j] == starts_levels[i] + 1:
@@ -589,7 +593,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
             x_position = ends[-1]
             y_position = ends_levels[-1]
-            yvalues[-1] = y_position
+            yValues[-1] = y_position
             for j in reversed(range(len(starts))):
                 if ends_levels[-1] + 1 == starts_levels[j]:
                     target_x_position = starts[j]
@@ -604,7 +608,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
 
             xValues = starts + ends[-1:]
-            axis.plot(xValues, yvalues, 'bo', markersize=markersize, color="black")
+            if fill_boundary_points:
+                axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            else:
+                axis.plot(xValues[1:-1], yValues[1:-1], 'bo', markersize=markersize, color="black")
+                axis.plot([xValues[0], xValues[-1]], [yValues[0], yValues[-1]], 'bo', markersize=markersize,
+                          color="black", fillstyle='none')
             axis.set_xlim([self.a[d + offset]-0.01, self.b[d + offset]+0.01])
             axis.set_ylim([-0.04, max_level+0.04])
             axis.set_ylim(axis.get_ylim()[::-1])
