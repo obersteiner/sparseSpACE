@@ -1233,7 +1233,7 @@ class UncertaintyQuantification(Integration):
             num_polys = len(self.pce_polys)
             output_dim = len(integral) // num_polys
             coefficients = integral.reshape((num_polys, output_dim))
-            self.gPCE = cp.poly.transpose(cp.poly.sum(self.pce_polys * coefficients.T, -1))
+            self.gPCE = np.transpose(np.sum(self.pce_polys * coefficients.T, -1))
             return
 
         self._set_nodes_weights_evals(combiinstance)
