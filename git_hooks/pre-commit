@@ -1,6 +1,6 @@
 #!/bin/sh
 
-jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace ipynb/*.ipynb ipynb/Diss/*.ipynb
+jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace ipynb/*.ipynb ipynb/Diss/*.ipynb ipynb/Extrapolation/*.ipynb
 
 
 git add .
