@@ -745,8 +745,7 @@ class Classification:
             self._print_evaluation(used_data, calculated_new_testclasses,
                                    self._densities_testset[(len(self._densities_testset) - new_testing_data.get_length()):],
                                    print_incorrect_points)
-        return self._evaluate(used_data, calculated_new_testclasses,
-                              self._densities_testset[(len(self._densities_testset) - new_testing_data.get_length()):])
+        return self._evaluate(used_data, calculated_new_testclasses)
 
     def get_original_data(self) -> 'DataSet':
         ret_val = self._original_data.copy()
