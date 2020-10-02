@@ -168,7 +168,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
             # Force full binary tree (each non-boundary grid point should have either 0 or 2 children)
             if self.force_balanced_refinement_tree:
-                points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim)
+                points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim, refine_container_objects)
 
             # Compute children indices
             if self.use_local_children:
@@ -189,7 +189,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         return point_coordinates, points_level, children_indices
 
-    def transform_to_full_binary_tree_grid(self, grid, grid_levels):
+    def transform_to_full_binary_tree_grid(self, grid, grid_levels, refinement_objects):
         """ This method expands a grid so that it becomes a full binary tree.
         This means each grid point has either 0 or 2 children.
 
@@ -197,27 +197,53 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         :param grid_levels: Contains levels of the grid as array
         :return: Returns grid and grid levels that have a full binary tree structure
         """
+        full_grid = [refinement_object.start for refinement_object in refinement_objects] + [refinement_objects[-1].end]
+        full_grid_levels = [refinement_object.levels[0] for refinement_object in refinement_objects] + [refinement_objects[-1].levels[1]]
+        missing_points = []
+        for i, level in enumerate(grid_levels):
+            for j in range(i+1, len(grid_levels)):
+                if grid_levels[j] == level:
+                    break
+                if grid_levels[j] <= level - 2:
+                    missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
+                    missing_points.append((missing_point, level))
+        previous_points = list(zip(grid,grid_levels))
+        balanced_points = previous_points + missing_points
+        new_grid = [point[0] for point in sorted(balanced_points)]
+        new_levels = [point[1] for point in sorted(balanced_points)]
+        return new_grid, new_levels
+
+        '''
         is_full_binary_tree = True
         level_counter = Counter(grid_levels)  # Counts occurences of each level in the list
         critical_levels = []
-
+        
         for (level, count) in level_counter.items():
             if (level >= 2) and (count % 2 == 1):
                 is_full_binary_tree = False
                 critical_levels.append(level)
-
+        
         if is_full_binary_tree:
             return grid, grid_levels
-
+        
         # print("This grid has no full binary tree structure. Critical levels are {}.".format(critical_levels))
         # print("    Grid: {}".format(grid))
         # print("    Levels: {}".format(grid_levels))
-
+        
         # Build up full binary tree structure
         self.grid_binary_tree.init_tree(grid, grid_levels)
         self.grid_binary_tree.force_full_tree_invariant()
-
+        
         return self.grid_binary_tree.get_grid(), self.grid_binary_tree.get_grid_levels()
+        '''
+
+    def find_missing_point(self, point, level, full_grid, full_levels):
+        for position, grid_point in enumerate(full_grid):
+            if point == grid_point:
+                assert level == full_levels[position]
+                for j, point_candidate in enumerate(full_grid[position+1:]):
+                    if full_levels[j] == level:
+                        return point_candidate
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
         """This method updates subtraction value so that the maximum level is only reached if level is max. We also
