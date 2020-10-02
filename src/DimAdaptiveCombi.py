@@ -27,6 +27,7 @@ class DimAdaptiveCombi(StandardCombi):
         start = self.a
         end = self.b
         self.operation.initialize()
+        assert maxv == 2
         # compute minimum and target level vector
         self.lmin = [minv for i in range(self.dim)]
         self.lmax = [maxv for i in range(self.dim)]
@@ -42,17 +43,21 @@ class DimAdaptiveCombi(StandardCombi):
             combiintegral = 0
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0], do_print=False)
             error_array = np.zeros(len(self.scheme))
+            # calculate integral for function self.operation.f
             for i, component_grid in enumerate(self.scheme):
                 if tuple(component_grid.levelvector) not in integral_dict:
                     integral = self.operation.grid.integrate(self.operation.f, component_grid.levelvector, start, end)
                     integral_dict[tuple(component_grid.levelvector)] = integral
                 else:
                     integral = integral_dict[tuple(component_grid.levelvector)]
-                # as error estimator we compare to the analytic solution and divide by the cost=number of points in grid
-                error_array[i] = self.calculate_surplus(component_grid, integral_dict) if self.combischeme.is_refinable(component_grid.levelvector) else 0
-                #error_array[i] = abs(integral - real_integral) / abs(real_integral) / np.prod(
-                #   self.operation.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
                 combiintegral += integral * component_grid.coefficient
+            # calculate errors
+            for i, component_grid in enumerate(self.scheme):
+                if self.combischeme.is_refinable(component_grid.levelvector):
+                    # as error estimator we use the error calculation from Hemcker and Griebel
+                    error_array[i] = self.calculate_surplus(component_grid, integral_dict) if self.combischeme.is_refinable(component_grid.levelvector) else 0
+                    #error_array[i] = abs(integral - real_integral) / abs(real_integral) / np.prod(
+                    #   self.operation.grid.levelToNumPoints(component_grid.levelvector)) if self.combischeme.is_refinable(component_grid.levelvector) else 0
             do_refine = True
             max_points_reached = False if max_number_of_points is None else self.get_total_num_points() > max_number_of_points
             if max(abs(combiintegral - real_integral) / abs(real_integral)) < tolerance or max_points_reached:
@@ -81,6 +86,7 @@ class DimAdaptiveCombi(StandardCombi):
         return self.scheme, abs(combiintegral - real_integral), combiintegral, errors, num_points
 
     def calculate_surplus(self, component_grid, integral_dict):
+        assert self.combischeme.is_refinable(component_grid.levelvector)
         stencils = []
         cost = 1
         for d in range(self.dim):
