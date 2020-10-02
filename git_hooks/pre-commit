@@ -22,10 +22,11 @@ if [ -n "$have_output" ]; then
   echo "that contain output:"
   echo "$have_output"$'\n'
   while true; do
-    read -p "Do you want to clean the notebook first (y/n)?: " resp
+	  read -p "Do you want to clean the notebook first (y/n) or abort (a) ?: " resp
     case $resp in
       [Yy]* ) exit_status=1; git reset $have_output;jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace $have_output; git add $have_output; break;;
-      [Nn]* ) exit_status=1; break;;
+      [Nn]* ) exit_status=0; break;;
+      [Aa]* ) exit_status=1; break;;
           * ) echo "Please answer y or n";;
     esac
   done
