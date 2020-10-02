@@ -1,6 +1,34 @@
-#!/bin/sh
+#!/bin/bash
 
-jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace ipynb/*.ipynb ipynb/Diss/*.ipynb ipynb/Extrapolation/*.ipynb
+# Check for .ipynb files with output cells;
+# ask the user if they really want to commit them
+ipynb_files=`git diff --staged --name-only | awk "/.ipynb/"`
+have_output=""
 
+if [ -n "$ipynb_files" ]; then
+  while read filename; do
+    if [ $(git show :$filename | grep -cm1 "\"output_type\":") -ge 1 ]; then
+      have_output="${have_output}"$'\n'"$filename"
+    fi
+  done <<< $ipynb_files
+  # use here string to run in main shell: https://stackoverflow.com/a/16854326
+fi
 
-git add .
+if [ -n "$have_output" ]; then
+  # https://stackoverflow.com/a/10015707
+  exec < /dev/tty # allows us to grab user input
+
+  echo "You appear to be committing Jupyter notebooks"
+  echo "that contain output:"
+  echo "$have_output"$'\n'
+  while true; do
+    read -p "Do you want to clean the notebook first (y/n)?: " resp
+    case $resp in
+      [Yy]* ) exit_status=1; git reset $have_output;jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace $have_output; git add $have_output; break;;
+      [Nn]* ) exit_status=1; break;;
+          * ) echo "Please answer y or n";;
+    esac
+  done
+
+  exit $exit_status
+fi
