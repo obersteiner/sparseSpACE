@@ -168,7 +168,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
             # Force full binary tree (each non-boundary grid point should have either 0 or 2 children)
             if self.force_balanced_refinement_tree:
-                points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim)
+                points_dim, points_level_dim = self.transform_to_full_binary_tree_grid(points_dim, points_level_dim, refine_container_objects)
 
             # Compute children indices
             if self.use_local_children:
@@ -189,7 +189,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         return point_coordinates, points_level, children_indices
 
-    def transform_to_full_binary_tree_grid(self, grid, grid_levels):
+    def transform_to_full_binary_tree_grid(self, grid, grid_levels, refinement_objects):
         """ This method expands a grid so that it becomes a full binary tree.
         This means each grid point has either 0 or 2 children.
 
@@ -197,16 +197,53 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         :param grid_levels: Contains levels of the grid as array
         :return: Returns grid and grid levels that have a full binary tree structure
         """
+        full_grid = [refinement_object.start for refinement_object in refinement_objects] + [refinement_objects[-1].end]
+        full_grid_levels = [refinement_object.levels[0] for refinement_object in refinement_objects] + [refinement_objects[-1].levels[1]]
+        missing_points = []
+        for i, level in enumerate(grid_levels):
+            for j in range(i+1, len(grid_levels)):
+                if grid_levels[j] == level:
+                    break
+                if grid_levels[j] <= level - 2:
+                    missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
+                    missing_points.append((missing_point, level))
+        previous_points = list(zip(grid,grid_levels))
+        balanced_points = previous_points + missing_points
+        new_grid = [point[0] for point in sorted(balanced_points)]
+        new_levels = [point[1] for point in sorted(balanced_points)]
+        return new_grid, new_levels
 
+        '''
+        is_full_binary_tree = True
+        level_counter = Counter(grid_levels)  # Counts occurences of each level in the list
+        critical_levels = []
+        
+        for (level, count) in level_counter.items():
+            if (level >= 2) and (count % 2 == 1):
+                is_full_binary_tree = False
+                critical_levels.append(level)
+        
+        if is_full_binary_tree:
+            return grid, grid_levels
+        
         # print("This grid has no full binary tree structure. Critical levels are {}.".format(critical_levels))
         # print("    Grid: {}".format(grid))
         # print("    Levels: {}".format(grid_levels))
-
+        
         # Build up full binary tree structure
         self.grid_binary_tree.init_tree(grid, grid_levels)
         self.grid_binary_tree.force_full_tree_invariant()
-
+        
         return self.grid_binary_tree.get_grid(), self.grid_binary_tree.get_grid_levels()
+        '''
+
+    def find_missing_point(self, point, level, full_grid, full_levels):
+        for position, grid_point in enumerate(full_grid):
+            if point == grid_point:
+                assert level == full_levels[position]
+                for j, point_candidate in enumerate(full_grid[position+1:]):
+                    if full_levels[j] == level:
+                        return point_candidate
 
     def modify_according_to_levelvec(self, subtraction_value, d, max_level, levelvec):
         """This method updates subtraction value so that the maximum level is only reached if level is max. We also
@@ -475,7 +512,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None, fill_boundary_points:bool=False):  # update with meta container
         plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
@@ -507,7 +544,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 fontsize=fontsize-10, ha='center', color="blue")
             xValues = starts + ends
             yValues = np.zeros(len(xValues))
-            axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            if fill_boundary_points:
+                axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            else:
+                axis.plot(xValues[1:-1], yValues[1:-1], 'bo', markersize=markersize, color="black")
+                axis.plot([xValues[0], xValues[-1]], [yValues[0], yValues[-1]], 'bo', markersize=markersize, color="black", fillstyle='none')
             if infinite_bounds:
                 start, end = objs[0].start, objs[-1].end
                 # offset_bound = (end - start) * 0.1
@@ -525,7 +566,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None):
+    def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None, fill_boundary_points:bool=False):
         """This method plots the refinement trees of the current refinement structure.
 
         :param filename: Will save plot to specified filename if set.
@@ -547,11 +588,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             ends = [refinementObject.end for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
             ends_levels = [refinementObject.levels[1] for refinementObject in refinement.refinementContainers[d + offset].get_objects()]
             max_level = max(starts_levels)
-            yvalues = np.zeros(len(starts) + 1)
+            yValues = np.zeros(len(starts) + 1)
             for i in range(len(starts)):
                 x_position = starts[i]
                 y_position = starts_levels[i]
-                yvalues[i] = y_position
+                yValues[i] = y_position
                 if i !=0:
                     for j in reversed(range(i)):
                         if starts_levels[j] == starts_levels[i] + 1:
@@ -578,7 +619,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
             x_position = ends[-1]
             y_position = ends_levels[-1]
-            yvalues[-1] = y_position
+            yValues[-1] = y_position
             for j in reversed(range(len(starts))):
                 if ends_levels[-1] + 1 == starts_levels[j]:
                     target_x_position = starts[j]
@@ -593,7 +634,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
 
             xValues = starts + ends[-1:]
-            axis.plot(xValues, yvalues, 'bo', markersize=markersize, color="black")
+            if fill_boundary_points:
+                axis.plot(xValues, yValues, 'bo', markersize=markersize, color="black")
+            else:
+                axis.plot(xValues[1:-1], yValues[1:-1], 'bo', markersize=markersize, color="black")
+                axis.plot([xValues[0], xValues[-1]], [yValues[0], yValues[-1]], 'bo', markersize=markersize,
+                          color="black", fillstyle='none')
             axis.set_xlim([self.a[d + offset]-0.01, self.b[d + offset]+0.01])
             axis.set_ylim([-0.04, max_level+0.04])
             axis.set_ylim(axis.get_ylim()[::-1])
