@@ -148,6 +148,20 @@ class ConstantValue(Function):
             integral *= end[d] - start[d]
         integral *= self.value
 
+class FunctionDiagonalDiscont(Function):
+    def eval(self, coordinates):
+        dim = len(coordinates)
+        if sum(coordinates) < 1:
+            return np.ones(1)
+        else:
+            return np.zeros(1)
+
+    def getAnalyticSolutionIntegral(self, start, end):
+        dim = len(start)
+        for d in range(dim):
+            assert start[d] == 0
+            assert end[d] == 1
+        return 1/math.factorial(dim)
 
 class FunctionShift(Function):
     def __init__(self, function, shift):
