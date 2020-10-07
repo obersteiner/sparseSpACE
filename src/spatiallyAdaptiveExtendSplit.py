@@ -181,11 +181,12 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             while coarsening > 0:
                 if temp[currentDirection] > self.lmin[currentDirection]:
                     temp[currentDirection] -= 1
-                    coarsening -= 1
-                else:
-                    if num_sub_diagonal_save > 0:
-                        coarsening -= 1
-                        num_sub_diagonal_save -= 1
+                #    coarsening -= 1
+                #else:
+                #    if num_sub_diagonal_save > 0:
+                #        coarsening -= 1
+                #        num_sub_diagonal_save -= 1
+                coarsening -= 1
                 currentDirection = (currentDirection + 1) % self.dim
         else:
             num_sub_diagonal = (self.lmax[0] + self.dim - 1) - np.sum(levelvector)
