@@ -997,9 +997,7 @@ class Classification:
             if print_removed:
                 self.log_util.log_info("Points removed during scale checking:")
                 for i, x in enumerate(removed_samples[0]):
-                    self.log_util.log_info(i, end=": ")
-                    self.log_util.log_info(x, end=" | class: ")
-                    self.log_util.log_info(removed_samples[1][i])
+                    self.log_util.log_info("{0} : {1} | class {2}".format(i, x, removed_samples[1][i]))
         return data_to_check
 
     @staticmethod
@@ -1204,6 +1202,18 @@ class Classification:
                                            max_time: float = None,
                                            max_evaluations: int = 256,
                                            min_evaluations: int = 1):
+        """Create dimension-wise GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
+
+        This method requires 'perform_classification_dimension_wise' to be called before.
+        This method continues the refinement started by 'perform_classification_dimension_wise'. It allows refinement
+        to be performed iteratively, so that performance evaluations can be performed between each refinement iteration.
+
+        ----------
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_time: Optional. Maximum compute time. The refinement will stop when it exceeds this time.
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param min_evaluations: Optional. Minimum number of points. The refinement will not stop until it exceeds this limit.
+        """
         if self._classificators is not None and self._de_objects is not None:
             for combi_object in self._classificators:
                 combi_object.continue_adaptive_refinement(tol=tolerance, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
