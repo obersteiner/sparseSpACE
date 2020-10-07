@@ -140,9 +140,9 @@ max_levels = maximum_level
 max_evaluations = ((2 ** max_levels) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_levels, dim)
 print('max evaluations for dimWise:', max_evaluations)
 # plot the resulting combi-scheme with each refinement
-do_plot = True
+do_plot = False
 print('refinement plotting:', do_plot)
-print_output = True
+print_output = False
 
 # kde parameters
 

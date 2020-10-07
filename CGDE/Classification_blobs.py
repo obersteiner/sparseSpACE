@@ -12,7 +12,7 @@ import os
 
 from sys import path
 path.append('../src/')
-import DatasetOperation as do
+import DEMachineLearning as do
 from ErrorCalculator import *
 import logging
 
@@ -25,8 +25,7 @@ def prev_level(l, d):
 change_log_file('logs/log_classification_blobs')
 
 clear_log()
-print_log_info = False
-logger.setLevel(logging.INFO)
+logUtil.set_log_level(log_levels.INFO)
 
 dim = 4
 max_level = 8
@@ -37,7 +36,7 @@ test2 = ((2 ** max_level) - 1) * dim - (dim - 1) + (2 ** dim) * prev_level(max_l
 
 tolerance = -1.0
 
-log_info('--- Classification_eval start ---', True)
+logUtil.log_info('--- Classification_blobs start ---')
 for dimension in [2, 3, 4, 5]:
 
     # generate a Circle-Dataset of size with the sklearn library
@@ -80,22 +79,22 @@ for dimension in [2, 3, 4, 5]:
                     #for margin in [0.5]:
                         one_vs_others = error_config[0]
                         error_calc = error_config[1]
-                        log_info('next iteration', print_log_info)
-                        log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)', print_log_info)
-                        log_info('data size: ' + str(size), print_log_info)
-                        log_info('data dimension: ' + str(data.get_dim()), print_log_info)
+                        logUtil.log_info('next iteration')
+                        logUtil.log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=3)')
+                        logUtil.log_info('data size: ' + str(size))
+                        logUtil.log_info('data dimension: ' + str(data.get_dim()))
                         t = [i for i, x in enumerate(str(type(error_calc))) if '\'' in x]
-                        log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]], print_log_info)
-                        log_info('rebalancing: ' + str(rebalancing), print_log_info)
-                        log_info('margin: ' + str(margin), print_log_info)
-                        log_info('one_vs_others ' + str(one_vs_others), print_log_info)
+                        logUtil.log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]])
+                        logUtil.log_info('rebalancing: ' + str(rebalancing))
+                        logUtil.log_info('margin: ' + str(margin))
+                        logUtil.log_info('one_vs_others ' + str(one_vs_others))
 
 
                         classification = do.Classification(data_stdCombi, split_percentage=0.8, split_evenly=True)
 
                         max_level = level_max
                         print('classification max_level', max_level)
-                        log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
+                        logUtil.log_info('classification standardCombi max_level: ' + str(max_level))
                         classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                         classification.print_evaluation(print_incorrect_points=False)
@@ -108,10 +107,10 @@ for dimension in [2, 3, 4, 5]:
 
                         max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
                         print('classification max_evaluations', max_evals)
-                        log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
-                        log_info('classification dimwise start level: ' + str(start_level), print_log_info)
-                        log_info('classification dimwise rebalance ' + str(rebalancing), print_log_info)
-                        log_info('classification dimwise margin ' + str(margin), print_log_info)
+                        logUtil.log_info('classification dimwise max_evaluations: ' + str(max_evals))
+                        logUtil.log_info('classification dimwise start level: ' + str(start_level))
+                        logUtil.log_info('classification dimwise rebalance ' + str(rebalancing))
+                        logUtil.log_info('classification dimwise margin ' + str(margin))
                         # after that we should immediately perform the classification for the learning data tied to the Classification object, since we can't really call any other method before that without raising an error
                         figure_prefix = 'dimwise_plots/gaussian_quantiles'
                         if not dimWiseInitialized:
@@ -128,7 +127,6 @@ for dimension in [2, 3, 4, 5]:
                                                                                          margin=margin,
                                                                                          rebalancing=rebalancing,
                                                                                          max_evaluations=max_evals,
-                                                                                         filename=figure_prefix,
                                                                                          error_calculator=error_calc)
                             dimWiseInitialized = True
                         else:
@@ -137,9 +135,9 @@ for dimension in [2, 3, 4, 5]:
 
                         classification_dimwise.print_evaluation(print_incorrect_points=False)
 
-                        log_info('iteration end', print_log_info)
+                        logUtil.log_info('iteration end')
 
-log_info('--- Classification_eval end ---', print_log_info)
+logUtil.log_info('--- Classification_eval end ---')
 
 # make a backup of the log without overwriting old ones
 log_backup = 'log_sg_backup'

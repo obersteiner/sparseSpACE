@@ -13,7 +13,7 @@ import os
 
 from sys import path
 path.append('../src/')
-import DatasetOperation as do
+import DEMachineLearning as do
 from ErrorCalculator import *
 import logging
 
@@ -26,10 +26,9 @@ def prev_level(l, d):
 change_log_file('logs/log_classification_real_data')
 
 #clear_log()
-print_log_info = False
-logger.setLevel(logging.INFO)
+logUtil.set_log_level(log_levels.INFO)
 
-log_info('--- Classification_eval start ---', True)
+logUtil.log_info('--- Classification_eval start ---')
 for data_set in [2]:
 
     data_set_name = 'Testset'
@@ -98,30 +97,30 @@ for data_set in [2]:
                         #for level_max in max_levels:
                             one_vs_others = error_config[0]
                             error_calc = error_config[1]
-                            log_info('next iteration', print_log_info)
+                            logUtil.log_info('next iteration')
 
                             if data_set == 0:
-                                log_info('iris data set', print_log_info)
+                                logUtil.log_info('iris data set')
                             elif data_set == 1:
-                                log_info('wine data set', print_log_info)
+                                logUtil.log_info('wine data set')
                             elif data_set == 2:
-                                log_info('breast cancer data set', print_log_info)
+                                logUtil.log_info('breast cancer data set')
 
-                            log_info('data size: ' + str(size), print_log_info)
-                            log_info('data dimension: ' + str(data.get_dim()), print_log_info)
+                            logUtil.log_info('data size: ' + str(size))
+                            logUtil.log_info('data dimension: ' + str(data.get_dim()))
                             t = [i for i, x in enumerate(str(type(error_calc))) if '\'' in x]
-                            log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]], print_log_info)
-                            log_info('rebalancing: ' + str(rebalancing), print_log_info)
-                            log_info('margin: ' + str(margin), print_log_info)
-                            log_info('reuse_old_values: ' + str(reuse_old_values), print_log_info)
-                            log_info('one_vs_others ' + str(one_vs_others), print_log_info)
+                            logUtil.log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]])
+                            logUtil.log_info('rebalancing: ' + str(rebalancing))
+                            logUtil.log_info('margin: ' + str(margin))
+                            logUtil.log_info('reuse_old_values: ' + str(reuse_old_values))
+                            logUtil.log_info('one_vs_others ' + str(one_vs_others))
 
 
                             classification = do.Classification(data_stdCombi, split_percentage=0.8, split_evenly=True)
 
                             max_level = level_max
                             print('classification max_level', max_level)
-                            log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
+                            logUtil.log_info('classification standardCombi max_level: ' + str(max_level))
                             classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                             classification.print_evaluation(print_incorrect_points=False)
@@ -140,8 +139,8 @@ for data_set in [2]:
                             max_evals = (((2**(max_level-1)) - 1) * dim)
 
                             print('classification max_evaluations', max_evals)
-                            log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
-                            log_info('classification dimwise start level: ' + str(start_level), print_log_info)
+                            logUtil.log_info('classification dimwise max_evaluations: ' + str(max_evals))
+                            logUtil.log_info('classification dimwise start level: ' + str(start_level))
 
                             if data_set == 0:
                                 figure_prefix = 'dimwise_plots/iris'
@@ -164,7 +163,6 @@ for data_set in [2]:
                                                                                              margin=0.5,
                                                                                              rebalancing=rebalancing,
                                                                                              max_evaluations=max_evals,
-                                                                                             filename=figure_prefix,
                                                                                              error_calculator=error_calc)
                                 dimWiseInitialized = True
                             else:
@@ -173,9 +171,9 @@ for data_set in [2]:
 
                             classification_dimwise.print_evaluation(print_incorrect_points=False)
 
-                            log_info('iteration end', print_log_info)
+                            logUtil.log_info('iteration end')
 
-log_info('--- Classification_eval end ---', print_log_info)
+logUtil.log_info('--- Classification_eval end ---')
 
 # make a backup of the log without overwriting old ones
 log_backup = 'log_backup'

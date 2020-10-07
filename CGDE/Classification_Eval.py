@@ -25,21 +25,20 @@ def prev_level(l, d):
 change_log_file('logs/log_classification_various')
 
 clear_log()
-print_log_info = False
-logger.setLevel(logging.INFO)
+logUtil.set_log_level(log_levels.INFO)
 
-log_info('--- Classification_eval start ---', True)
-for data_set in [4]:
+logUtil.log_info('--- Classification_eval start ---')
+for data_set in [2]:
     for dimension in [3, 4, 5]:
 
         # generate a Circle-Dataset of size with the sklearn library
         size = 10000
         dim = dimension
-        if data_set == 3:
+        if data_set == 0:
             sklearn_dataset = do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)
-        elif data_set == 4:
+        elif data_set == 1:
             sklearn_dataset = do.datasets.make_blobs(n_samples=size, n_features=dim, centers=3)
-        elif data_set == 5:
+        elif data_set == 2:
             sklearn_dataset = do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)
 
 
@@ -60,26 +59,26 @@ for data_set in [4]:
                     for rebalancing in [True, False]:
                         one_vs_others = error_config[0]
                         error_calc = error_config[1]
-                        log_info('next iteration', print_log_info)
+                        logUtil.log_info('next iteration')
 
                         if data_set == 0:
-                            log_info('do.datasets.make_circles(n_samples=size, noise=0.05)', print_log_info)
+                            logUtil.log_info('do.datasets.make_circles(n_samples=size, noise=0.05)')
                         elif data_set == 1:
-                            log_info('do.datasets.make_moons(n_samples=size, noise=0.3)', print_log_info)
+                            logUtil.log_info('do.datasets.make_moons(n_samples=size, noise=0.3)')
                         elif data_set == 2:
-                            log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)', print_log_info)
+                            logUtil.log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=1, n_classes=2)')
                         elif data_set == 3:
-                            log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)', print_log_info)
+                            logUtil.log_info('do.datasets.make_classification(size, n_features=dim, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=3)')
                         elif data_set == 4:
-                            log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)', print_log_info)
+                            logUtil.log_info('do.datasets.make_blobs(n_samples=size, n_features=dim centers=6)')
                         elif data_set == 5:
-                            log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)', print_log_info)
+                            logUtil.log_info('do.datasets.make_gaussian_quantiles(n_samples=size, n_features=dim, n_classes=6)')
 
-                        log_info('data size: ' + str(size), print_log_info)
-                        log_info('data dimension: ' + str(data.get_dim()), print_log_info)
+                        logUtil.log_info('data size: ' + str(size))
+                        logUtil.log_info('data dimension: ' + str(data.get_dim()))
                         t = [i for i, x in enumerate(str(type(error_calc))) if '\'' in x]
-                        log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]], print_log_info)
-                        log_info('one_vs_others ' + str(one_vs_others), print_log_info)
+                        logUtil.log_info('error_calculator ' + str(type(error_calc))[t[0]+1:t[-1]])
+                        logUtil.log_info('one_vs_others ' + str(one_vs_others))
 
                         data_copy = data.copy()                                              # deepcopied
                         data_copy.scale_range(data_range)                                # scaled
@@ -97,7 +96,7 @@ for data_set in [4]:
 
                         max_level = level_max
                         print('classification max_level', max_level)
-                        log_info('classification standardCombi max_level: ' + str(max_level), print_log_info)
+                        logUtil.log_info('classification standardCombi max_level: ' + str(max_level))
                         classification.perform_classification(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=max_level, one_vs_others=one_vs_others, reuse_old_values=reuse_old_values)
 
                         classification.print_evaluation(print_incorrect_points=False)
@@ -120,8 +119,8 @@ for data_set in [4]:
 
                         max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
                         print('classification max_evaluations', max_evals)
-                        log_info('classification dimwise max_evaluations: ' + str(max_evals), print_log_info)
-                        log_info('classification dimwise start level: ' + str(start_level), print_log_info)
+                        logUtil.log_info('classification dimwise max_evaluations: ' + str(max_evals))
+                        logUtil.log_info('classification dimwise start level: ' + str(start_level))
 
                         if data_set == 0:
                             figure_prefix = 'dimwise_plots/circles'
@@ -147,7 +146,6 @@ for data_set in [4]:
                                                                                      margin=0.5,
                                                                                      rebalancing=rebalancing,
                                                                                      max_evaluations=max_evals,
-                                                                                     filename=figure_prefix,
                                                                                      error_calculator=error_calc)
 
                         classification_dimwise.print_evaluation(print_incorrect_points=False)
@@ -159,9 +157,9 @@ for data_set in [4]:
                         #retfig0 = correct_classes_dimwise.plot()
                         #retfig1 = calcult_classes_dimwise.plot()
 
-                        log_info('iteration end', print_log_info)
+                        logUtil.log_info('iteration end')
 
-log_info('--- Classification_eval end ---', print_log_info)
+logUtil.log_info('--- Classification_eval end ---')
 
 # make a backup of the log without overwriting old ones
 log_backup = 'log_sg_backup'

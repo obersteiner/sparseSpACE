@@ -9,10 +9,14 @@ from sklearn import datasets, preprocessing, neighbors
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
-from ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
+from ErrorCalculator import *
 from Grid import GlobalTrapezoidalGrid
 from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
+from Utils import *
+import cProfile
+import pstats
+import os
 
 class DataSet:
     """Type of data sets on which to perform DensityEstimation, Classification and Clustering.
@@ -22,7 +26,7 @@ class DataSet:
     Unknown labels are labeled with -1.
     """
 
-    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown', label: str = 'class'):
+    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown', label: str = 'class', log_level=log_levels.WARNING, print_level=print_levels.NONE):
         """Constructor of the DataSet class.
 
         Takes raw data and optionally a name or label-description as parameter and initializes the original data in the form of a tuple of legnth 2.
@@ -43,6 +47,7 @@ class DataSet:
         self._scaling_factor = None
         self._original_min = None
         self._original_max = None
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
         self._initialize(raw_data)
         assert ((self._data is not None) and (self._dim is not None) and (self._shape is not None))
         assert (isinstance(self._data, tuple) and len(self._data) == 2 and
@@ -368,6 +373,19 @@ class DataSet:
             set_labels.append(current_set)
         return set_labels
 
+    def split_one_vs_others(self):
+        set_classes = []
+        class_numbers = [sum(self._data[1] == j) for j in self.get_labels()]
+        for j in self.get_labels():
+            values = np.array([x for i, x in enumerate(self._data[0])])
+            others = (sum(class_numbers) - class_numbers[j])
+            labels = np.array([1 if self._data[1][i] == j else max(-1, -1 * (class_numbers[j] / others)) for i, x in
+                               enumerate(self._data[0])])
+            current_set = DataSet(tuple([values, labels]))
+            self._update_internal(current_set)
+            set_classes.append(current_set)
+        return set_classes
+
     def split_without_labels(self) -> Tuple['DataSet', 'DataSet']:
         """Separates samples without from samples with labels.
 
@@ -458,6 +476,9 @@ class DataSet:
                            lambd: float = 0.0,
                            minimum_level: int = 1,
                            maximum_level: int = 5,
+                           one_vs_others: bool = False,
+                           reuse_old_values: bool = False,
+                           pre_scaled_data: bool = False,
                            plot_de_dataset: bool = True,
                            plot_density_estimation: bool = True,
                            plot_combi_scheme: bool = True,
@@ -471,6 +492,10 @@ class DataSet:
         :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
+        :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
+	    :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+	    :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+	    :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
         :param plot_de_dataset: Optional. Conditional Parameter, which indicates whether this DataSet should be plotted for DensityEstimation.
         :param plot_density_estimation: Optional. Conditional Parameter, which indicates whether results of DensityEstimation should be plotted.
         :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
@@ -480,8 +505,35 @@ class DataSet:
         """
         a = np.zeros(self._dim)
         b = np.ones(self._dim)
-        de_object = DensityEstimation(self._data, self._dim, masslumping=masslumping, lambd=lambd)
+
+        if one_vs_others:
+            de_object = DensityEstimation(self._data, self._dim, masslumping=masslumping, lambd=lambd,
+                                          reuse_old_values=reuse_old_values, classes=self._data[1],
+                                          pre_scaled_data=pre_scaled_data, print_output=False)
+        else:
+            de_object = DensityEstimation(self._data, self._dim, masslumping=masslumping, lambd=lambd,
+                                          reuse_old_values=reuse_old_values, pre_scaled_data=pre_scaled_data,
+                                          print_output=False)
+
         combi_object = StandardCombi(a, b, operation=de_object, print_output=False)
+
+        # For profiling:
+        # pStuff.increment_class_counter()
+        # cls = '__class-' + str(pStuff.get_class_counter())
+        # profileName = 'profiles/pStd_' + pStuff.get_data_set_used() + '_' + pStuff.get_file_name_extension()+cls
+        # while os.path.isfile(profileName):
+        #     profileName = profileName + '+'
+        # cProfile.runctx('combi_object.perform_operation(minimum_level, maximum_level)', globals(), locals(), filename=profileName)
+        # with open(profileName+'_TIME.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.TIME)
+        #     ps.print_stats()
+        # with open(profileName+'_CUMU.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.CUMULATIVE)
+        #     ps.print_stats()
+        # os.remove(profileName)
+
         combi_object.perform_operation(minimum_level, maximum_level)
         if plot_de_dataset:
             if de_object.scaled:
@@ -505,8 +557,13 @@ class DataSet:
                                           margin: float = 0.5,
                                           tolerance: float = 0.01,
                                           max_evaluations: int = 256,
+                                          rebalancing: bool = False,
                                           modified_basis: bool = False,
                                           boundary: bool = False,
+                                          one_vs_others: bool = True,
+                                          error_calculator: ErrorCalculator = None,
+                                          pre_scaled_data: bool = False,
+                                          single_step_refinement: bool = False,
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
@@ -520,13 +577,18 @@ class DataSet:
         :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
-        :param reuse_old_values: Optional.
-        :param numeric_calculation: Optional.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :param numeric_calculation: Optional. Use numerical calculation for the integral.
         :param margin: Optional.
-        :param tolerance: Optional.
-        :param max_evaluations: Optional.
-        :param modified_basis: Optional.
-        :param boundary: Optional.
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param rebalancing: Optional. Activate rebalancing of refinement trees.
+        :param modified_basis: Optional. Use the modified basis function..
+        :param boundary: Optional. Put points on the boundary.
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
+        :param single_step_refinement: Optional. Regardless of max_evaluations or tolerance, only a single refinement step will be executed
         :param plot_de_dataset: Optional. Conditional Parameter, which indicates whether this DataSet should be plotted for DensityEstimation.
         :param plot_density_estimation: Optional. Conditional Parameter, which indicates whether results of DensityEstimation should be plotted.
         :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
@@ -537,12 +599,46 @@ class DataSet:
         a = np.zeros(self._dim)
         b = np.ones(self._dim)
         grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=modified_basis, boundary=boundary)
-        de_object = DensityEstimation(self._data, self._dim, grid=grid, masslumping=masslumping, lambd=lambd, reuse_old_values=reuse_old_values,
-                                      numeric_calculation=numeric_calculation, print_output=False)
-        error_calculator = ErrorCalculatorSingleDimVolumeGuided()
-        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=False)
-        combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations,
-                                             do_plot=plot_combi_scheme)
+
+        if error_calculator is None:
+            error_calculator = ErrorCalculatorSingleDimVolumeGuided()
+
+        classes = None
+        if one_vs_others:
+            classes = self._data[1]
+
+        de_object = DensityEstimation(self._data,
+                                      self._dim,
+                                      grid=grid,
+                                      masslumping=masslumping,
+                                      lambd=lambd,
+                                      classes=classes,
+                                      reuse_old_values=reuse_old_values,
+                                      numeric_calculation=numeric_calculation,
+                                      print_output=False,
+                                      pre_scaled_data=pre_scaled_data)
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing)
+
+        # pStuff.increment_class_counter()
+        # cls = '__class-' + str(pStuff.get_class_counter())
+        # profileName = 'profiles/pStd_' + pStuff.get_data_set_used() + '_' + pStuff.get_file_name_extension()+cls
+        # while os.path.isfile(profileName):
+        #     profileName = profileName + '+'
+        # cProfile.runctx('combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance, max_evaluations=max_evaluations, do_plot=plot_combi_scheme, print_output=False)', globals(), locals(), filename=profileName)
+        # with open(profileName+'_TIME.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.TIME)
+        #     ps.print_stats()
+        # with open(profileName+'_CUMU.txt', "w") as f:
+        #     ps = pstats.Stats(profileName, stream=f)
+        #     ps.sort_stats(pstats.SortKey.CUMULATIVE)
+        #     ps.print_stats()
+        # os.remove(profileName)
+
+        combi_object.performSpatiallyAdaptiv(minimum_level, maximum_level, error_calculator, tolerance,
+                                             max_evaluations=max_evaluations, do_plot=plot_combi_scheme,
+                                             print_output=False,
+                                             single_step=single_step_refinement)
         if plot_de_dataset:
             if de_object.scaled:
                 self.scale_range((0, 1), override_scaling=True)
@@ -555,12 +651,13 @@ class DataSet:
             combi_object.print_resulting_sparsegrid(markersize=20)
         return combi_object, de_object
 
-    def plot(self, plot_labels: bool = True) -> plt.Figure:
+    def plot(self, plot_labels: bool = True, filename: str = None) -> plt.Figure:
         """Plot DataSet.
 
         Plotting is only available for dimensions 2 and 3.
 
         :param plot_labels: Optional. Conditional parameter, which indicates whether labels should be coloured for plotting.
+        :param filename: Optional. pass a filename (e.g. /path/to/folder/myPlot.png) to save the figure
         :return: Figure, which is plotted.
         """
         plt.rc('font', size=30)
@@ -618,6 +715,8 @@ class DataSet:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
 
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
         return fig
 
@@ -631,7 +730,10 @@ class Classification:
                  data_range: Tuple[np.ndarray, np.ndarray] = None,
                  split_percentage: float = 1.0,
                  split_evenly: bool = True,
-                 shuffle_data: bool = True):
+                 shuffle_data: bool = True,
+                 print_output: bool = False,
+                 log_level=log_levels.WARNING,
+                 print_level=print_levels.NONE):
         """Constructor of the Classification class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -656,6 +758,7 @@ class Classification:
         :param split_evenly: Optional. Only relevant when 0 < percentage < 1. Conditional parameter, which indicates whether the learning data sets
         for each class should be of near equal size. Default True.
         :param shuffle_data: Optional. Indicates, whether the data should be randomly shuffled in the initialization step. Default True.
+        :param print_output: Optional. Print log statements to console
         """
         self._original_data = raw_data
         self._scaled_data = None
@@ -670,6 +773,11 @@ class Classification:
         self._de_objects = []
         self._performed_classification = False
         self._time_used = None
+        self._print_output = print_output
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        # for compatibility with old code
+        if print_output is True and print_level == print_levels.NONE:
+            self.log_util.set_print_level(print_levels.INFO)
         self._initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly,
                          shuffle_data)
 
@@ -689,8 +797,8 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if data_to_evaluate.is_empty():
             raise ValueError("Can't classificate empty dataset.")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
-        print("Evaluating classes of %s DataSet..." % data_to_evaluate.get_name())
+        self.log_util.log_info("---------------------------------------------------------------------------------------------------------------------------------")
+        self.log_util.log_info("Evaluating classes of %s DataSet..." % data_to_evaluate.get_name())
         evaluate = self._internal_scaling(data_to_evaluate, print_removed=print_removed)
         if evaluate.is_empty():
             raise ValueError("All given samples for classification were out of bounds. Please only evaluate classes for samples in unscaled range: "
@@ -725,8 +833,8 @@ class Classification:
             raise AttributeError("Classification needs to be performed on this object first.")
         if new_testing_data.is_empty():
             raise ValueError("Can't test empty dataset.")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
-        print("Testing classes of %s DataSet..." % new_testing_data.get_name())
+        self.log_util.log_info("---------------------------------------------------------------------------------------------------------------------------------")
+        self.log_util.log_info("Testing classes of %s DataSet..." % new_testing_data.get_name())
         new_testing_data.set_label("class")
         evaluate = self._internal_scaling(new_testing_data, print_removed=print_removed)
         if evaluate.is_empty():
@@ -735,7 +843,7 @@ class Classification:
                              (', '.join([str(x) for x in self._data_range[0]]), ', '.join([str(x) for x in self._data_range[1]])))
         omitted_data, used_data = evaluate.split_without_labels()
         if not omitted_data.is_empty():
-            print("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
+            self.log_util.log_info("Omitted some classless samples during testing and added them to omitted sample collection of this object.")
         self._omitted_data.concatenate(omitted_data)
         self._scaled_data.concatenate(used_data)
         self._testing_data.concatenate(used_data)
@@ -818,7 +926,7 @@ class Classification:
             self._data_range = (self._scaled_data.get_original_min(), self._scaled_data.get_original_max())
             self._scale_factor = self._scaled_data.get_scaling_factor()
         if not self._omitted_data.is_empty():
-            print("Omitted some classless samples during initialization and added them to omitted sample collection of this object.")
+            self.log_util.log_info("Omitted some classless samples during initialization and added them to omitted sample collection of this object.")
             self._omitted_data.shift_value(-self._data_range[0], override_scaling=True)
             self._omitted_data.scale_factor(self._scale_factor, override_scaling=True)
             self._omitted_data.shift_value(0.005, override_scaling=True)
@@ -872,14 +980,14 @@ class Classification:
         remove_indices = [i for i, x in enumerate(data_to_check[0]) if any([(y < 0.0049) for y in x]) or any([(y > 0.9951) for y in x])]
         removed_samples = data_to_check.remove_samples(remove_indices)
         if not removed_samples.is_empty():
-            print("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators."
+            self.log_util.log_info("During internal scale checking of %s DataSet some samples were removed due to them being out of bounds of classificators."
                   % data_to_check.get_name())
             if print_removed:
-                print("Points removed during scale checking:")
+                self.log_util.log_info("Points removed during scale checking:")
                 for i, x in enumerate(removed_samples[0]):
-                    print(i, end=": ")
-                    print(x, end=" | class: ")
-                    print(removed_samples[1][i])
+                    self.log_util.log_info(i, end=": ")
+                    self.log_util.log_info(x, end=" | class: ")
+                    self.log_util.log_info(removed_samples[1][i])
         return data_to_check
 
     @staticmethod
@@ -918,24 +1026,23 @@ class Classification:
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
-        print("Number of wrong mappings:", end=" ")
-        print(number_wrong)
-        print("Number of total mappings:", end=" ")
-        print(len(calculated_classes))
-        print("Percentage of correct mappings:", end=" ")
-        print("%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100))
+        logUtil.log_info("Number of wrong mappings: {0} ".format(number_wrong))
+        logUtil.log_info("Number of total mappings: {0}".format(len(calculated_classes)))
+        percentage_wrong = "%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)
+        logUtil.log_info("Percentage of correct mappings: {0}".format(percentage_wrong))
         if number_wrong != 0 and print_incorrect_points:
-            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            print("Points mapped incorrectly:")
+            logUtil.log_info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+            logUtil.log_info("Points mapped incorrectly:")
+            points = ''
             for i, wr in enumerate(indices_wrong):
-                print(i, end=": ")
-                print(testing_data[0][wr], end=" | correct class: ")
-                print(testing_data[1][wr], end=", calculated class: ")
-                print(calculated_classes[wr], end=" | ")
+                points += "{0}: {1} | correct class: {2}, calculated class: {3} | ".format(i, testing_data[0][wr],
+                                                                                           testing_data[1][wr],
+                                                                                           calculated_classes[wr])
+                d_c = ""
                 for j, x in enumerate(density_testdata[wr]):
-                    print("density_class%d" % j, end=": ")
-                    print(x, end=", ")
-                print()
+                    d_c += "density_class{0}: {1}, ".format(j, x)
+                points += d_c
+            logUtil.log_info("Points mapped incorrectly: {0}".format(points))
 
     def _process_performed_classification(self,
                                           operation_list: List[Tuple[StandardCombi, DensityEstimation]],
@@ -957,11 +1064,11 @@ class Classification:
         self._performed_classification = True
         self._time_used = time.time() - start_time
         if print_metrics:
-            print()
-            print("=================================================================================================================================")
-        print("Performed Classification of '%s' DataSet." % self._scaled_data.get_name())
+            self.log_util.log_info()
+            self.log_util.log_info("=================================================================================================================================")
+        self.log_util.log_info("Performed Classification of '%s' DataSet." % self._scaled_data.get_name())
         if print_metrics:
-            print("Time used: %.10f seconds" % self._time_used)
+            self.log_util.log_info("Time used: %.10f seconds" % self._time_used)
         if not self._testing_data.is_empty():
             start_time = time.time()
             self._calculated_classes_testset = self._classificate(self._testing_data)
@@ -972,6 +1079,9 @@ class Classification:
                                lambd: float = 0.0,
                                minimum_level: int = 1,
                                maximum_level: int = 5,
+                               reuse_old_values: bool = False,
+                               one_vs_others: bool = False,
+                               pre_scaled_data: bool = False,
                                print_metrics: bool = True) -> None:
         """Create GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
@@ -984,16 +1094,26 @@ class Classification:
         :param lambd: Optional. Parameter, which adjusts the 'smoothness' of DensityEstimation results.
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation.
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation.
-        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :param pre_scaled_data: Optional. Deactivates data scaling in the grid operation.
+        :param print_metrics: Optional. Conditional parameter, which indicates whether time metrics should be printed immediately after completing.
         the learning process.
         :return: None
         """
         if self._performed_classification:
             raise ValueError("Can't perform classification for the same object twice.")
         start_time = time.time()
-        learning_data_classes = self._learning_data.split_labels()
-        operation_list = [x.density_estimation(masslumping=masslumping, lambd=lambd, minimum_level=minimum_level, maximum_level=maximum_level,
-                                               plot_de_dataset=False, plot_density_estimation=False, plot_combi_scheme=False, plot_sparsegrid=False)
+        if one_vs_others:
+            learning_data_classes = self._learning_data.split_one_vs_others()
+        else:
+            learning_data_classes = self._learning_data.split_labels()
+        operation_list = [x.density_estimation(masslumping=masslumping, lambd=lambd,
+                                               minimum_level=minimum_level, maximum_level=maximum_level,
+                                               one_vs_others=one_vs_others, reuse_old_values=reuse_old_values,
+                                               pre_scaled_data=pre_scaled_data,
+                                               plot_de_dataset=False, plot_density_estimation=False,
+                                               plot_combi_scheme=False, plot_sparsegrid=False)
                           for x in learning_data_classes]
         self._process_performed_classification(operation_list, start_time, print_metrics)
 
@@ -1007,8 +1127,12 @@ class Classification:
                                               margin: float = 0.5,
                                               tolerance: float = 0.01,
                                               max_evaluations: int = 256,
+                                              rebalancing: bool = False,
                                               modified_basis: bool = False,
                                               boundary: bool = False,
+                                              one_vs_others: bool = False,
+                                              error_calculator: ErrorCalculator = None,
+                                              pre_scaled_data: bool = False,
                                               print_metrics: bool = True) -> None:
         """Create dimension-wise GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
@@ -1021,20 +1145,27 @@ class Classification:
         :param lambd: Optional. Parameter which adjusts the 'smoothness' of DensityEstimation results
         :param minimum_level: Optional. Minimum Level of Sparse Grids on which to perform DensityEstimation
         :param maximum_level: Optional. Maximum Level of Sparse Grids on which to perform DensityEstimation
-        :param reuse_old_values: Optional.
-        :param numeric_calculation: Optional.
+        :param reuse_old_values: Optional. R-values and b-values will be re-used across refinements and component grids.
+        :param numeric_calculation: Optional. Use numerical calculation for the integral.
         :param margin: Optional.
-        :param tolerance: Optional.
-        :param max_evaluations: Optional.
-        :param modified_basis: Optional.
-        :param boundary: Optional.
+        :param tolerance: Optional. Error tolerance. Refinement stops if this threshold is reached
+        :param max_evaluations: Optional. Maximum number of points. The refinement will stop when it exceeds this limit.
+        :param rebalancing: Optional. Activate rebalancing of refinement trees.
+        :param modified_basis: Optional. Use the modified basis function..
+        :param boundary: Optional. Put points on the boundary.
+        :param one_vs_others: Optional. Data from other classes will be included with a weighted label < 0.
+        :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
+        :param pre_scaled_data: Optional. Data will not be scaled within the density estimation operation
         :param print_metrics: Optional.
         :return: None
         """
         if self._performed_classification:
             raise ValueError("Can't perform classification for the same object twice.")
         start_time = time.time()
-        learning_data_classes = self._learning_data.split_labels()
+        if one_vs_others:
+            learning_data_classes = self._learning_data.split_one_vs_others()
+        else:
+            learning_data_classes = self._learning_data.split_labels()
         operation_list = [x.density_estimation_dimension_wise(masslumping=masslumping,
                                                               lambd=lambd,
                                                               minimum_level=minimum_level,
@@ -1044,13 +1175,30 @@ class Classification:
                                                               margin=margin,
                                                               tolerance=tolerance,
                                                               max_evaluations=max_evaluations,
+                                                              rebalancing=rebalancing,
                                                               modified_basis=modified_basis,
                                                               boundary=boundary,
+                                                              one_vs_others=one_vs_others,
+                                                              error_calculator=error_calculator,
+                                                              pre_scaled_data=pre_scaled_data,
                                                               plot_de_dataset=False,
                                                               plot_density_estimation=False,
                                                               plot_combi_scheme=False,
                                                               plot_sparsegrid=False) for x in learning_data_classes]
         self._process_performed_classification(operation_list, start_time, print_metrics)
+
+    def continue_dimension_wise_refinement(self,
+                                           tolerance: float = 0.01,
+                                           max_time: float = None,
+                                           max_evaluations: int = 256,
+                                           min_evaluations: int = 1):
+        if self._classificators is not None and self._de_objects is not None:
+            for combi_object in self._classificators:
+                combi_object.continue_adaptive_refinement(tol=tolerance, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
+            self.log_util.log_info("Continued Classification of '{0}' DataSet.".format(self._learning_data.get_name()))
+            self.log_util.log_info("_________________________________________________________________________________________________________________________________")
+            self.log_util.log_info("---------------------------------------------------------------------------------------------------------------------------------")
+
 
     def evaluate(self) -> dict:
         """Evaluate results of all testing data stored within this object.
@@ -1089,15 +1237,16 @@ class Classification:
             warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
             warnings.warn("Nothing to print; test dataset of this object is empty.", stacklevel=3)
             return
-        print("---------------------------------------------------------------------------------------------------------------------------------")
-        print("Printing evaluation of all current testing data...")
+        self.log_util.log_info("---------------------------------------------------------------------------------------------------------------------------------")
+        self.log_util.log_info("Printing evaluation of all current testing data...")
         self._print_evaluation(self._testing_data, np.array(self._calculated_classes_testset), self._densities_testset, print_incorrect_points)
 
     def plot(self,
              plot_class_dataset: bool = False,
              plot_class_density_estimation: bool = False,
              plot_class_combi_scheme: bool = False,
-             plot_class_sparsegrid: bool = False) -> None:
+             plot_class_sparsegrid: bool = False,
+             file_path: str = None) -> None:
         """Plot a Classification object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -1111,6 +1260,7 @@ class Classification:
         plotted. Default False.
         :param plot_class_sparsegrid: Optional. Conditional parameter, which specifies whether the resulting sparsegrids of each class should be
         plotted. Default False.
+        :param file_path: Optional. file path that points to where the plots should be saved
         :return: None
         """
         if not self._performed_classification:
@@ -1118,21 +1268,31 @@ class Classification:
         if plot_class_dataset:
             self._learning_data.plot()
         if plot_class_density_estimation:
+            filename = file_path + '_contour'
             for x in self._classificators:
-                x.plot(contour=True)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.plot(contour=True, filename=filename)
         if plot_class_combi_scheme:
+            filename = file_path + '_combi_scheme'
             for x, y in zip(self._classificators, self._de_objects):
-                x.print_resulting_combi_scheme(operation=y)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.print_resulting_combi_scheme(operation=y, filename=filename)
         if plot_class_sparsegrid:
+            filename = file_path + '_sparsegrid'
             for x in self._classificators:
-                x.print_resulting_sparsegrid(markersize=20)
+                while os.path.isfile(filename + '.png'):
+                    filename = filename + '+'
+                x.print_resulting_sparsegrid(markersize=20, filename=filename)
 
 
 class Clustering:
     """Type of objects, that cluster data based on some previously performed learning.
     """
 
-    def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25):
+    def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25,
+                 log_level=log_levels.WARNING, print_level=print_levels.NONE):
         """Constructor of the Clustering class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -1178,6 +1338,7 @@ class Clustering:
         self._noise_samples = None
         self._performed_clustering = False
         self._time_used = None
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
         self._initialize()
 
     def get_original_data(self) -> DataSet:
@@ -1359,11 +1520,11 @@ class Clustering:
         self._performed_clustering = True
         self._time_used = time.time() - start_time
         if print_metrics:
-            print()
-            print("=================================================================================================================================")
-        print("Performed Clustering of '%s' DataSet." % self._scaled_data.get_name())
+            self.log_util.log_info()
+            self.log_util.log_info("=================================================================================================================================")
+        self.log_util.log_info("Performed Clustering of '%s' DataSet." % self._scaled_data.get_name())
         if print_metrics:
-            print("Time used: %.10f seconds" % self._time_used)
+            self.log_util.log_info("Time used: %.10f seconds" % self._time_used)
 
     def perform_clustering(self,
                            masslumping: bool = True,
@@ -1508,24 +1669,24 @@ class Clustering:
         omitted = evaluation.get("Omitted data")
         original_data_to_evaluate = evaluation.get("Original data to evaluate")
         clustered_data_to_evaluate = evaluation.get("Clustered data to evaluate")
-        print("---------------------------------------------------------------------------------------------------------------------------------")
-        print("Evaluating Clustering object ...")
+        self.log_util.log_info("---------------------------------------------------------------------------------------------------------------------------------")
+        self.log_util.log_info("Evaluating Clustering object ...")
         if not omitted.is_empty():
-            print("Omitted some labelless samples of original dataset. Can't compare original labels of these samples with the clustered ones.")
-            print("Number omitted: %d" % omitted.get_length())
-        print("Number of wrong mappings: %d" % number_wrong)
-        print("Number of total mappings: %d" % self._scaled_data.get_length())
-        print("Percentage of correct mappings: %2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100))
+            self.log_util.log_info("Omitted some labelless samples of original dataset. Can't compare original labels of these samples with the clustered ones.")
+            self.log_util.log_info("Number omitted: %d" % omitted.get_length())
+        self.log_util.log_info("Number of wrong mappings: %d" % number_wrong)
+        self.log_util.log_info("Number of total mappings: %d" % self._scaled_data.get_length())
+        self.log_util.log_info("Percentage of correct mappings: %2.2f%%" % ((1.0 - (number_wrong / self._scaled_data.get_length())) * 100))
         if print_clusters:
-            print("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            print("Number original clusters: %d" % original_data_to_evaluate.get_number_labels())
-            print("Number computed clusters: %d" % clustered_data_to_evaluate.get_number_labels())
-            print("Original data (per label):")
+            self.log_util.log_info("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+            self.log_util.log_info("Number original clusters: %d" % original_data_to_evaluate.get_number_labels())
+            self.log_util.log_info("Number computed clusters: %d" % clustered_data_to_evaluate.get_number_labels())
+            self.log_util.log_info("Original data (per label):")
             for label in original_data_to_evaluate.get_labels():
-                print("%d: %d samples" % (label, np.count_nonzero(original_data_to_evaluate[1] == label)))
-            print("Clustered data (per cluster):")
+                self.log_util.log_info("%d: %d samples" % (label, np.count_nonzero(original_data_to_evaluate[1] == label)))
+            self.log_util.log_info("Clustered data (per cluster):")
             for label in clustered_data_to_evaluate.get_labels():
-                print("%d: %d samples" % (label, np.count_nonzero(clustered_data_to_evaluate[1] == label)))
+                self.log_util.log_info("%d: %d samples" % (label, np.count_nonzero(clustered_data_to_evaluate[1] == label)))
 
     def plot(self,
              plot_original_dataset: bool = False,

@@ -12,7 +12,7 @@ from src.Utils import *
 
 from sys import path
 path.append('../src/')
-import DatasetOperation as do
+import DEMachineLearning as do
 
 
 
@@ -71,14 +71,14 @@ def plot_dataset(d, dim, filename: str = None):
 
 clear_log()
 logger.setLevel(logging.INFO)
-log_info('--- DimWiseClassification begin ---')
+logUtil.log_info('--- DimWiseClassification begin ---')
 
 
 # generate a Circle-Dataset of size with the sklearn library
 size = 10000
 dim = 2
-log_info('data size: ' + str(size))
-log_info('data dimension: ' + str(dim))
+logUtil.log_info('data size: ' + str(size))
+logUtil.log_info('data dimension: ' + str(dim))
 
 # sklearn_dataset = do.datasets.make_circles(n_samples=size, noise=0.05)
 # data_set_name = 'Circles'
@@ -110,8 +110,8 @@ for error_config in error_configs:
     error_calculator = error_config[0]
     one_vs_others = error_config[1]
 
-    log_info('one vs others: ' + str(one_vs_others))
-    log_info('error_calculator: ' + str(type(error_calculator)))
+    logUtil.log_info('one vs others: ' + str(one_vs_others))
+    logUtil.log_info('error_calculator: ' + str(type(error_calculator)))
 
     # now we can transform this dataset into a DataSet object and give it an appropriate name
     data = do.DataSet(sklearn_dataset, name=data_set_name)
@@ -154,7 +154,7 @@ for error_config in error_configs:
 
     max_level = 4
     print('classification max_level', max_level)
-    log_info('classification standardCombi max_level: ' + str(max_level))
+    logUtil.log_info('classification standardCombi max_level: ' + str(max_level))
     classification.perform_classification(masslumping=False,
                                           lambd=0.0,
                                           minimum_level=1,
@@ -189,7 +189,7 @@ for error_config in error_configs:
     #max_evals = (((2**max_level) - 1) * dim)
     max_evals = ((2**max_level) - 1) * dim - (dim - 1) + (2**dim) * prev_level(max_level, dim)
     print('classification max_evaluations', max_evals)
-    log_info('classification dimwise max_evaluations: ' + str(max_evals))
+    logUtil.log_info('classification dimwise max_evaluations: ' + str(max_evals))
 
     boundary = False
     modified_basis = False
@@ -219,4 +219,4 @@ for error_config in error_configs:
     retfig0 = correct_classes_dimwise.plot(filename='figures/correct_classes_dim-wise')
 
 
-    log_info('--- DimWiseClassification end ---', True)
+    logUtil.log_info('--- DimWiseClassification end ---')

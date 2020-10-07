@@ -204,21 +204,20 @@ class StandardCombi(object):
 
         # output combi_result
         if self.print_output:
-            log_debug("CombiSolution".format(combi_result), self.print_output)
+            logUtil.log_debug("CombiSolution".format(combi_result), self.print_output)
 
         if plot:
             print("Combi scheme:")
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        log_info("Time used (s):" + str(time.perf_counter() - start_time), True)
-        log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(
-            self.get_total_num_points()), True)
+        logUtil.log_info("Time used (s):" + str(time.perf_counter() - start_time))
+        logUtil.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:
             if self.print_output:
-                log_debug("Analytic Solution ".format(reference_solution), self.print_output)
-                log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
+                logUtil.log_debug("Analytic Solution ".format(reference_solution), self.print_output)
+                logUtil.log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result

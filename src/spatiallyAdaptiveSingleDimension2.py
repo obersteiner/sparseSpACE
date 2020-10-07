@@ -586,11 +586,11 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            time_func(self.print_output, "spatAdaptDimWise: calculate_operation_dimension_wise time taken " ,self.operation.calculate_operation_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, component_grid)
+            self.log_util.time_func("spatAdaptDimWise: calculate_operation_dimension_wise time taken ", self.operation.calculate_operation_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, component_grid)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
             if not self.errorEstimator.is_global:
-                time_func(self.print_output, "spatAdaptDimWise: compute_error_estimates_dimension_wise time taken ", self.compute_error_estimates_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
+                self.log_util.time_func("spatAdaptDimWise: compute_error_estimates_dimension_wise time taken ", self.compute_error_estimates_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
 
             # save the number of evaluations used per d-1 dimensional slice
             #for d in range(self.dim):
@@ -720,8 +720,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         """
         self.lmax[d] += value
         if self.dim_adaptive:
-            if self.print_output:
-                log_debug("New lmax: {0}".format(self.lmax), self.print_output)
+            self.log_util.log_debug("New lmax: {0}".format(self.lmax))
             while (True):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
@@ -791,8 +790,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-            if self.print_output:
-                log_debug("Rebalancing!", self.print_output)
+            self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -820,8 +818,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         new_leaf_reached = True
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
             position_new_leaf = None
-            if self.print_output:
-                log_debug("Rebalancing!", self.print_output)
+            self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
