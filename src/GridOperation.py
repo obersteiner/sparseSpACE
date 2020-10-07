@@ -582,6 +582,7 @@ class Integration(AreaOperation):
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
+            print("Removing integral:", removed_object.value, "from region", removed_object.start, removed_object.end)
             self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
@@ -616,7 +617,7 @@ class Integration(AreaOperation):
     def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution
 
-    def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
+    def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info, apply_to_combi_result=True):
         partial_integral = self.grid.integrate(self.f, levelvector, area.start, area.end)
         if area.value is None:
             area.value = partial_integral * componentgrid_info.coefficient
@@ -625,7 +626,8 @@ class Integration(AreaOperation):
         evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
             refinement_container.value += partial_integral * componentgrid_info.coefficient
-        self.integral += partial_integral * componentgrid_info.coefficient
+        if apply_to_combi_result:
+            self.integral += partial_integral * componentgrid_info.coefficient
         return evaluations
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo):

@@ -239,13 +239,13 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     for area in new_refinement_objects:
                         temp.extend(area.split_area_single_dim(d))
                     new_refinement_objects = temp
-                                 
+                assert len(new_refinement_objects) == 2**self.dim
                 for area in new_refinement_objects:
-                    for d in range(self.dim - 1):
+                    for d in range(self.dim):
                         area.twins[d] = None
                 for i in range(2**self.dim):
                     area = new_refinement_objects[i]
-                    for d in range(self.dim-1):
+                    for d in range(self.dim):
                         '''
                         twin = new_refinement_objects[(i+2**(self.dim-1)) % 2**(self.dim-d)]
                         area.set_twin(d, twin)
@@ -278,7 +278,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
             for component_grid in self.scheme:
                 modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, area)
                 if do_compute:
-                    evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, None, None)
+                    evaluations = self.operation.evaluate_area(area, modified_levelvec, component_grid, None, None, apply_to_combi_result=False)
 
         for area in new_refinement_objects:
             #print("area", area.start,area.end, area.integral)
@@ -299,7 +299,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     for component_grid in self.scheme:
                         modified_levelvec, do_compute = self.coarsen_grid(component_grid.levelvector, parent_area)
                         if do_compute:
-                            evaluations = self.operation.evaluate_area(parent_area, modified_levelvec, component_grid, None, None)
+                            evaluations = self.operation.evaluate_area(parent_area, modified_levelvec, component_grid, None, None, apply_to_combi_result=False)
                     #print("Areas", area.start, area.end, area.twins[d].start, area.twins[d].end)
                     #print("Integrals", area.integral, area.twins[d].integral, area.parent_info.parent.integral)
                     twin_error = self.get_twin_error(d, area, self.norm)
@@ -311,17 +311,18 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         if self.split_single_dim:
             for d in range(self.dim):
                 if area.twinErrors[d] is None:
-                    twinError = self.operation.get_twin_error(d, area,self.norm)
+                    twinError = self.get_twin_error(d, area,self.norm)
                     area.set_twin_error(d, twinError)
         lmax_change, new_objects = self.refinement.refine(position)
+        if self.split_single_dim and len(new_objects) > 2:
+           self.calculate_new_twin_errors(new_objects)
+
         if lmax_change != None:
             self.lmax = [self.lmax[d] + lmax_change[d] for d in range(self.dim)]
             if self.print_output:
                 print("New scheme")
             self.scheme = self.combischeme.getCombiScheme(self.lmin[0], self.lmax[0],do_print=self.print_output)
             return False
-        elif self.split_single_dim:
-            self.calculate_new_twin_errors(new_objects)
         return False
 
     def compute_benefits_for_operations(self, area):
