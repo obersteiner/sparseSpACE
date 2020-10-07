@@ -97,7 +97,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 )
             )
             midpoint = 0.5*(np.asarray(i.start) + np.asarray(i.end))
-            ax.text(midpoint[0] - 0.015, midpoint[1], str(self.lmax[0] - i.coarseningValue),
+            ax.text(midpoint[0] - 0*0.015, midpoint[1]-0.025, str(self.lmax[0] - i.coarseningValue),
                 fontsize=fontsize, ha='center', color="blue")
 
     # returns the points of a single component grid with refinement
