@@ -11,4 +11,6 @@ __pycache__/
 Untitled.ipynb
 .directory
 eval_figs_*
+log_sg
 log_*
+

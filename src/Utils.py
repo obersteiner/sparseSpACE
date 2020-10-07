@@ -127,21 +127,21 @@ class LogUtility:
             else lambda x: None
         self.log_warning_fn = lambda x: logger.warning(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.WARNING \
             else lambda x: None
-        self.log_info_fn = lambda x: logger.info(self.log_prefix + self.log_delimiter + x) if self.log_level == logging.INFO \
+        self.log_info_fn = lambda x: logger.info(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.INFO \
             else lambda x: None
-        self.log_debug_fn = lambda x: logger.debug(self.log_prefix + self.log_delimiter + x) if self.log_level == logging.DEBUG \
+        self.log_debug_fn = lambda x: logger.debug(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.DEBUG \
             else lambda x: None
 
-        self.time_func = self.timing_wrapper if self.log_level <= log_levels.INFO \
+        self.time_func = self.timing_wrapper if self.log_level >= log_levels.INFO \
             else lambda msg, fn, *kwargs: fn(*kwargs)
 
     def update_print_function(self):
-        self.print_error = self.print_message if self.print_level <= print_levels.ERROR else lambda x: None
-        self.print_warning = self.print_message if self.print_level <= print_levels.WARNING else lambda x: None
-        self.print_info = self.print_message if self.print_level <= print_levels.INFO else lambda x: None
-        self.print_debug = self.print_message if self.print_level <= print_levels.DEBUG else lambda x: None
+        self.print_error = self.print_message if self.print_level >= print_levels.ERROR else lambda x: None
+        self.print_warning = self.print_message if self.print_level >= print_levels.WARNING else lambda x: None
+        self.print_info = self.print_message if self.print_level >= print_levels.INFO else lambda x: None
+        self.print_debug = self.print_message if self.print_level >= print_levels.DEBUG else lambda x: None
 
-        self.time_func = self.timing_wrapper if self.print_level <= print_levels.INFO \
+        self.time_func = self.timing_wrapper if self.print_level >= print_levels.INFO \
             else lambda msg, fn, *kwargs: fn(*kwargs)
 
     def print_message(self, message):

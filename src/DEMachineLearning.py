@@ -35,6 +35,8 @@ class DataSet:
         :param raw_data: Samples (and corresponding labels) of this DataSet. Can be a tuple of samples and labels, only labelless samples, CSV file.
         :param name: Optional. Name of this DataSet.
         :param label: Optional. Type of labels for this DataSet.
+        :param log_level: Optional. Set the log level for this instance. Only statements of the given level or higher will be written to the log file
+        :param print_level: Optional.  Set the level for print statements. Only statements of the given level or higher will be written to the console
         """
         self._name = name
         self._label = label
@@ -374,6 +376,14 @@ class DataSet:
         return set_labels
 
     def split_one_vs_others(self):
+        """Separate samples into two classes: the class to be estimated and all others combined into the 'other' set
+
+        Collects the for each label that is not the one to be estimated into one set.
+        The label for the 'other' set is a weighted negative number. The weight is the ratio of samples between
+        the class to be estimated and all others.
+
+        :return: A List, which contains the two DataSets.
+        """
         set_classes = []
         class_numbers = [sum(self._data[1] == j) for j in self.get_labels()]
         for j in self.get_labels():
@@ -759,6 +769,8 @@ class Classification:
         for each class should be of near equal size. Default True.
         :param shuffle_data: Optional. Indicates, whether the data should be randomly shuffled in the initialization step. Default True.
         :param print_output: Optional. Print log statements to console
+        :param log_level: Optional. Set the log level for this instance. Only statements of the given level or higher will be written to the log file
+        :param print_level: Optional.  Set the level for print statements. Only statements of the given level or higher will be written to the console
         """
         self._original_data = raw_data
         self._scaled_data = None
@@ -1268,22 +1280,25 @@ class Classification:
         if plot_class_dataset:
             self._learning_data.plot()
         if plot_class_density_estimation:
-            filename = file_path + '_contour'
+            filename = file_path + '_contour' if file_path is not None else None
             for x in self._classificators:
-                while os.path.isfile(filename + '.png'):
-                    filename = filename + '+'
+                if filename is not None:
+                    while os.path.isfile(filename + '.png'):
+                        filename = filename + '+'
                 x.plot(contour=True, filename=filename)
         if plot_class_combi_scheme:
-            filename = file_path + '_combi_scheme'
+            filename = file_path + '_combi_scheme' if file_path is not None else None
             for x, y in zip(self._classificators, self._de_objects):
-                while os.path.isfile(filename + '.png'):
-                    filename = filename + '+'
+                if filename is not None:
+                    while os.path.isfile(filename + '.png'):
+                        filename = filename + '+'
                 x.print_resulting_combi_scheme(operation=y, filename=filename)
         if plot_class_sparsegrid:
-            filename = file_path + '_sparsegrid'
+            filename = file_path + '_sparsegrid' if file_path is not None else None
             for x in self._classificators:
-                while os.path.isfile(filename + '.png'):
-                    filename = filename + '+'
+                if filename is not None:
+                    while os.path.isfile(filename + '.png'):
+                        filename = filename + '+'
                 x.print_resulting_sparsegrid(markersize=20, filename=filename)
 
 
@@ -1319,6 +1334,8 @@ class Clustering:
         :param raw_data: DataSet on which to perform learning (and if 0 < percentage < 1 also testing).
         :param number_nearest_neighbors: Optional. Specifies the number of neighbors for the connected graph. Default 5.
         :param edge_cutting_threshold: Optional. Specifies the edge cutting threshold, which later assists in omitting some edges. Default 0.25.
+        :param log_level: Optional. Set the log level for this instance. Only statements of the given level or higher will be written to the log file
+        :param print_level: Optional.  Set the level for print statements. Only statements of the given level or higher will be written to the console
         """
         self._original_data = raw_data
         self._scaled_data = None

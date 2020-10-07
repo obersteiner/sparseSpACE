@@ -82,7 +82,7 @@ for data_set in [2]:
 
                         data_copy = data.copy()                                              # deepcopied
                         data_copy.scale_range(data_range)                                # scaled
-                        without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes                                                 # plotted
+                        without_classes, with_classes = data_copy.split_without_labels()    # seperated into samples with and without classes
 
                         data.scale_range(data_range)
 
