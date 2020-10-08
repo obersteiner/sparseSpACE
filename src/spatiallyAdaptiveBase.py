@@ -13,9 +13,11 @@ if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
 else:
     timing = time.time
 
+
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int=np.inf, timings=None):
+    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int = np.inf,
+                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         assert operation is not None
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
@@ -29,7 +31,9 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.calculated_solution = None
         assert (len(a) == len(b))
         self.timings = timings
-        self.log_util = LogUtility(log_level=log_levels.WARNING, print_level=print_levels.NONE)
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('SpatiallyAdaptivBase')
+        self.log_util.set_log_prefix('SpatiallyAdaptivBase')
 
     def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool) -> int:
         array2 = self.get_points_component_grid(levelvec)

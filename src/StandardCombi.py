@@ -15,7 +15,8 @@ class StandardCombi(object):
 
     """
 
-    def __init__(self, a, b, operation: GridOperation, print_output=False, norm=2):
+    def __init__(self, a, b, operation: GridOperation, print_output: bool = False, norm: int = 2,
+                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -35,6 +36,12 @@ class StandardCombi(object):
         self.operation = operation
         self.do_parallel = True
         self.norm = norm
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        # for compatibility with old code
+        if print_output is True and print_level == print_levels.NONE:
+            self.log_util.set_print_level(print_levels.INFO)
+        self.log_util.set_print_prefix('StandardCombi')
+        self.log_util.set_log_prefix('StandardCombi')
 
     def __call__(self, interpolation_points: Sequence[Tuple[float, ...]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation points using the Combination Technique.
@@ -105,7 +112,7 @@ class StandardCombi(object):
         :return: None
         """
         if self.dim != 2:
-            log_warning("Can only plot 2D results", True)
+            self.log_util.log_warning("Can only plot 2D results")
             return
         fontsize = 30
         plt.rcParams.update({'font.size': fontsize})
@@ -204,20 +211,19 @@ class StandardCombi(object):
 
         # output combi_result
         if self.print_output:
-            logUtil.log_debug("CombiSolution".format(combi_result), self.print_output)
+            self.log_util.log_debug("CombiSolution".format(combi_result), self.print_output)
 
         if plot:
             print("Combi scheme:")
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        logUtil.log_info("Time used (s):" + str(time.perf_counter() - start_time))
-        logUtil.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
+        self.log_util.log_info("Time used (s):" + str(time.perf_counter() - start_time))
+        self.log_util.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:
-            if self.print_output:
-                logUtil.log_debug("Analytic Solution ".format(reference_solution), self.print_output)
-                logUtil.log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)), self.print_output)
+            self.log_util.log_debug("Analytic Solution ".format(reference_solution))
+            self.log_util.log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)))
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
@@ -271,7 +277,7 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
+            self.log_util.log_warning("Cannot print combischeme of dimension > 2")
             return None
         ncols = self.lmax[0] - self.lmin[0] + 1
         nrows = self.lmax[1] - self.lmin[1] + 1
@@ -459,7 +465,7 @@ class StandardCombi(object):
         lmax = self.lmax #[self.combischeme.lmax_adaptive] * self.dim if hasattr(self.combischeme, 'lmax_adaptive') else self.lmax
         dim = self.dim
         if dim != 2:
-            log_warning("Cannot print combischeme of dimension > 2", self.print_output)
+            self.log_util.log_warning("Cannot print combischeme of dimension > 2")
             return None
         fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
@@ -679,7 +685,7 @@ class StandardCombi(object):
         scheme = self.scheme
         dim = self.dim
         if dim != 2 and dim != 3:
-            log_warning("Cannot print sparse grid of dimension > 3", self.print_output)
+            self.log_util.log_warning("Cannot print sparse grid of dimension > 3")
             return None
         if dim == 2:
             fig, ax = plt.subplots(figsize=(figsize, figsize))
@@ -797,9 +803,9 @@ class StandardCombi(object):
         for key, value in dictionary.items():
             # print(key, value)
             if value != 1:
-                log_error("{0} Failed for: {1} with value: {2}".format(dictionary, key, value), True)
+                self.log_util.log_error("{0} Failed for: {1} with value: {2}".format(dictionary, key, value))
                 for area in self.refinement.get_objects():
-                    log_error("area dict {0}".format(area.levelvec_dict), True)
+                    self.log_util.log_error("area dict {0}".format(area.levelvec_dict))
             assert (value == 1)
 
     def get_points_component_grid_not_null(self, levelvec: Sequence[int]) -> Sequence[Tuple[float, ...]]:
@@ -867,7 +873,7 @@ class StandardCombi(object):
                 total_surplusses.extend(surplusses)
             return np.asarray(total_surplusses)
         else:
-            log_warning("Grid does not support surplusses", True)
+            self.log_util.log_warning("Grid does not support surplusses")
             return None
 
     def add_refinment_to_figure_axe(self, ax, linewidth: int=1) -> None:
@@ -893,11 +899,11 @@ class StandardCombi(object):
             with open(filename, 'rb') as f:
                 return dill.load(f)
         else:
-            log_error("Dill library not found! Please install dill using pip3 install dill.", True)
+            logUtil.log_error("Dill library not found! Please install dill using pip3 install dill.")
 
     def save_to_file(self, filename: str) -> None:
         """This method can be used to store a StandardCombi object (or child class) in a file.
-        
+
         :param filename: Specifies filename where to store combi object.
         :return: None
         """
@@ -908,4 +914,4 @@ class StandardCombi(object):
             with open(filename, 'wb') as f:
                 dill.dump(self, f)
         else:
-            log_error("Dill library not found! Please install dill using pip3 install dill.", True)
+            logUtil.log_error("Dill library not found! Please install dill using pip3 install dill.")

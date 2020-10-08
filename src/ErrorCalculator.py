@@ -4,13 +4,17 @@ import abc
 import logging
 from numpy import linalg as LA
 from math import copysign
+from Utils import LogUtility, print_levels, log_levels
 
 # This class is the general interface of an error estimator currently used by the algorithm
 class ErrorCalculator(object):
     # initialization
-    def __init__(self):
+    def __init__(self, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         self.log = logging.getLogger(__name__)
         self.is_global = False
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('ErrorCalculator')
+        self.log_util.set_log_prefix('ErrorCalculator')
 
     # calculates error for the function f and the integral information that was computed by the algorithm
     # this information contains the area specification and the approximated integral

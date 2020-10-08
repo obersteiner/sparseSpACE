@@ -24,7 +24,10 @@ class NodeInfo(object):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True, version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True, chebyshev_points=False, use_volume_weighting=False, timings=None):
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int = np.inf, dim_adaptive: bool = True,
+                 version: int = 6, operation: GridOperation = None, margin: float = None, rebalancing: bool = True,
+                 chebyshev_points=False, use_volume_weighting=False, timings=None,
+                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, timings=None)
         assert self.grid is not None
         self.grid_surplusses = self.grid #GlobalTrapezoidalGrid(a, b, boundary=boundary, modified_basis=modified_basis)
@@ -47,6 +50,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.chebyshev_points = chebyshev_points
         self.use_volume_weighting = use_volume_weighting
         self.timings = timings
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('SpatiallyAdaptiveSingleDimensions2')
+        self.log_util.set_log_prefix('SpatiallyAdaptiveSingleDimensions2')
 
     def min_max_scale_surplusses(self):
         #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))

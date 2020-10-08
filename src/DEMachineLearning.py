@@ -26,7 +26,8 @@ class DataSet:
     Unknown labels are labeled with -1.
     """
 
-    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown', label: str = 'class', log_level=log_levels.WARNING, print_level=print_levels.NONE):
+    def __init__(self, raw_data: Union[Tuple[np.ndarray, ...], np.ndarray, str], name: str = 'unknown', label: str = 'class',
+                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         """Constructor of the DataSet class.
 
         Takes raw data and optionally a name or label-description as parameter and initializes the original data in the form of a tuple of legnth 2.
@@ -50,6 +51,8 @@ class DataSet:
         self._original_min = None
         self._original_max = None
         self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('DataSet')
+        self.log_util.set_log_prefix('DataSet')
         self._initialize(raw_data)
         assert ((self._data is not None) and (self._dim is not None) and (self._shape is not None))
         assert (isinstance(self._data, tuple) and len(self._data) == 2 and
@@ -742,8 +745,8 @@ class Classification:
                  split_evenly: bool = True,
                  shuffle_data: bool = True,
                  print_output: bool = False,
-                 log_level=log_levels.WARNING,
-                 print_level=print_levels.NONE):
+                 log_level: int = log_levels.WARNING,
+                 print_level: int = print_levels.NONE):
         """Constructor of the Classification class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -790,6 +793,8 @@ class Classification:
         # for compatibility with old code
         if print_output is True and print_level == print_levels.NONE:
             self.log_util.set_print_level(print_levels.INFO)
+        self.log_util.set_print_prefix('Classification')
+        self.log_util.set_log_prefix('Classification')
         self._initialize((split_percentage if isinstance(split_percentage, float) and (1 > split_percentage > 0) else 1.0), split_evenly,
                          shuffle_data)
 
@@ -1317,7 +1322,7 @@ class Clustering:
     """
 
     def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25,
-                 log_level=log_levels.WARNING, print_level=print_levels.NONE):
+                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         """Constructor of the Clustering class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -1366,6 +1371,8 @@ class Clustering:
         self._performed_clustering = False
         self._time_used = None
         self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('Clustering')
+        self.log_util.set_log_prefix('Clustering')
         self._initialize()
 
     def get_original_data(self) -> DataSet:
