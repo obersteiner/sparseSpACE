@@ -200,13 +200,18 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         full_grid = [refinement_object.start for refinement_object in refinement_objects] + [refinement_objects[-1].end]
         full_grid_levels = [refinement_object.levels[0] for refinement_object in refinement_objects] + [refinement_objects[-1].levels[1]]
         missing_points = []
+        matched_points = set()
         for i, level in enumerate(grid_levels):
-            for j in range(i+1, len(grid_levels)):
-                if grid_levels[j] == level:
-                    break
-                if grid_levels[j] <= level - 2:
-                    missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
-                    missing_points.append((missing_point, level))
+            if i not in matched_points:
+                for j in range(i+1, len(grid_levels)):
+                    if grid_levels[j] == level:
+                        matched_points.add(i)
+                        matched_points.add(j)
+                        break
+                    if grid_levels[j] <= level - 2:
+                        missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
+                        missing_points.append((missing_point, level))
+                        break
         previous_points = list(zip(grid,grid_levels))
         balanced_points = previous_points + missing_points
         new_grid = [point[0] for point in sorted(balanced_points)]
@@ -238,10 +243,18 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         '''
 
     def find_missing_point(self, point, level, full_grid, full_levels):
+        #print(point, level, full_grid, full_levels)
         for position, grid_point in enumerate(full_grid):
             if point == grid_point:
                 assert level == full_levels[position]
-                for j, point_candidate in enumerate(full_grid[position+1:]):
+                for j, point_candidate in zip(range(position, len(full_grid)), full_grid[position+1:]):
+                    if full_levels[j] <= level -2:
+                        break
+                    if full_levels[j] == level:
+                        return point_candidate
+                for j, point_candidate in zip(range(position-1,-1,-1),reversed(full_grid[:position])):
+                    if full_levels[j] <= level -2:
+                        assert False # should never happen
                     if full_levels[j] == level:
                         return point_candidate
 
