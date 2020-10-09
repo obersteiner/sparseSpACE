@@ -234,6 +234,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                                                  0, automatic_extend_split=self.automatic_extend_split,
                                                  splitSingleDim=self.split_single_dim)
             if self.split_single_dim:
+                self.root_cell.numberOfRefinementsBeforeExtend += self.dim
                 new_refinement_objects = [self.root_cell]
                 for d in range(self.dim):
                     temp = []
@@ -269,6 +270,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                     area.parent_info.parent = self.root_cell
                 self.root_cell.children = new_refinement_objects
             else:
+                self.root_cell.numberOfRefinementsBeforeExtend += 1
                 new_refinement_objects = self.root_cell.split_area_arbitrary_dim()
             self.refinement = RefinementContainer(new_refinement_objects, self.dim, self.errorEstimator)
         if self.errorEstimator is None:
