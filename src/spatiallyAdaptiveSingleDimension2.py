@@ -247,7 +247,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         for position, grid_point in enumerate(full_grid):
             if point == grid_point:
                 assert level == full_levels[position]
-                for j, point_candidate in zip(range(position, len(full_grid)), full_grid[position+1:]):
+                for j, point_candidate in zip(range(position+1, len(full_grid)), full_grid[position+1:]):
                     if full_levels[j] <= level -2:
                         break
                     if full_levels[j] == level:
