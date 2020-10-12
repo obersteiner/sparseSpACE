@@ -647,8 +647,9 @@ class GenzCornerPeak(Function):
         result = 1 + np.inner(coordinates, self.coeffs)
         result = result ** (-self.dim - 1)
         for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]))
+            assert math.isclose(result[i], self.eval(coordinates[i]))
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -670,24 +671,25 @@ class GenzCornerPeak(Function):
 class GenzProductPeak(Function):
     def __init__(self, coefficients, midpoint):
         super().__init__()
-        self.coeffs = coefficients
-        self.midPoint = midpoint
+        self.coeffs = np.asarray(coefficients)
+        self.midPoint = np.asarray(midpoint)
         self.dim = len(coefficients)
         self.factor = 10 ** (-self.dim)
 
     def eval(self, coordinates):
-        result = 1
+        result = self.factor
         for d in range(self.dim):
             result /= (self.coeffs[d] ** (-2) + (coordinates[d] - self.midPoint[d]) ** 2)
-        return result * self.factor
-
-    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (-2), axis=1)
-        result = 1 / result
-        for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
         return result
+
+    #def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+    #    result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (-2), axis=1)
+    #    result = self.factor / result
+    #    for i in range(len(coordinates)):
+    #        if not math.isclose(result[i], self.eval(coordinates[i])):
+    #            print(result[i], self.eval(coordinates[i]), coordinates[i])
+    #        assert math.isclose(result[i], self.eval(coordinates[i]))
+    #    return result
 
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
@@ -714,8 +716,9 @@ class GenzOszillatory(Function):
         result = 2 * math.pi * self.offset + np.inner(coordinates, self.coeffs)
         result = np.cos(result)
         for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]))
+            assert math.isclose(result[i], self.eval(coordinates[i]))
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -758,10 +761,12 @@ class GenzDiscontinious(Function):
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.zeros(len(coordinates))
-        result[np.any(coordinates > self.border, axis=1)] = np.exp(-1 * np.inner(coordinates, self.coeffs))
+        filter = np.all(coordinates < self.border, axis=1)
+        result[filter] = np.exp(-1 * np.inner(coordinates[filter], self.coeffs))
         for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]))
+            assert math.isclose(result[i], self.eval(coordinates[i]))
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -862,8 +867,9 @@ class GenzGaussian(Function):
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.exp(-1 * np.inner((coordinates - self.midPoint) ** 2, self.coeffs))
         for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]))
+            assert math.isclose(result[i], self.eval(coordinates[i]))
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -894,8 +900,9 @@ class FunctionExpVar(Function):
         temp = coordinates ** (1.0/dim)
         result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=1)
         for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]))
+            assert math.isclose(result[i], self.eval(coordinates[i]))
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
