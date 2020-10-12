@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set, Tuple
+from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set, Tuple, Union
 
 # The function class is used to define several functions for testing the algorithm
 # it defines the basic interface that is used by the algorithm
@@ -23,23 +23,39 @@ class Function(object):
         self.old_f_dict = {}
         self.f_dict = {}
 
-    def __call__(self, coordinates: Tuple[float, ...]) -> Sequence[float]:
+    def __call__(self, coordinates: Union[Tuple[float, ...], Sequence[Tuple[float]]]) -> Sequence[float]:
         f_value = None
-        if self.do_cache:
-            coords = tuple(coordinates)
-            f_value = self.f_dict.get(coords, None)
-            if f_value is None:
-                f_value = self.old_f_dict.get(coords, None)
-                if f_value is not None:
-                    self.f_dict[coords] = f_value
-        if f_value is None:
-            f_value = self.eval(coords)
+        if np.isscalar(coordinates[0]):
+            # single evaluation point
             if self.do_cache:
-                self.f_dict[coords] = f_value
-        if np.isscalar(f_value):
-            f_value = [f_value]
-        assert len(f_value) == self.output_length(), "Wrong output_length()! Adjust the output length in your function!"
-        return np.array(f_value)
+                coords = tuple(coordinates)
+                f_value = self.f_dict.get(coords, None)
+                if f_value is None:
+                    f_value = self.old_f_dict.get(coords, None)
+                    if f_value is not None:
+                        self.f_dict[coords] = f_value
+            if f_value is None:
+                f_value = self.eval(coords)
+                if self.do_cache:
+                    self.f_dict[coords] = f_value
+            if np.isscalar(f_value):
+                f_value = [f_value]
+            assert len(f_value) == self.output_length(), "Wrong output_length()! Adjust the output length in your function!"
+            return np.array(f_value)
+        else:
+            try:
+                f_values = np.asarray(self.eval_vectorized(np.asarray(coordinates)))
+                f_values = f_values.reshape((len(coordinates), self.output_length()))
+                self.f_dict.update(zip([tuple(c) for c in coordinates], f_values))
+                return f_values
+            except AttributeError:
+                f_values = np.empty((len(coordinates), self.output_length()))
+                for i, coordinate in enumerate(coordinates):
+                    f_values[i,:] = self(coordinate)
+                return f_values
+
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        raise AttributeError
 
     def deactivate_caching(self) -> None:
         self.do_cache = False
@@ -421,6 +437,13 @@ class FunctionLinear(Function):
             result *= self.coeffs[d] * coordinates[d]
         return result
 
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.prod(coordinates * self.coeffs,axis=1)
+        #for i in range(len(coordinates)):
+        #    print(result[i], self.eval(coordinates[i]))
+        #    assert result[i] == self.eval(coordinates[i])
+        return result
+
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1.0
         for d in range(self.dim):
@@ -620,6 +643,14 @@ class GenzCornerPeak(Function):
             result += self.coeffs[d] * coordinates[d]
         return result ** (-self.dim - 1)
 
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = 1 + np.inner(coordinates, self.coeffs)
+        result = result ** (-self.dim - 1)
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
+
     def getAnalyticSolutionIntegral(self, start, end):
         factor = ((-1) ** self.dim) * 1.0 / (math.factorial(self.dim) * np.prod(self.coeffs))
         combinations = list(zip(*[g.ravel() for g in np.meshgrid(*[[0, 1] for d in range(self.dim)])]))
@@ -650,6 +681,14 @@ class GenzProductPeak(Function):
             result /= (self.coeffs[d] ** (-2) + (coordinates[d] - self.midPoint[d]) ** 2)
         return result * self.factor
 
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (-2), axis=1)
+        result = 1 / result
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
+
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
         for d in range(self.dim):
@@ -670,6 +709,14 @@ class GenzOszillatory(Function):
         for d in range(self.dim):
             result += self.coeffs[d] * coordinates[d]
         return math.cos(result)
+
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = 2 * math.pi * self.offset + np.inner(coordinates, self.coeffs)
+        result = np.cos(result)
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
 
     def getAnalyticSolutionIntegral(self, start, end):
         not_zero_dims = [d for d in range(self.dim) if self.coeffs[d] != 0]
@@ -708,6 +755,14 @@ class GenzDiscontinious(Function):
                 return 0.0
             result -= self.coeffs[d] * coordinates[d]
         return np.exp(result)
+
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.zeros(len(coordinates))
+        result[np.any(coordinates > self.border, axis=1)] = np.exp(-1 * np.inner(coordinates, self.coeffs))
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
 
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
@@ -759,6 +814,13 @@ class GenzC0(Function):
             result -= self.coeffs[d] * abs(coordinates[d] - self.midPoint[d])
         return np.exp(result)
 
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.exp(-1 * np.inner(np.abs(coordinates - self.midPoint), self.coeffs))
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
+
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
         for d in range(self.dim):
@@ -797,6 +859,13 @@ class GenzGaussian(Function):
             summation -= self.coefficients[d] * (coordinates[d] - self.midpoint[d]) ** 2
         return np.exp(summation)
 
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.exp(-1 * np.inner((coordinates - self.midPoint) ** 2, self.coeffs))
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
+
     def getAnalyticSolutionIntegral(self, start, end):
         dim = len(start)
         # print lowerBounds,upperBounds,coefficients, midpoints
@@ -819,6 +888,15 @@ class FunctionExpVar(Function):
         for d in range(dim):
             prod *= coordinates[d] ** (1.0 / dim)
         return (1 + 1.0 / dim) ** dim * prod
+
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        dim = len(coordinates[0])
+        temp = coordinates ** (1.0/dim)
+        result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=1)
+        for i in range(len(coordinates)):
+            #print(result[i], self.eval(coordinates[i]))
+            assert result[i] == self.eval(coordinates[i])
+        return result
 
     def getAnalyticSolutionIntegral(self, start, end):
         dim = len(start)

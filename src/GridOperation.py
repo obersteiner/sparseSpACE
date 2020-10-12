@@ -578,7 +578,8 @@ class Integration(AreaOperation):
         :param component_grid: Component grid which we want to evaluate.
         :return: Values at points (same order).
         """
-        return np.asarray([self.f(p) for p in points])
+        #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
+        return self.f(points) #np.asarray([self.f(p) for p in points])
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
@@ -586,11 +587,14 @@ class Integration(AreaOperation):
             self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
-        mesh_points = get_cross_product(mesh_points_grid)
-        function_value_dim = self.f.output_length()
-        # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array(
-            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        mesh_points = np.array(get_cross_product_list(mesh_points_grid))
+        if self.grid.boundary:
+            values = self.f(mesh_points)
+        else:
+            # calculate function values at mesh points and transform  correct data structure for scipy
+            values = np.zeros((len(mesh_points), self.f.output_length()))
+            filter = self.grid.points_not_zero(mesh_points).astype(bool)
+            values[filter] = self.f(mesh_points[filter])
         return values
 
     def get_mesh_values(self, mesh_points_grid):

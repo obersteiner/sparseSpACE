@@ -1103,26 +1103,26 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 factor_left_parent = 1.0
             else:
                 factor_left_parent = (right_parent - child)/(right_parent - left_parent)
-            points_left_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in range(self.dim)])
+            points_left_parent = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in range(self.dim)])
             #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
             if isinf(left_parent):
                 factor_right_parent= 1.0
             else:
                 factor_right_parent = (child - left_parent)/(right_parent - left_parent)
-            points_right_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in range(self.dim)])
+            points_right_parent = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in range(self.dim)])
             #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-            left_of_left_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in range(self.dim)])
+            left_of_left_parents = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in range(self.dim)])
         if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-            right_of_right_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2 in range(self.dim)])
+            right_of_right_parents = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2 in range(self.dim)])
 
-        points_children = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
+        points_children = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
         #points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = get_cross_product([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
+        indices = get_cross_product_list([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
         #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         #index = indices[i]
-        factors = np.asarray([np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for index in indices]).reshape((size_slize, 1))
+        factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
         #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
         exponent = 1# if not self.do_high_order else 2
         #if factor2 != 0:
