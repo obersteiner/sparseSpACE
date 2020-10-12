@@ -13,7 +13,7 @@ from typing import Callable, Tuple, Sequence
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
 
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, a, b, boundary:bool=True):
         self.boundary = boundary
         self.a = a
         self.b = b
