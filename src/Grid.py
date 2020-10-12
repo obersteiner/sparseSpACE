@@ -641,8 +641,8 @@ class LejaGrid1D(Grid1d):
 
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points(self.level, 0, 1)
-        # print(coordsD)
         weightsD = np.array(self.compute_1D_quad_weights(coordsD)) * self.length
+        assert len(coordsD) == len(weightsD)
         coordsD = np.array(coordsD)
         coordsD *= self.length
         coordsD += self.start
@@ -653,6 +653,8 @@ class LejaGrid1D(Grid1d):
             numPoints = 2
         else:
             numPoints = self.linear_growth_factor * (level + 1) - 1
+        if not self.boundary:
+            numPoints -= 2
         return numPoints
 
     def compute_1D_quad_weights(self, grid_1D):
@@ -664,7 +666,8 @@ class LejaGrid1D(Grid1d):
                 V[i, j] = eval_sh_legendre(j, grid_1D[i]) * np.sqrt(2 * j + 1)
 
         weights = np.linalg.inv(V)[0, :]
-
+        if len(grid_1D) == self.num_points:
+            return weights
         return weights[self.lowerBorder:self.upperBorder]
 
     def __minimize_function(self, func, a, b):
@@ -703,6 +706,8 @@ class LejaGrid1D(Grid1d):
         sorted_points = []
         unsorted_points = []
         no_points = self.level_to_num_points_1d(curr_level)
+        if not self.boundary:
+            no_points += 2
         if no_points == 2:
             return np.array([left_bound, right_bound], dtype=np.float64)
         starting_point = self.__get_starting_point(left_bound, right_bound, weightFunction)
