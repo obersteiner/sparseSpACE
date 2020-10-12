@@ -78,7 +78,7 @@ class Grid(object):
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
         if get_cross_product_list(self.weights) == []:
             return []
-        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1))
+        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1), dtype=np.float64)
 
     def get_num_points(self):
         return np.prod(self.numPoints)
@@ -200,6 +200,10 @@ class Grid(object):
     # This method checks if the quadrature rule is stable (i.e. all weights are >= 0)
     def check_stability_of_quadrature_rule(self, weights_1D: Sequence[float]) -> bool:
         return not(all([w >= 0 for w in weights_1D]))
+
+    @abc.abstractmethod
+    def initialize_grid(self):
+        pass
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -1045,6 +1049,9 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         return weights
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
+        # print("Levels of GlobalTrapezoidalGrid: {}".format(grid_levels_1D))
+
         return self.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
@@ -1137,6 +1144,86 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
+
+
+from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
+    BalancedExtrapolationGrid
+
+
+class GlobalRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False,
+                 do_cache=True,
+                 slice_grouping=SliceGrouping.UNIT,
+                 slice_version=SliceVersion.ROMBERG_DEFAULT,
+                 container_version=SliceContainerVersion.ROMBERG_DEFAULT):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        self.do_cache = do_cache
+
+        assert not(modified_basis)
+        assert boundary
+
+        self.slice_grouping = slice_grouping
+        self.slice_version = slice_version
+        self.container_version = container_version
+
+        self.weight_cache = {}
+
+    def initialize_grid(self):
+        # Reset weight cache
+        if len(self.weight_cache) > 50:
+            self.weight_cache = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+
+        key = tuple([tuple(grid_1D), tuple(grid_levels_1D)])
+
+        if self.do_cache and key in self.weight_cache:
+            return self.weight_cache[key]
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=self.slice_grouping,
+                                         slice_version=self.slice_version,
+                                         container_version=self.container_version)
+
+        romberg_grid.set_grid(grid_1D, grid_levels_1D)
+        weights = romberg_grid.get_weights()
+
+        if self.do_cache:
+            self.weight_cache[key] = weights
+
+        return weights
+
+
+class GlobalBalancedRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=False, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+
+        assert not modified_basis
+        assert not boundary
+
+        self.weight_cache = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+
+        grid = BalancedExtrapolationGrid()
+
+        grid.set_grid(grid_1D, grid_levels_1D)
+        weights = grid.get_weights()
+
+        return weights
 
 
 class GlobalBasisGrid(GlobalGrid):
