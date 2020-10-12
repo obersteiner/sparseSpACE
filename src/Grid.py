@@ -945,7 +945,7 @@ class GlobalGrid(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
-        return get_cross_product(self.coordinate_array)
+        return get_cross_product_list(self.coordinate_array)
 
     def getCoordinate(self, indexvector: Sequence[int]) -> Sequence[float]:
         position = np.zeros(self.dim)
