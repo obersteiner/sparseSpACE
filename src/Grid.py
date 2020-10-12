@@ -62,6 +62,11 @@ class Grid(object):
         # print(p, self.grid.boundary or not (self.point_on_boundary(p)))
         return self.boundary or not (self.point_on_boundary(p))
 
+    def points_not_zero(self, points: Sequence[Sequence[float]]) -> Sequence[bool]:
+        a = np.asarray(self.a)
+        b = np.asarray(self.b)
+        return np.logical_or(self.boundary*np.ones(len(points)), np.logical_not(np.logical_or(np.any(np.isclose(points, a), axis=1), np.any(np.isclose(points, b), axis=1))))
+
     def point_on_boundary(self, p: Sequence[float]) -> bool:
         # print("2",p, (p == self.a).any() or (p == self.b).any())
         return  any([isclose(c, self.a[d]) for d, c in enumerate(p)]) or any([isclose(c, self.b[d]) for d, c in enumerate(p)])
