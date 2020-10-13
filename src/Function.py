@@ -763,7 +763,7 @@ class GenzDiscontinious(Function):
         return np.exp(result)
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        result = np.zeros(len(coordinates))
+        result = np.zeros(np.shape(coordinates)[:-1])
         filter = np.all(coordinates < self.border, axis=-1)
         result[filter] = np.exp(-1 * np.inner(coordinates[filter], self.coeffs))
         self.check_vectorization(coordinates, result)
