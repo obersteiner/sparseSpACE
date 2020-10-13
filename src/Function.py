@@ -54,9 +54,12 @@ class Function(object):
 
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        f_values = np.empty((len(coordinates), self.output_length()))
+        f_values = np.empty((*np.shape(coordinates)[:-1], self.output_length()))
         for i, coordinate in enumerate(coordinates):
-            f_values[i, :] = self(coordinate)
+            if np.isscalar(coordinate[0]):
+                f_values[i, :] = self.eval(coordinate)
+            else:
+                f_values[i, :] = self.eval_vectorized(coordinate)
         return f_values
 
     def check_vectorization(self, coordinates, result):
@@ -447,7 +450,7 @@ class FunctionLinear(Function):
         return result
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        result = np.prod(coordinates * self.coeffs,axis=1)
+        result = np.prod(coordinates * self.coeffs,axis=-1)
         #for i in range(len(coordinates)):
         #    print(result[i], self.eval(coordinates[i]))
         #    assert result[i] == self.eval(coordinates[i])
@@ -689,7 +692,7 @@ class GenzProductPeak(Function):
         return result
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (2), axis=1)
+        result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (2), axis=-1)
         result = self.factor / result
         self.check_vectorization(coordinates, result)
         return result
@@ -761,7 +764,7 @@ class GenzDiscontinious(Function):
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.zeros(len(coordinates))
-        filter = np.all(coordinates < self.border, axis=1)
+        filter = np.all(coordinates < self.border, axis=-1)
         result[filter] = np.exp(-1 * np.inner(coordinates[filter], self.coeffs))
         self.check_vectorization(coordinates, result)
         return result
@@ -890,7 +893,7 @@ class FunctionExpVar(Function):
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         dim = len(coordinates[0])
         temp = coordinates ** (1.0/dim)
-        result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=1)
+        result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=-1)
         self.check_vectorization(coordinates, result)
         return result
 

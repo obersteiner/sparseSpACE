@@ -579,7 +579,7 @@ class Integration(AreaOperation):
         :return: Values at points (same order).
         """
         #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
-        return self.f.eval_vectorized(np.asarray(points)).reshape((len(points),self.f.output_length())) #np.asarray([self.f(p) for p in points])
+        return self.f.eval_vectorized(np.asarray(points)).reshape((*np.shape(points)[:-1],self.f.output_length())) #np.asarray([self.f(p) for p in points])
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
@@ -587,10 +587,11 @@ class Integration(AreaOperation):
             self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
-        mesh_points = np.array(get_cross_product_list(mesh_points_grid))
         if self.grid.boundary:
+            mesh_points = get_cross_product_list(mesh_points_grid)
             values = self.f(mesh_points)
         else:
+            mesh_points = np.array(get_cross_product_list(mesh_points_grid))
             # calculate function values at mesh points and transform  correct data structure for scipy
             values = np.zeros((len(mesh_points), self.f.output_length()))
             filter = self.grid.points_not_zero(mesh_points).astype(bool)
