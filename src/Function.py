@@ -682,14 +682,14 @@ class GenzProductPeak(Function):
             result /= (self.coeffs[d] ** (-2) + (coordinates[d] - self.midPoint[d]) ** 2)
         return result
 
-    #def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-    #    result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (-2), axis=1)
-    #    result = self.factor / result
-    #    for i in range(len(coordinates)):
-    #        if not math.isclose(result[i], self.eval(coordinates[i])):
-    #            print(result[i], self.eval(coordinates[i]), coordinates[i])
-    #        assert math.isclose(result[i], self.eval(coordinates[i]))
-    #    return result
+    def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
+        result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (2), axis=1)
+        result = self.factor / result
+        for i in range(len(coordinates)):
+            if not math.isclose(result[i], self.eval(coordinates[i])):
+                print(result[i], self.eval(coordinates[i]), coordinates[i])
+            assert math.isclose(result[i], self.eval(coordinates[i]))
+        return result
 
     def getAnalyticSolutionIntegral(self, start, end):
         result = 1
