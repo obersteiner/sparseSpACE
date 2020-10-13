@@ -127,7 +127,7 @@ class IntegratorArbitraryGridScalarProduct(IntegratorBase):
 
     def __call__(self, f: Function, numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         points, weights = self.grid.get_points_and_weights()
-        f_values = f(np.asarray(points))
+        f_values = f(points)
 
         if len(f_values) == 0:
             assert len(points) == 0

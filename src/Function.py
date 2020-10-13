@@ -26,6 +26,9 @@ class Function(object):
 
     def __call__(self, coordinates: Union[Tuple[float, ...], Sequence[Tuple[float]]]) -> Sequence[float]:
         f_value = None
+        if not isinstance(coordinates[0], tuple):
+            print("Warning: not passing tuples to Function -> less efficient!")
+            coordinates = [tuple(c) for c in coordinates]
         if np.isscalar(coordinates[0]):
             # single evaluation point
             if self.do_cache:
@@ -47,7 +50,7 @@ class Function(object):
             try:
                 f_values = np.asarray(self.eval_vectorized(np.asarray(coordinates)))
                 f_values = f_values.reshape((len(coordinates), self.output_length()))
-                self.f_dict.update(zip([tuple(c) for c in coordinates], f_values))
+                self.f_dict.update(zip(coordinates, f_values))
                 return f_values
             except NotImplementedError:
                 f_values = np.empty((len(coordinates), self.output_length()))
