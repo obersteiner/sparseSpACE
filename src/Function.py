@@ -47,19 +47,17 @@ class Function(object):
             assert len(f_value) == self.output_length(), "Wrong output_length()! Adjust the output length in your function!"
             return np.array(f_value)
         else:
-            try:
-                f_values = np.asarray(self.eval_vectorized(np.asarray(coordinates)))
-                f_values = f_values.reshape((len(coordinates), self.output_length()))
-                self.f_dict.update(zip(coordinates, f_values))
-                return f_values
-            except NotImplementedError:
-                f_values = np.empty((len(coordinates), self.output_length()))
-                for i, coordinate in enumerate(coordinates):
-                    f_values[i,:] = self(coordinate)
-                return f_values
+            f_values = np.asarray(self.eval_vectorized(np.asarray(coordinates)))
+            f_values = f_values.reshape((len(coordinates), self.output_length()))
+            self.f_dict.update(zip(coordinates, f_values))
+            return f_values
+
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        raise NotImplementedError
+        f_values = np.empty((len(coordinates), self.output_length()))
+        for i, coordinate in enumerate(coordinates):
+            f_values[i, :] = self(coordinate)
+        return f_values
 
     def check_vectorization(self, coordinates, result):
         if self.debug:
