@@ -1122,7 +1122,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         indices = get_cross_product_list([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
         #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         #index = indices[i]
-        factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
+        factor = np.prod(np.asarray(get_cross_product_list([self.grid_surplusses.weights[d2] if d != d2 else [1] for d2 in range(self.dim)])), axis=1)
+        #factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
         #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
         exponent = 1# if not self.do_high_order else 2
         #if factor2 != 0:
