@@ -1216,25 +1216,29 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
         #index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
 
-        left_parents_in_grid = np.logical_or(np.isclose(left_parents, self.a[d]), self.grid.boundary)
-        right_parents_in_grid = np.logical_or(np.isclose(right_parents, self.b[d]), self.grid.boundary)
-
+        left_parents_in_grid = np.logical_or(np.logical_not(np.isclose(left_parents, self.a[d])), self.grid_surplusses.boundary)
+        right_parents_in_grid = np.logical_or(np.logical_not(np.isclose(right_parents, self.b[d])), self.grid_surplusses.boundary)
+        #print("left parent bools",left_parents_in_grid)
         size_slize = np.prod([self.grid_surplusses.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
 
-        factors_left_parents = np.ones(len(left_parents))
-        filter = np.logical_not(np.isinf(right_parents))
-        factors_left_parents[filter] = (right_parents[filter] - children[filter]) / (right_parents[filter] - left_parents[filter])
+        factors_left_parents = np.ones(len(left_parents[left_parents_in_grid]))
+        filter = np.logical_not(np.isinf(right_parents[left_parents_in_grid]))
+        factors_left_parents[filter] = (right_parents[left_parents_in_grid][filter] - children[left_parents_in_grid][filter]) / (right_parents[left_parents_in_grid][filter] - left_parents[left_parents_in_grid][filter])
+        #print(factors_left_parents)
         points_left_parents = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in
-             range(self.dim)]) for left_parent in left_parents]
+             range(self.dim)]) for left_parent in left_parents[left_parents_in_grid]]
 
-        factors_right_parents = np.ones(len(left_parents))
-        filter = np.logical_not(np.isinf(left_parents))
-        factors_right_parents[filter] = (children[filter] - left_parents[filter]) / (right_parents[filter] - left_parents[filter])
+        factors_right_parents = np.ones(len(right_parents[right_parents_in_grid]))
+        filter = np.logical_not(np.isinf(left_parents[right_parents_in_grid]))
+        factors_right_parents[filter] = (children[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter]) / (right_parents[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter])
+
+        #print(factors_right_parents)
+
         points_right_parents = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in
-             range(self.dim)]) for right_parent in right_parents]
-
+             range(self.dim)]) for right_parent in right_parents[right_parents_in_grid]]
+        #print(points_right_parents, points_left_parents, left_parents, right_parents, left_parents_in_grid, right_parents_in_grid)
         #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
         #    left_of_left_parents = get_cross_product_list(
         #        [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in
@@ -1262,9 +1266,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #print(points_children, children)
         point_values = self.operation.get_point_values_component_grid(points_children, component_grid)
         values = point_values
-        if True:
+        if len(points_left_parents) > 0:
             point_values_left_parents = self.operation.get_point_values_component_grid(points_left_parents,
-                                                                                      component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
+                                                                                          component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
             # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
             #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
             #    # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
@@ -1293,8 +1297,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #else:
                 # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
             #print(np.shape(values), np.shape(factors_left_parents), np.shape(point_values_left_parents))
-            values -= (factors_left_parents * point_values_left_parents.T).T
-        if True:
+            #print(np.shape(values[left_parents_in_grid]), np.shape(factors_left_parents), np.shape(point_values_left_parents.T), points_left_parents)
+            values[left_parents_in_grid] -= (factors_left_parents * point_values_left_parents.T).T
+        if len(points_right_parents) > 0:
             point_values_right_parents = self.operation.get_point_values_component_grid(points_right_parents,
                                                                                        component_grid)  # np.asarray([self.f(p) for p in points_right_parent])
             '''
@@ -1322,7 +1327,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 # print(points_right_parent[i], self.f.f_dict.keys())
                 # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
             '''
-            values -= (factors_right_parents * point_values_right_parents.T).T
+            values[right_parents_in_grid] -= (factors_right_parents * point_values_right_parents.T).T
         # print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
         #print(np.shape(np.sum(factors * abs(values), axis=1)), np.shape(np.asarray([(
         #    self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)])))
