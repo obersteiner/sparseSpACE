@@ -17,6 +17,7 @@ class Function(object):
         self.f_dict = {}
         self.old_f_dict = {}
         self.do_cache = True  # indicates whether function values should be cached
+        self.debug = False
 
     def reset_dictionary(self) -> None:
         # self.old_f_dict = {**self.old_f_dict, **self.f_dict}
@@ -56,6 +57,13 @@ class Function(object):
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         raise AttributeError
+
+    def check_vectorization(self, coordinates, result):
+        if self.debug:
+            for i in range(len(coordinates)):
+                if not math.isclose(result[i], self.eval(coordinates[i])):
+                    print(result[i], self.eval(coordinates[i]), coordinates[i])
+                assert math.isclose(result[i], self.eval(coordinates[i]))
 
     def deactivate_caching(self) -> None:
         self.do_cache = False
@@ -646,10 +654,7 @@ class GenzCornerPeak(Function):
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = 1 + np.inner(coordinates, self.coeffs)
         result = result ** (-self.dim - 1)
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]))
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -685,10 +690,7 @@ class GenzProductPeak(Function):
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.prod(self.coeffs ** (-2) + (coordinates - self.midPoint) ** (2), axis=1)
         result = self.factor / result
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]), coordinates[i])
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -715,10 +717,7 @@ class GenzOszillatory(Function):
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = 2 * math.pi * self.offset + np.inner(coordinates, self.coeffs)
         result = np.cos(result)
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]))
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -763,10 +762,7 @@ class GenzDiscontinious(Function):
         result = np.zeros(len(coordinates))
         filter = np.all(coordinates < self.border, axis=1)
         result[filter] = np.exp(-1 * np.inner(coordinates[filter], self.coeffs))
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]))
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -821,9 +817,7 @@ class GenzC0(Function):
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.exp(-1 * np.inner(np.abs(coordinates - self.midPoint), self.coeffs))
-        for i in range(len(coordinates)):
-            #print(result[i], self.eval(coordinates[i]))
-            assert result[i] == self.eval(coordinates[i])
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -866,10 +860,7 @@ class GenzGaussian(Function):
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
         result = np.exp(-1 * np.inner((coordinates - self.midPoint) ** 2, self.coeffs))
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]))
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
@@ -899,10 +890,7 @@ class FunctionExpVar(Function):
         dim = len(coordinates[0])
         temp = coordinates ** (1.0/dim)
         result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=1)
-        for i in range(len(coordinates)):
-            if not math.isclose(result[i], self.eval(coordinates[i])):
-                print(result[i], self.eval(coordinates[i]))
-            assert math.isclose(result[i], self.eval(coordinates[i]))
+        self.check_vectorization(coordinates, result)
         return result
 
     def getAnalyticSolutionIntegral(self, start, end):
