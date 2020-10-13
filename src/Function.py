@@ -49,14 +49,14 @@ class Function(object):
                 f_values = f_values.reshape((len(coordinates), self.output_length()))
                 self.f_dict.update(zip([tuple(c) for c in coordinates], f_values))
                 return f_values
-            except AttributeError:
+            except NotImplementedError:
                 f_values = np.empty((len(coordinates), self.output_length()))
                 for i, coordinate in enumerate(coordinates):
                     f_values[i,:] = self(coordinate)
                 return f_values
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        raise AttributeError
+        raise NotImplementedError
 
     def check_vectorization(self, coordinates, result):
         if self.debug:
