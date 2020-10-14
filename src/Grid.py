@@ -840,6 +840,48 @@ class TrapezoidalGrid1D(Grid1d):
         return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
                                       self.num_points_with_boundary - 1 else 1)
 
+# this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
+class SimpsonGrid(Grid):
+    def __init__(self, a, b, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
+        self.boundary = boundary
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
+        self.grids = [SimpsonGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
+
+
+class SimpsonGrid1D(TrapezoidalGrid1D):
+
+    def __init__(self, a=None, b=None, boundary=True):
+        super().__init__(a, b, boundary)
+
+    def get_1D_level_weights(self) -> Sequence[float]:
+        if self.num_points_with_boundary < 3:
+            return [self.weight_composite_trapezoidal(i) for i in range(self.num_points)]
+        weights = np.ones(self.num_points_with_boundary) * self.spacing * 1.0/3.0
+        weights[1:-1:2] *= 4
+        weights[2:-1:2] *= 2
+        if not self.boundary:
+            weights = weights[1:-1]
+        return weights
+
+    def get_1d_weight(self, index):
+        if self.num_points_with_boundary < 3:
+            return self.weight_composite_trapezoidal(index)
+        weight = self.spacing * 1.0/3.0
+        if index % 2 == 0:
+            weight *= 6
+        elif index != 0 or index != self.num_points_with_boundary - 1:
+            weight *= 2
+        return weight
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
