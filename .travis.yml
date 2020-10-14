@@ -11,6 +11,9 @@ install:
   - git checkout master
   - pip3 install .
   - cd ..
+  - pip3 install coveralls
 script:
   - ls
-  - python3 -m nose -w test/
+  #- python3 -m nose -w test/
+  - coverage run --source=mypkg -m nosetests3 test/
+  - coveralls
