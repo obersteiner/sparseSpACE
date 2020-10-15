@@ -6,3 +6,8 @@ __pycache__/
 *.svg
 Untitled.ipynb
 .idea/*
+latex/
+html/
+chaospy/
+*.out
+*.orig
