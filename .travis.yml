@@ -15,5 +15,5 @@ install:
 script:
   - ls
   #- python3 -m nose -w test/
-  - python3 -m nose --with-coverage -w test/
+  - python3 -m nose --with-coverage --cover-package=src/ test/
   - coveralls
