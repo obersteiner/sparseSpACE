@@ -579,7 +579,8 @@ class Integration(AreaOperation):
         :return: Values at points (same order).
         """
         #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
-        return self.f.eval_vectorized(np.asarray(points)).reshape((*np.shape(points)[:-1],self.f.output_length())) #np.asarray([self.f(p) for p in points])
+        points = np.asarray(points)
+        return self.f.eval_vectorized(points).reshape((*np.shape(points)[:-1],self.f.output_length())) #np.asarray([self.f(p) for p in points])
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
