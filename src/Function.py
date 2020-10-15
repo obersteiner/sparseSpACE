@@ -863,7 +863,7 @@ class GenzGaussian(Function):
         return np.exp(summation)
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        result = np.exp(-1 * np.inner((coordinates - self.midpoint) ** 2, self.coeffs))
+        result = np.exp(-1 * np.inner((coordinates - self.midpoint) ** 2, self.coefficients))
         self.check_vectorization(coordinates, result)
         return result
 
