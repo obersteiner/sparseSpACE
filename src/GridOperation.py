@@ -578,18 +578,25 @@ class Integration(AreaOperation):
         :param component_grid: Component grid which we want to evaluate.
         :return: Values at points (same order).
         """
-        return np.asarray([self.f(p) for p in points])
+        #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
+        points = np.asarray(points)
+        return self.f.eval_vectorized(points).reshape((*np.shape(points)[:-1],self.f.output_length())) #np.asarray([self.f(p) for p in points])
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
+            print("Removing integral:", removed_object.value, "from region", removed_object.start, removed_object.end)
             self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
-        mesh_points = get_cross_product(mesh_points_grid)
-        function_value_dim = self.f.output_length()
-        # calculate function values at mesh points and transform  correct data structure for scipy
-        values = np.array(
-            [self.f(p) if self.grid.point_not_zero(p) else np.zeros(function_value_dim) for p in mesh_points])
+        if self.grid.boundary:
+            mesh_points = get_cross_product_list(mesh_points_grid)
+            values = self.f(mesh_points)
+        else:
+            mesh_points = np.array(get_cross_product_list(mesh_points_grid))
+            # calculate function values at mesh points and transform  correct data structure for scipy
+            values = np.zeros((len(mesh_points), self.f.output_length()))
+            filter = self.grid.points_not_zero(mesh_points).astype(bool)
+            values[filter] = self.f(mesh_points[filter])
         return values
 
     def get_mesh_values(self, mesh_points_grid):
@@ -616,7 +623,7 @@ class Integration(AreaOperation):
     def add_value(self, combined_solution: Sequence[float], new_solution: Sequence[float], component_grid_info: ComponentGridInfo):
         return combined_solution + component_grid_info.coefficient * new_solution
 
-    def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info):
+    def evaluate_area(self, area, levelvector, componentgrid_info, refinement_container, additional_info, apply_to_combi_result=True):
         partial_integral = self.grid.integrate(self.f, levelvector, area.start, area.end)
         if area.value is None:
             area.value = partial_integral * componentgrid_info.coefficient
@@ -625,7 +632,8 @@ class Integration(AreaOperation):
         evaluations = np.prod(self.grid.levelToNumPoints(levelvector))
         if refinement_container is not None:
             refinement_container.value += partial_integral * componentgrid_info.coefficient
-        self.integral += partial_integral * componentgrid_info.coefficient
+        if apply_to_combi_result:
+            self.integral += partial_integral * componentgrid_info.coefficient
         return evaluations
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo):

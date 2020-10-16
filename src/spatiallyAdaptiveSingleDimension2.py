@@ -200,13 +200,18 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         full_grid = [refinement_object.start for refinement_object in refinement_objects] + [refinement_objects[-1].end]
         full_grid_levels = [refinement_object.levels[0] for refinement_object in refinement_objects] + [refinement_objects[-1].levels[1]]
         missing_points = []
+        matched_points = set()
         for i, level in enumerate(grid_levels):
-            for j in range(i+1, len(grid_levels)):
-                if grid_levels[j] == level:
-                    break
-                if grid_levels[j] <= level - 2:
-                    missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
-                    missing_points.append((missing_point, level))
+            if i not in matched_points:
+                for j in range(i+1, len(grid_levels)):
+                    if grid_levels[j] == level:
+                        matched_points.add(i)
+                        matched_points.add(j)
+                        break
+                    if grid_levels[j] <= level - 2:
+                        missing_point = self.find_missing_point(grid[i], grid_levels[i], full_grid, full_grid_levels)
+                        missing_points.append((missing_point, level))
+                        break
         previous_points = list(zip(grid,grid_levels))
         balanced_points = previous_points + missing_points
         new_grid = [point[0] for point in sorted(balanced_points)]
@@ -238,10 +243,18 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         '''
 
     def find_missing_point(self, point, level, full_grid, full_levels):
+        #print(point, level, full_grid, full_levels)
         for position, grid_point in enumerate(full_grid):
             if point == grid_point:
                 assert level == full_levels[position]
-                for j, point_candidate in enumerate(full_grid[position+1:]):
+                for j, point_candidate in zip(range(position+1, len(full_grid)), full_grid[position+1:]):
+                    if full_levels[j] <= level -2:
+                        break
+                    if full_levels[j] == level:
+                        return point_candidate
+                for j, point_candidate in zip(range(position-1,-1,-1),reversed(full_grid[:position])):
+                    if full_levels[j] <= level -2:
+                        assert False # should never happen
                     if full_levels[j] == level:
                         return point_candidate
 
@@ -1090,26 +1103,27 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 factor_left_parent = 1.0
             else:
                 factor_left_parent = (right_parent - child)/(right_parent - left_parent)
-            points_left_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in range(self.dim)])
+            points_left_parent = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in range(self.dim)])
             #points_left_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2]if d != d2 else [left_parent] for d2 in range(self.dim)])]))
         if right_parent_in_grid:
             if isinf(left_parent):
                 factor_right_parent= 1.0
             else:
                 factor_right_parent = (child - left_parent)/(right_parent - left_parent)
-            points_right_parent = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in range(self.dim)])
+            points_right_parent = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in range(self.dim)])
             #points_right_parent = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [right_parent] for d2 in range(self.dim)])]))
         if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-            left_of_left_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in range(self.dim)])
+            left_of_left_parents = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in range(self.dim)])
         if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-            right_of_right_parents = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2 in range(self.dim)])
+            right_of_right_parents = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2 in range(self.dim)])
 
-        points_children = get_cross_product([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
+        points_children = get_cross_product_list([self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)])
         #points_children = list(zip(*[g.ravel() for g in np.meshgrid(*[self.grid_surplusses.coords[d2] if d != d2 else [child] for d2 in range(self.dim)])]))
-        indices = get_cross_product([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
+        indices = get_cross_product_list([range(len(self.grid_surplusses.get_coordinates_dim(d2))) if d != d2 else [1] for d2 in range(self.dim)])
         #indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
         #index = indices[i]
-        factors = np.asarray([np.prod([self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)]) for index in indices]).reshape((size_slize, 1))
+        factors = np.prod(np.asarray(get_cross_product_list([self.grid_surplusses.weights[d2] if d != d2 else [1] for d2 in range(self.dim)])), axis=1).reshape((size_slize, 1))
+        #factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
         #factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
         exponent = 1# if not self.do_high_order else 2
         #if factor2 != 0:
@@ -1179,6 +1193,154 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             evaluations = 0
         return abs(volume), evaluations
 
+    # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
+    #  The surplusses are calculated based on the left and right parents.
+    def sum_up_volumes_for_point_completely_vectorized(self, child_infos: NodeInfo, grid_points: Sequence[Sequence[float]],
+                                            d: int, component_grid: ComponentGridInfo):
+        # print(grid_points)
+        #print(child_infos)
+        children = np.asarray([child_info.child for child_info in child_infos])
+        left_parents = np.asarray([child_info.left_parent for child_info in child_infos])
+        right_parents = np.asarray([child_info.right_parent for child_info in child_infos])
+        #left_parent_of_left_parents = np.asarray([child_info.left_parent_of_left_parent for child_info in child_infos])
+        #right_parent_of_right_parents = np.asarray([child_info.right_parent_of_right_parent for child_info in child_infos])
+        #assert right_parent > child > left_parent
+
+        # npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
+
+        #for p in grid_points[d]:
+        #    if isclose(p, left_parent):
+        #        left_parent = p
+        #    if isclose(p, right_parent):
+        #        right_parent = p
+        #index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
+        #index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
+
+        left_parents_in_grid = np.logical_or(np.logical_not(np.isclose(left_parents, self.a[d])), self.grid_surplusses.boundary)
+        right_parents_in_grid = np.logical_or(np.logical_not(np.isclose(right_parents, self.b[d])), self.grid_surplusses.boundary)
+        #print("left parent bools",left_parents_in_grid)
+        size_slize = np.prod([self.grid_surplusses.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
+
+        factors_left_parents = np.ones(len(left_parents[left_parents_in_grid]))
+        filter = np.logical_not(np.isinf(right_parents[left_parents_in_grid]))
+        factors_left_parents[filter] = (right_parents[left_parents_in_grid][filter] - children[left_parents_in_grid][filter]) / (right_parents[left_parents_in_grid][filter] - left_parents[left_parents_in_grid][filter])
+        #print(factors_left_parents)
+        points_left_parents = [get_cross_product_list(
+            [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in
+             range(self.dim)]) for left_parent in left_parents[left_parents_in_grid]]
+
+        factors_right_parents = np.ones(len(right_parents[right_parents_in_grid]))
+        filter = np.logical_not(np.isinf(left_parents[right_parents_in_grid]))
+        factors_right_parents[filter] = (children[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter]) / (right_parents[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter])
+
+        #print(factors_right_parents)
+
+        points_right_parents = [get_cross_product_list(
+            [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in
+             range(self.dim)]) for right_parent in right_parents[right_parents_in_grid]]
+        #print(points_right_parents, points_left_parents, left_parents, right_parents, left_parents_in_grid, right_parents_in_grid)
+        #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
+        #    left_of_left_parents = get_cross_product_list(
+        #        [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in
+        #         range(self.dim)])
+        #if self.grid_surplusses.modified_basis and not left_parent_in_grid:
+        #    right_of_right_parents = get_cross_product_list(
+        #        [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent_of_right_parent] for d2
+        #         in range(self.dim)])
+
+        points_children = [get_cross_product_list(
+            [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)]) for child in children]
+
+        # indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
+        # index = indices[i]
+        factors = np.prod(np.asarray(get_cross_product_list(
+            [self.grid_surplusses.weights[d2] if d != d2 else [1] for d2 in range(self.dim)])), axis=1).reshape(
+            (size_slize, 1))
+        # factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
+        # factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
+        exponent = 1  # if not self.do_high_order else 2
+        # if factor2 != 0:
+        # print(points_children[i], self.f.f_dict.keys())
+        # avoid evaluating on boundary points if grids has none
+        # assert (tuple(point_child) in self.f.f_dict)
+        #print(points_children, children)
+        point_values = self.operation.get_point_values_component_grid(points_children, component_grid)
+        values = point_values
+        if len(points_left_parents) > 0:
+            point_values_left_parents = self.operation.get_point_values_component_grid(points_left_parents,
+                                                                                          component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
+            # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
+            #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
+            #    # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+            #
+            #    # left_of_left_parent = list(point_left_parent)
+            #    # left_of_left_parent[d] = left_parent_of_left_parent
+            #    # print("Left of left:", left_of_left_parent, points_left_parent[i])
+            #    # value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
+            #    # assert (tuple(points_left_parent[i]) in self.f.f_dict)
+            #
+            #    if isclose(left_parent_of_left_parent, self.a[d]):
+            #        values = point_values - point_values_left_parent
+            #    else:
+            #        point_values_left_of_left_parent = self.operation.get_point_values_component_grid(
+            #            left_of_left_parents,
+            #            component_grid)  # np.asarray([self.f(p) for p in left_of_left_parents])
+            #
+            #        m = (point_values_left_of_left_parent - point_values_left_parent) / (
+            #                left_parent_of_left_parent - left_parent)
+            #        previous_value_at_child = m * (child - left_parent) + point_values_left_parent
+            #        values = point_values - previous_value_at_child
+            #        # print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
+            #
+            #        # assert(tuple(left_of_left_parent) in self.f.f_dict)
+            #
+            #else:
+                # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+            #print(np.shape(values), np.shape(factors_left_parents), np.shape(point_values_left_parents))
+            #print(np.shape(values[left_parents_in_grid]), np.shape(factors_left_parents), np.shape(point_values_left_parents.T), points_left_parents)
+            values[left_parents_in_grid] -= (factors_left_parents * point_values_left_parents.T).T
+        if len(points_right_parents) > 0:
+            point_values_right_parents = self.operation.get_point_values_component_grid(points_right_parents,
+                                                                                       component_grid)  # np.asarray([self.f(p) for p in points_right_parent])
+            '''
+            if self.grid_surplusses.modified_basis and not left_parent_in_grid:
+                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+            
+                # right_of_right_parent = list(point_right_parent)
+                # right_of_right_parent[d] = right_parent_of_right_parent
+                # print("Right of right:", right_of_right_parent, points_right_parent[i])
+                # value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
+                # assert (tuple(points_right_parent[i]) in self.f.f_dict)
+                if isclose(right_parent_of_right_parent, self.b[d]):
+                    values = point_values - point_values_right_parent
+                else:
+                    point_values_right_of_right_parent = self.operation.get_point_values_component_grid(
+                        right_of_right_parents,
+                        component_grid)  # np.asarray([self.f(p) for p in right_of_right_parents])
+                    m = (point_values_right_of_right_parent - point_values_right_parent) / (
+                                right_parent_of_right_parent - right_parent)
+                    previous_value_at_child = m * (child - right_parent) + point_values_right_parent
+                    values = point_values - previous_value_at_child
+                    # print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
+                    # assert(tuple(right_of_right_parent) in self.f.f_dict)
+            else:
+                # print(points_right_parent[i], self.f.f_dict.keys())
+                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
+            '''
+            values[right_parents_in_grid] -= (factors_right_parents * point_values_right_parents.T).T
+        # print("Values", values, np.sum(factors*abs(values), axis=0), factors * abs(values), np.shape(values), np.shape(factors))
+        #print(np.shape(np.sum(factors * abs(values), axis=1)), np.shape(np.asarray([(
+        #    self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)])))
+        widths = np.asarray([(
+            self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)]).reshape((len(children),1)) ** exponent
+        volumes = np.sum(factors * abs(values), axis=1) * widths
+        # print("Volume", volume)
+        if self.version == 0 or self.version == 2:
+            evaluations = size_slize * len(children)  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
+        else:
+            evaluations = 0
+        return abs(volumes), evaluations
+
     # This method calculates the surplus error estimates for a point by calculating dim-1 dimensional slices
     # through the domain along the child coordinates. We always calculate the 1-dimensional surplus for every point
     # on this slice.
@@ -1203,7 +1365,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     while i < np.prod(self.grid.numPoints):
                         surplus_pole[:,j] += np.sum(abs(surplusses_1d[:,i:i+stride])) #* weights[i:i+stride]))
                         i += stride * self.grid.numPoints[d]
-            for child_info in children_indices[d]:
+            if not (isinstance(self.grid_surplusses, GlobalBSplineGrid) or isinstance(self.grid_surplusses, GlobalLagrangeGrid)) and len(children_indices[d]) > 0:
+                #print(children_indices)
+                volumes, evaluations = self.sum_up_volumes_for_point_completely_vectorized(child_infos=children_indices[d], grid_points=grid_points, d=d, component_grid=component_grid)
+            for i, child_info in enumerate(children_indices[d]):
                 left_parent = child_info.left_parent
                 right_parent = child_info.right_parent
                 child = child_info.child
@@ -1212,7 +1377,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 else:
-                    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
+                    volume = volumes[i]
+                #    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
 
                 k_old = 0
                 if left_parent < 0:

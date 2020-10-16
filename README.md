@@ -20,3 +20,6 @@ Software requirements:
 - scikit-learn (for SGDE)
 - dill (for saving/loading the current state of the refinement to/from a file)
 - sympy (1.6 or higher)
+
+Installation:
+run ./configure to install the requirements and setup the git hooks

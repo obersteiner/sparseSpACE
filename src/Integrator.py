@@ -127,17 +127,14 @@ class IntegratorArbitraryGridScalarProduct(IntegratorBase):
 
     def __call__(self, f: Function, numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         points, weights = self.grid.get_points_and_weights()
-        f_values = np.empty((f.output_length(), self.grid.get_num_points()))
-        for i, point in enumerate(points):
-            f_values[:, i] = f(point)
-        #print(points, weights, f_values, np.inner(f_values, weights))
-        #f_values = [f(point) for point in points]
-        #print(points, weights, f_values, np.inner(f_values, weights))
+        f_values = f(points)
 
         if len(f_values) == 0:
+            assert len(points) == 0
+            assert len(weights) == 0
             return 0.0
         else:
-            return np.inner(f_values, weights)
+            return np.inner(f_values.T, weights)
 
 '''
 #This integrator computes the integral of an arbitrary grid from the Grid class

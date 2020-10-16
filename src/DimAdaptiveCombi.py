@@ -94,7 +94,7 @@ class DimAdaptiveCombi(StandardCombi):
                 stencils.append([-1,0])
             else:
                 stencils.append([0])
-            cost *= 2**component_grid.levelvector[d]
+            cost *= 2**component_grid.levelvector[d] - 1 +  2 * int(self.grid.boundary)
         if self.compute_no_cost:
             cost = 1
         stencil_cross_product = get_cross_product(stencils)

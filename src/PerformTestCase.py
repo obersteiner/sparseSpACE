@@ -32,7 +32,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
                                 minTol=-1, doDimAdaptive=False, max_evaluations=10 ** 7, evaluation_points=None,
                                 calc_standard_schemes=True, grid_names=None,
                                 legend_title="",
-                                filepath="./Results/", filename=None, save_plot=False, save_csv=False,):
+                                filepath="./Results/", filename=None, save_plot:bool=False, save_csv:bool=False, clear_csv:bool=False):
     # realIntegral = scipy.integrate.dblquad(f, a, b, lambda x:a, lambda x:b, epsabs=1e-15, epsrel=1e-15)[0]
     reference_solution = f.getAnalyticSolutionIntegral(a, b)
     print("Exact integral", reference_solution)
@@ -60,7 +60,7 @@ def performTestcaseArbitraryDim(f, a, b, adaptiveAlgorithmVector, maxtol, dim, m
     # plt.set_cmap(cm)
 
     # Clear CSV
-    if save_csv:
+    if save_csv and clear_csv:
         clear_csv(filepath, filename)
 
     print("\n\n\n\n\n\n -------------------------- Start {} -------------------------- \n\n\n\n\n\n".format(legend_title))
