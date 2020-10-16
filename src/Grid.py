@@ -1271,11 +1271,11 @@ class GlobalBasisGrid(GlobalGrid):
         evaluations = np.empty(self.dim, dtype=object)
         for d in range(self.dim):
             points_d = grid_points_for_dims[d]
-            evaluations1D = np.zeros((len(points_d), (len(self.splines[d]))))
-            for i, spline in enumerate(self.splines[d]):
+            evaluations1D = np.zeros((len(points_d), (len(self.basis[d]))))
+            for i, basis in enumerate(self.basis[d]):
                 for j, p in enumerate(points_d):
                     #print(p, spline(p))
-                    evaluations1D[j, i] = spline(p)
+                    evaluations1D[j, i] = basis(p)
             evaluations[d] = evaluations1D
         #print(evaluations)
 
