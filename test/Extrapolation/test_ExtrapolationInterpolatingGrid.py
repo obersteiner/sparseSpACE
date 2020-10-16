@@ -154,6 +154,38 @@ class TestExtrapolationInterpolationGrid(unittest.TestCase):
         expected_result = 1.5
         self.assertAlmostEqual(expected_result, actual_result)
 
+    def test_bspline_interpolation(self):
+        grid = [0, 0.5, 0.625, 0.75, 1]
+        grid_levels = [0, 1, 3, 2, 0]
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.GROUPED_OPTIMIZED,
+                                         slice_version=SliceVersion.ROMBERG_DEFAULT,
+                                         container_version=SliceContainerVersion.BSPLINE_ROMBERG,
+                                         force_balanced_refinement_tree=False)
+        romberg_grid.set_grid(grid, grid_levels)
+        function = Polynomial1d([1, 0, 0, 2])
+
+        actual_result = romberg_grid.integrate(function)
+        expected_result = 1.5
+
+        # self.assertAlmostEqual(expected_result, actual_result)
+
+    def test_hierarchical_lagrange_interpolation(self):
+        grid = [0, 0.5, 0.625, 0.75, 1]
+        grid_levels = [0, 1, 3, 2, 0]
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=SliceGrouping.GROUPED_OPTIMIZED,
+                                         slice_version=SliceVersion.ROMBERG_DEFAULT,
+                                         container_version=SliceContainerVersion.HIERARCHICAL_LAGRANGE_ROMBERG,
+                                         force_balanced_refinement_tree=False)
+        romberg_grid.set_grid(grid, grid_levels)
+        function = Polynomial1d([1, 0, 0, 2])
+
+        actual_result = romberg_grid.integrate(function)
+        expected_result = 1.5
+
+        # self.assertAlmostEqual(expected_result, actual_result)
+
 
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Unit Test
