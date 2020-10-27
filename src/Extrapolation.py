@@ -2566,9 +2566,13 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
         support_point_grid_levels = InterpolationGridSliceContainer.get_levels_for_support_point_grid(support_points)
         interpolation_grid.set_grid([support_points], [support_point_grid_levels])
 
-        level_vec = [1]
-        interpolation_grid.integrate(self.function, level_vec,
-                                     support_points[0] * np.ones(1), support_points[-1] * np.ones(1))
+        # level_vec = [max(support_point_grid_levels)]
+        # left_boundary = support_points[0]
+        # right_boundary = support_points[-1]
+
+        # TODO Adapt function to one dimensional stripe (1D)
+        # interpolation_grid.integrate(self.function, level_vec,
+        #                              left_boundary * np.ones(1), right_boundary * np.ones(1))
 
         # Compute weight
         assert len(interpolation_grid.basis) == 1

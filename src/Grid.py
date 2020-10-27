@@ -1234,6 +1234,10 @@ class GlobalRombergGrid(GlobalGrid):
                                          container_version=self.container_version)
 
         romberg_grid.set_grid(grid_1D, grid_levels_1D)
+
+        # TODO Adapt function to one dimensional grid stripe (1D), because the function is multidimensional in the general case
+        # romberg_grid.set_function(self.function)
+
         weights = romberg_grid.get_weights()
 
         if self.do_cache:
