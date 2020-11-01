@@ -126,7 +126,7 @@ print('numeric_calculation: ', numeric_calculation)
 minimum_level, maximum_level = 1, 5
 print('max level of standard combirid:', minimum_level, ' : ', maximum_level)
 # define starting level of dimension wise combigrid
-lmin, lmax = 1, 3
+lmin, lmax = 2, 3
 print('lim/lmax of dimWise grid: ', lmin, ' : ', lmax)
 # error tolerance
 tolerance = 0.01
@@ -279,7 +279,7 @@ else:
 # define operation to be performed
 op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs, reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation, print_output=print_output)
 # create the combiObject and initialize it with the operation
-SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, timings=timings, rebalancing=False)
+SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, timings=timings, rebalancing=False, rebalancing_safety_factor=2*10^-1)
 if do_plot:
     print("Plot of dataset:")
     op.plot_dataset(filename=fig_path+'dimWise_'+data_set+'_dataSet')

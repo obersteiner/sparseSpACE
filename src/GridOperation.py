@@ -306,7 +306,7 @@ class DensityEstimation(AreaOperation):
         self.scaled = pre_scaled_data
         self.extrema = None
         self.reference_solution = None
-        self.debug = False
+        self.debug = True
         self.classes = classes
         self.reuse_old_values = reuse_old_values
         self.old_R = {}  # for reuse_old_values
@@ -596,20 +596,17 @@ class DensityEstimation(AreaOperation):
         if self.debug:
             mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
             mesh_points = list(get_cross_product(mesh_points_grid))
-            points_list = list(points)
+            points_list = [point for sublist in points for point in sublist]#list(points)
             #points_indices = [mesh_points.index(p) for p in points_list]
             nodal_values = list(self.get_result().get(tuple(component_grid.levelvector)))
             if len(nodal_values) > 0 and len(points_list) > 0:
                 pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
                 validPoint = lambda x: True if x in mesh_points else False
                 values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
-                #values_indices = [nodal_values.index(s) for s in values]
+                values_indices = [nodal_values.index(s) for s in values]
                 if (len(nodal_values) == 0 or len(points_list) == 0 or len(values) == 0):
                     self.log_util.log_debug('Operation DensityEstimation; error, stop here with debugger')
                     self.log_util.log_debug('second print to prevent the stupid debugger from skipping lines again')
-                #if points_indices != values_indices:
-                #    # if nodal_values has duplicate entries we can also end up here
-                #    self.log_util.log_debug('returned wrong component grid value(s)')
                 return values.reshape((len(values), 1))
             else:
                 return np.zeros((len(points_list), 1))
@@ -617,9 +614,10 @@ class DensityEstimation(AreaOperation):
             mesh_points_grid = (self.grid.coordinate_array[d] for d in range(self.dim))
             mesh_points = list(get_cross_product(mesh_points_grid))
             nodal_values = self.get_result().get(tuple(component_grid.levelvector))
+            points_list = [point for sublist in points for point in sublist]
             pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
             validPoint = lambda x: True if x in mesh_points else False
-            values = np.array([pickPoint(p) for p in points if validPoint(p)])
+            values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
             return values.reshape((len(values), 1))
 
     def check_adjacency(self, ivec: Sequence[int], jvec: Sequence[int]) -> bool:
@@ -1461,13 +1459,13 @@ class DensityEstimation(AreaOperation):
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
         if self.debug:
-            self.log_util.log_debug(alphas)
+            self.log_util.log_debug("{0}".format(alphas))
         if integral == 0 and self.debug:
             # integral should not be zero!
-            self.log_util.log_debug("Matrix: ".format(R))
-            self.log_util.log_debug("b Vector: ".format(b))
-            self.log_util.log_debug("surplus_values: ".format(alphas))
-            self.log_util.log_debug("Weights: ".format(weights))
+            self.log_util.log_debug("Matrix: {0}".format(R))
+            self.log_util.log_debug("b Vector: {0}".format(b))
+            self.log_util.log_debug("surplus_values: {0}".format(alphas))
+            self.log_util.log_debug("Weights: {0}".format(weights))
 
         return alphas/integral
 
@@ -1967,7 +1965,7 @@ class Integration(AreaOperation):
         combi_integral = self.integral
         if len(combi_integral) == 1:
             combi_integral = combi_integral[0]
-        self.log_util.log_debug("combiintegral: {0}".format(combi_integral), True)
+        self.log_util.log_debug("combiintegral: {0}".format(combi_integral))
 
     def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, component_grid):
         reuse_old_values = False

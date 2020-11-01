@@ -211,7 +211,7 @@ class StandardCombi(object):
 
         # output combi_result
         if self.print_output:
-            self.log_util.log_debug("CombiSolution".format(combi_result), self.print_output)
+            self.log_util.log_debug("CombiSolution".format(combi_result))
 
         if plot:
             print("Combi scheme:")
