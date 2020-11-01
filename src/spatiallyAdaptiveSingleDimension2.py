@@ -25,7 +25,8 @@ class NodeInfo(object):
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def __init__(self, a: Sequence[float], b: Sequence[float], norm: int = np.inf, dim_adaptive: bool = True,
-                 version: int = 6, operation: GridOperation = None, margin: float = None, rebalancing: bool = True,
+                 version: int = 6, operation: GridOperation = None, margin: float = None,
+                 rebalancing: bool = True, rebalancing_safety_factor: float = 0.1,
                  chebyshev_points=False, use_volume_weighting=False, timings=None,
                  log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, timings=None)
@@ -45,6 +46,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.operation = operation
         self.equidistant = False #True
         self.rebalancing = rebalancing
+        self.rebalancing_safety_factor = rebalancing_safety_factor
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
         self.chebyshev_points = chebyshev_points
@@ -53,12 +55,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.log_util = LogUtility(log_level=log_level, print_level=print_level)
         self.log_util.set_print_prefix('SpatiallyAdaptiveSingleDimensions2')
         self.log_util.set_log_prefix('SpatiallyAdaptiveSingleDimensions2')
-
-    def min_max_scale_surplusses(self):
-        #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
-        #test = self.grid_surplusses
-        self.operation.min_max_scale_surplusses()
-        #transform(self.data)
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -451,7 +447,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None, showPlot: bool = False):  # update with meta container
         plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
@@ -498,7 +494,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-        #plt.show()
+        if showPlot:
+            plt.show()
         plt.close()
         return fig
 
@@ -760,7 +757,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         if end - start <= 2:
             return
         refineContainer = refinement_container
-        lvls = [refinement_object.levels for refinement_object in refineContainer.refinementObjects]
         position_level = None
         position_level_1_left = None
         position_level_1_right = None
@@ -782,7 +778,6 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 2*10**-1#0#0.1
         # if position_level is None:
         #     print('stop')
         # if position_level_1_left is None:
@@ -794,7 +789,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         #assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
-        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
+        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
             position_new_leaf = None
             self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
@@ -822,7 +817,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
         new_leaf_reached = True
-        if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
+        if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
             position_new_leaf = None
             self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
@@ -891,8 +886,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid):
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        if isinstance(self.errorEstimator, ErrorCalculatorSingleDimMisclassification):
-            self.calculate_misclassification(gridPointCoordsAsStripes, children_indices, component_grid)
+        if isinstance(self.errorEstimator, ErrorCalculatorSingleDimMisclassificationGlobal):
+            self.errorEstimator.calc_global_error(self.operation.data, self)
         else:
             self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
@@ -1230,25 +1225,3 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     child_info.left_refinement_object.add_volume(volume/2.0)
                     child_info.left_refinement_object.add_evaluations(evaluations / 2.0)
                 '''
-
-    def calculate_misclassification(self, grid_points: Sequence[Sequence[float]], children_indices: Sequence[Sequence[int]], component_grid: ComponentGridInfo):
-        data = self.operation.data
-        #test = self.interpolate_points([data[0]], component_grid)
-        eval = lambda x: self.interpolate_points(x, component_grid)
-        for d in range(0, self.dim):
-            refinement_dim = self.refinement.get_refinement_container_for_dim(d)
-            for refinement_obj in refinement_dim.refinementObjects:
-                # get the misclassification rate between start and end of refinement_obj
-                hits = sum((1 for i in range(0, len(data))
-                            if refinement_obj.start <= data[i][d] <= refinement_obj.end
-                            and copysign(1.0, eval(data[i])) == copysign(1.0, self.operation.classes[i])))
-                misses = sum((1 for i in range(0, len(data))
-                              if refinement_obj.start <= data[i][d] <= refinement_obj.end
-                              and copysign(1.0, eval(data[i])) != copysign(1.0, self.operation.classes[i])))
-                if hits + misses > 0:
-                    #refinement_obj.add_volume(np.array(misses / (hits + misses) * (refinement_obj.end - refinement_obj.start)))
-                    refinement_obj.add_volume(
-                        np.array(misses * (refinement_obj.end - refinement_obj.start)))
-                else:
-                    # no data points were in this area
-                    refinement_obj.add_volume(np.zeros(1))

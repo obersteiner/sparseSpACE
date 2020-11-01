@@ -322,8 +322,6 @@ if do_plot:
     # when contour = True, the contour plot is shown next to the 3D plot
     SASD.plot(filename=fig_path+'dimWise_'+data_set+'_contour', contour=True)
 
-SASD.min_max_scale_surplusses()
-
 ################### Kernel Density Estimation
 kdes = None
 if data_set == 'floats':

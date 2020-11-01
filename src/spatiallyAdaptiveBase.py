@@ -17,7 +17,9 @@ else:
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int = np.inf,
-                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE,
+                 filename_contour_plot: str = None, filename_refinement_graph: str = None, filename_combi_scheme_plot: str = None,
+                 filename_sparse_grid_plot: str = None):
         assert operation is not None
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
@@ -34,6 +36,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.log_util = LogUtility(log_level=log_level, print_level=print_level)
         self.log_util.set_print_prefix('SpatiallyAdaptivBase')
         self.log_util.set_log_prefix('SpatiallyAdaptivBase')
+        self.filename_contour_plot = filename_contour_plot
+        self.filename_refinement_graph = filename_refinement_graph
+        self.filename_combi_scheme_plot = filename_combi_scheme_plot
+        self.filename_sparse_grid_plot = filename_sparse_grid_plot
 
     def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool) -> int:
         array2 = self.get_points_component_grid(levelvec)
@@ -279,13 +285,19 @@ class SpatiallyAdaptivBase(StandardCombi):
 
             if self.print_output:
                 self.log_util.log_debug("Current error: {0}".format(error))
+
+            def find_unique_filename(x: str = None):
+                if x:
+                    import os
+                    while os.path.isfile(x+'.png'):
+                        x = x + '+'
+                    return x
+                else:
+                    return None
+
             if self.do_plot:
                 print("Contour plot:")
-                filename = 'figures/dimWise_contour'
-                import os
-                while os.path.isfile(filename+'.png'):
-                    filename = filename + '+'
-                self.plot(filename=filename, contour=True)
+                self.plot(filename=find_unique_filename(self.filename_contour_plot), contour=True)
             num_evaluations = self.get_total_num_points()
             if self.solutions_storage is not None:
                 assert not self.reevaluate_at_end, "Solutions are only available in the end"
@@ -305,20 +317,11 @@ class SpatiallyAdaptivBase(StandardCombi):
             if self.do_plot:
                 import os
                 print("Refinement Graph:")
-                filename = 'figures/dimWise_refinementGraph'
-                while os.path.isfile(filename+'.png'):
-                    filename = filename + '+'
-                self.draw_refinement(filename=filename)
+                self.draw_refinement(filename=find_unique_filename(self.filename_refinement_graph))
                 print("Combi Scheme:")
-                filename = 'figures/dimWise_combiScheme'
-                while os.path.isfile(filename+'.png'):
-                    filename = filename + '+'
-                self.print_resulting_combi_scheme(filename=filename, markersize=5)
+                self.print_resulting_combi_scheme(filename=find_unique_filename(self.filename_combi_scheme_plot), markersize=5)
                 print("Resulting Sparse Grid:")
-                filename = 'figures/dimWise_gridResult'
-                while os.path.isfile(filename+'.png'):
-                    filename = filename + '+'
-                self.print_resulting_sparsegrid(filename=filename, markersize=10)
+                self.print_resulting_sparsegrid(filename=find_unique_filename(self.filename_sparse_grid_plot), markersize=10)
         # finished adaptive algorithm
         #if self.print_output:
         self.log_util.log_info("Number of refinements {0}".format(self.refinements))

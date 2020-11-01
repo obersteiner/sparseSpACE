@@ -331,15 +331,6 @@ class StandardCombi(object):
                     operation.plot_component_grid(self, component_grid, grid)
             if True:
                 self.plot_outer_axis(fig, linewidth)
-        # ax1 = fig.add_subplot(111, alpha=0)
-        # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
-        # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
-        # plt.tight_layout()
-
-        # hide the outer x- and y-axis cutting through the sub-plots
-        plt.axis('off')  # only hides the label for some reason
-        axes = plt.gca()
-        axes.set_position([0, 0, 0, 0])  # hides the axis arrows as well
 
         if filename is not None:
             plt.savefig(filename)

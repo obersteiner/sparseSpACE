@@ -166,7 +166,7 @@ for error_config in error_configs:
 
     classification.print_evaluation()
 
-    classif_data = classification.get_data()
+    classif_data = classification.get_original_data()
     classif_data.remove_labels(1.0)
     data_copy.remove_labels(1.0)
     calcult_classes = classification(data_copy)
@@ -195,19 +195,23 @@ for error_config in error_configs:
     modified_basis = False
     tolerance = -1.0
     margin = 0.5
-    classification_dimwise.perform_classification_dimension_wise(masslumping=False, lambd=0.0, minimum_level=1, maximum_level=2,
-                                                         reuse_old_values=True, numeric_calculation=False,
-                                                         boundary=boundary, modified_basis=modified_basis, one_vs_others=one_vs_others,
-                                                         tolerance=tolerance, margin=margin, max_evaluations=max_evals,
-                                                                 pre_scaled_data=True, filename='DimWiseClassification_',
-                                                                 error_calculator=error_calculator, rebalancing=True)
+    classification_dimwise.perform_classification_dimension_wise(masslumping=False, lambd=0.0,
+                                                                 minimum_level=1, maximum_level=2,
+                                                                 reuse_old_values=True, numeric_calculation=False,
+                                                                 boundary=boundary, modified_basis=modified_basis,
+                                                                 one_vs_others=one_vs_others,
+                                                                 tolerance=tolerance, margin=margin,
+                                                                 max_evaluations=max_evals,
+                                                                 pre_scaled_data=True,
+                                                                 error_calculator=error_calculator,
+                                                                 rebalancing=True)
 
     classification_dimwise.plot(plot_class_sparsegrid=True, plot_class_combi_scheme=True, plot_class_dataset=True, plot_class_density_estimation=True, file_path=path_dimwise)
 
     classification_dimwise.print_evaluation()
 
     data_copy.remove_labels(1.0)
-    classif_dimwise_data = classification.get_data()
+    classif_dimwise_data = classification.get_original_data()
     classif_dimwise_data.remove_labels(1.0)
     calcult_classes_dimwise = classification_dimwise(classif_dimwise_data)
 

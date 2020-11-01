@@ -138,20 +138,19 @@ class TestDensityEstimation(unittest.TestCase):
 
     def test_calculate_L2_scalarproduct(self):
 
-        dom_1 = [(0.0, 1.0)]
-        point_1 = [0.25]
-        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-        self.assertAlmostEqual(1.0 / 3.0 - res[0])
-
+        DE = DensityEstimation(data=[], dim=1)
         dom_1 = [(-1.0, 1.0)]
         point_1 = [0.0]
-        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-        self.assertAlmostEqual(2.0 / 3.0 - res[0])
+        res = DE.calculate_L2_scalarproduct(point_i=point_1, domain_i=dom_1,
+                                            point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((2.0 / 3.0) - res[0], 0.0)
 
+        DE = DensityEstimation(data=[], dim=2)
         dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
         point_1 = [0.0, 0.0]
-        res = DensityEstimation.calculate_L2_scalarproduct(point_1, dom_1, point_1, dom_1)
-        self.assertAlmostEqual((4.0 / 9.0) - res[0])
+        res = DE.calculate_L2_scalarproduct(point_i=point_1, domain_i=dom_1,
+                                            point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((4.0 / 9.0) - res[0], 0.0)
 
 if __name__ == '__main__':
     unittest.main()

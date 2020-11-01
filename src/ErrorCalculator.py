@@ -4,6 +4,7 @@ import abc
 import logging
 from numpy import linalg as LA
 from math import copysign
+
 from Utils import LogUtility, print_levels, log_levels
 
 # This class is the general interface of an error estimator currently used by the algorithm
@@ -111,15 +112,8 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
                               and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.validation_classes[i])))
 
                 if hits + misses > 0:
-                    #refinement_obj.add_volume(np.array(misses / (hits + misses)))
                     refinement_obj.add_volume(
                         np.array(misses * (refinement_obj.end - refinement_obj.start)))
                 else:
                     # no data points were in this area
-                    #refinement_obj.add_volume(np.zeros(1))
                     refinement_obj.add_volume(np.array(0.0))
-        # hits = sum((1 for i in range(0, len(data))
-        #             if copysign(1.0, f(data[i])) == copysign(1.0, grid_scheme.operation.classes[i])))
-        # misses = sum((1 for i in range(0, len(data))
-        #               if copysign(1.0, f(data[i])) != copysign(1.0, grid_scheme.operation.classes[i])))
-        # misclassification_rate = misses / (hits + misses)
