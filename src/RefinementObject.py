@@ -181,12 +181,13 @@ class RefinementObjectExtendSplit(RefinementObject):
                     for area in newRefinementObjects:
                         newObjects.extend(area.split_area_single_dim(d))
                     newRefinementObjects = newObjects
+                assert len(newRefinementObjects) == 2**len(dims)
                 for area in newRefinementObjects:
-                    for d in dims[:-1]:
+                    for d in dims[:]:
                         area.twins[d] = None
                 for i in range(len(newRefinementObjects)):
                     area = newRefinementObjects[i]
-                    for d in range(len(dims)-1):
+                    for d in range(len(dims)):
                         if area.twins[dims[d]] is None:
                             twin_distance = 2**(len(dims) - d - 1)
                             twin = newRefinementObjects[i + twin_distance]

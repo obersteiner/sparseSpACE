@@ -37,7 +37,7 @@ class TestStandardCombi(unittest.TestCase):
         b = 7
         for d in range(2, 5):
             f = FunctionLinear([10 * (i+1) for i in range(d)])
-            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b, d), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
+            operation = Integration(f, grid=TrapezoidalGrid(np.ones(d)*a, np.ones(d)*b), dim=d, reference_solution=f.getAnalyticSolutionIntegral(np.ones(d)*a, np.ones(d)*b))
             standardCombi = StandardCombi(np.ones(d)*a, np.ones(d)*b, print_output=False, operation=operation)
             for l in range(8 - d):
                 for l2 in range(l+1):

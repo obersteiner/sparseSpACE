@@ -272,6 +272,7 @@ class SpatiallyAdaptivBase(StandardCombi):
             if self.single_step:
                 max_evaluations = self.last_point_count + 1 if self.last_point_count is not None else max_evaluations
             error, surplus_error = self.log_util.time_func("spatialAdaptBase: evaluate_operation time taken ", self.evaluate_operation)
+            self.initialize_grid()
             self.error_array.append(error)
             self.surplus_error_array.append(surplus_error)
             self.num_point_array.append(self.get_total_num_points(distinct_function_evals=True))
@@ -339,6 +340,15 @@ class SpatiallyAdaptivBase(StandardCombi):
         #self.operation.set_function(None)
         self.calculated_solution = combi_result
         return self.refinement, self.scheme, self.lmax, combi_result, number_of_evaluations, self.error_array, self.num_point_array, self.surplus_error_array, self.interpolation_error_arrayL2, self.interpolation_error_arrayMax
+
+    @abc.abstractmethod
+    def initialize_grid(self):
+        """
+        This method initializes the grid (e.g. useful for initialize caching inside of a grid)
+
+        :return: None
+        """
+        pass
 
     @abc.abstractmethod
     def initialize_refinement(self):

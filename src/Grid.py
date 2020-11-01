@@ -13,7 +13,7 @@ from typing import Callable, Tuple, Sequence
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
 
-    def __init__(self, a, b, boundary=True):
+    def __init__(self, a, b, boundary:bool=True):
         self.boundary = boundary
         self.a = a
         self.b = b
@@ -62,6 +62,11 @@ class Grid(object):
         # print(p, self.grid.boundary or not (self.point_on_boundary(p)))
         return self.boundary or not (self.point_on_boundary(p))
 
+    def points_not_zero(self, points: Sequence[Sequence[float]]) -> Sequence[bool]:
+        a = np.asarray(self.a)
+        b = np.asarray(self.b)
+        return np.logical_or(self.boundary*np.ones(len(points)), np.logical_not(np.logical_or(np.any(np.isclose(points, a), axis=1), np.any(np.isclose(points, b), axis=1))))
+
     def point_on_boundary(self, p: Sequence[float]) -> bool:
         # print("2",p, (p == self.a).any() or (p == self.b).any())
         return  any([isclose(c, self.a[d]) for d, c in enumerate(p)]) or any([isclose(c, self.b[d]) for d, c in enumerate(p)])
@@ -73,7 +78,7 @@ class Grid(object):
         #return np.asarray(list(self.getWeight(index) for index in get_cross_product_range(self.numPoints)))
         if get_cross_product_list(self.weights) == []:
             return []
-        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1))
+        return np.asarray(np.prod(get_cross_product_list(self.weights), axis=1), dtype=np.float64)
 
     def get_num_points(self):
         return np.prod(self.numPoints)
@@ -187,6 +192,10 @@ class Grid(object):
     # This method checks if the quadrature rule is stable (i.e. all weights are >= 0)
     def check_stability_of_quadrature_rule(self, weights_1D: Sequence[float]) -> bool:
         return not(all([w >= 0 for w in weights_1D]))
+
+    @abc.abstractmethod
+    def initialize_grid(self):
+        pass
 
 from scipy.optimize import fmin
 from scipy.special import eval_hermitenorm, eval_sh_legendre
@@ -633,8 +642,8 @@ class LejaGrid1D(Grid1d):
 
     def get_1d_points_and_weights(self):
         coordsD = self.get_1D_level_points(self.level, 0, 1)
-        # print(coordsD)
         weightsD = np.array(self.compute_1D_quad_weights(coordsD)) * self.length
+        assert len(coordsD) == len(weightsD)
         coordsD = np.array(coordsD)
         coordsD *= self.length
         coordsD += self.start
@@ -645,6 +654,8 @@ class LejaGrid1D(Grid1d):
             numPoints = 2
         else:
             numPoints = self.linear_growth_factor * (level + 1) - 1
+        if not self.boundary:
+            numPoints -= 2
         return numPoints
 
     def compute_1D_quad_weights(self, grid_1D):
@@ -656,7 +667,8 @@ class LejaGrid1D(Grid1d):
                 V[i, j] = eval_sh_legendre(j, grid_1D[i]) * np.sqrt(2 * j + 1)
 
         weights = np.linalg.inv(V)[0, :]
-
+        if len(grid_1D) == self.num_points:
+            return weights
         return weights[self.lowerBorder:self.upperBorder]
 
     def __minimize_function(self, func, a, b):
@@ -695,6 +707,8 @@ class LejaGrid1D(Grid1d):
         sorted_points = []
         unsorted_points = []
         no_points = self.level_to_num_points_1d(curr_level)
+        if not self.boundary:
+            no_points += 2
         if no_points == 2:
             return np.array([left_bound, right_bound], dtype=np.float64)
         starting_point = self.__get_starting_point(left_bound, right_bound, weightFunction)
@@ -822,6 +836,48 @@ class TrapezoidalGrid1D(Grid1d):
         return self.spacing * (0.5 if index + self.lowerBorder == 0 or index + self.lowerBorder == \
                                       self.num_points_with_boundary - 1 else 1)
 
+# this class provides an equdistant mesh and uses the trapezoidal rule compute the quadrature
+class SimpsonGrid(Grid):
+    def __init__(self, a, b, boundary=True, integrator=None):
+        self.a = a
+        self.b = b
+        assert len(a) == len(b)
+        self.dim = len(a)
+        self.boundary = boundary
+        if integrator is None:
+            self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        else:
+            if integrator == 'old':
+                self.integrator = IntegratorArbitraryGrid(self)
+            else:
+                assert False
+        self.grids = [SimpsonGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
+
+
+class SimpsonGrid1D(TrapezoidalGrid1D):
+
+    def __init__(self, a=None, b=None, boundary=True):
+        super().__init__(a, b, boundary)
+
+    def get_1D_level_weights(self) -> Sequence[float]:
+        if self.num_points_with_boundary < 3:
+            return [self.weight_composite_trapezoidal(i) for i in range(self.num_points)]
+        weights = np.ones(self.num_points_with_boundary) * self.spacing * 1.0/3.0
+        weights[1:-1:2] *= 4
+        weights[2:-1:2] *= 2
+        if not self.boundary:
+            weights = weights[1:-1]
+        return weights
+
+    def get_1d_weight(self, index):
+        if self.num_points_with_boundary < 3:
+            return self.weight_composite_trapezoidal(index)
+        weight = self.spacing * 1.0/3.0
+        if index % 2 == 0:
+            weight *= 6
+        elif index != 0 or index != self.num_points_with_boundary - 1:
+            weight *= 2
+        return weight
 
 # this class generates a grid according to the roots of Chebyshev points and applies a Clenshaw Curtis quadrature
 # the formulas are taken from: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.33.3141&rep=rep1&type=pdf
@@ -936,7 +992,7 @@ class GlobalGrid(Grid):
             return [2 ** levelvec[d] + 1 - int(self.boundary == False) * 2 for d in range(self.dim)]
 
     def getPoints(self) -> Sequence[Tuple[float, ...]]:
-        return get_cross_product(self.coordinate_array)
+        return get_cross_product_list(self.coordinate_array)
 
     def getCoordinate(self, indexvector: Sequence[int]) -> Sequence[float]:
         position = np.zeros(self.dim)
@@ -1031,6 +1087,9 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         return weights
 
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
+        # print("Levels of GlobalTrapezoidalGrid: {}".format(grid_levels_1D))
+
         return self.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
@@ -1123,6 +1182,86 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
+
+
+from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
+    BalancedExtrapolationGrid
+
+
+class GlobalRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=True, modified_basis=False,
+                 do_cache=True,
+                 slice_grouping=SliceGrouping.UNIT,
+                 slice_version=SliceVersion.ROMBERG_DEFAULT,
+                 container_version=SliceContainerVersion.ROMBERG_DEFAULT):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        self.do_cache = do_cache
+
+        assert not(modified_basis)
+        assert boundary
+
+        self.slice_grouping = slice_grouping
+        self.slice_version = slice_version
+        self.container_version = container_version
+
+        self.weight_cache = {}
+
+    def initialize_grid(self):
+        # Reset weight cache
+        if len(self.weight_cache) > 50:
+            self.weight_cache = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+
+        key = tuple([tuple(grid_1D), tuple(grid_levels_1D)])
+
+        if self.do_cache and key in self.weight_cache:
+            return self.weight_cache[key]
+
+        romberg_grid = ExtrapolationGrid(slice_grouping=self.slice_grouping,
+                                         slice_version=self.slice_version,
+                                         container_version=self.container_version)
+
+        romberg_grid.set_grid(grid_1D, grid_levels_1D)
+        weights = romberg_grid.get_weights()
+
+        if self.do_cache:
+            self.weight_cache[key] = weights
+
+        return weights
+
+
+class GlobalBalancedRombergGrid(GlobalGrid):
+    def __init__(self, a, b, boundary=False, modified_basis=False):
+        self.boundary = boundary
+        self.integrator = IntegratorArbitraryGridScalarProduct(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+
+        assert not modified_basis
+        assert not boundary
+
+        self.weight_cache = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+
+        grid = BalancedExtrapolationGrid()
+
+        grid.set_grid(grid_1D, grid_levels_1D)
+        weights = grid.get_weights()
+
+        return weights
 
 
 class GlobalBasisGrid(GlobalGrid):

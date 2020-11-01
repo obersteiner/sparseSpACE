@@ -13,4 +13,9 @@ Untitled.ipynb
 eval_figs_*
 log_sg
 log_*
-
+.idea/*
+latex/
+html/
+chaospy/
+*.out
+*.orig
