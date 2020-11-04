@@ -3,6 +3,9 @@ from GridOperation import *
 from collections import Counter
 from Extrapolation import GridBinaryTree
 
+import time
+from math import copysign
+
 def sortToRefinePosition(elem):
     # sort by depth
     return elem[1]
@@ -23,15 +26,16 @@ class NodeInfo(object):
 
 
 class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
-    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int=np.inf, dim_adaptive: bool=True,
-                 version: int=6, operation: GridOperation=None, margin: float=None, rebalancing: bool=True,
-                 chebyshev_points=False, use_volume_weighting=False, force_balanced_refinement_tree: bool=False,
-                 grid_surplusses=None):
-        SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm)
+    def __init__(self, a: Sequence[float], b: Sequence[float], norm: int = np.inf, dim_adaptive: bool = True,
+                 version: int = 6, operation: GridOperation = None, margin: float = None, timings=None,
+                 rebalancing: bool = True, rebalancing_safety_factor: float = 0.1, chebyshev_points=False,
+                 use_volume_weighting=False, force_balanced_refinement_tree: bool = False, grid_surplusses=None,
+                 log_level: int = log_levels.NONE, print_level: int = print_levels.NONE):
+        SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, log_level=log_level, print_level=print_level)
         assert self.grid is not None
 
         if grid_surplusses is None:
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True, modified_basis=False)
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=self.grid.boundary, modified_basis=False)
         else:
             self.grid_surplusses = self.grid
 
@@ -49,11 +53,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.operation = operation
         self.equidistant = False #True
         self.rebalancing = rebalancing
+        self.rebalancing_safety_factor = rebalancing_safety_factor
+        assert self.rebalancing_safety_factor >= 0
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
         self.chebyshev_points = chebyshev_points
         self.use_volume_weighting = use_volume_weighting
-
+        self.timings = timings
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('SpatiallyAdaptiveSingleDimensions2')
+        self.log_util.set_log_prefix('SpatiallyAdaptiveSingleDimensions2')
         # If set to true, all grid points have either 0 or two children
         self.force_balanced_refinement_tree = force_balanced_refinement_tree
         self.grid_binary_tree = GridBinaryTree()
@@ -69,7 +78,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             # call default d-linear interpolation based on points in grid
             # Attention: This only works if we interpolate in between the grid points -> extrapolation not supported
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
-            return self.operation.interpolate_points(self.operation.get_component_grid_values(component_grid, gridPointCoordsAsStripes), gridPointCoordsAsStripes, interpolation_points)
+            return self.operation.interpolate_points_component_grid(component_grid, gridPointCoordsAsStripes, interpolation_points)
 
     def interpolate_grid_component(self, grid_coordinates: Sequence[Sequence[float]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -525,7 +534,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             return NodeInfo(child, left_parent, right_parent, left_of_left_parent, right_of_right_parent, True, True, None,None, level_child)
 
     # this method draws the 1D refinement of each dimension individually
-    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None, fill_boundary_points:bool=False):  # update with meta container
+    def draw_refinement(self, filename: str=None, markersize:int =20, fontsize=60, single_dim:int=None, fill_boundary_points:bool=False, showPlot: bool = False):  # update with meta container
         plt.rcParams.update({'font.size': fontsize})
         refinement = self.refinement
         dim = self.dim if single_dim is None else 1
@@ -576,7 +585,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-        plt.show()
+        if showPlot:
+            plt.show()
+        plt.close()
         return fig
 
     def draw_refinement_trees(self, filename: str=None, markersize:int =20, fontsize=20, single_dim:int=None, fill_boundary_points:bool=False):
@@ -662,22 +673,23 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         plt.tight_layout()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         return fig
 
     def init_evaluation_operation(self, areas):
         self.operation.initialize_evaluation_dimension_wise(areas[0])
 
-    def evaluate_operation_area(self, component_grid:ComponentGridInfo, area, additional_info=None):
+    def evaluate_operation_area(self, component_grid: ComponentGridInfo, area, additional_info=None):
         if self.grid.is_global():
             # get 1d coordinates of the grid points that define the grid; they are calculated based on the levelvector
             gridPointCoordsAsStripes, grid_point_levels, children_indices = self.get_point_coord_for_each_dim(component_grid.levelvector)
 
             # calculate the operation on the grid
-            self.operation.calculate_operation_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)#self.refinements != 0 and not self.do_high_order and not self.grid.modified_basis)
+            self.log_util.time_func("spatAdaptDimWise: calculate_operation_dimension_wise time taken ", self.operation.calculate_operation_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, component_grid)
 
             # compute the error estimates for further refining the Refinementobjects and therefore the future grid
-            self.compute_error_estimates_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
+            if not self.errorEstimator.is_global:
+                self.log_util.time_func("spatAdaptDimWise: compute_error_estimates_dimension_wise time taken ", self.compute_error_estimates_dimension_wise, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid)
 
             # save the number of evaluations used per d-1 dimensional slice
             #for d in range(self.dim):
@@ -690,6 +702,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     # This method computes additional values after the compution of the integrals for the current
     # refinement step is finished. This method is executed before the refinement process.
     def finalize_evaluation_operation(self, areas, evaluation_array):
+        # TODO: global error calculation
+        ### global error calc goes here
+        if self.errorEstimator.is_global:
+            self.errorEstimator.calc_global_error(self.operation.validation_set, self)
         super().finalize_evaluation_operation(areas, evaluation_array)
         #self.refinement.print_containers_only()
         #if self.version == 1:
@@ -803,8 +819,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         """
         self.lmax[d] += value
         if self.dim_adaptive:
-            if self.print_output:
-                print("New lmax:", self.lmax)
+            self.log_util.log_debug("New lmax: {0}".format(self.lmax))
             while (True):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
@@ -845,25 +860,35 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             if refinement_object.levels[1] == level:
                 position_level = i
             if refinement_object.levels[1] == level + 1:
-                if position_level_1_left is None:
+                if position_level_1_left is None and position_level is None:
                     position_level_1_left = i
-                else:
+                elif position_level is not None:
+                #else:
+                    #assert position_level_1_right is None
                     assert position_level_1_right is None
                     position_level_1_right = i
-                    break
+                else:
+                    assert False
+                #if position_level is not None and position_level_1_left is not None and position_level_1_right is not None:
+                #    break
 
         #refineContainer.printContainer()
         #print(refinement_object.this_dim, position_level, position_level_1_left, position_level_1_right, start, end, level )
-        safetyfactor = 10**-1#0#0.1
+        # if position_level is None:
+        #     print('stop')
+        # if position_level_1_left is None:
+        #     print('stop')
+        # if position_level_1_right is None:
+        #     print('stop')
         assert position_level is not None
-        assert position_level_1_right is not None
-        assert position_level_1_left is not None
+        #assert position_level_1_right is not None
+        #assert position_level_1_left is not None
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
-        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + safetyfactor:
+        if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
+            assert position_level < position_level_1_right
             position_new_leaf = None
-            if self.print_output:
-                print("Rebalancing!")
+            self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -876,6 +901,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
                     else:
                         if refinement_object.levels[1] == level + 1:
+                            assert j == position_level_1_right
                             new_leaf_reached = True
                             position_new_leaf = start + j
                         if j > position_level and new_leaf_reached:
@@ -888,10 +914,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #refineContainer.printContainer()
 
         new_leaf_reached = True
-        if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + safetyfactor:
+        if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
+            assert position_level_1_left < position_level
             position_new_leaf = None
-            if self.print_output:
-                print("Rebalancing!")
+            self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
                 if j < end - start - 1:
                     next_refinement_object = refineContainer.get_object(j+1+start)
@@ -909,6 +935,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                             refinement_object.levels[1] -= 1
                             next_refinement_object.levels[0] -= 1
                         if refinement_object.levels[1] == level:
+                            assert j == position_level_1_left
                             new_leaf_reached = False
                             position_new_leaf = start + j
             assert position_new_leaf is not None
@@ -957,7 +984,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     def compute_error_estimates_dimension_wise(self, gridPointCoordsAsStripes, grid_point_levels, children_indices, component_grid):
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
+        if isinstance(self.errorEstimator, ErrorCalculatorSingleDimMisclassificationGlobal):
+            self.errorEstimator.calc_global_error(self.operation.data, self)
+        else:
+            self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
 
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
@@ -1264,10 +1294,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # avoid evaluating on boundary points if grids has none
         # assert (tuple(point_child) in self.f.f_dict)
         #print(points_children, children)
-        point_values = self.operation.get_point_values_component_grid(points_children, component_grid)
+        point_values = self.operation.get_point_values_component_grid_multiple(points_children, component_grid)
         values = point_values
         if len(points_left_parents) > 0:
-            point_values_left_parents = self.operation.get_point_values_component_grid(points_left_parents,
+            point_values_left_parents = self.operation.get_point_values_component_grid_multiple(points_left_parents,
                                                                                           component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
             # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
             #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
@@ -1300,7 +1330,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #print(np.shape(values[left_parents_in_grid]), np.shape(factors_left_parents), np.shape(point_values_left_parents.T), points_left_parents)
             values[left_parents_in_grid] -= (factors_left_parents * point_values_left_parents.T).T
         if len(points_right_parents) > 0:
-            point_values_right_parents = self.operation.get_point_values_component_grid(points_right_parents,
+            point_values_right_parents = self.operation.get_point_values_component_grid_multiple(points_right_parents,
                                                                                        component_grid)  # np.asarray([self.f(p) for p in points_right_parent])
             '''
             if self.grid_surplusses.modified_basis and not left_parent_in_grid:
@@ -1378,6 +1408,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 else:
                     volume = volumes[i]
+                    assert volume is not None
                 #    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
 
                 k_old = 0
