@@ -35,7 +35,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         assert self.grid is not None
 
         if grid_surplusses is None:
-            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=True, modified_basis=False)
+            self.grid_surplusses = GlobalTrapezoidalGrid(a, b, boundary=self.grid.boundary, modified_basis=False)
         else:
             self.grid_surplusses = self.grid
 
@@ -54,6 +54,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.equidistant = False #True
         self.rebalancing = rebalancing
         self.rebalancing_safety_factor = rebalancing_safety_factor
+        assert self.rebalancing_safety_factor >= 0
         self.subtraction_value_cache = {}
         self.max_level_dict = {}
         self.chebyshev_points = chebyshev_points
@@ -885,6 +886,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         new_leaf_reached = False
         #print(i+2, end - start + 1, (i + 2) / (end - start + 1), i, start, end, level)
         if position_level_1_right is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_right) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
+            assert position_level < position_level_1_right
             position_new_leaf = None
             self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
@@ -913,6 +915,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
 
         new_leaf_reached = True
         if position_level_1_left is not None and abs((position_level) / (end-start - 2) - 0.5) > abs((position_level_1_left) / (end-start - 2) - 0.5) + self.rebalancing_safety_factor:
+            assert position_level_1_left < position_level
             position_new_leaf = None
             self.log_util.log_debug("Rebalancing!")
             for j, refinement_object in enumerate(refineContainer.get_objects()[start:end]):
@@ -1405,6 +1408,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 else:
                     volume = volumes[i]
+                    assert volume is not None
                 #    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
 
                 k_old = 0
