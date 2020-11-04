@@ -202,8 +202,8 @@ class SpatiallyAdaptivBase(StandardCombi):
     def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
                                 refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None, single_step: bool=False,
-                                log_level=log_levels.WARNING, print_level=print_levels.NONE) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None, single_step: bool=False
+                                ) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         """This is the main method for the spatially adaptive refinement strategy
 
         :param lmin: Minimum level for truncated combination technique (equal for all dimensions)
@@ -223,8 +223,6 @@ class SpatiallyAdaptivBase(StandardCombi):
         :param solutions_storage: #toDo
         :param evaluation_points: Number of points at which we want to interpolate the approximated model. This will
                                   generate the values at the points for each refinement step to analyze convergence.
-        :param print_level: Set the level of messages that should be printed to console
-        :param log_level: Set the logging level
         :param single_step: perform only a single refinement regardless of other parameters
         :return: #toDo
 
@@ -249,12 +247,8 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.solutions_storage = solutions_storage
         self.evaluation_points = evaluation_points
         self.single_step = single_step
-
-        self.log_util.set_log_level(log_level)
-        self.log_util.set_print_level(print_level)
         # for compatibility with old code
-        if print_output is True and print_level == print_levels.NONE:
-            self.log_util.set_print_level(print_levels.INFO)
+
 
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 

@@ -277,7 +277,7 @@ class DensityEstimation(AreaOperation):
     def __init__(self, data, dim, grid=None, masslumping: bool = False, print_output: bool = False,
                  lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
                  numeric_calculation: bool = False, pre_scaled_data: bool = False,
-                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.NONE, print_level: int = print_levels.NONE):
         """Constructor of the DensityEstimation class
 
         :param data: the data set on which desity estimation is to be performed
