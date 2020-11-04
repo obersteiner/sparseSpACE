@@ -191,7 +191,7 @@ class TestDensityEstimation(unittest.TestCase):
 
         for grid_config in [False, True]:
             modified_basis = False #grid_config
-            boundary = grid_config
+            boundary = False #grid_config
 
             newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim),
                                             modified_basis=modified_basis, boundary=boundary)
@@ -204,7 +204,7 @@ class TestDensityEstimation(unittest.TestCase):
                                    log_level=log_and_print_level, print_level=log_and_print_level)
             # create the combiObject and initialize it with the operation
             SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, rebalancing=rebalancing,
-                                                      rebalancing_safety_factor=2 * 10 ^ -1,
+                                                      rebalancing_safety_factor=2 * 10 ** -1,
                                                       log_level=log_and_print_level, print_level=log_and_print_level)
             # perform the density estimation operation, has to be done before the printing and plotting
             SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=1000,)
@@ -233,7 +233,7 @@ class TestDensityEstimation(unittest.TestCase):
         for grid_config in [[False, False], [False, True]]: #, [True, False]]:
 
             modified_basis = False #grid_config[0]
-            boundary = grid_config[1]
+            boundary = False #grid_config[1]
 
             newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=modified_basis,
                                             boundary=boundary)
@@ -246,7 +246,7 @@ class TestDensityEstimation(unittest.TestCase):
                                    log_level=log_and_print_level, print_level=log_and_print_level)
             # create the combiObject and initialize it with the operation
             SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, rebalancing=rebalancing,
-                                                      rebalancing_safety_factor=2 * 10 ^ -1,
+                                                      rebalancing_safety_factor=2 * 10 ** -1,
                                                       log_level=log_and_print_level, print_level=log_and_print_level)
             # perform the density estimation operation, has to be done before the printing and plotting
             SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=1000)
