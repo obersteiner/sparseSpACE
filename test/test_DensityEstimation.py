@@ -190,7 +190,7 @@ class TestDensityEstimation(unittest.TestCase):
         log_and_print_level = log_levels.NONE
 
         for grid_config in [False, True]:
-            modified_basis = grid_config
+            modified_basis = False #grid_config
             boundary = grid_config
 
             newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim),
@@ -230,9 +230,9 @@ class TestDensityEstimation(unittest.TestCase):
 
         log_and_print_level = log_levels.NONE
 
-        for grid_config in [[False, False], [False, True], [True, False]]:
+        for grid_config in [[False, False], [False, True]]: #, [True, False]]:
 
-            modified_basis = grid_config[0]
+            modified_basis = False #grid_config[0]
             boundary = grid_config[1]
 
             newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=modified_basis,

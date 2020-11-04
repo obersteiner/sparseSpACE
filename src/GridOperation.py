@@ -236,6 +236,10 @@ class GridOperation(object):
         """
         pass
 
+    def get_point_values_component_grid_multiple(self, pointsets: Sequence[Sequence[Sequence[float]]], component_grid: ComponentGridInfo) \
+            -> Sequence[Sequence[Sequence[float]]]:
+        pass
+
     def get_surplus_width(self, d: int, right_parent: float, left_parent: float) -> float:
         """This method calculates the 1D surplus width for a linear basis function with left and right parent.
 
@@ -578,12 +582,25 @@ class DensityEstimation(AreaOperation):
         :return: Surpluses for the component_grid filled up with zero on the boundary
         """
         surpluses = list(self.get_result().get(tuple(component_grid.levelvector)))
-        if len(mesh_points_grid > len(surpluses)):
+        if len(mesh_points_grid) > len(surpluses):
             mesh_points = get_cross_product(mesh_points_grid)
             values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
         else:
-            values = surpluses
+            values = np.asarray(surpluses)
         return values.reshape((len(values), 1))
+
+    def get_point_values_component_grid_multiple(self, pointsets: Sequence[Sequence[Sequence[float]]], component_grid: ComponentGridInfo) \
+            -> Sequence[Sequence[Sequence[float]]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        temp = []
+        for points in pointsets:
+            temp.append(self.get_point_values_component_grid(points, component_grid))
+        return np.asarray(temp)
 
     def get_point_values_component_grid(self, points: Sequence[float], component_grid: ComponentGridInfo) \
             -> Sequence[Sequence[float]]:
@@ -738,7 +755,7 @@ class DensityEstimation(AreaOperation):
         :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
         """
         if self.grid.boundary:
-            coords = [np.array([0.0] + list[gridPointCoordsAsStripes[d]] + [1.0]) for d in range(self.dim)]
+            coords = [np.array([0.0] + list(gridPointCoordsAsStripes[d]) + [1.0]) for d in range(self.dim)]
         else:
             coords = gridPointCoordsAsStripes
         upper = get_cross_product_numpy_array([[1] if len(coords[d]) == 3 else np.roll(coords[d], -1)[1:-1] for d in range(self.dim)])
@@ -1767,6 +1784,18 @@ class Integration(AreaOperation):
         #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
         points = np.asarray(points)
         return self.f.eval_vectorized(points).reshape((*np.shape(points)[:-1],self.f.output_length())) #np.asarray([self.f(p) for p in points])
+
+    def get_point_values_component_grid_multiple(self, pointsets: Sequence[Sequence[Sequence[float]]], component_grid: ComponentGridInfo) \
+            -> Sequence[Sequence[Sequence[float]]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param pointsets: 2D Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        #assert np.all(self.f(points) == np.asarray([self.f(p) for p in points]))
+        points = np.asarray(points)
+        return self.f.eval_vectorized(points).reshape((*np.shape(points)[:-1],self.f.output_length()))
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:

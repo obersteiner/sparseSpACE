@@ -1291,10 +1291,10 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # avoid evaluating on boundary points if grids has none
         # assert (tuple(point_child) in self.f.f_dict)
         #print(points_children, children)
-        point_values = self.operation.get_point_values_component_grid(points_children, component_grid)
+        point_values = self.operation.get_point_values_component_grid_multiple(points_children, component_grid)
         values = point_values
         if len(points_left_parents) > 0:
-            point_values_left_parents = self.operation.get_point_values_component_grid(points_left_parents,
+            point_values_left_parents = self.operation.get_point_values_component_grid_multiple(points_left_parents,
                                                                                           component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
             # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
             #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
@@ -1327,7 +1327,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             #print(np.shape(values[left_parents_in_grid]), np.shape(factors_left_parents), np.shape(point_values_left_parents.T), points_left_parents)
             values[left_parents_in_grid] -= (factors_left_parents * point_values_left_parents.T).T
         if len(points_right_parents) > 0:
-            point_values_right_parents = self.operation.get_point_values_component_grid(points_right_parents,
+            point_values_right_parents = self.operation.get_point_values_component_grid_multiple(points_right_parents,
                                                                                        component_grid)  # np.asarray([self.f(p) for p in points_right_parent])
             '''
             if self.grid_surplusses.modified_basis and not left_parent_in_grid:
