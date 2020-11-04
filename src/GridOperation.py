@@ -613,7 +613,8 @@ class DensityEstimation(AreaOperation):
         if self.debug:
             mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
             mesh_points = list(get_cross_product(mesh_points_grid))
-            points_list = [point for sublist in points for point in sublist]#list(points)
+            points_list = list(points)
+            #print(points_list, mesh_points)
             #points_indices = [mesh_points.index(p) for p in points_list]
             nodal_values = list(self.get_result().get(tuple(component_grid.levelvector)))
             if len(nodal_values) > 0 and len(points_list) > 0:
@@ -631,7 +632,7 @@ class DensityEstimation(AreaOperation):
             mesh_points_grid = (self.grid.coordinate_array[d] for d in range(self.dim))
             mesh_points = list(get_cross_product(mesh_points_grid))
             nodal_values = self.get_result().get(tuple(component_grid.levelvector))
-            points_list = [point for sublist in points for point in sublist]
+            points_list = list(points)
             pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
             validPoint = lambda x: True if x in mesh_points else False
             values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
