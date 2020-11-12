@@ -1106,20 +1106,25 @@ class DensityEstimation(AreaOperation):
 
                 res *= integral
             else:
-                m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
-                m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
-
+                if point_i[d] != domain_i[d][0]:
+                    m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
+                    # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
+                    integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
+                    # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                else:
+                    integral_1 = lambda x, m, p: 0
+                    m1 = 0
+                if point_i[d] != domain_j[d][1]:
+                    m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
+                    # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
+                    integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
+                    # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                else:
+                    integral_2 = lambda x, m, p: 0
+                    m2 = 0
                 a = domain_i[d][0]  # lower end of first integral
                 p = point_i[d] # upper end of first integral, lower end of second integral
                 c = domain_i[d][1]  # upper end of second integral
-
-                # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
-                integral_1 = lambda x, m, p: -((m * (p - x) - 1)**3 / (3 * m))
-                #integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
-
-                # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
-                integral_2 = lambda x, m, p: -((m * (p - x) + 1)**3 / (3 * m))
-                #integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
 
                 integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (integral_2(c, m2, p) - integral_2(p, m2, p))
 
@@ -1249,23 +1254,28 @@ class DensityEstimation(AreaOperation):
             #                factor_part = max(0.0, 1.0 - (1.0 / (point[dim] - domain[i][dim][0])) * (point[dim] - x[dim]))
             #            factor2[i] *= factor_part
 
-            value_1_temp = (evaluation_points - grid_point_positions)
-            value1_temp = 1.0 - value_1_temp / (upper - grid_point_positions)
+            filter_upper = upper != grid_point_positions
+            value_1_temp = (evaluation_points[:, filter_upper] - grid_point_positions[filter_upper])
+            value1_temp = 1.0 - value_1_temp / (upper[filter_upper] - grid_point_positions[filter_upper])
             value1_temp[value1_temp > 1] = 0
             value1_temp[value1_temp < 0] = 0
-            value1 = value1_temp  #if we are out of support we are <0 if we are on wrong side > 1
+            value1 = np.zeros(np.shape(evaluation_points))
+            value1[:, filter_upper] = value1_temp  #if we are out of support we are <0 if we are on wrong side > 1
 
             #value1_temp = 1.0 - (evaluation_points - grid_point_positions) / (upper - grid_point_positions)
             #value1_maximum_filter = np.maximum.reduce([value1_temp, np.zeros(np.shape(evaluation_points))])
             #value1_2 =  value1_maximum_filter * np.ceil(evaluation_points - grid_point_positions + 10**-30)
             #print(value1, value1_2)
             #assert np.all(value1 == value1_2)
-            value_2_temp = (grid_point_positions - evaluation_points)
-            value2_temp = 1.0 - value_2_temp / (grid_point_positions - lower)
+
+            filter_lower = lower != grid_point_positions
+            value_2_temp = (grid_point_positions[filter_lower] - evaluation_points[:,filter_lower])
+            value2_temp = 1.0 - value_2_temp / (grid_point_positions[filter_lower] - lower[filter_lower])
             # if we are out of support we are <0 if we are on wrong side > 1
             value2_temp[value2_temp >= 1] = 0
             value2_temp[value2_temp < 0] = 0
-            value2 = value2_temp
+            value2 = np.zeros(np.shape(evaluation_points))
+            value2[:, filter_lower] = value2_temp
             #value2_2 = np.maximum.reduce([1.0 - (grid_point_positions - evaluation_points) / (grid_point_positions - lower), np.zeros(np.shape(evaluation_points))]) * np.ceil(grid_point_positions - evaluation_points)
             result = np.prod(value1 + value2, axis=2)
             #print(value2, value2_2)
