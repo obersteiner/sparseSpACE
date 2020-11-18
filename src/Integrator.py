@@ -145,6 +145,7 @@ class IntegratorParallelArbitraryGridOptimized(IntegratorArbitraryGrid):
             cached = [vec for vec in indexvectors if self.iscached(indexvector, f)]
             uncached = [vec for vec in indexvectors if not self.iscached(indexvector, f)]
             chunks = [cached[i::size] + uncached[i::size] for i in range(size)]
+<<<<<<< HEAD
             print(f'workpackages: {chunks}')
             print(f'overall worlpackage length: {len(indexvectors)}')
 
@@ -153,10 +154,22 @@ class IntegratorParallelArbitraryGridOptimized(IntegratorArbitraryGrid):
         # distributing work packages
         packet = comm.scatter(chunks, root=0)
         print(f'workpackage length single: {len(packet)}')
+=======
+
+        else:
+            chunks = None
+        
+        # distributing work packages
+        packet = comm.scatter(chunks, root=0)
+>>>>>>> a0d9a9a8736149c3693cfff85820d4b6f405b24b
         localresult = 0.0
         for vec in packet:
             localresult += self.integrate_point(f, vec)
         results = comm.gather(localresult)
+<<<<<<< HEAD
+=======
+
+>>>>>>> a0d9a9a8736149c3693cfff85820d4b6f405b24b
         # merge caches 
         if isinstance(f, Function):
             caches : List[dict] = comm.gather(f.f_dict)
@@ -179,11 +192,17 @@ class IntegratorParallelArbitraryGridOptimized(IntegratorArbitraryGrid):
             global_result = None
         global_result = comm.bcast(global_result) # scattering so each process returns a valid result
         return global_result
+<<<<<<< HEAD
 
     def iscached(self, indexvector, f):
         pos = self.grid.getCoordinate(indexvector)
         return tuple(pos) in f.f_dict
 
+=======
+    def iscached(self, indexvector, f):
+        pos = self.grid.getCoordinate(indexvector)
+        return tuple(pos) in f.f_dict
+>>>>>>> a0d9a9a8736149c3693cfff85820d4b6f405b24b
 class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
     def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
         comm = MPI.COMM_WORLD
