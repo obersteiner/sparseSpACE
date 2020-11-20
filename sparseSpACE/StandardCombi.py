@@ -5,7 +5,7 @@ from sparseSpACE.GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+from sparseSpACE import GridOperation
 
 class StandardCombi(object):
     """This class implements the standard combination technique.
@@ -339,8 +339,8 @@ class StandardCombi(object):
         # overax.axis('off')
         # overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
         # overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
-        overax.set_xticks([], [])
-        overax.set_yticks([], [])
+        overax.set_xticks(ticks=[])
+        overax.set_yticks(ticks=[])
         overax.set_xlabel("$l_1$")
         overax.set_ylabel("$l_2$")
         overax.set_xlim([0, 1])
