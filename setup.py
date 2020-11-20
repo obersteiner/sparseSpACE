@@ -24,6 +24,6 @@ setup(
     ],
     packages=["sparseSpACE"],
     include_package_data=True,
-    install_requires=["numpy", "scipy","matplotlib","dill","scikit-learn","chaospy"],
+    install_requires=["numpy", "scipy","matplotlib","dill","scikit-learn","chaospy","sympy"],
 )
 
