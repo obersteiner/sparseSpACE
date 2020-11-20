@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from combiScheme import *
-from GridOperation import *
+from sparseSpACE.combiScheme import *
+from sparseSpACE.GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable

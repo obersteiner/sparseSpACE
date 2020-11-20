@@ -1,10 +1,9 @@
 import unittest
-from sys import path
-path.append('../../src/')
+import sparseSpACE
 
-from Extrapolation import SliceVersion, ExtrapolationGrid, SliceContainerVersion, \
+from sparseSpACE.Extrapolation import SliceVersion, ExtrapolationGrid, SliceContainerVersion, \
     LagrangeRombergGridSliceContainer, SliceGrouping
-from Function import Polynomial1d
+from sparseSpACE.Function import Polynomial1d
 
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Interpolating Grid

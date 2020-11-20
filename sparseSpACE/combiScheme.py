@@ -1,8 +1,8 @@
 import numpy as np
 import math
-from ComponentGridInfo import ComponentGridInfo
+from sparseSpACE.ComponentGridInfo import ComponentGridInfo
 from typing import List, Set, Tuple
-from Utils import *
+from sparseSpACE.Utils import *
 
 class CombiScheme:
     def __init__(self, dim: int):

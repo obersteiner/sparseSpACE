@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import abc, logging
-from Grid import *
+from sparseSpACE.Grid import *
 
 # This class defines the general template of a Refinement Object that can be stored in the refinement container
 class RefinementObject(object):

@@ -1,11 +1,8 @@
 import unittest
-from sys import path
 
-from Extrapolation import SliceGrouping, ExtrapolationGrid, SliceVersion, SliceContainerVersion
-from Function import Polynomial1d
-
-path.append('../../src/')
-
+import sparseSpACE
+from sparseSpACE.Extrapolation import SliceGrouping, ExtrapolationGrid, SliceVersion, SliceContainerVersion
+from sparseSpACE.Function import Polynomial1d
 
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Simpson Romberg Grid

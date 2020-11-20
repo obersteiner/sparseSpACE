@@ -1,10 +1,8 @@
 import unittest
-from sys import path
-
-path.append('../src/')
-from StandardCombi import *
-from Grid import *
-from GridOperation import DensityEstimation
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.Grid import *
+from sparseSpACE.GridOperation import DensityEstimation
 
 
 class TestDensityEstimation(unittest.TestCase):

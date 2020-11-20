@@ -1,8 +1,8 @@
 import numpy as np
-from Utils import *
-import Grid
+from sparseSpACE.Utils import *
+from sparseSpACE import Grid
 from typing import Tuple, Sequence, Callable
-from Function import *
+from sparseSpACE.Function import *
 from scipy.linalg import solve_triangular
 
 class HierarchizationLSG(object):

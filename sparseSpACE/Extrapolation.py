@@ -10,7 +10,7 @@ import sympy as sym
 from typing import Sequence, Tuple, Dict, List
 
 from sympy import symbols
-import Function
+from sparseSpACE import Function
 
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Extrapolation Coefficients

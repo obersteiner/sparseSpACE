@@ -1,9 +1,13 @@
 from numpy import linalg as LA
 from math import isclose, isinf
-from Grid import *
-from BasisFunctions import *
-from RefinementContainer import RefinementContainer
-from RefinementObject import RefinementObject
+from sparseSpACE.Grid import *
+from sparseSpACE.BasisFunctions import *
+from sparseSpACE.RefinementContainer import RefinementContainer
+from sparseSpACE.RefinementObject import RefinementObject
+import chaospy as cp
+import scipy.stats as sps
+from sparseSpACE.Function import *
+from sparseSpACE.StandardCombi import *  # For reference solution calculation
 
 
 class GridOperation(object):
@@ -1004,12 +1008,6 @@ class Interpolation(Integration):
             #interpolated_values = np.asarray([[value] for value in interpolated_values])
             interpolated_values_array.append(interpolated_values.reshape((len(interpolated_values),1)))
         return np.hstack(interpolated_values_array)
-
-
-import chaospy as cp
-import scipy.stats as sps
-from Function import *
-from StandardCombi import *  # For reference solution calculation
 
 
 class UncertaintyQuantification(Integration):

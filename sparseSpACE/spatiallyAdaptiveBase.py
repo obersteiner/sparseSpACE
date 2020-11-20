@@ -1,11 +1,11 @@
 # Python modules
 import time
-from RefinementContainer import *
-from RefinementObject import *
-from ErrorCalculator import *
-from Function import *
-from StandardCombi import *
-from GridOperation import GridOperation
+from sparseSpACE.RefinementContainer import *
+from sparseSpACE.RefinementObject import *
+from sparseSpACE.ErrorCalculator import *
+from sparseSpACE.Function import *
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.GridOperation import GridOperation
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):

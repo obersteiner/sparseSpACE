@@ -1,6 +1,6 @@
-from StandardCombi import *
-from combiScheme import *
-from Grid import *
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.combiScheme import *
+from sparseSpACE.Grid import *
 
 
 # T his class implements the standard combination technique

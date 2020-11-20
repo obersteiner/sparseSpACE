@@ -1,11 +1,10 @@
 import unittest
-from sys import path
-path.append('../src/')
-from StandardCombi import *
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
 import math
-from Hierarchization import *
-from Grid import *
-from Function import *
+from sparseSpACE.Hierarchization import *
+from sparseSpACE.Grid import *
+from sparseSpACE.Function import *
 
 
 class TestHierarchization(unittest.TestCase):

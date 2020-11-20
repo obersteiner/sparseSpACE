@@ -1,7 +1,7 @@
-from spatiallyAdaptiveBase import *
-from GridOperation import *
+from sparseSpACE.spatiallyAdaptiveBase import *
+from sparseSpACE.GridOperation import *
 from collections import Counter
-from Extrapolation import GridBinaryTree
+from sparseSpACE.Extrapolation import GridBinaryTree
 
 def sortToRefinePosition(elem):
     # sort by depth
