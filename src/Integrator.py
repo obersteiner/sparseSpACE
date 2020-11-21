@@ -145,18 +145,21 @@ class IntegratorParallelArbitraryGridOptimized(IntegratorArbitraryGrid):
             cached = [vec for vec in indexvectors if self.iscached(indexvector, f)]
             uncached = [vec for vec in indexvectors if not self.iscached(indexvector, f)]
             chunks = [cached[i::size] + uncached[i::size] for i in range(size)]
+            print(f'workpackages: {chunks}')
+            print(f'overall worlpackage length: {len(indexvectors)}')
+
 
         else:
             chunks = None
         
         # distributing work packages
         packet = comm.scatter(chunks, root=0)
+        print(f'workpackage length single: {len(packet)}')
         localresult = 0.0
         for vec in packet:
             localresult += self.integrate_point(f, vec)
         results = comm.gather(localresult)
-
-        # merge caches 
+       # merge caches 
         if isinstance(f, Function):
             caches : List[dict] = comm.gather(f.f_dict)
             if rank == 0:
@@ -217,6 +220,7 @@ class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
 
         # merge caches 
         if isinstance(f, Function):
+            print('mering cahces')
             caches : List[dict] = comm.gather(f.f_dict)
             if rank == 0:
                 all_keys = set([key for cache in caches for key in cache.keys()])
