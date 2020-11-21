@@ -162,10 +162,8 @@ class IntegratorParallelArbitraryGridOptimized(IntegratorArbitraryGrid):
             if rank == 0:
                 all_keys = set([key for cache in caches for key in cache.keys()])
                 new_cache = {}
-                for key in all_keys:
-                    for cache in caches:
-                        if cache.get(key) is not None:
-                            new_cache[key] = cache[key]
+                for cache in caches:
+                    new_cache.update(cache)
             else:
                 new_cache = None
             new_cache = comm.bcast(new_cache)
@@ -223,10 +221,8 @@ class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
             if rank == 0:
                 all_keys = set([key for cache in caches for key in cache.keys()])
                 new_cache = {}
-                for key in all_keys:
-                    for cache in caches:
-                        if cache.get(key) is not None:
-                            new_cache[key] = cache[key]
+                for cache in caches:
+                    new_cache.update(cache)
             else:
                 new_cache = None
             new_cache = comm.bcast(new_cache)
