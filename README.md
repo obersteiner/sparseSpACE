@@ -26,7 +26,8 @@ A short introduction in how to use the framework can be found in the ipynb tutor
 - Tutorial_UncertaintyQuantification.ipynb
 
 # Plotting
-The framework also supports various options for plotting the results. Examples can be found in the ipynb/diss folder or the other Tutorials.
+
+The framework also supports various options for plotting the results. Examples can be found in the ipynb/Diss folder or the other Tutorials.
 
 # Software requirements
 
