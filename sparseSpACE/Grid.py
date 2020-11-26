@@ -982,10 +982,10 @@ class GlobalGrid(Grid):
             self.weights.append(weightsD)
             self.levels.append(levelsD)
             self.numPoints[d] = len(coordsD)
-        self.coordinate_array = np.asarray(self.coordinate_array)
-        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary)
-        self.weights = np.asarray(self.weights)
-        self.levels = np.asarray(self.levels)
+        self.coordinate_array = np.asarray(self.coordinate_array, dtype=object)
+        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary, dtype=object)
+        self.weights = np.asarray(self.weights, dtype=object)
+        self.levels = np.asarray(self.levels, dtype=object)
 
     def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
         if hasattr(self, 'numPoints'):
