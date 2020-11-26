@@ -44,7 +44,7 @@ These software requirements are automatically installed when using pip. But as a
 - sympy (1.6 or higher)
 
 # Development
-For development use the presented configure script which will install the library in modifiable mode and apply the git hooks used for the project.
+For development clone the repository from github and use the configure script which will install the library in modifiable mode and apply the git hooks used for the project.
 ```
 ./configure 
 ```
