@@ -8,7 +8,7 @@ import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from sparseSpACE import GridOperation
-from sparseSpace.Utils import *
+from sparseSpACE.Utils import *
 
 
 class StandardCombi(object):
