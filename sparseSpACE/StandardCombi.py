@@ -1,5 +1,5 @@
 import time
-
+import sparseSpACE
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from sparseSpACE.combiScheme import *
