@@ -1,10 +1,7 @@
 import unittest
-import DEMachineLearning as deml
+import sparseSpACE
+import sparseSpACE.DEMachineLearning as deml
 import numpy as np
-from sys import path
-
-path.append('../src/')
-
 
 class TestDEMachineLearning(unittest.TestCase):
 
