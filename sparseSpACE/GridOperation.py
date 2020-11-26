@@ -1814,7 +1814,7 @@ class Integration(AreaOperation):
 
     def process_removed_objects(self, removed_objects: List[RefinementObject]) -> None:
         for removed_object in removed_objects:
-            print("Removing integral:", removed_object.value, "from region", removed_object.start, removed_object.end)
+            #print("Removing integral:", removed_object.value, "from region", removed_object.start, removed_object.end)
             self.integral -= removed_object.value
 
     def get_component_grid_values(self, component_grid, mesh_points_grid):
