@@ -6,10 +6,20 @@ from sparseSpACE.ErrorCalculator import *
 from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *
 from sparseSpACE.GridOperation import GridOperation
+from Utils import *
+import sys
+if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
+    timing = time.time_ns
+else:
+    timing = time.time
+
 
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
-    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int=np.inf):
+    def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int = np.inf,
+                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE,
+                 filename_contour_plot: str = None, filename_refinement_graph: str = None, filename_combi_scheme_plot: str = None,
+                 filename_sparse_grid_plot: str = None):
         assert operation is not None
         self.log = logging.getLogger(__name__)
         self.dim = len(a)
@@ -22,6 +32,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.margin = 0.9
         self.calculated_solution = None
         assert (len(a) == len(b))
+        self.timings = timings
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        self.log_util.set_print_prefix('SpatiallyAdaptivBase')
+        self.log_util.set_log_prefix('SpatiallyAdaptivBase')
+        self.filename_contour_plot = filename_contour_plot
+        self.filename_refinement_graph = filename_refinement_graph
+        self.filename_combi_scheme_plot = filename_combi_scheme_plot
+        self.filename_sparse_grid_plot = filename_sparse_grid_plot
 
     def get_num_points_component_grid(self, levelvec: Sequence[int], count_multiple_occurrences: bool) -> int:
         array2 = self.get_points_component_grid(levelvec)
@@ -56,11 +74,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         assert np.isscalar(lmin)
         assert np.isscalar(lmax)
         self.tolerance = tol
-        if self.print_output:
-            if self.reference_solution is not None:
-                print("Reference solution:", self.reference_solution)
-            else:
-                print("No reference solution present. Working purely on surplus error estimates.")
+
+        if self.reference_solution is not None:
+            self.log_util.log_debug("Reference solution: {0}".format(self.reference_solution))
+        else:
+            self.log_util.log_debug("No reference solution present. Working purely on surplus error estimates.")
         if refinement_container is None:  # initialize refinement
             self.lmin = [lmin for i in range(self.dim)]
             self.lmax = [lmax for i in range(self.dim)]
@@ -87,15 +105,14 @@ class SpatiallyAdaptivBase(StandardCombi):
         areas = self.get_new_areas()
         evaluation_array = np.zeros(len(areas), dtype=int)
         self.init_evaluation_operation(areas)
-        self.compute_solutions(areas, evaluation_array)
+        self.log_util.time_func("spatialAdaptBase: compute_solutions time taken ", self.compute_solutions, areas, evaluation_array)
         self.finalize_evaluation_operation(areas, evaluation_array)
 
         # getArea with maximal error
         self.benefit_max = self.refinement.get_max_benefit()
         self.total_error = self.refinement.get_total_error()
-        if self.print_output:
-            print("max surplus error:", self.benefit_max, "total surplus error:", self.total_error)
-            self.operation.print_evaluation_output(self.refinement)
+        self.log_util.log_debug("max surplus error: {0} total surplus error: {1}".format(self.benefit_max, self.total_error))
+        self.operation.print_evaluation_output(self.refinement)
         global_error_estimate = self.operation.get_global_error_estimate(self.refinement, self.norm)
         if global_error_estimate is not None:
             return global_error_estimate, self.total_error
@@ -170,9 +187,8 @@ class SpatiallyAdaptivBase(StandardCombi):
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate operation and check if further refinements necessary
-                if self.print_output:
-                    print("Finished refinement")
-                    print("Refined ", num_refinements, " times")
+                self.log_util.log_debug("Finished refinement")
+                self.log_util.log_debug("Refined {0} times".format(num_refinements))
                 self.refinement_postprocessing()
                 break
 
@@ -181,13 +197,13 @@ class SpatiallyAdaptivBase(StandardCombi):
             self.evaluationPerArea = []
             self.evaluationsTotal = 0
             self.counter += 1
-            if self.print_output:
-                print("recalculating errors")
+            self.log_util.log_debug("recalculating errors")
 
     def performSpatiallyAdaptiv(self, lmin: int=1, lmax: int=2, errorOperator: ErrorCalculator=None, tol: float= 10 ** -2,
                                 refinement_container: RefinementContainer=None, do_plot: bool=False, recalculate_frequently: bool=False, test_scheme: bool=False,
                                 reevaluate_at_end: bool=False, max_time: float=None, max_evaluations: int=None,
-                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
+                                print_output: bool=True, min_evaluations: int=1, solutions_storage: dict=None, evaluation_points=None, single_step: bool=False
+                                ) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
         """This is the main method for the spatially adaptive refinement strategy
 
         :param lmin: Minimum level for truncated combination technique (equal for all dimensions)
@@ -207,7 +223,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         :param solutions_storage: #toDo
         :param evaluation_points: Number of points at which we want to interpolate the approximated model. This will
                                   generate the values at the points for each refinement step to analyze convergence.
+        :param single_step: perform only a single refinement regardless of other parameters
         :return: #toDo
+
+        Parameters
+        ----------
         """
         assert self.operation is not None
         self.errorEstimator = errorOperator
@@ -226,6 +246,10 @@ class SpatiallyAdaptivBase(StandardCombi):
         self.calculated_solution = None
         self.solutions_storage = solutions_storage
         self.evaluation_points = evaluation_points
+        self.single_step = single_step
+        # for compatibility with old code
+
+
         return self.continue_adaptive_refinement(tol=tol, max_time=max_time, max_evaluations=max_evaluations, min_evaluations=min_evaluations)
 
     def continue_adaptive_refinement(self, tol: float=10 ** -3, max_time: float=None, max_evaluations: int=None, min_evaluations: int=1) -> Tuple[RefinementContainer, Sequence[ComponentGridInfo], Sequence[int], Sequence[float], Sequence[float], Sequence[int], Sequence[float]]:
@@ -237,9 +261,11 @@ class SpatiallyAdaptivBase(StandardCombi):
         :param min_evaluations: Minimum number of points. The refinement will not stop until it exceeds this limit.
         :return:
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
         while True:
-            error, surplus_error = self.evaluate_operation()
+            if self.single_step:
+                max_evaluations = self.last_point_count + 1 if self.last_point_count is not None else max_evaluations
+            error, surplus_error = self.log_util.time_func("spatialAdaptBase: evaluate_operation time taken ", self.evaluate_operation)
             self.initialize_grid()
             self.error_array.append(error)
             self.surplus_error_array.append(surplus_error)
@@ -253,7 +279,20 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.interpolation_error_arrayMax.append(scipy.linalg.norm(diff, np.inf))
 
             if self.print_output:
-                print("Current error:", error)
+                self.log_util.log_debug("Current error: {0}".format(error))
+
+            def find_unique_filename(x: str = None):
+                if x:
+                    import os
+                    while os.path.isfile(x+'.png'):
+                        x = x + '+'
+                    return x
+                else:
+                    return None
+
+            if self.do_plot:
+                print("Contour plot:")
+                self.plot(filename=find_unique_filename(self.filename_contour_plot), contour=True)
             num_evaluations = self.get_total_num_points()
             if self.solutions_storage is not None:
                 assert not self.reevaluate_at_end, "Solutions are only available in the end"
@@ -266,21 +305,24 @@ class SpatiallyAdaptivBase(StandardCombi):
                 break
             if max_time is not None and time.time() - start_time > max_time:
                 break
+            if self.single_step:
+                self.last_point_count = self.get_total_num_points()
             # refine further
-            self.refine()
+            self.log_util.time_func("spatialAdaptBase: refine time taken", self.refine)
             if self.do_plot:
+                import os
                 print("Refinement Graph:")
-                self.draw_refinement()
+                self.draw_refinement(filename=find_unique_filename(self.filename_refinement_graph))
                 print("Combi Scheme:")
-                self.print_resulting_combi_scheme(markersize=5)
+                self.print_resulting_combi_scheme(filename=find_unique_filename(self.filename_combi_scheme_plot), markersize=5)
                 print("Resulting Sparse Grid:")
-                self.print_resulting_sparsegrid(markersize=10)
+                self.print_resulting_sparsegrid(filename=find_unique_filename(self.filename_sparse_grid_plot), markersize=10)
         # finished adaptive algorithm
-        if self.print_output:
-            print("Number of refinements", self.refinements)
-            print("Number of distinct points used during the refinement", self.get_total_num_points())
-            print("Time used (s):", time.time() - start_time)
-            print("Final error:", error)
+        #if self.print_output:
+        self.log_util.log_info("Number of refinements {0}".format(self.refinements))
+        self.log_util.log_info("Number of distinct points used during the refinement: {0}".format(self.get_total_num_points()))
+        self.log_util.log_info("Time used adaptive (s): {0}".format(time.perf_counter() - start_time))
+        self.log_util.log_info("Final error: {0}".format(error))
         if self.test_scheme:
             self.check_combi_scheme()
         if self.reevaluate_at_end:
@@ -394,11 +436,12 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         assert len(areas) == len(evaluation_array)
 
-        if self.print_output:
-            print("Curent number of function evaluations", self.get_total_num_points())
+        self.log_util.log_debug("Curent number of function evaluations {0}".format(self.get_total_num_points()))
 
         for area in areas:
             self.operation.area_postprocessing(area)
+
+        self.operation.post_processing()
 
         for k in range(len(areas)):
             i = k + self.refinement.size() - self.refinement.new_objects_size()
