@@ -9,7 +9,7 @@ import scipy.stats as sps
 from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *  # For reference solution calculation
 from bisect import bisect_left
-from Utils import *
+from sparseSpACE.Utils import *
 import time
 import sys
 if sys.version_info[0] == 3 and sys.version_info[1] >= 7:

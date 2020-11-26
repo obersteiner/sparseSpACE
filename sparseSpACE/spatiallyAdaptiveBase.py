@@ -6,7 +6,7 @@ from sparseSpACE.ErrorCalculator import *
 from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *
 from sparseSpACE.GridOperation import GridOperation
-from Utils import *
+from sparseSpACE.Utils import *
 import sys
 if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
     timing = time.time_ns
