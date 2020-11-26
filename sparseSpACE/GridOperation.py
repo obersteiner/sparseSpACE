@@ -1,11 +1,15 @@
 from numpy import linalg as LA
 from math import isclose, isinf
-from Grid import *
-from BasisFunctions import *
-from RefinementContainer import RefinementContainer
-from RefinementObject import RefinementObject
+from sparseSpACE.Grid import *
+from sparseSpACE.BasisFunctions import *
+from sparseSpACE.RefinementContainer import RefinementContainer
+from sparseSpACE.RefinementObject import RefinementObject
+import chaospy as cp
+import scipy.stats as sps
+from sparseSpACE.Function import *
+from sparseSpACE.StandardCombi import *  # For reference solution calculation
 from bisect import bisect_left
-from Utils import *
+from sparseSpACE.Utils import *
 import time
 import sys
 if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
@@ -2231,12 +2235,6 @@ class Interpolation(Integration):
             #interpolated_values = np.asarray([[value] for value in interpolated_values])
             interpolated_values_array.append(interpolated_values.reshape((len(interpolated_values),1)))
         return np.hstack(interpolated_values_array)
-
-
-import chaospy as cp
-import scipy.stats as sps
-from Function import *
-from StandardCombi import *  # For reference solution calculation
 
 
 class UncertaintyQuantification(Integration):

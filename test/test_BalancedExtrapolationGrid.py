@@ -1,9 +1,7 @@
 import math
 import unittest
-from sys import path
-path.append('../../src/')
-
-from Extrapolation import BalancedExtrapolationGrid
+import sparseSpACE
+from sparseSpACE.Extrapolation import BalancedExtrapolationGrid
 
 
 class TestBalancedExtrapolationGrid(unittest.TestCase):

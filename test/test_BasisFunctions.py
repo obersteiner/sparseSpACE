@@ -1,7 +1,6 @@
 import unittest
-from sys import path
-path.append('../src/')
-from BasisFunctions import *
+import sparseSpACE
+from sparseSpACE.BasisFunctions import *
 
 class TestBasisFunctions(unittest.TestCase):
     def test_lagrange_basis(self):

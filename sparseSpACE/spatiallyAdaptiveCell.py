@@ -1,5 +1,5 @@
 # from RefinementContainer import *
-from spatiallyAdaptiveBase import *
+from sparseSpACE.spatiallyAdaptiveBase import *
 import itertools
 from scipy.interpolate import interpn
 

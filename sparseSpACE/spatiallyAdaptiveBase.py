@@ -1,12 +1,12 @@
 # Python modules
 import time
-from RefinementContainer import *
-from RefinementObject import *
-from ErrorCalculator import *
-from Function import *
-from StandardCombi import *
-from GridOperation import GridOperation
-from Utils import *
+from sparseSpACE.RefinementContainer import *
+from sparseSpACE.RefinementObject import *
+from sparseSpACE.ErrorCalculator import *
+from sparseSpACE.Function import *
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.GridOperation import GridOperation
+from sparseSpACE.Utils import *
 import sys
 if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
     timing = time.time_ns

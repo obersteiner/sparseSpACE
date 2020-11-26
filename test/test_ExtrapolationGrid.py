@@ -3,11 +3,10 @@ import unittest
 from scipy import integrate
 import numpy as np
 
-from sys import path
-path.append('../../src/')
+import sparseSpACE
 
-from Function import Polynomial1d
-from Extrapolation import ExtrapolationGrid, SliceVersion, SliceGrouping
+from sparseSpACE.Function import Polynomial1d
+from sparseSpACE.Extrapolation import ExtrapolationGrid, SliceVersion, SliceGrouping
 
 
 # -----------------------------------------------------------------------------------------------------------------

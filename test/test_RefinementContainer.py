@@ -1,11 +1,10 @@
 import unittest
-from sys import path
-path.append('../src/')
+import sparseSpACE
 
-from RefinementObject import *
-from RefinementContainer import *
-from combiScheme import *
-from ErrorCalculator import *
+from sparseSpACE.RefinementObject import *
+from sparseSpACE.RefinementContainer import *
+from sparseSpACE.combiScheme import *
+from sparseSpACE.ErrorCalculator import *
 
 
 class TestRefinementContainer(unittest.TestCase):

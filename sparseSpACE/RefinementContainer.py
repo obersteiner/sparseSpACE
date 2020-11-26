@@ -1,12 +1,12 @@
 
 import math
 import numpy as np
-from ErrorCalculator import ErrorCalculator
+from sparseSpACE.ErrorCalculator import ErrorCalculator
 import abc,logging
 from operator import itemgetter, attrgetter, methodcaller
 from typing import Callable, Tuple, Sequence, List
-from RefinementObject import RefinementObject
-from Function import Function
+from sparseSpACE.RefinementObject import RefinementObject
+from sparseSpACE.Function import Function
 
 # This class implements a general container that can be filled with refinementObjects (typically specified by the refinement strategy)
 # In addition it stores accumulated values over all refinementObjects (like integral, numberOfEvaluations)

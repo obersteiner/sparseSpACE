@@ -1,12 +1,10 @@
 import unittest
-from sys import path
-
-path.append('../src/')
-from StandardCombi import *
-from Grid import *
-from GridOperation import DensityEstimation
-from ErrorCalculator import ErrorCalculatorSingleDimMisclassificationGlobal, ErrorCalculatorSingleDimVolumeGuided
-from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.Grid import *
+from sparseSpACE.GridOperation import DensityEstimation
+from sparseSpACE.ErrorCalculator import ErrorCalculatorSingleDimMisclassificationGlobal, ErrorCalculatorSingleDimVolumeGuided
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
 import numpy as np
 from matplotlib import pyplot as plt

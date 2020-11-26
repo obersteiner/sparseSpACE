@@ -1,9 +1,8 @@
 import unittest
-from sys import path
-path.append('../src/')
-from StandardCombi import *
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
 import math
-from Function import *
+from sparseSpACE.Function import *
 
 class TestStandardCombi(unittest.TestCase):
     def test_points(self):
