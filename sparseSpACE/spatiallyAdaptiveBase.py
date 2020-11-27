@@ -17,7 +17,7 @@ else:
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int = np.inf,
-                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE,
+                 timings=None, log_level: int = log_levels.INFO, print_level: int = print_levels.INFO,
                  filename_contour_plot: str = None, filename_refinement_graph: str = None, filename_combi_scheme_plot: str = None,
                  filename_sparse_grid_plot: str = None):
         assert operation is not None
@@ -187,8 +187,8 @@ class SpatiallyAdaptivBase(StandardCombi):
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate operation and check if further refinements necessary
-                self.log_util.log_debug("Finished refinement")
-                self.log_util.log_debug("Refined {0} times".format(num_refinements))
+                self.log_util.log_info("Finished refinement")
+                self.log_util.log_info("Refined {0} times".format(num_refinements))
                 self.refinement_postprocessing()
                 break
 
