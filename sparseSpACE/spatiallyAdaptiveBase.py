@@ -436,7 +436,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         assert len(areas) == len(evaluation_array)
 
-        self.log_util.log_debug("Curent number of function evaluations {0}".format(self.get_total_num_points()))
+        self.log_util.log_info("Current number of function evaluations {0}".format(self.get_total_num_points()))
 
         for area in areas:
             self.operation.area_postprocessing(area)
