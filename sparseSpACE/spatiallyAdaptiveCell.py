@@ -18,6 +18,14 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             self.full_interaction_size += math.factorial(self.dim)/(math.factorial(d)*math.factorial(self.dim - d)) * 2**d
         #print("full interaction size:", self.full_interaction_size)
 
+    def __call__(self, interpolation_points):
+        self.log.warning("Interpolation not supported")
+        return
+
+    def plot(self, filename: str = None, plotdimension: int = 0, contour=False) -> None:
+        self.log.warning("Interpolation not supported")
+        return
+
     # returns the points of a single component grid with refinement
     def get_points_component_grid(self, levelvec):
         return self.operation.f.get_f_dict_points()
@@ -185,7 +193,7 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
             integral += p * factor
         #print("integral of subcell", subcell, "of cell", cell, "is", integral, "interpolated values", interpolated_values, "on points", subcell_points, "factor", factor)
         return integral
-    '''
+    
 
     # interpolates the cell corner function values at the given points
     def interpolate_points(self, cell, points):
@@ -202,6 +210,8 @@ class SpatiallyAdaptiveCellScheme(SpatiallyAdaptivBase):
         interpolated_values = interpn(corner_points_grid, values, points, method='linear')
         #print("Interpolated values", interpolated_values, np.shape(values))
         return interpolated_values
+    
+    '''
 
     def do_refinement(self, area, position):
         if area.active:
