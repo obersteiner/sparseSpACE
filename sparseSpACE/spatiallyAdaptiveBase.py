@@ -279,7 +279,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.interpolation_error_arrayMax.append(scipy.linalg.norm(diff, np.inf))
 
             if self.print_output:
-                self.log_util.log_debug("Current error: {0}".format(error))
+                self.log_util.log_info("Current error: {0}".format(error))
 
             def find_unique_filename(x: str = None):
                 if x:
@@ -319,7 +319,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.print_resulting_sparsegrid(filename=find_unique_filename(self.filename_sparse_grid_plot), markersize=10)
         # finished adaptive algorithm
         #if self.print_output:
-        self.log_util.log_info("Number of refinements {0}".format(self.refinements))
+        self.log_util.log_info("Number of refinements: {0}".format(self.refinements))
         self.log_util.log_info("Number of distinct points used during the refinement: {0}".format(self.get_total_num_points()))
         self.log_util.log_info("Time used adaptive (s): {0}".format(time.perf_counter() - start_time))
         self.log_util.log_info("Final error: {0}".format(error))

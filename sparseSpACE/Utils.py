@@ -49,6 +49,7 @@ class print_levels:
     ERROR = 40
     WARNING = 30
     INFO = 20
+    STATS = 15
     DEBUG = 10
     NONE = 0
 
@@ -57,6 +58,7 @@ class log_levels:
     ERROR = 40
     WARNING = 30
     INFO = 20
+    STATS = 15
     DEBUG = 10
     NONE = 0
 
@@ -73,11 +75,14 @@ class LogUtility:
         self.log_error_fn = lambda x: None
         self.log_warning_fn = lambda x: None
         self.log_info_fn = lambda x: None
+        self.log_stats_fn = lambda x: None
+
         self.log_debug_fn = lambda x: None
 
         self.print_error = lambda x: None
         self.print_warning = lambda x: None
         self.print_info = lambda x: None
+        self.print_stats = lambda x: None
         self.print_debug = lambda x: None
 
         self.time_func = lambda fn, *kwargs: fn(*kwargs)
@@ -91,6 +96,7 @@ class LogUtility:
         self.log_level = log_level
         self.update_log_function()
         self.update_print_function()
+        self.use_prefix = self.print_level == logging.DEBUG
 
     def set_print_level(self, level):
         self.print_level = level
@@ -123,29 +129,35 @@ class LogUtility:
         self.log_prefix = prefix
 
     def update_log_function(self):
-        self.log_error_fn = lambda x: logger.error(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.ERROR \
+        self.log_error_fn = lambda x: logger.error(self.log_prefix + self.log_delimiter + x) if self.log_level <= log_levels.ERROR \
             else lambda x: None
-        self.log_warning_fn = lambda x: logger.warning(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.WARNING \
+        self.log_warning_fn = lambda x: logger.warning(self.log_prefix + self.log_delimiter + x) if self.log_level <= log_levels.WARNING \
             else lambda x: None
-        self.log_info_fn = lambda x: logger.info(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.INFO \
+        self.log_info_fn = lambda x: logger.info(self.log_prefix + self.log_delimiter + x) if self.log_level <= log_levels.INFO \
             else lambda x: None
-        self.log_debug_fn = lambda x: logger.debug(self.log_prefix + self.log_delimiter + x) if self.log_level >= logging.DEBUG \
+        self.log_stats_fn = lambda x: logger.debug(self.log_prefix + self.log_delimiter + x) if self.log_level <= log_levels.STATS \
+            else lambda x: None
+        self.log_debug_fn = lambda x: logger.debug(self.log_prefix + self.log_delimiter + x) if self.log_level <= log_levels.DEBUG \
             else lambda x: None
 
-        self.time_func = self.timing_wrapper if self.log_level >= log_levels.INFO \
+        self.time_func = self.timing_wrapper if self.log_level <= log_levels.INFO \
             else lambda msg, fn, *kwargs: fn(*kwargs)
 
     def update_print_function(self):
-        self.print_error = self.print_message if self.print_level >= print_levels.ERROR else lambda x: None
-        self.print_warning = self.print_message if self.print_level >= print_levels.WARNING else lambda x: None
-        self.print_info = self.print_message if self.print_level >= print_levels.INFO else lambda x: None
-        self.print_debug = self.print_message if self.print_level >= print_levels.DEBUG else lambda x: None
+        self.print_error = self.print_message if self.print_level <= print_levels.ERROR else lambda x: None
+        self.print_warning = self.print_message if self.print_level <= print_levels.WARNING else lambda x: None
+        self.print_info = self.print_message if self.print_level <= print_levels.INFO else lambda x: None
+        self.print_stats = self.print_message if self.print_level <= print_levels.STATS else lambda x: None
+        self.print_debug = self.print_message if self.print_level <= print_levels.DEBUG else lambda x: None
 
-        self.time_func = self.timing_wrapper if self.print_level >= print_levels.INFO \
+        self.time_func = self.timing_wrapper if self.print_level <= print_levels.INFO \
             else lambda msg, fn, *kwargs: fn(*kwargs)
 
     def print_message(self, message):
-        print(self.print_prefix + self.print_delimiter + message)
+        if self.use_prefix:
+            print(self.print_prefix + self.print_delimiter + message)
+        else:
+            print(message)
 
     def log_error(self, message: str = '') -> None:
         self.log_error_fn(message)
@@ -158,6 +170,10 @@ class LogUtility:
     def log_info(self, message: str = '') -> None:
         self.log_info_fn(message)
         self.print_info(message)
+
+    def log_stats(self, message: str = '') -> None:
+        self.log_stats_fn(message)
+        self.print_stats(message)
 
     def log_debug(self, message: str = '') -> None:
         self.log_debug_fn(message)
@@ -173,8 +189,8 @@ class LogUtility:
         start = timing()
         ret = function(*kwargs)
         result = timing() - start
-        self.print_info("{0} : {1}".format(message, result))
-        self.log_info_fn("{0} : {1}".format(message, result))
+        self.print_stats("{0} : {1}".format(message, result))
+        self.log_stats_fn("{0} : {1}".format(message, result))
         return ret
 
     def clear_log(self):

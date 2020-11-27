@@ -30,7 +30,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                  version: int = 6, operation: GridOperation = None, margin: float = None, timings=None,
                  rebalancing: bool = True, rebalancing_safety_factor: float = 0.1, chebyshev_points=False,
                  use_volume_weighting=False, force_balanced_refinement_tree: bool = False, grid_surplusses=None,
-                 log_level: int = log_levels.NONE, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, log_level=log_level, print_level=print_level)
         assert self.grid is not None
 

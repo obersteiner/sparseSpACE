@@ -17,7 +17,7 @@ class StandardCombi(object):
     """
 
     def __init__(self, a, b, operation: GridOperation, print_output: bool = False, norm: int = 2,
-                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -223,8 +223,8 @@ class StandardCombi(object):
         self.log_util.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:
-            self.log_util.log_debug("Analytic Solution ".format(reference_solution))
-            self.log_util.log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)))
+            self.log_util.log_info("Analytic Solution: {0} ".format(reference_solution))
+            self.log_util.log_info("Difference {0}: ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)))
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
