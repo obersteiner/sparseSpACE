@@ -1,3 +1,4 @@
+import sparseSpACE
 from sparseSpACE.DimAdaptiveCombi import *
 from sparseSpACE.StandardCombi import *
 from sparseSpACE.GridOperation import *
