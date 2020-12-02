@@ -891,7 +891,7 @@ class FunctionExpVar(Function):
         return (1 + 1.0 / dim) ** dim * prod
 
     def eval_vectorized(self, coordinates: Sequence[Sequence[float]]):
-        dim = len(coordinates[0])
+        dim = np.shape(coordinates)[-1]
         temp = coordinates ** (1.0/dim)
         result = (1 + 1.0/dim) ** dim * np.prod(temp, axis=-1)
         self.check_vectorization(coordinates, result)
