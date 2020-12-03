@@ -1226,35 +1226,20 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point_completely_vectorized(self, child_infos: NodeInfo, grid_points: Sequence[Sequence[float]],
                                             d: int, component_grid: ComponentGridInfo):
-        # print(grid_points)
-        #print(child_infos)
         children = np.asarray([child_info.child for child_info in child_infos])
         left_parents = np.asarray([child_info.left_parent for child_info in child_infos])
         right_parents = np.asarray([child_info.right_parent for child_info in child_infos])
         if self.grid_surplusses.modified_basis:
             left_parents_of_left_parents = np.asarray([child_info.left_parent_of_left_parent for child_info in child_infos], dtype=np.float)
             right_parents_of_right_parents = np.asarray([child_info.right_parent_of_right_parent for child_info in child_infos], dtype=np.float)
-        #assert right_parent > child > left_parent
-
-        # npt.assert_almost_equal(right_parent - child, child - left_parent, decimal=12)
-
-        #for p in grid_points[d]:
-        #    if isclose(p, left_parent):
-        #        left_parent = p
-        #    if isclose(p, right_parent):
-        #        right_parent = p
-        #index_right_parent = grid_points[d].index(right_parent) - 1 * int(not self.grid.boundary)
-        #index_left_parent = grid_points[d].index(left_parent) - 1 * int(not self.grid.boundary)
 
         left_parents_in_grid = np.logical_or(np.logical_not(np.isclose(left_parents, self.a[d])), self.grid_surplusses.boundary)
         right_parents_in_grid = np.logical_or(np.logical_not(np.isclose(right_parents, self.b[d])), self.grid_surplusses.boundary)
-        #print("left parent bools",left_parents_in_grid)
         size_slize = np.prod([self.grid_surplusses.numPoints[d2] if d2 != d else 1 for d2 in range(self.dim)])
 
         factors_left_parents = np.ones(len(left_parents[left_parents_in_grid]))
         filter = np.logical_not(np.isinf(right_parents[left_parents_in_grid]))
         factors_left_parents[filter] = (right_parents[left_parents_in_grid][filter] - children[left_parents_in_grid][filter]) / (right_parents[left_parents_in_grid][filter] - left_parents[left_parents_in_grid][filter])
-        #print(factors_left_parents)
         points_left_parents = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent] for d2 in
              range(self.dim)]) for left_parent in left_parents[left_parents_in_grid]]
@@ -1263,12 +1248,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         filter = np.logical_not(np.isinf(left_parents[right_parents_in_grid]))
         factors_right_parents[filter] = (children[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter]) / (right_parents[right_parents_in_grid][filter] - left_parents[right_parents_in_grid][filter])
 
-        #print(factors_right_parents)
-
         points_right_parents = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in
              range(self.dim)]) for right_parent in right_parents[right_parents_in_grid]]
-        #print(points_right_parents, points_left_parents, left_parents, right_parents, left_parents_in_grid, right_parents_in_grid)
         if self.grid_surplusses.modified_basis and np.any(np.logical_not(right_parents_in_grid)):
             filter_right_right = np.logical_and(left_parents_in_grid, np.logical_not(right_parents_in_grid))
             points_left_of_left_parents = [get_cross_product_list(
@@ -1283,51 +1265,16 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         points_children = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)]) for child in children]
 
-        # indices = list(zip(*[g.ravel() for g in np.meshgrid(*[range(len(self.grid_surplusses.coords[d2])) if d != d2 else None for d2 in range(self.dim)])]))
-        # index = indices[i]
         factors = np.prod(np.asarray(get_cross_product_list(
             [self.grid_surplusses.weights[d2] if d != d2 else [1] for d2 in range(self.dim)])), axis=1).reshape(
             (size_slize, 1))
-        # factors = np.prod(np.asarray([[self.grid_surplusses.weights[d2][index[d2]] if d2 != d else 1 for d2 in range(self.dim)] for index in indices]), axis=1).reshape((size_slize, 1))
-        # factor2 = np.prod([self.grid.weights[d2][index[d2]]  if d2 != d else self.grid.weights[d2][index_child] for d2 in range(self.dim)])
         exponent = 1  # if not self.do_high_order else 2
-        # if factor2 != 0:
-        # print(points_children[i], self.f.f_dict.keys())
-        # avoid evaluating on boundary points if grids has none
         # assert (tuple(point_child) in self.f.f_dict)
-        #print(points_children, children)
         point_values = self.operation.get_point_values_component_grid_multiple(points_children, component_grid)
         values = point_values
         if len(points_left_parents) > 0:
             point_values_left_parents = self.operation.get_point_values_component_grid_multiple(points_left_parents,
-                                                                                          component_grid)  # np.asarray([self.f(p) for p in points_left_parent])
-            # point_left_parent = tuple(point_child[:d] + tuple([left_parent]) + point_child[d+1:])
-            #if self.grid_surplusses.modified_basis and not right_parent_in_grid:
-            #    # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
-            #
-            #    # left_of_left_parent = list(point_left_parent)
-            #    # left_of_left_parent[d] = left_parent_of_left_parent
-            #    # print("Left of left:", left_of_left_parent, points_left_parent[i])
-            #    # value = (2 * self.f(points_children[i]) - self.f(points_left_parent[i]))/2
-            #    # assert (tuple(points_left_parent[i]) in self.f.f_dict)
-            #
-            #    if isclose(left_parent_of_left_parent, self.a[d]):
-            #        values = point_values - point_values_left_parent
-            #    else:
-            #        point_values_left_of_left_parent = self.operation.get_point_values_component_grid(
-            #            left_of_left_parents,
-            #            component_grid)  # np.asarray([self.f(p) for p in left_of_left_parents])
-            #
-            #        m = (point_values_left_of_left_parent - point_values_left_parent) / (
-            #                left_parent_of_left_parent - left_parent)
-            #        previous_value_at_child = m * (child - left_parent) + point_values_left_parent
-            #        values = point_values - previous_value_at_child
-            #        # print("Hey", m, previous_value_at_child, value, (self.f(tuple(left_of_left_parent)) - self.f(points_left_parent[i])), (left_of_left_parent - left_parent))
-            #
-            #        # assert(tuple(left_of_left_parent) in self.f.f_dict)
-            #
-            #else:
-                # assert point_left_parent in self.f.f_dict or self.grid.weights[d][index_left_parent] == 0
+                                                                                          component_grid)
 
             if self.grid_surplusses.modified_basis:
                 filter_target_indices = np.logical_and(left_parents_in_grid,np.logical_not(
@@ -1371,32 +1318,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 values[left_parents_in_grid] -= (factors_left_parents * point_values_left_parents.T).T
         if len(points_right_parents) > 0:
             point_values_right_parents = self.operation.get_point_values_component_grid_multiple(points_right_parents,
-                                                                                       component_grid)  # np.asarray([self.f(p) for p in points_right_parent])
-            '''
-            if self.grid_surplusses.modified_basis and not left_parent_in_grid:
-                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-            
-                # right_of_right_parent = list(point_right_parent)
-                # right_of_right_parent[d] = right_parent_of_right_parent
-                # print("Right of right:", right_of_right_parent, points_right_parent[i])
-                # value = (2 * self.f(points_children[i]) - self.f(points_right_parent[i]))/2
-                # assert (tuple(points_right_parent[i]) in self.f.f_dict)
-                if isclose(right_parent_of_right_parent, self.b[d]):
-                    values = point_values - point_values_right_parent
-                else:
-                    point_values_right_of_right_parent = self.operation.get_point_values_component_grid(
-                        right_of_right_parents,
-                        component_grid)  # np.asarray([self.f(p) for p in right_of_right_parents])
-                    m = (point_values_right_of_right_parent - point_values_right_parent) / (
-                                right_parent_of_right_parent - right_parent)
-                    previous_value_at_child = m * (child - right_parent) + point_values_right_parent
-                    values = point_values - previous_value_at_child
-                    # print("Hey", m, previous_value_at_child, value, (self.f(tuple(right_of_right_parent)) - self.f(points_right_parent[i])), (right_of_right_parent - right_parent))
-                    # assert(tuple(right_of_right_parent) in self.f.f_dict)
-            else:
-                # print(points_right_parent[i], self.f.f_dict.keys())
-                # assert point_right_parent in self.f.f_dict or self.grid.weights[d][index_right_parent] == 0
-            '''
+                                                                                       component_grid)
+
             if self.grid_surplusses.modified_basis:
                 filter_target_indices = np.logical_and(right_parents_in_grid, np.logical_not(left_parents_in_grid)) # indices for this if
                 right_of_right_parents_not_in_grid = np.isclose(right_parents_of_right_parents[filter_target_indices], self.b[d])
