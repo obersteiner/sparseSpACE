@@ -1,10 +1,13 @@
 import unittest
-from sys import path
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.Grid import *
+from sparseSpACE.GridOperation import DensityEstimation
+from sparseSpACE.ErrorCalculator import ErrorCalculatorSingleDimMisclassificationGlobal, ErrorCalculatorSingleDimVolumeGuided
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
-path.append('../src/')
-from StandardCombi import *
-from Grid import *
-from GridOperation import DensityEstimation
+import numpy as np
+from matplotlib import pyplot as plt
 
 
 class TestDensityEstimation(unittest.TestCase):
@@ -133,6 +136,118 @@ class TestDensityEstimation(unittest.TestCase):
             for j in range(len(alpha1)):
                 self.assertAlmostEqual(alpha1[j], alpha2[j])
 
+    def test_calculate_L2_scalarproduct(self):
+
+        DE = DensityEstimation(data=[], dim=1)
+        dom_1 = [(-1.0, 1.0)]
+        point_1 = [0.0]
+        res = DE.calculate_L2_scalarproduct(point_i=point_1, domain_i=dom_1,
+                                            point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((2.0 / 3.0) - res[0], 0.0)
+
+        DE = DensityEstimation(data=[], dim=2)
+        dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
+        point_1 = [0.0, 0.0]
+        res = DE.calculate_L2_scalarproduct(point_i=point_1, domain_i=dom_1,
+                                            point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((4.0 / 9.0) - res[0], 0.0)
+
+    def test_calculate_R_value_analytically(self):
+        DE = DensityEstimation(data=[], dim=1)
+        dom_1 = [(-1.0, 1.0)]
+        point_1 = [0.0]
+        res = DE.calculate_R_value_analytically(point_i=point_1, domain_i=dom_1,
+                                                point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((2.0 / 3.0) - res, 0.0)
+
+        DE = DensityEstimation(data=[], dim=2)
+        dom_1 = [(-1.0, 1.0), (-1.0, 1.0)]
+        point_1 = [0.0, 0.0]
+        res = DE.calculate_R_value_analytically(point_i=point_1, domain_i=dom_1,
+                                                point_j=point_1, domain_j=dom_1)
+        self.assertAlmostEqual((4.0 / 9.0) - res, 0.0)
+
+    def test_dim_wise_run(self):
+        # run the dimension wise density estimation without errors
+        dim = 2
+        size = 500
+        data = datasets.make_circles(size, noise=0.1)[0]
+
+        a = np.zeros(dim)
+        b = np.ones(dim)
+
+        lambd = 0.02
+        lmin, lmax = 2, 3
+        tolerance = 0.05
+        margin = 0.5
+
+        reuse_old_values = True
+        numeric_calculation = False
+        rebalancing = True
+
+        log_and_print_level = log_levels.NONE
+
+        for grid_config in [False, True]:
+            modified_basis = False #grid_config
+            boundary = grid_config
+
+            newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim),
+                                            modified_basis=modified_basis, boundary=boundary)
+
+            errorOperator = ErrorCalculatorSingleDimVolumeGuided()
+
+            # define operation to be performed
+            op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd,
+                                   reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation,
+                                   log_level=log_and_print_level, print_level=log_and_print_level)
+            # create the combiObject and initialize it with the operation
+            SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, rebalancing=rebalancing,
+                                                      rebalancing_safety_factor=2 * 10 ** -1,
+                                                      log_level=log_and_print_level, print_level=log_and_print_level)
+            # perform the density estimation operation, has to be done before the printing and plotting
+            SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=1000,)
+
+    def test_dim_wise_run_classification(self):
+        # run the dimension wise density estimation with classification without errors
+        dim = 2
+        size = 500
+        ret = datasets.make_moons(size, noise=0.1)
+        data = ret[0]
+        class_signs = np.array([-1 if p == 0 else 1 for p in ret[1]])
+        a = np.zeros(dim)
+        b = np.ones(dim)
+
+        lambd = 0.02
+        lmin, lmax = 2, 3
+        tolerance = 0.05
+        margin = 0.5
+
+        reuse_old_values = True
+        numeric_calculation = False
+        rebalancing = True
+
+        log_and_print_level = log_levels.NONE
+
+        for grid_config in [[False, False], [False, True]]: #, [True, False]]:
+
+            modified_basis = False #grid_config[0]
+            boundary = grid_config[1]
+
+            newGrid = GlobalTrapezoidalGrid(a=np.zeros(dim), b=np.ones(dim), modified_basis=modified_basis,
+                                            boundary=boundary)
+
+            errorOperator = ErrorCalculatorSingleDimMisclassificationGlobal()
+
+            # define operation to be performed
+            op = DensityEstimation(data, dim, grid=newGrid, lambd=lambd, classes=class_signs,
+                                   reuse_old_values=reuse_old_values, numeric_calculation=numeric_calculation,
+                                   log_level=log_and_print_level, print_level=log_and_print_level)
+            # create the combiObject and initialize it with the operation
+            SASD = SpatiallyAdaptiveSingleDimensions2(a, b, operation=op, margin=margin, rebalancing=rebalancing,
+                                                      rebalancing_safety_factor=2 * 10 ** -1,
+                                                      log_level=log_and_print_level, print_level=log_and_print_level)
+            # perform the density estimation operation, has to be done before the printing and plotting
+            SASD.performSpatiallyAdaptiv(lmin, lmax, errorOperator, tolerance, max_evaluations=1000)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,11 +1,10 @@
 import unittest
-from sys import path
-path.append('../src/')
-from StandardCombi import *
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
 import math
-from Grid import *
-from Integrator import *
-from Function import *
+from sparseSpACE.Grid import *
+from sparseSpACE.Integrator import *
+from sparseSpACE.Function import *
 
 
 class TestIntegrator(unittest.TestCase):

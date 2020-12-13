@@ -1,10 +1,9 @@
-from sys import path
-path.append('src/')
+import sparseSpACE
 import numpy as np
-from spatiallyAdaptiveSingleDimension2 import *
-from Function import *
-from ErrorCalculator import *
-from GridOperation import *
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import *
+from sparseSpACE.Function import *
+from sparseSpACE.ErrorCalculator import *
+from sparseSpACE.GridOperation import *
 
 # dimension of the problem
 dim = 2
@@ -36,4 +35,4 @@ operation = Integration(f=f, grid=grid, dim=dim, reference_solution=reference_so
 adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions2(np.ones(dim) * a, np.ones(dim) * b, operation=operation)
 
 # performing the spatially adaptive refinement with the SingleDim method
-adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1,2,f,errorOperator,10**-2, do_plot=False)
+adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1,2,errorOperator,10**-2, do_plot=False)
