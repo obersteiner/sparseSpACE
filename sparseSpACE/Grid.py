@@ -1,14 +1,16 @@
 import numpy as np
 import abc, logging
-from Integrator import *
+from sparseSpACE.Integrator import *
 import numpy.polynomial.legendre as legendre
 import numpy.polynomial.hermite as hermite
 import math
 from math import isclose, isinf
-from BasisFunctions import *
-from Utils import *
-from ComponentGridInfo import *
+from sparseSpACE.BasisFunctions import *
+from sparseSpACE.Utils import *
+from sparseSpACE.ComponentGridInfo import *
 from typing import Callable, Tuple, Sequence
+from sparseSpACE.Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
+    BalancedExtrapolationGrid
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -980,10 +982,10 @@ class GlobalGrid(Grid):
             self.weights.append(weightsD)
             self.levels.append(levelsD)
             self.numPoints[d] = len(coordsD)
-        self.coordinate_array = np.asarray(self.coordinate_array)
-        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary)
-        self.weights = np.asarray(self.weights)
-        self.levels = np.asarray(self.levels)
+        self.coordinate_array = np.asarray(self.coordinate_array, dtype=object)
+        self.coordinate_array_with_boundary = np.asarray(self.coordinate_array_with_boundary, dtype=object)
+        self.weights = np.asarray(self.weights, dtype=object)
+        self.levels = np.asarray(self.levels, dtype=object)
 
     def levelToNumPoints(self, levelvec: Sequence[int]) -> Sequence[int]:
         if hasattr(self, 'numPoints'):
@@ -1182,10 +1184,6 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
     def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int, grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
         distr = self.distributions[d]
         return self.compute_weights(grid_1D, a, b, distr, self.boundary, self.modified_basis)
-
-
-from Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
-    BalancedExtrapolationGrid
 
 
 class GlobalRombergGrid(GlobalGrid):

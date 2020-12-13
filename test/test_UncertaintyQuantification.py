@@ -1,12 +1,11 @@
 import unittest
 import numpy as np
 
-from sys import path
-path.append('../src/')
-from Function import *
-from spatiallyAdaptiveSingleDimension2 import *
-from ErrorCalculator import *
-from GridOperation import *
+import sparseSpACE
+from sparseSpACE.Function import *
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import *
+from sparseSpACE.ErrorCalculator import *
+from sparseSpACE.GridOperation import *
 
 
 class TestUncertaintyQuantification(unittest.TestCase):

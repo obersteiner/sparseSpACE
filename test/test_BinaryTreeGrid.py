@@ -1,8 +1,7 @@
 import unittest
-from sys import path
-path.append('../../src/')
+import sparseSpACE
 
-from Extrapolation import GridBinaryTree
+from sparseSpACE.Extrapolation import GridBinaryTree
 
 
 class TestBinaryTreeGrid(unittest.TestCase):

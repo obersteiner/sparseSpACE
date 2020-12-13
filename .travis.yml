@@ -1,19 +1,9 @@
 language: python
 install:
-  - pip3 install numpy
-  - pip3 install scipy 
-  - pip3 install matplotlib
-  - pip3 install nose
-  - pip3 install sklearn
-  - pip3 install sympy
-  - git clone https://github.com/jonathf/chaospy.git
-  - cd chaospy
-  - git checkout master
   - pip3 install .
-  - cd ..
   - pip3 install coveralls
 script:
   - ls
   #- python3 -m nose -w test/
-  - python3 -m nose --with-coverage --cover-package=src/ test/
+  - python3 -m nose --with-coverage --cover-package=sparseSpACE/ test/
   - coveralls

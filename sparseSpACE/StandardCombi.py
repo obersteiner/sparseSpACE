@@ -1,13 +1,14 @@
 import time
-
+import sparseSpACE
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from combiScheme import *
-from GridOperation import *
+from sparseSpACE.combiScheme import *
+from sparseSpACE.GridOperation import *
 import importlib
 import multiprocessing as mp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from Utils import *
+from sparseSpACE import GridOperation
+from sparseSpACE.Utils import *
 
 
 class StandardCombi(object):
@@ -16,7 +17,7 @@ class StandardCombi(object):
     """
 
     def __init__(self, a, b, operation: GridOperation, print_output: bool = False, norm: int = 2,
-                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
         """
 
         :param a: Vector of lower boundaries of domain.
@@ -222,8 +223,8 @@ class StandardCombi(object):
         self.log_util.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:
-            self.log_util.log_debug("Analytic Solution ".format(reference_solution))
-            self.log_util.log_debug("Difference ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)))
+            self.log_util.log_info("Analytic Solution: {0} ".format(reference_solution))
+            self.log_util.log_info("Difference {0}: ".format(self.operation.compute_difference(combi_result, reference_solution, self.norm)))
             return self.scheme, self.operation.compute_difference(combi_result, reference_solution, self.norm), combi_result
         else:
             return self.scheme, None, combi_result
@@ -350,8 +351,8 @@ class StandardCombi(object):
         # overax.axis('off')
         # overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
         # overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
-        overax.set_xticks([], [])
-        overax.set_yticks([], [])
+        overax.set_xticks(ticks=[])
+        overax.set_yticks(ticks=[])
         overax.set_xlabel("$l_1$")
         overax.set_ylabel("$l_2$")
         overax.set_xlim([0, 1])

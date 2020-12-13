@@ -1,6 +1,6 @@
 import abc
 from scipy.interpolate import interpn
-from Hierarchization import *
+from sparseSpACE.Hierarchization import *
 from typing import Callable, Tuple, Sequence
 
 # This is the abstract interface of an integrator that integrates a given area specified by start for function f

@@ -1,8 +1,7 @@
 import unittest
-from sys import path
-path.append('../../src/')
+import sparseSpACE
 
-from Extrapolation import ExtrapolationVersion, RombergWeightFactory
+from sparseSpACE.Extrapolation import ExtrapolationVersion, RombergWeightFactory
 
 
 class TestWeightFactory(unittest.TestCase):

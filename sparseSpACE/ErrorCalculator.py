@@ -5,7 +5,7 @@ import logging
 from numpy import linalg as LA
 from math import copysign
 
-from Utils import LogUtility, print_levels, log_levels
+from sparseSpACE.Utils import LogUtility, print_levels, log_levels
 
 # This class is the general interface of an error estimator currently used by the algorithm
 class ErrorCalculator(object):

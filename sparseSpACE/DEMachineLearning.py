@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import warnings
 import time
 import random as rnd
-from StandardCombi import StandardCombi
-from GridOperation import DensityEstimation
+from sparseSpACE.StandardCombi import StandardCombi
+from sparseSpACE.GridOperation import DensityEstimation
 from sklearn import datasets, preprocessing, neighbors
 from sklearn.utils import shuffle
 from typing import List, Tuple, Union, Iterable
 
-from ErrorCalculator import ErrorCalculator, ErrorCalculatorSingleDimVolumeGuided
-from Grid import GlobalTrapezoidalGrid
-from spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
-from Utils import log_levels, print_levels, logUtil, LogUtility
+from sparseSpACE.ErrorCalculator import ErrorCalculator, ErrorCalculatorSingleDimVolumeGuided
+from sparseSpACE.Grid import GlobalTrapezoidalGrid
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+from sparseSpACE.Utils import log_levels, print_levels, logUtil, LogUtility
 
 import cProfile
 import pstats

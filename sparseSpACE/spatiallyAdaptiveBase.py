@@ -1,12 +1,12 @@
 # Python modules
 import time
-from RefinementContainer import *
-from RefinementObject import *
-from ErrorCalculator import *
-from Function import *
-from StandardCombi import *
-from GridOperation import GridOperation
-from Utils import *
+from sparseSpACE.RefinementContainer import *
+from sparseSpACE.RefinementObject import *
+from sparseSpACE.ErrorCalculator import *
+from sparseSpACE.Function import *
+from sparseSpACE.StandardCombi import *
+from sparseSpACE.GridOperation import GridOperation
+from sparseSpACE.Utils import *
 import sys
 if sys.version_info[0] == 3 and sys.version_info[1] >= 7:
     timing = time.time_ns
@@ -17,7 +17,7 @@ else:
 # This class defines the general interface and functionalties of all spatially adaptive refinement strategies
 class SpatiallyAdaptivBase(StandardCombi):
     def __init__(self, a: Sequence[float], b: Sequence[float], operation: GridOperation, norm: int = np.inf,
-                 timings=None, log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE,
+                 timings=None, log_level: int = log_levels.INFO, print_level: int = print_levels.INFO,
                  filename_contour_plot: str = None, filename_refinement_graph: str = None, filename_combi_scheme_plot: str = None,
                  filename_sparse_grid_plot: str = None):
         assert operation is not None
@@ -187,8 +187,8 @@ class SpatiallyAdaptivBase(StandardCombi):
                 quit_refinement = self.do_refinement(refine_object, position)
 
             else:  # all refinements done for this iteration -> reevaluate operation and check if further refinements necessary
-                self.log_util.log_debug("Finished refinement")
-                self.log_util.log_debug("Refined {0} times".format(num_refinements))
+                self.log_util.log_info("Finished refinement")
+                self.log_util.log_info("Refined {0} times".format(num_refinements))
                 self.refinement_postprocessing()
                 break
 
@@ -279,7 +279,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.interpolation_error_arrayMax.append(scipy.linalg.norm(diff, np.inf))
 
             if self.print_output:
-                self.log_util.log_debug("Current error: {0}".format(error))
+                self.log_util.log_info("Current error: {0}".format(error))
 
             def find_unique_filename(x: str = None):
                 if x:
@@ -319,7 +319,7 @@ class SpatiallyAdaptivBase(StandardCombi):
                 self.print_resulting_sparsegrid(filename=find_unique_filename(self.filename_sparse_grid_plot), markersize=10)
         # finished adaptive algorithm
         #if self.print_output:
-        self.log_util.log_info("Number of refinements {0}".format(self.refinements))
+        self.log_util.log_info("Number of refinements: {0}".format(self.refinements))
         self.log_util.log_info("Number of distinct points used during the refinement: {0}".format(self.get_total_num_points()))
         self.log_util.log_info("Time used adaptive (s): {0}".format(time.perf_counter() - start_time))
         self.log_util.log_info("Final error: {0}".format(error))
@@ -436,7 +436,7 @@ class SpatiallyAdaptivBase(StandardCombi):
         """
         assert len(areas) == len(evaluation_array)
 
-        self.log_util.log_debug("Curent number of function evaluations {0}".format(self.get_total_num_points()))
+        self.log_util.log_info("Current number of function evaluations {0}".format(self.get_total_num_points()))
 
         for area in areas:
             self.operation.area_postprocessing(area)

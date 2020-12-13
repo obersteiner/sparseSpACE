@@ -1,5 +1,5 @@
-from spatiallyAdaptiveBase import *
-from GridOperation import *
+from sparseSpACE.spatiallyAdaptiveBase import *
+from sparseSpACE.GridOperation import *
 
 class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
     def __init__(self, a, b, number_of_refinements_before_extend=1, no_initial_splitting=False,
