@@ -1,8 +1,7 @@
 import unittest
-from sys import path
-path.append('../src/')
-from combiScheme import *
-from Utils import *
+import sparseSpACE
+from sparseSpACE.combiScheme import *
+from sparseSpACE.Utils import *
 
 class TestCombiScheme(unittest.TestCase):
     def test_size(self):

@@ -1,13 +1,11 @@
 import unittest
-from sys import path
-
-path.append('../src/')
-from StandardCombi import *
+import sparseSpACE
+from sparseSpACE.StandardCombi import *
 import math
-from Grid import *
-from Integrator import *
-from Function import *
-from spatiallyAdaptiveSingleDimension2 import *
+from sparseSpACE.Grid import *
+from sparseSpACE.Integrator import *
+from sparseSpACE.Function import *
+from sparseSpACE.spatiallyAdaptiveSingleDimension2 import *
 
 
 class TestSpatiallyAdaptiveSingleDimension2(unittest.TestCase):
