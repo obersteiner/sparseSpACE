@@ -2597,7 +2597,7 @@ class BSplineRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerA
 
     def construct_interpolation_grid(self, support_points):
         # Prevent circular dependencies
-        from Grid import GlobalBSplineGrid
+        from sparseSpACE.Grid import GlobalBSplineGrid
 
         # Interpolation grid is computed beforehand
         return GlobalBSplineGrid([support_points[0]], [support_points[-1]], boundary=True)
@@ -2623,7 +2623,7 @@ class HierarchicalLagrangeRombergGridSliceContainer(GlobalBasisGridRombergGridSl
 
     def construct_interpolation_grid(self, support_points):
         # Prevent circular dependencies
-        from Grid import GlobalLagrangeGrid
+        from sparseSpACE.Grid import GlobalLagrangeGrid
 
         # Interpolation grid is computed beforehand
         return GlobalLagrangeGrid([support_points[0]], [support_points[-1]], boundary=True)
