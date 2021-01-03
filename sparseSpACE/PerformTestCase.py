@@ -46,6 +46,7 @@ class TestCase:
                                min_lmin=1, max_lmin=3, min_tol=-1, max_evaluations=10 ** 7,
                                evaluation_points=None,
                                calc_standard_schemes=True, calc_dim_adaptive_schemes=False,
+                               plot_interpolation_error=False,
                                legend_title="", filepath="./Results/", filename=None,
                                save_plot: bool = False, save_csv: bool = False, clear_csv: bool = False):
         # Init test case
@@ -84,7 +85,7 @@ class TestCase:
         # calculate different standard combination scheme results
         if calc_standard_schemes:
             self.__perform_standard_combi(grids, grid_names, min_lmin, max_lmin, max_lmax, dim, evaluation_points,
-                                          filename)
+                                          filename, plot_interpolation_error=plot_interpolation_error)
 
         if calc_dim_adaptive_schemes:
             for i in range(len(self.numFEvalIdealDimAdaptiveArray)):
@@ -96,28 +97,27 @@ class TestCase:
         line = '-'
 
         for i in range(len(adaptive_algorithm_vectors)):
-            # if line == '-':
-            #     line = '--'
-            # elif line == '--':
-            #     line = '-'
-
             # print(self.numNaive[i], self.errorArray[i], adaptive_algorithm_vectors[i][4] + ' Naive evaluation')
             # print(self.numIdeal[i], self.errorArray[i], adaptive_algorithm_vectors[i][4] + ' total points')
             print(self.numFEvalIdeal[i], self.errorArray[i], adaptive_algorithm_vectors[i][4] + ' error (distinct f evals)')
             # print(self.numFEvalIdeal[i], self.surplusErrorArray[i], adaptive_algorithm_vectors[i][4] + ' surplus error distinct f evals')
 
-            # print(self.numFEvalIdeal[i],self.interpolation_error_arrayL2[i], adaptive_algorithm_vectors[i][4] + ' L2 interpolation error')
-            # print(self.numFEvalIdeal[i], self.interpolation_error_arrayMax[i], adaptive_algorithm_vectors[i][4] + ' Linf interpolation error')
+            if plot_interpolation_error:
+                print(self.numFEvalIdeal[i],self.interpolation_error_arrayL2[i],
+                      adaptive_algorithm_vectors[i][4] + ' L2 interpolation error')
+                print(self.numFEvalIdeal[i], self.interpolation_error_arrayMax[i],
+                      adaptive_algorithm_vectors[i][4] + ' Linf interpolation error')
+
+                self.ax.loglog(self.numFEvalIdeal[i], self.interpolation_error_arrayL2[i],
+                               label=adaptive_algorithm_vectors[i][4] + ' L2')
+                self.ax.loglog(self.numFEvalIdeal[i], self.interpolation_error_arrayMax[i],
+                               label=adaptive_algorithm_vectors[i][4] + ' Linf')
 
             # self.ax.loglog(self.numNaive[i],self.errorArray[i],label= adaptive_algorithm_vectors[i][3] +' Naive evaluation')
             # self.ax.loglog(self.numIdeal[i],self.errorArray[i],label=adaptive_algorithm_vectors[i][3] +' total points')
+
             name = adaptive_algorithm_vectors[i][4]
             self.ax.loglog(self.numFEvalIdeal[i], self.errorArray[i], line, label=name + ' error (distinct f evals)')
-
-            # TODO if do_plot_surplus
-
-            # self.ax.loglog(self.numFEvalIdeal[i], self.interpolation_error_arrayL2[i], label=adaptive_algorithm_vectors[i][4] + ' L2')
-            # self.ax.loglog(self.numFEvalIdeal[i], self.interpolation_error_arrayMax[i], label=adaptive_algorithm_vectors[i][4] + ' Linf')
 
             # self.ax.loglog(self.numFEvalIdeal[i], self.surplusErrorArray[i], '--', label=adaptive_algorithm_vectors[i][4] + ' surplus error')
 
@@ -186,8 +186,8 @@ class TestCase:
         self.numNaive.append(numNaiveAlgorithm)
         self.numIdeal.append(numIdealAlgorithm)
         self.numFEvalIdeal.append(numFEvalIdealAlgorithm)
-        # self.interpolation_error_arrayL2.append(interpolation_errorL2)
-        # self.interpolation_error_arrayMax.append(interpolation_errorMax)
+        self.interpolation_error_arrayL2.append(interpolation_errorL2)
+        self.interpolation_error_arrayMax.append(interpolation_errorMax)
 
         # Export Data to csv
         if self.save_csv:
@@ -213,7 +213,7 @@ class TestCase:
                 self.__export_to_csv(self.filepath, filename, [(name, numFEvalIdealDimAdaptive, errorArrayDimAdaptive)])
 
     def __perform_standard_combi(self, grids, grid_names, min_lmin, max_lmin, max_lmax, dim, evaluation_points,
-                                 filename=None):
+                                 filename=None, plot_interpolation_error=False):
         for k, grid in enumerate(grids):
             xArrayStandard = []
             xFEvalArrayStandard = []
@@ -236,8 +236,8 @@ class TestCase:
                 xArrayStandard.append(xArrayStandardTest)
                 xFEvalArrayStandard.append(xFEvalArrayStandardTest)
                 errorArrayStandard.append(errorArrayStandardTest)
-                # interpolation_error_standardL2.append(interpolation_errorL2)
-                # interpolation_error_standardMax.append(interpolation_errorMax)
+                interpolation_error_standardL2.append(interpolation_errorL2)
+                interpolation_error_standardMax.append(interpolation_errorMax)
 
             # plot
             print(max_lmin)
@@ -247,22 +247,25 @@ class TestCase:
                 print(xArrayStandard[i], errorArrayStandard[i], "Number of Points Standard lmin= " + str(i + min_lmin))
                 print(xFEvalArrayStandard[i], errorArrayStandard[i],
                       "Distinct f evals Standard lmin= " + str(i + min_lmin))
-                # print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],  "L2 interpolation error lmin= " + str(i + min_lmin))
-                # print(xFEvalArrayStandard[i], interpolation_error_standardMax[i], "Linf interpolation error lmin= " + str(i + min_lmin))
 
                 # self.ax.loglog(xArrayStandard[i], errorArrayStandard[i], label='standardCombination lmin=' + str(i + min_lmin))
                 name = "{} (Standard Combi) lmin={}".format(grid_names[k], str(i + min_lmin))
                 self.ax.loglog(xFEvalArrayStandard[i], errorArrayStandard[i], "--", label=name + " distinct f evals")
 
+                if plot_interpolation_error:
+                    print(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+                          "L2 interpolation error lmin= " + str(i + min_lmin))
+                    print(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+                          "Linf interpolation error lmin= " + str(i + min_lmin))
+                    self.ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
+                               label='standardCombination L2 lmin=' + str(i + min_lmin))
+                    self.ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
+                               label='standardCombination Linf lmin=' + str(i + min_lmin))
+
                 # Export Data to csv
                 if self.save_csv:
                     self.__export_to_csv(self.filepath, filename,
                                          [(name, xFEvalArrayStandard[i], errorArrayStandard[i])])
-
-                # self.ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardL2[i],
-                #            label='standardCombination L2 lmin=' + str(i + min_lmin))
-                # self.ax.loglog(xFEvalArrayStandard[i], interpolation_error_standardMax[i],
-                #            label='standardCombination Linf lmin=' + str(i + min_lmin))
 
     def __clear_csv(self, filepath, filename):
         file = "{}{}.csv".format(filepath, filename)
