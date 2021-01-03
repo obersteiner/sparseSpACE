@@ -517,6 +517,12 @@ class GridBinaryTree:
 # -----------------------------------------------------------------------------------------------------------------
 # ---  Extrapolation Grid
 
+class GridVersion(Enum):
+    DEFAULT = 1  # No interpolation are inserted
+    INTERPOLATE_SUB_GRIDS = 2  # Important missing grid points are inserted as interpolation points
+    INTERPOLATE_FULL_GRID = 3  # All missing points needed for a full grid are inserted as interpolation points
+
+
 class SliceGrouping(Enum):
     """
     This enum specifies the available options for slice grouping.
@@ -526,6 +532,20 @@ class SliceGrouping(Enum):
     GROUPED_OPTIMIZED = 3  # Group slices until container size is the max possible 2^k
 
 
+class SliceContainerVersion(Enum):
+    """
+    This enum specifies the available slice types.
+    """
+    # Only extrapolation
+    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers
+    SIMPSON_ROMBERG = 2  # Romberg extrapolation with simpson rule as base quadrature rule
+
+    # Interpolation before extrapolation
+    LAGRANGE_ROMBERG = 3  # Interpolated grid points are interpolated using Lagrange
+    HIERARCHICAL_LAGRANGE_ROMBERG = 4 # Interpolated grid points are interpolated using hierarchical Lagrange
+    BSPLINE_ROMBERG = 5
+
+
 class SliceVersion(Enum):
     """
     This enum specifies the available slice types.
@@ -533,18 +553,6 @@ class SliceVersion(Enum):
     ROMBERG_DEFAULT = 1  # Sliced Romberg with default Romberg extrapolation
     TRAPEZOID = 2  # Default trapezoidal rule without extrapolation
     ROMBERG_DEFAULT_CONST_SUBTRACTION = 3  # Sliced Romberg with default Romberg extrapolation and constant subtraction
-
-
-class SliceContainerVersion(Enum):
-    """
-    This enum specifies the available slice types.
-    """
-    ROMBERG_DEFAULT = 1  # Default Romberg extrapolation in non-unit containers
-    LAGRANGE_ROMBERG = 2  # Important missing grid points are interpolated with Lagrange
-    LAGRANGE_FULL_GRID_ROMBERG = 3  # All missing points needed for a full grid are interpolated
-    SIMPSON_ROMBERG = 4  # Romberg extrapolation with simpson rule as base quadrature rule
-    BSPLINE_ROMBERG = 5
-    HIERARCHICAL_LAGRANGE_ROMBERG = 6
 
 
 class ExtrapolationGrid:
@@ -561,9 +569,10 @@ class ExtrapolationGrid:
     """
 
     def __init__(self,
+                 grid_version: GridVersion = GridVersion.DEFAULT,
+                 container_version: SliceContainerVersion = SliceContainerVersion.ROMBERG_DEFAULT,
                  slice_grouping: SliceGrouping = SliceGrouping.UNIT,
                  slice_version: SliceVersion = SliceVersion.ROMBERG_DEFAULT,
-                 container_version: SliceContainerVersion = SliceContainerVersion.ROMBERG_DEFAULT,
                  force_balanced_refinement_tree: bool = False,
                  print_debug: bool = False):
         self.print_debug = print_debug
@@ -578,26 +587,29 @@ class ExtrapolationGrid:
         self.integral_approximation = None
 
         # Different grid versions
+        self.grid_version = grid_version
+        self.container_version = container_version
         self.slice_grouping = slice_grouping
         self.slice_version = slice_version
-        self.container_version = container_version
         self.force_balanced_refinement_tree = force_balanced_refinement_tree
 
         # Factories
         self.slice_factory = ExtrapolationGridSliceFactory(self.slice_version)
         self.container_factory = ExtrapolationGridSliceContainerFactory(self.container_version)
 
-        # Interpolation
-        if self.container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG:
+        # Should interpolation grid points be inserted?
+        if self.grid_version == GridVersion.INTERPOLATE_FULL_GRID:
             self.max_interpolation_step_width_delta = np.infty
-        else:
+        elif self.grid_version == GridVersion.INTERPOLATE_SUB_GRIDS:
             self.max_interpolation_step_width_delta = 2 ** 1
+        else:
+            self.max_interpolation_step_width_delta = 0
+
+        # TODO Assert right combinations of grid_version and container_version
 
     def interpolation_is_enabled(self) -> bool:
-        return self.container_version == SliceContainerVersion.LAGRANGE_ROMBERG or \
-               self.container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG or \
-               self.container_version == SliceContainerVersion.BSPLINE_ROMBERG or \
-               self.container_version == SliceContainerVersion.HIERARCHICAL_LAGRANGE_ROMBERG
+        return self.grid_version == GridVersion.INTERPOLATE_SUB_GRIDS or \
+               self.grid_version == GridVersion.INTERPOLATE_FULL_GRID
 
     # Integration
     def integrate(self, function: Function = None) -> float:
@@ -2743,8 +2755,7 @@ class ExtrapolationGridSliceContainerFactory:
     def get_grid_slice_container(self, function: Function = None) -> ExtrapolationGridSliceContainer:
         if self.slice_container_version == SliceContainerVersion.ROMBERG_DEFAULT:
             return RombergGridSliceContainer(function)
-        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG or \
-            self.slice_container_version == SliceContainerVersion.LAGRANGE_FULL_GRID_ROMBERG:
+        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG:
             return LagrangeRombergGridSliceContainer(function)
         elif self.slice_container_version == SliceContainerVersion.SIMPSON_ROMBERG:
             return SimpsonRombergGridSliceContainer(function)

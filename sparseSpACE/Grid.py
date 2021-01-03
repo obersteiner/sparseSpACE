@@ -10,7 +10,8 @@ from sparseSpACE.Utils import *
 from sparseSpACE.ComponentGridInfo import *
 from typing import Callable, Tuple, Sequence
 from sparseSpACE.Extrapolation import ExtrapolationGrid, SliceGrouping, SliceVersion, SliceContainerVersion, \
-    BalancedExtrapolationGrid
+    BalancedExtrapolationGrid, GridVersion
+
 
 # the grid class provides basic functionalities for an abstract grid
 class Grid(object):
@@ -1189,9 +1190,10 @@ class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
 class GlobalRombergGrid(GlobalGrid):
     def __init__(self, a, b, boundary=True, modified_basis=False,
                  do_cache=True,
+                 grid_version=GridVersion.DEFAULT,
+                 container_version=SliceContainerVersion.ROMBERG_DEFAULT,
                  slice_grouping=SliceGrouping.UNIT,
-                 slice_version=SliceVersion.ROMBERG_DEFAULT,
-                 container_version=SliceContainerVersion.ROMBERG_DEFAULT):
+                 slice_version=SliceVersion.ROMBERG_DEFAULT):
         self.boundary = boundary
         self.integrator = IntegratorArbitraryGridScalarProduct(self)
         self.a = a
@@ -1204,9 +1206,10 @@ class GlobalRombergGrid(GlobalGrid):
         assert not(modified_basis)
         assert boundary
 
+        self.grid_version = grid_version
+        self.container_version = container_version
         self.slice_grouping = slice_grouping
         self.slice_version = slice_version
-        self.container_version = container_version
 
         self.weight_cache = {}
 
@@ -1223,9 +1226,10 @@ class GlobalRombergGrid(GlobalGrid):
         if self.do_cache and key in self.weight_cache:
             return self.weight_cache[key]
 
-        romberg_grid = ExtrapolationGrid(slice_grouping=self.slice_grouping,
-                                         slice_version=self.slice_version,
-                                         container_version=self.container_version)
+        romberg_grid = ExtrapolationGrid(grid_version=self.grid_version,
+                                         container_version=self.container_version,
+                                         slice_grouping=self.slice_grouping,
+                                         slice_version=self.slice_version)
 
         romberg_grid.set_grid(grid_1D, grid_levels_1D)
 
