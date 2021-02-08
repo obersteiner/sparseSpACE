@@ -919,6 +919,12 @@ class Classification:
     def get_density_estimation_results(self) -> Tuple[List[StandardCombi], List[DensityEstimation]]:
         return self._classificators, self._de_objects
 
+    def get_number_of_sparse_grid_points(self) -> int:
+        result = 0
+        for combi_object in self._classificators:
+            result += combi_object.get_total_num_points()
+        return result
+
     def _initialize(self, percentage: float, split_evenly: bool, shuffle_data: bool) -> None:
         """Initialize data for performing classification.
 
