@@ -1428,14 +1428,13 @@ class DensityEstimation(AreaOperation):
         :param levelvec: Levelvector of the component grid
         :return: R matrix of the component grid specified by the levelvector
         """
-
+        dim = len(levelvec)
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
         if self.masslumping:
             return diag_val
         else:
             grid_size = self.grid.get_num_points()
             R = np.zeros((grid_size, grid_size))
-            dim = len(levelvec)
 
             # if not self.grid.is_global():
             index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
