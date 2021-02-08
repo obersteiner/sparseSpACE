@@ -755,8 +755,8 @@ class Classification:
                  split_evenly: bool = True,
                  shuffle_data: bool = True,
                  print_output: bool = False,
-                 log_level: int = log_levels.WARNING,
-                 print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO,
+                 print_level: int = print_levels.INFO):
         """Constructor of the Classification class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -1059,14 +1059,14 @@ class Classification:
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
-        logUtil.log_info("Number of wrong mappings: {0} ".format(number_wrong))
-        logUtil.log_info("Number of total mappings: {0}".format(len(calculated_classes)))
+        print("Number of wrong mappings: {0} ".format(number_wrong))
+        print("Number of total mappings: {0}".format(len(calculated_classes)))
         percentage_wrong = "%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)
-        logUtil.log_info("Percentage of correct mappings: {0}".format(percentage_wrong))
+        print("Percentage of correct mappings: {0}".format(percentage_wrong))
         if number_wrong != 0 and print_incorrect_points:
-            logUtil.log_info(
+            print(
                 "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            logUtil.log_info("Points mapped incorrectly:")
+            print("Points mapped incorrectly:")
             points = ''
             for i, wr in enumerate(indices_wrong):
                 points += "{0}: {1} | correct class: {2}, calculated class: {3} | ".format(i, testing_data[0][wr],
@@ -1076,7 +1076,7 @@ class Classification:
                 for j, x in enumerate(density_testdata[wr]):
                     d_c += "density_class{0}: {1}, ".format(j, x)
                 points += d_c
-            logUtil.log_info("Points mapped incorrectly: {0}".format(points))
+            print("Points mapped incorrectly: {0}".format(points))
 
     def _process_performed_classification(self,
                                           operation_list: List[Tuple[StandardCombi, DensityEstimation]],
@@ -1158,7 +1158,7 @@ class Classification:
                                               minimum_level: int = 1,
                                               maximum_level: int = 5,
                                               reuse_old_values: bool = False,
-                                              numeric_calculation: bool = True,
+                                              numeric_calculation: bool = False,
                                               margin: float = 0.5,
                                               tolerance: float = 0.01,
                                               max_evaluations: int = 256,
@@ -1347,7 +1347,7 @@ class Clustering:
     """
 
     def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25,
-                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
         """Constructor of the Clustering class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
