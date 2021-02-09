@@ -30,7 +30,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                  version: int = 6, operation: GridOperation = None, margin: float = None, timings=None,
                  rebalancing: bool = True, rebalancing_safety_factor: float = 0.1, chebyshev_points=False,
                  use_volume_weighting=False, force_balanced_refinement_tree: bool = False, grid_surplusses=None,
-                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, use_relative_surplus: bool=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, log_level=log_level, print_level=print_level)
         assert self.grid is not None
 
@@ -66,6 +66,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # If set to true, all grid points have either 0 or two children
         self.force_balanced_refinement_tree = force_balanced_refinement_tree
         self.grid_binary_tree = GridBinaryTree()
+        self.use_relative_surplus = use_relative_surplus
+
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -1354,6 +1356,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         widths = np.asarray([(
             self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)]).reshape((len(children),1)) ** exponent
         volumes = np.sum(factors * abs(values), axis=1) * widths
+        if self.use_relative_surplus:
+            volumes /= point_values
         if self.version == 0 or self.version == 2:
             evaluations = size_slize * len(children)  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
