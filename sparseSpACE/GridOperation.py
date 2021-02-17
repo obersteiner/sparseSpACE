@@ -1799,9 +1799,9 @@ class DensityEstimation(AreaOperation):
 
     def print_evaluation_output(self, refinement):
         combi_surpluses = self.surpluses
-        if len(combi_surpluses) == 1:
-            combi_surpluses = combi_surpluses[0]
-        #print("combisurpluses:", combi_surpluses)
+        #if len(combi_surpluses) == 1:
+        #    combi_surpluses = combi_surpluses[0]
+        self.log_util.log_debug("combisurpluses:" + str(combi_surpluses))
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
