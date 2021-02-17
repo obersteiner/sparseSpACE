@@ -826,7 +826,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
                 for index in active_indices:
-                    if max(self.lmax) + self.dim - 1 > sum(index) and all(
+                    if max(self.lmax) + self.lmin[0] * (self.dim - 1) > sum(index) and all(
                             [self.lmax[d] > index[d] for d in range(self.dim)]):
                         self.combischeme.update_adaptive_combi(index)
                         refinements += 1
@@ -977,8 +977,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 self.rebalance(d)
         for d in range(self.dim):
             refinement_container_d = self.refinement.get_refinement_container_for_dim(d)
+            # search if a refinement_object exceeds the maximum level and by how much
             update_d = self.update_coarsening_values(refinement_container_d, d)
-            if update_d > 0:
+            if update_d > 0: # adjust maximum level if necessary
                 self.raise_lmax(d, update_d)
                 refinement_container_d.update_values(update_d)
         self.scheme = self.combischeme.getCombiScheme(do_print=False)
