@@ -301,7 +301,11 @@ class DensityEstimation(AreaOperation):
         self.data = data
         self.validation_set = None
         self.validation_classes = None
-        self.validation_set_size = validation_set_size
+        self.use_complete_validation = True
+        if self.use_complete_validation:
+            self.validation_set_size = 1
+        else:
+            self.validation_set_size = validation_set_size
         self.dim = dim
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -551,22 +555,26 @@ class DensityEstimation(AreaOperation):
         """
         self.initialize()
         if self.classes is not None:
-            if self.validation_set is not None:
-                # read the validation set to the data set, otherwise the data set will get smaller and smaller
-                # with each iteration
-                self.data = np.concatenate((self.data, self.validation_set))
-                self.classes = np.concatenate((self.classes, self.validation_classes))
-            class_a = np.where(self.classes > 0)[0]
-            class_b = np.where(self.classes < 0)[0]
-            picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
-            picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
-            validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
-            validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
-            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
-            self.validation_set = np.copy(self.data[validation_indices])
-            self.validation_classes = np.copy(self.classes[validation_indices])
-            self.data = np.delete(self.data, validation_indices, axis=0)
-            self.classes = np.delete(self.classes, validation_indices)
+            if not self.validation_set_size:
+                if self.validation_set is not None:
+                    # read the validation set to the data set, otherwise the data set will get smaller and smaller
+                    # with each iteration
+                    self.data = np.concatenate((self.data, self.validation_set))
+                    self.classes = np.concatenate((self.classes, self.validation_classes))
+                class_a = np.where(self.classes > 0)[0]
+                class_b = np.where(self.classes < 0)[0]
+                picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
+                picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
+                validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
+                validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
+                validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+                self.validation_set = np.copy(self.data[validation_indices])
+                self.validation_classes = np.copy(self.classes[validation_indices])
+                self.data = np.delete(self.data, validation_indices, axis=0)
+                self.classes = np.delete(self.classes, validation_indices)
+            else:
+                self.validation_set = np.copy(self.data)
+                self.validation_classes = np.copy(self.classes)
 
             # DEBUG: add deleted data back to check if removed data and labels were misaligned
             # self.data = np.concatenate((self.data, self.validation_set))
