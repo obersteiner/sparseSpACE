@@ -988,10 +988,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         if isinstance(self.errorEstimator, ErrorCalculatorSingleDimMisclassificationGlobal):
-            self.errorEstimator.calc_global_error(self.operation.data, self)
+            pass
+            #self.errorEstimator.calc_global_error(self.operation.validation_set, self)
         else:
             self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
-
+    """
+    outdated functions
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, child_info, grid_points, d):
@@ -1224,6 +1226,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             evaluations = 0
         return abs(volume), evaluations
+    """
 
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
