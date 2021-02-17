@@ -170,7 +170,7 @@ class GridOperation(object):
         pass
 
     @abc.abstractmethod
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
         """This method returns the number of all points that were used in the combination.
 
         :return: Number of points.
@@ -488,8 +488,10 @@ class DensityEstimation(AreaOperation):
     def get_reference_solution(self) -> None:
         return None
 
-    def get_distinct_points(self):
-        s = sum([len(x) for x in self.surpluses.values()])
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points that are used in the current combination scheme
+        # Redundant points are intentionally not removed here as they cannot share point values between grids!
+        s = sum([len(self.surpluses[tuple(component_grid.levelvector)]) for component_grid in combi_scheme])
         return s
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
@@ -1806,7 +1808,8 @@ class Integration(AreaOperation):
         self.log_util.set_print_prefix('Integration')
         self.log_util.set_log_prefix('Integration')
 
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points used in the whole adaptive process
         return self.f.get_f_dict_size()
 
     def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
