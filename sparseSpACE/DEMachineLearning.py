@@ -581,7 +581,8 @@ class DataSet:
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
-                                          plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
+                                          plot_sparsegrid: bool = True,
+                                          use_relative_surplus: bool=True) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation dimension-wise on this DataSet.
 
         This method can also plot the DensityEstimation results directly.
@@ -608,6 +609,8 @@ class DataSet:
         :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
         plotted.
         :param plot_sparsegrid: Optional. Conditional Parameter, which indicates whether resulting sparsegrid of DensityEstimation should be plotted.
+        :param use_relative_surplus: Optional. Indicates if relative errors are used for the surplusses in the grid refinement.
+
         :return: Tuple of the resulting StandardCombi and DensityEstimation objects.
         """
         a = np.zeros(self._dim)
@@ -616,6 +619,11 @@ class DataSet:
 
         if error_calculator is None:
             error_calculator = ErrorCalculatorSingleDimVolumeGuided()
+
+        if error_calculator.is_global:
+            validation_set_size=0.2
+        else:
+            validation_set_size=0.0
 
         classes = None
         if one_vs_others:
@@ -630,8 +638,9 @@ class DataSet:
                                       reuse_old_values=reuse_old_values,
                                       numeric_calculation=numeric_calculation,
                                       print_output=False,
-                                      pre_scaled_data=pre_scaled_data)
-        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing)
+                                      pre_scaled_data=pre_scaled_data,
+                                      validation_set_size=validation_set_size)
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing, use_relative_surplus=use_relative_surplus)
 
         # pStuff.increment_class_counter()
         # cls = '__class-' + str(pStuff.get_class_counter())
@@ -1174,7 +1183,8 @@ class Classification:
                                               one_vs_others: bool = False,
                                               error_calculator: ErrorCalculator = None,
                                               pre_scaled_data: bool = False,
-                                              print_metrics: bool = True) -> None:
+                                              print_metrics: bool = True,
+                                              use_relative_surplus: bool = True) -> None:
         """Create dimension-wise GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
         This method is only called once.
@@ -1198,6 +1208,7 @@ class Classification:
         :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
         :param pre_scaled_data: Optional. Data will not be scaled within the density estimation operation
         :param print_metrics: Optional.
+        :param use_relative_surplus: Optional. Indicates if relative errors should be used for surplus calculation in grid refinement.
         :return: None
         """
         if self._performed_classification:
@@ -1225,7 +1236,8 @@ class Classification:
                                                               plot_de_dataset=False,
                                                               plot_density_estimation=False,
                                                               plot_combi_scheme=False,
-                                                              plot_sparsegrid=False) for x in learning_data_classes]
+                                                              plot_sparsegrid=False,
+                                                              use_relative_surplus=use_relative_surplus) for x in learning_data_classes]
         self._process_performed_classification(operation_list, start_time, print_metrics)
 
     def continue_dimension_wise_refinement(self,
@@ -1633,7 +1645,8 @@ class Clustering:
                                           max_evaluations: int = 256,
                                           modified_basis: bool = False,
                                           boundary: bool = False,
-                                          print_metrics: bool = True) -> None:
+                                          print_metrics: bool = True,
+                                          use_relative_surplus: bool = False) -> None:
         """Create dimension-wise GridOperation and DensityEstimation objects for the clustering learning process.
 
         This method is only called once.
@@ -1651,6 +1664,7 @@ class Clustering:
         :param modified_basis: Optional.
         :param boundary: Optional.
         :param print_metrics: Optional.
+        :param use_relative_surplus: Optiona. Indicates if relative errors should be used for grid refinement.
         :return: None
         """
         if self._performed_clustering:
@@ -1670,7 +1684,8 @@ class Clustering:
                                                                                                     plot_de_dataset=False,
                                                                                                     plot_density_estimation=False,
                                                                                                     plot_combi_scheme=False,
-                                                                                                    plot_sparsegrid=False)
+                                                                                                    plot_sparsegrid=False,
+                                                                                                    use_relative_surplus=use_relative_surplus)
         self._process_performed_clustering(start_time, print_metrics)
 
     def evaluate(self) -> dict:
