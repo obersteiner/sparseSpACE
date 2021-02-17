@@ -1268,6 +1268,10 @@ class Classification:
                 "_________________________________________________________________________________________________________________________________")
             self.log_util.log_info(
                 "---------------------------------------------------------------------------------------------------------------------------------")
+        if not self._testing_data.is_empty():
+            start_time = time.time()
+            self._calculated_classes_testset = self._classificate(self._testing_data)
+            self._time_used += time.time() - start_time
 
     def evaluate(self) -> dict:
         """Evaluate results of all testing data stored within this object.
