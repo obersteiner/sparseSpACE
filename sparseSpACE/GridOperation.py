@@ -893,7 +893,7 @@ class DensityEstimation(AreaOperation):
                     res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
                                                               points[i], list(zip(lower[i], upper[i])))
 
-                R[i] = res
+                R[i] = res + self.lambd
             return R
         else:
             R = np.zeros((grid_size, grid_size))
@@ -923,6 +923,8 @@ class DensityEstimation(AreaOperation):
                             self.old_R[str(overlap)] = res
                         R[i][j] = res
                         R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
             elif not self.reuse_old_values and not self.masslumping:
                 # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
                 for i in range(0, len(points)):
@@ -936,6 +938,8 @@ class DensityEstimation(AreaOperation):
 
                         R[i][j] = res
                         R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
             else:
                 #only calculate the diagonal
                 for i in range(0, len(points)):
@@ -948,7 +952,7 @@ class DensityEstimation(AreaOperation):
                         res = self.calculate_R_value_analytically(points[i], list(zip(lower[i],upper[i])),
                                                                       points[j], list(zip(lower[j], upper[j])))
 
-                    R[i][j] = res
+                    R[i][j] = res + self.lambd
 
             return R
 
