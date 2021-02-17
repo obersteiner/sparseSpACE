@@ -1058,21 +1058,24 @@ class DensityEstimation(AreaOperation):
         """
         R = self.log_util.time_func("OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
         b = self.log_util.time_func("OP: calculate_B_dimension_wise time taken", self.calculate_B_dimension_wise, self.data, gridPointCoordsAsStripes, grid_point_levels)
+        self.log_util.log_debug("R and b" + str(R) + str(b))
         scaling_factor = 1.0/np.max(R)
         if self.masslumping:
             alphas = b/R
         else:
             alphas = self.log_util.time_func("OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
+        self.log_util.log_debug("alphas" + str(alphas))
         #if self.classes is not None:
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            #integral = np.inner(alphas.clip(min=0), weights)
-            integral = 1.0
+            integral = np.inner(alphas, weights)
+            #integral = 1.0
+            alphas -= integral
         else:
             integral = np.inner(alphas, weights)
-        if integral != 0.0:
-            alphas /= integral
+            if integral != 0.0:
+                alphas /= integral
         #else:
         #    raise ValueError("Integral is zero!")
         #alphas = alphas.clip(max=avg_value*10)
@@ -1509,14 +1512,14 @@ class DensityEstimation(AreaOperation):
             # with mass lumping and without boundary points and without modified basis R is identity
             alphas = b
         else:
-            alphas, info = cg(R, b)
+            #alphas, info = cg(R, b)
+            alphas = np.linalg.solve(R, b)
+
         if self.debug:
+            self.log_util.log_debug("R and b" + str(R / scale_value) +  str(b / scale_value))
+            self.log_util.log_debug("alphas", alphas)
             self.log_util.log_debug("Alphas: ".format(levelvec, alphas))
             self.log_util.log_debug("-" * 100)
-
-        if self.classes is not None:
-            return alphas
-
         # normalize integral of density
         levelvec = np.asarray(levelvec)
         if not self.dimension_wise and not self.grid.boundary:
@@ -1524,6 +1527,11 @@ class DensityEstimation(AreaOperation):
         else:
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
+
+        if self.classes is not None:
+            return alphas-integral
+
+
         if self.debug:
             self.log_util.log_debug("{0}".format(alphas))
         if integral == 0 and self.debug:
