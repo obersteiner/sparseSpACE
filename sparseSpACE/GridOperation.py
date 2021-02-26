@@ -170,7 +170,7 @@ class GridOperation(object):
         pass
 
     @abc.abstractmethod
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
         """This method returns the number of all points that were used in the combination.
 
         :return: Number of points.
@@ -301,7 +301,11 @@ class DensityEstimation(AreaOperation):
         self.data = data
         self.validation_set = None
         self.validation_classes = None
-        self.validation_set_size = validation_set_size
+        self.use_complete_validation = True
+        if self.use_complete_validation:
+            self.validation_set_size = 1
+        else:
+            self.validation_set_size = validation_set_size
         self.dim = dim
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -488,8 +492,10 @@ class DensityEstimation(AreaOperation):
     def get_reference_solution(self) -> None:
         return None
 
-    def get_distinct_points(self):
-        s = sum([len(x) for x in self.surpluses.values()])
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points that are used in the current combination scheme
+        # Redundant points are intentionally not removed here as they cannot share point values between grids!
+        s = sum([len(self.surpluses[tuple(component_grid.levelvector)]) for component_grid in combi_scheme])
         return s
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
@@ -549,22 +555,26 @@ class DensityEstimation(AreaOperation):
         """
         self.initialize()
         if self.classes is not None:
-            if self.validation_set is not None:
-                # read the validation set to the data set, otherwise the data set will get smaller and smaller
-                # with each iteration
-                self.data = np.concatenate((self.data, self.validation_set))
-                self.classes = np.concatenate((self.classes, self.validation_classes))
-            class_a = np.where(self.classes > 0)[0]
-            class_b = np.where(self.classes < 0)[0]
-            picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
-            picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
-            validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
-            validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
-            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
-            self.validation_set = np.copy(self.data[validation_indices])
-            self.validation_classes = np.copy(self.classes[validation_indices])
-            self.data = np.delete(self.data, validation_indices, axis=0)
-            self.classes = np.delete(self.classes, validation_indices)
+            if not self.validation_set_size:
+                if self.validation_set is not None:
+                    # read the validation set to the data set, otherwise the data set will get smaller and smaller
+                    # with each iteration
+                    self.data = np.concatenate((self.data, self.validation_set))
+                    self.classes = np.concatenate((self.classes, self.validation_classes))
+                class_a = np.where(self.classes > 0)[0]
+                class_b = np.where(self.classes < 0)[0]
+                picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
+                picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
+                validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
+                validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
+                validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+                self.validation_set = np.copy(self.data[validation_indices])
+                self.validation_classes = np.copy(self.classes[validation_indices])
+                self.data = np.delete(self.data, validation_indices, axis=0)
+                self.classes = np.delete(self.classes, validation_indices)
+            else:
+                self.validation_set = np.copy(self.data)
+                self.validation_classes = np.copy(self.classes)
 
             # DEBUG: add deleted data back to check if removed data and labels were misaligned
             # self.data = np.concatenate((self.data, self.validation_set))
@@ -883,7 +893,7 @@ class DensityEstimation(AreaOperation):
                     res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
                                                               points[i], list(zip(lower[i], upper[i])))
 
-                R[i] = res
+                R[i] = res + self.lambd
             return R
         else:
             R = np.zeros((grid_size, grid_size))
@@ -913,6 +923,8 @@ class DensityEstimation(AreaOperation):
                             self.old_R[str(overlap)] = res
                         R[i][j] = res
                         R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
             elif not self.reuse_old_values and not self.masslumping:
                 # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
                 for i in range(0, len(points)):
@@ -926,6 +938,8 @@ class DensityEstimation(AreaOperation):
 
                         R[i][j] = res
                         R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
             else:
                 #only calculate the diagonal
                 for i in range(0, len(points)):
@@ -938,7 +952,7 @@ class DensityEstimation(AreaOperation):
                         res = self.calculate_R_value_analytically(points[i], list(zip(lower[i],upper[i])),
                                                                       points[j], list(zip(lower[j], upper[j])))
 
-                    R[i][j] = res
+                    R[i][j] = res + self.lambd
 
             return R
 
@@ -1044,21 +1058,24 @@ class DensityEstimation(AreaOperation):
         """
         R = self.log_util.time_func("OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
         b = self.log_util.time_func("OP: calculate_B_dimension_wise time taken", self.calculate_B_dimension_wise, self.data, gridPointCoordsAsStripes, grid_point_levels)
+        self.log_util.log_debug("R and b" + str(R) + str(b))
         scaling_factor = 1.0/np.max(R)
         if self.masslumping:
             alphas = b/R
         else:
             alphas = self.log_util.time_func("OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
+        self.log_util.log_debug("alphas" + str(alphas))
         #if self.classes is not None:
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            #integral = np.inner(alphas.clip(min=0), weights)
-            integral = 1.0
+            integral = np.inner(alphas, weights)
+            #integral = 1.0
+            alphas -= integral
         else:
             integral = np.inner(alphas, weights)
-        if integral != 0.0:
-            alphas /= integral
+            if integral != 0.0:
+                alphas /= integral
         #else:
         #    raise ValueError("Integral is zero!")
         #alphas = alphas.clip(max=avg_value*10)
@@ -1495,14 +1512,14 @@ class DensityEstimation(AreaOperation):
             # with mass lumping and without boundary points and without modified basis R is identity
             alphas = b
         else:
-            alphas, info = cg(R, b)
+            #alphas, info = cg(R, b)
+            alphas = np.linalg.solve(R, b)
+
         if self.debug:
+            self.log_util.log_debug("R and b" + str(R / scale_value) +  str(b / scale_value))
+            self.log_util.log_debug("alphas", alphas)
             self.log_util.log_debug("Alphas: ".format(levelvec, alphas))
             self.log_util.log_debug("-" * 100)
-
-        if self.classes is not None:
-            return alphas
-
         # normalize integral of density
         levelvec = np.asarray(levelvec)
         if not self.dimension_wise and not self.grid.boundary:
@@ -1510,6 +1527,11 @@ class DensityEstimation(AreaOperation):
         else:
             points, weights = self.grid.get_points_and_weights()
             integral = np.inner(alphas, weights)
+
+        if self.classes is not None:
+            return alphas-integral
+
+
         if self.debug:
             self.log_util.log_debug("{0}".format(alphas))
         if integral == 0 and self.debug:
@@ -1777,9 +1799,9 @@ class DensityEstimation(AreaOperation):
 
     def print_evaluation_output(self, refinement):
         combi_surpluses = self.surpluses
-        if len(combi_surpluses) == 1:
-            combi_surpluses = combi_surpluses[0]
-        #print("combisurpluses:", combi_surpluses)
+        #if len(combi_surpluses) == 1:
+        #    combi_surpluses = combi_surpluses[0]
+        self.log_util.log_debug("combisurpluses:" + str(combi_surpluses))
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
@@ -1806,7 +1828,8 @@ class Integration(AreaOperation):
         self.log_util.set_print_prefix('Integration')
         self.log_util.set_log_prefix('Integration')
 
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points used in the whole adaptive process
         return self.f.get_f_dict_size()
 
     def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
