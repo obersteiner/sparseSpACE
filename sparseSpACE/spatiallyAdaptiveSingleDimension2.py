@@ -1356,9 +1356,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 values[right_parents_in_grid] -= (factors_right_parents * point_values_right_parents.T).T
         widths = np.asarray([(
             self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)]).reshape((len(children),1)) ** exponent
-        volumes = np.sum(factors * abs(values), axis=1) * widths
         if self.use_relative_surplus:
-            volumes /= point_values
+            values /= point_values
+        volumes = np.sum(factors * abs(values), axis=1) * widths
         if self.version == 0 or self.version == 2:
             evaluations = size_slize * len(children)  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
         else:
