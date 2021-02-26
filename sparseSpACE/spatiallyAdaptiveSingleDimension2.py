@@ -1254,16 +1254,15 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in
              range(self.dim)]) for right_parent in right_parents[right_parents_in_grid]]
         if self.grid_surplusses.modified_basis and np.any(np.logical_not(right_parents_in_grid)):
-            filter_right_right = np.logical_and(left_parents_in_grid, np.logical_not(right_parents_in_grid))
+            filter_left_left = np.logical_and(left_parents_in_grid, np.logical_not(right_parents_in_grid))
             points_left_of_left_parents = [get_cross_product_list(
                 [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in
-                 range(self.dim)]) for left_parent_of_left_parent in left_parents_of_left_parents[filter_right_right]]
+                 range(self.dim)]) for left_parent_of_left_parent in left_parents_of_left_parents[filter_left_left]]
         if self.grid_surplusses.modified_basis and np.any(np.logical_not(left_parents_in_grid)):
             filter_right_right = np.logical_and(right_parents_in_grid, np.logical_not(left_parents_in_grid))
             points_right_of_right_parents = [get_cross_product_list(
                 [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parents_of_right_parent] for d2
                  in range(self.dim)]) for right_parents_of_right_parent in right_parents_of_right_parents[filter_right_right]]
-
         points_children = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)]) for child in children]
 
@@ -1301,6 +1300,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         filter_in_grid]
                     left_parents_filtered = left_parents[filter_target_indices][filter_in_grid]
                     children_filtered = children[filter_target_indices][filter_in_grid]
+                    assert len(left_parents_of_left_parents_filtered) == len(left_parents_filtered) == len(children_filtered) == 1
                     point_values_left_parents_filtered = point_values_left_parents[np.logical_not(right_parents_in_grid[left_parents_in_grid])][
                         filter_in_grid]
                     points_left_of_left_parents_filtered = points_left_of_left_parents
@@ -1337,6 +1337,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     right_parents_of_right_parents_filtered = right_parents_of_right_parents[filter_target_indices][filter_in_grid]
                     right_parents_filtered = right_parents[filter_target_indices][filter_in_grid]
                     children_filtered = children[filter_target_indices][filter_in_grid]
+                    assert len(right_parents_of_right_parents_filtered) == len(right_parents_filtered) == len(children_filtered) == 1
                     point_values_right_parents_filtered = point_values_right_parents[np.logical_not(left_parents_in_grid[right_parents_in_grid])][filter_in_grid]
                     points_right_of_right_parents_filtered = points_right_of_right_parents
                     point_values_right_of_right_parents_filtered = self.operation.get_point_values_component_grid_multiple(points_right_of_right_parents_filtered,
