@@ -1069,10 +1069,10 @@ class DensityEstimation(AreaOperation):
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            integral1 = np.inner(alphas, weights)
+            integral1 = np.inner(alphas, weights)/sum(weights)
             #integral = 1.0
             alphas -= integral1
-        integral = np.inner(alphas.clip(min=0.0), weights)
+        integral = np.inner(alphas.clip(min=0.0), weights)/sum(weights)
         if integral != 0.0:
             alphas /= integral
         #else:
@@ -1519,18 +1519,17 @@ class DensityEstimation(AreaOperation):
             self.log_util.log_debug("-" * 100)
         # normalize integral of density
         levelvec = np.asarray(levelvec)
-
         if not self.dimension_wise and not self.grid.boundary:
             if self.classes is not None: # adjust complete integral to 0
-                integral1 = np.sum(alphas) * 2.0**(-np.sum(levelvec))
+                integral1 = np.sum(alphas)/len(alphas)
                 alphas = alphas - integral1
-            integral = np.sum(alphas.clip(min=0.0)) * 2.0**(-np.sum(levelvec))
+            integral = np.sum(alphas.clip(min=0.0))/len(alphas)
         else:
             points, weights = self.grid.get_points_and_weights()
             if self.classes is not None: # adjust complete integral to 0
-                integral1 = np.inner(alphas, weights)
+                integral1 = np.inner(alphas, weights)/sum(weights)
                 alphas = alphas - integral1
-            integral = np.inner(alphas.clip(min=0.0), weights)
+            integral = np.inner(alphas.clip(min=0.0), weights)/sum(weights)
         if self.debug:
             self.log_util.log_debug("{0}".format(alphas))
         if integral == 0 and self.debug:
@@ -1539,8 +1538,10 @@ class DensityEstimation(AreaOperation):
             self.log_util.log_debug("b Vector: {0}".format(b))
             self.log_util.log_debug("surplus_values: {0}".format(alphas))
             self.log_util.log_debug("Weights: {0}".format(weights))
-
-        return alphas/integral
+        if integral == 0:
+            return alphas
+        else:
+            return alphas/integral
 
     def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
         """This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
