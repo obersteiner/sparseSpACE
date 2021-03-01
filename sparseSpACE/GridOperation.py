@@ -1069,13 +1069,12 @@ class DensityEstimation(AreaOperation):
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            integral = np.inner(alphas, weights)
+            integral1 = np.inner(alphas, weights)
             #integral = 1.0
-            alphas -= integral
-        else:
-            integral = np.inner(alphas, weights)
-            if integral != 0.0:
-                alphas /= integral
+            alphas -= integral1
+        integral = np.inner(alphas.clip(min=0.0), weights)
+        if integral != 0.0:
+            alphas /= integral
         #else:
         #    raise ValueError("Integral is zero!")
         #alphas = alphas.clip(max=avg_value*10)
