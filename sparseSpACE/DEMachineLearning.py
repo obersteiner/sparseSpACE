@@ -581,7 +581,8 @@ class DataSet:
                                           plot_de_dataset: bool = True,
                                           plot_density_estimation: bool = True,
                                           plot_combi_scheme: bool = True,
-                                          plot_sparsegrid: bool = True) -> Tuple[StandardCombi, DensityEstimation]:
+                                          plot_sparsegrid: bool = True,
+                                          use_relative_surplus: bool=True) -> Tuple[StandardCombi, DensityEstimation]:
         """Perform the GridOperation DensityEstimation dimension-wise on this DataSet.
 
         This method can also plot the DensityEstimation results directly.
@@ -608,6 +609,8 @@ class DataSet:
         :param plot_combi_scheme: Optional. Conditional Parameter, which indicates whether resulting combi scheme of DensityEstimation should be
         plotted.
         :param plot_sparsegrid: Optional. Conditional Parameter, which indicates whether resulting sparsegrid of DensityEstimation should be plotted.
+        :param use_relative_surplus: Optional. Indicates if relative errors are used for the surplusses in the grid refinement.
+
         :return: Tuple of the resulting StandardCombi and DensityEstimation objects.
         """
         a = np.zeros(self._dim)
@@ -616,6 +619,11 @@ class DataSet:
 
         if error_calculator is None:
             error_calculator = ErrorCalculatorSingleDimVolumeGuided()
+
+        if error_calculator.is_global:
+            validation_set_size=0.2
+        else:
+            validation_set_size=0.0
 
         classes = None
         if one_vs_others:
@@ -630,8 +638,9 @@ class DataSet:
                                       reuse_old_values=reuse_old_values,
                                       numeric_calculation=numeric_calculation,
                                       print_output=False,
-                                      pre_scaled_data=pre_scaled_data)
-        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing)
+                                      pre_scaled_data=pre_scaled_data,
+                                      validation_set_size=validation_set_size)
+        combi_object = SpatiallyAdaptiveSingleDimensions2(a, b, operation=de_object, margin=margin, rebalancing=rebalancing, use_relative_surplus=use_relative_surplus)
 
         # pStuff.increment_class_counter()
         # cls = '__class-' + str(pStuff.get_class_counter())
@@ -755,8 +764,8 @@ class Classification:
                  split_evenly: bool = True,
                  shuffle_data: bool = True,
                  print_output: bool = False,
-                 log_level: int = log_levels.WARNING,
-                 print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO,
+                 print_level: int = print_levels.INFO):
         """Constructor of the Classification class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -919,6 +928,12 @@ class Classification:
     def get_density_estimation_results(self) -> Tuple[List[StandardCombi], List[DensityEstimation]]:
         return self._classificators, self._de_objects
 
+    def get_number_of_sparse_grid_points(self) -> int:
+        result = 0
+        for combi_object in self._classificators:
+            result += combi_object.get_total_num_points()
+        return result
+
     def _initialize(self, percentage: float, split_evenly: bool, shuffle_data: bool) -> None:
         """Initialize data for performing classification.
 
@@ -1059,14 +1074,14 @@ class Classification:
             raise ValueError("Samples of testing DataSet and its calculated classes have to be the same amount.")
         number_wrong = sum([0 if (x == y) else 1 for x, y in zip(testing_data[1], calculated_classes)])
         indices_wrong = [i for i, c in enumerate(testing_data[1]) if c != calculated_classes[i]]
-        logUtil.log_info("Number of wrong mappings: {0} ".format(number_wrong))
-        logUtil.log_info("Number of total mappings: {0}".format(len(calculated_classes)))
+        print("Number of wrong mappings: {0} ".format(number_wrong))
+        print("Number of total mappings: {0}".format(len(calculated_classes)))
         percentage_wrong = "%2.2f%%" % ((1.0 - (number_wrong / len(calculated_classes))) * 100)
-        logUtil.log_info("Percentage of correct mappings: {0}".format(percentage_wrong))
+        print("Percentage of correct mappings: {0}".format(percentage_wrong))
         if number_wrong != 0 and print_incorrect_points:
-            logUtil.log_info(
+            print(
                 "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-            logUtil.log_info("Points mapped incorrectly:")
+            print("Points mapped incorrectly:")
             points = ''
             for i, wr in enumerate(indices_wrong):
                 points += "{0}: {1} | correct class: {2}, calculated class: {3} | ".format(i, testing_data[0][wr],
@@ -1076,7 +1091,7 @@ class Classification:
                 for j, x in enumerate(density_testdata[wr]):
                     d_c += "density_class{0}: {1}, ".format(j, x)
                 points += d_c
-            logUtil.log_info("Points mapped incorrectly: {0}".format(points))
+            print("Points mapped incorrectly: {0}".format(points))
 
     def _process_performed_classification(self,
                                           operation_list: List[Tuple[StandardCombi, DensityEstimation]],
@@ -1158,7 +1173,7 @@ class Classification:
                                               minimum_level: int = 1,
                                               maximum_level: int = 5,
                                               reuse_old_values: bool = False,
-                                              numeric_calculation: bool = True,
+                                              numeric_calculation: bool = False,
                                               margin: float = 0.5,
                                               tolerance: float = 0.01,
                                               max_evaluations: int = 256,
@@ -1168,7 +1183,8 @@ class Classification:
                                               one_vs_others: bool = False,
                                               error_calculator: ErrorCalculator = None,
                                               pre_scaled_data: bool = False,
-                                              print_metrics: bool = True) -> None:
+                                              print_metrics: bool = True,
+                                              use_relative_surplus: bool = True) -> None:
         """Create dimension-wise GridOperation and DensityEstimation objects for each class of all samples and store them into lists.
 
         This method is only called once.
@@ -1192,6 +1208,7 @@ class Classification:
         :param error_calculator: Optional. Explicitly pass the error calculator that you want to use.
         :param pre_scaled_data: Optional. Data will not be scaled within the density estimation operation
         :param print_metrics: Optional.
+        :param use_relative_surplus: Optional. Indicates if relative errors should be used for surplus calculation in grid refinement.
         :return: None
         """
         if self._performed_classification:
@@ -1219,7 +1236,8 @@ class Classification:
                                                               plot_de_dataset=False,
                                                               plot_density_estimation=False,
                                                               plot_combi_scheme=False,
-                                                              plot_sparsegrid=False) for x in learning_data_classes]
+                                                              plot_sparsegrid=False,
+                                                              use_relative_surplus=use_relative_surplus) for x in learning_data_classes]
         self._process_performed_classification(operation_list, start_time, print_metrics)
 
     def continue_dimension_wise_refinement(self,
@@ -1250,6 +1268,10 @@ class Classification:
                 "_________________________________________________________________________________________________________________________________")
             self.log_util.log_info(
                 "---------------------------------------------------------------------------------------------------------------------------------")
+        if not self._testing_data.is_empty():
+            start_time = time.time()
+            self._calculated_classes_testset = self._classificate(self._testing_data)
+            self._time_used += time.time() - start_time
 
     def evaluate(self) -> dict:
         """Evaluate results of all testing data stored within this object.
@@ -1347,7 +1369,7 @@ class Clustering:
     """
 
     def __init__(self, raw_data: 'DataSet', number_nearest_neighbors: int = 5, edge_cutting_threshold: float = 0.25,
-                 log_level: int = log_levels.WARNING, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
         """Constructor of the Clustering class.
 
         Takes raw_data as necessary parameter and some more optional parameters, which are specified below.
@@ -1627,7 +1649,8 @@ class Clustering:
                                           max_evaluations: int = 256,
                                           modified_basis: bool = False,
                                           boundary: bool = False,
-                                          print_metrics: bool = True) -> None:
+                                          print_metrics: bool = True,
+                                          use_relative_surplus: bool = False) -> None:
         """Create dimension-wise GridOperation and DensityEstimation objects for the clustering learning process.
 
         This method is only called once.
@@ -1645,6 +1668,7 @@ class Clustering:
         :param modified_basis: Optional.
         :param boundary: Optional.
         :param print_metrics: Optional.
+        :param use_relative_surplus: Optiona. Indicates if relative errors should be used for grid refinement.
         :return: None
         """
         if self._performed_clustering:
@@ -1664,7 +1688,8 @@ class Clustering:
                                                                                                     plot_de_dataset=False,
                                                                                                     plot_density_estimation=False,
                                                                                                     plot_combi_scheme=False,
-                                                                                                    plot_sparsegrid=False)
+                                                                                                    plot_sparsegrid=False,
+                                                                                                    use_relative_surplus=use_relative_surplus)
         self._process_performed_clustering(start_time, print_metrics)
 
     def evaluate(self) -> dict:

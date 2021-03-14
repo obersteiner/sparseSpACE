@@ -170,7 +170,7 @@ class GridOperation(object):
         pass
 
     @abc.abstractmethod
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
         """This method returns the number of all points that were used in the combination.
 
         :return: Number of points.
@@ -281,7 +281,7 @@ class DensityEstimation(AreaOperation):
     def __init__(self, data, dim, grid=None, masslumping: bool = False, print_output: bool = False,
                  lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
                  numeric_calculation: bool = False, pre_scaled_data: bool = False,
-                 log_level: int = log_levels.NONE, print_level: int = print_levels.NONE):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, debug: bool=False):
         """Constructor of the DensityEstimation class
 
         :param data: the data set on which desity estimation is to be performed
@@ -301,7 +301,11 @@ class DensityEstimation(AreaOperation):
         self.data = data
         self.validation_set = None
         self.validation_classes = None
-        self.validation_set_size = validation_set_size
+        self.use_complete_validation = True
+        if self.use_complete_validation:
+            self.validation_set_size = 1
+        else:
+            self.validation_set_size = validation_set_size
         self.dim = dim
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -314,7 +318,7 @@ class DensityEstimation(AreaOperation):
         self.scaled = pre_scaled_data
         self.extrema = None
         self.reference_solution = None
-        self.debug = True
+        self.debug = debug
         self.classes = classes
         self.reuse_old_values = reuse_old_values
         self.old_R = {}  # for reuse_old_values
@@ -488,8 +492,10 @@ class DensityEstimation(AreaOperation):
     def get_reference_solution(self) -> None:
         return None
 
-    def get_distinct_points(self):
-        s = sum([len(x) for x in self.surpluses.values()])
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points that are used in the current combination scheme
+        # Redundant points are intentionally not removed here as they cannot share point values between grids!
+        s = sum([len(self.surpluses[tuple(component_grid.levelvector)]) for component_grid in combi_scheme])
         return s
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
@@ -549,22 +555,26 @@ class DensityEstimation(AreaOperation):
         """
         self.initialize()
         if self.classes is not None:
-            if self.validation_set is not None:
-                # read the validation set to the data set, otherwise the data set will get smaller and smaller
-                # with each iteration
-                self.data = np.concatenate((self.data, self.validation_set))
-                self.classes = np.concatenate((self.classes, self.validation_classes))
-            class_a = np.where(self.classes > 0)[0]
-            class_b = np.where(self.classes < 0)[0]
-            picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
-            picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
-            validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
-            validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
-            validation_indices = np.concatenate((validation_a, validation_b), axis=None)
-            self.validation_set = np.copy(self.data[validation_indices])
-            self.validation_classes = np.copy(self.classes[validation_indices])
-            self.data = np.delete(self.data, validation_indices, axis=0)
-            self.classes = np.delete(self.classes, validation_indices)
+            if not self.validation_set_size:
+                if self.validation_set is not None:
+                    # read the validation set to the data set, otherwise the data set will get smaller and smaller
+                    # with each iteration
+                    self.data = np.concatenate((self.data, self.validation_set))
+                    self.classes = np.concatenate((self.classes, self.validation_classes))
+                class_a = np.where(self.classes > 0)[0]
+                class_b = np.where(self.classes < 0)[0]
+                picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
+                picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
+                validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
+                validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
+                validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+                self.validation_set = np.copy(self.data[validation_indices])
+                self.validation_classes = np.copy(self.classes[validation_indices])
+                self.data = np.delete(self.data, validation_indices, axis=0)
+                self.classes = np.delete(self.classes, validation_indices)
+            else:
+                self.validation_set = np.copy(self.data)
+                self.validation_classes = np.copy(self.classes)
 
             # DEBUG: add deleted data back to check if removed data and labels were misaligned
             # self.data = np.concatenate((self.data, self.validation_set))
@@ -872,22 +882,53 @@ class DensityEstimation(AreaOperation):
         #    points = get_cross_product_list(gridPointCoordsAsStripes)
         points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
         grid_size = len(points)
-        R = np.zeros((grid_size, grid_size))
 
-        if self.debug:
-            self.log_util.log_debug("Point list: {0}".format(points))
-            self.log_util.log_debug("Point levels: {0}".format(grid_point_levels))
-        if self.reuse_old_values and not self.masslumping:
-            # get overlap of domains between points in each dimension in sequence; sort sequence;
-            # the string of the sequence
-            for i in range(0, len(points)):
-                for j in range(i, len(points)):
-                    overlap = self.get_domain_overlap_width(points[i], list(zip(lower[i],upper[i])),
-                                                                  points[j], list(zip(lower[j], upper[j])))
-                    #overlap.sort()
-                    if str(overlap) in self.old_R:
-                        res = self.old_R[str(overlap)]
-                    else:
+        if self.masslumping:
+            R = np.empty(grid_size)
+            for i in range(grid_size):
+                if self.numeric_calculation:
+                    res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i], upper[i])),
+                                                          points[i], list(zip(lower[i], upper[i])))[0]
+                else:
+                    res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
+                                                              points[i], list(zip(lower[i], upper[i])))
+
+                R[i] = res + self.lambd
+            return R
+        else:
+            R = np.zeros((grid_size, grid_size))
+
+            if self.debug:
+                self.log_util.log_debug("Point list: {0}".format(points))
+                self.log_util.log_debug("Point levels: {0}".format(grid_point_levels))
+            if self.reuse_old_values and not self.masslumping:
+                # get overlap of domains between points in each dimension in sequence; sort sequence;
+                # the string of the sequence
+                for i in range(0, len(points)):
+                    for j in range(i, len(points)):
+                        overlap = self.get_domain_overlap_width(points[i], list(zip(lower[i],upper[i])),
+                                                                      points[j], list(zip(lower[j], upper[j])))
+                        #overlap.sort()
+                        if str(overlap) in self.old_R:
+                            res = self.old_R[str(overlap)]
+                        else:
+                            if self.numeric_calculation:
+                                res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i], upper[i])),
+                                                                      points[j], list(zip(lower[j], upper[j])))[0]
+                            else:
+                                res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
+                                                                          points[j], list(zip(lower[j], upper[j])))
+
+                            res = res
+                            self.old_R[str(overlap)] = res
+                        R[i][j] = res
+                        R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
+            elif not self.reuse_old_values and not self.masslumping:
+                # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
+                for i in range(0, len(points)):
+                    for j in range(i, len(points)):
                         if self.numeric_calculation:
                             res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i], upper[i])),
                                                                   points[j], list(zip(lower[j], upper[j])))[0]
@@ -895,38 +936,25 @@ class DensityEstimation(AreaOperation):
                             res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
                                                                       points[j], list(zip(lower[j], upper[j])))
 
-                        res = res
-                        self.old_R[str(overlap)] = res
-                    R[i][j] = res
-                    R[j][i] = res
-        elif not self.reuse_old_values and not self.masslumping:
-            # calculate the R matrix elements using the inner product of the hat functions centered at the points i and j
-            for i in range(0, len(points)):
-                for j in range(i, len(points)):
+                        R[i][j] = res
+                        R[j][i] = res
+                        if i == j:
+                            R[i][j]+=self.lambd
+            else:
+                #only calculate the diagonal
+                for i in range(0, len(points)):
+                    j = i
+
                     if self.numeric_calculation:
-                        res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i], upper[i])),
-                                                              points[j], list(zip(lower[j], upper[j])))[0]
+                        res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i],upper[i])),
+                                                                      points[j], list(zip(lower[j], upper[j])))[0]
                     else:
-                        res = self.calculate_R_value_analytically(points[i], list(zip(lower[i], upper[i])),
-                                                                  points[j], list(zip(lower[j], upper[j])))
+                        res = self.calculate_R_value_analytically(points[i], list(zip(lower[i],upper[i])),
+                                                                      points[j], list(zip(lower[j], upper[j])))
 
-                    R[i][j] = res
-                    R[j][i] = res
-        else:
-            #only calculate the diagonal
-            for i in range(0, len(points)):
-                j = i
+                    R[i][j] = res + self.lambd
 
-                if self.numeric_calculation:
-                    res = self.calculate_L2_scalarproduct(points[i], list(zip(lower[i],upper[i])),
-                                                                  points[j], list(zip(lower[j], upper[j])))[0]
-                else:
-                    res = self.calculate_R_value_analytically(points[i], list(zip(lower[i],upper[i])),
-                                                                  points[j], list(zip(lower[j], upper[j])))
-
-                R[i][j] = res
-
-        return R
+            return R
 
     def calculate_B_dimension_wise(self, data: Sequence[Sequence[float]],
                                    gridPointCoordsAsStripes: Sequence[Sequence[float]],
@@ -1030,16 +1058,21 @@ class DensityEstimation(AreaOperation):
         """
         R = self.log_util.time_func("OP: build_R_matrix_dimension_wise time taken", self.build_R_matrix_dimension_wise, gridPointCoordsAsStripes, grid_point_levels)
         b = self.log_util.time_func("OP: calculate_B_dimension_wise time taken", self.calculate_B_dimension_wise, self.data, gridPointCoordsAsStripes, grid_point_levels)
+        self.log_util.log_debug("R and b" + str(R) + str(b))
         scaling_factor = 1.0/np.max(R)
-        alphas = self.log_util.time_func("OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
+        if self.masslumping:
+            alphas = b/R
+        else:
+            alphas = self.log_util.time_func("OP: conjugate_gradient time taken", np.linalg.solve, R*scaling_factor, b*scaling_factor)
+        self.log_util.log_debug("alphas" + str(alphas))
         #if self.classes is not None:
         #    return alphas
         points, weights = self.grid.get_points_and_weights()
         if self.classes is not None:
-            #integral = np.inner(alphas.clip(min=0), weights)
-            integral = 1.0
-        else:
-            integral = np.inner(alphas, weights)
+            integral1 = np.inner(alphas, weights)/sum(weights)
+            #integral = 1.0
+            alphas -= integral1
+        integral = np.inner(alphas.clip(min=0.0), weights)/sum(weights)
         if integral != 0.0:
             alphas /= integral
         #else:
@@ -1411,54 +1444,57 @@ class DensityEstimation(AreaOperation):
         :param levelvec: Levelvector of the component grid
         :return: R matrix of the component grid specified by the levelvector
         """
-        grid_size = self.grid.get_num_points()
-        R = np.zeros((grid_size, grid_size))
         dim = len(levelvec)
-
-        #if not self.grid.is_global():
-        index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
-        #else:
-        #    index_list = self.get_existing_indices(levelvec)
-
         diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
-        R[np.diag_indices_from(R)] += (diag_val + self.lambd)
-        if self.debug:
-            self.log_util.log_debug("Indexlist: {0}".format(index_list))
-            self.log_util.log_debug("Levelvector: {0}".format(levelvec))
-            self.log_util.log_debug("Diagonal value: {0}".format(diag_val))
-        if not self.masslumping:
-            for i in range(grid_size - 1):
-                for j in range(i + 1, grid_size):
-                    res = 1.0
+        if self.masslumping:
+            return diag_val
+        else:
+            grid_size = self.grid.get_num_points()
+            R = np.zeros((grid_size, grid_size))
 
-                    for k in range(dim):
-                        index_ik = index_list[i][k]
-                        index_jk = index_list[j][k]
+            # if not self.grid.is_global():
+            index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+            # else:
+            #    index_list = self.get_existing_indices(levelvec)
 
-                        # basis function overlap fully
-                        if index_ik == index_jk:
-                            res *= 1 / (2 ** (levelvec[k] - 1) * 3)
-                        # basis function do not overlap
-                        elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
-                                >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
-                            res = 0
-                            break
-                        # basis functions overlap partly
+            R[np.diag_indices_from(R)] += (diag_val + self.lambd)
+            if self.debug:
+                self.log_util.log_debug("Indexlist: {0}".format(index_list))
+                self.log_util.log_debug("Levelvector: {0}".format(levelvec))
+                self.log_util.log_debug("Diagonal value: {0}".format(diag_val))
+            if not self.masslumping:
+                for i in range(grid_size - 1):
+                    for j in range(i + 1, grid_size):
+                        res = 1.0
+
+                        for k in range(dim):
+                            index_ik = index_list[i][k]
+                            index_jk = index_list[j][k]
+
+                            # basis function overlap fully
+                            if index_ik == index_jk:
+                                res *= 1 / (2 ** (levelvec[k] - 1) * 3)
+                            # basis function do not overlap
+                            elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
+                                    >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
+                                res = 0
+                                break
+                            # basis functions overlap partly
+                            else:
+                                res *= 1 / (2 ** (levelvec[k] - 1) * 12)
+
+                        if res == 0:
+                            self.log_util.log_debug("-" * 100)
+                            self.log_util.log_debug("Skipping calculation")
+                            self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
                         else:
-                            res *= 1 / (2 ** (levelvec[k] - 1) * 12)
-
-                    if res == 0:
-                        self.log_util.log_debug("-" * 100)
-                        self.log_util.log_debug("Skipping calculation")
-                        self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
-                    else:
-                        R[i, j] = res
-                        R[j, i] = res
-                        self.log_util.log_debug("-" * 100)
-                        self.log_util.log_debug("Calculating")
-                        self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
-                        self.log_util.log_debug("Result: {0}".format(res))
-        return R
+                            R[i, j] = res
+                            R[j, i] = res
+                            self.log_util.log_debug("-" * 100)
+                            self.log_util.log_debug("Calculating")
+                            self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
+                            self.log_util.log_debug("Result: {0}".format(res))
+            return R
 
     def solve_density_estimation(self, levelvec: Sequence[int]) -> Sequence[float]:
         """Calculates the surpluses of the component grid for the specified dataset
@@ -1475,21 +1511,25 @@ class DensityEstimation(AreaOperation):
             # with mass lumping and without boundary points and without modified basis R is identity
             alphas = b
         else:
-            alphas, info = cg(R, b)
+            #alphas, info = cg(R, b)
+            alphas = np.linalg.solve(R, b)
         if self.debug:
-            self.log_util.log_debug("Alphas: ".format(levelvec, alphas))
+            self.log_util.log_debug("R and b" + str(R / scale_value) +  str(b / scale_value))
+            self.log_util.log_debug("Alphas: "+ alphas)
             self.log_util.log_debug("-" * 100)
-
-        if self.classes is not None:
-            return alphas
-
         # normalize integral of density
         levelvec = np.asarray(levelvec)
         if not self.dimension_wise and not self.grid.boundary:
-            integral = np.sum(alphas) * 2.0**(-np.sum(levelvec))
+            if self.classes is not None: # adjust complete integral to 0
+                integral1 = np.sum(alphas)/len(alphas)
+                alphas = alphas - integral1
+            integral = np.sum(alphas.clip(min=0.0))/len(alphas)
         else:
             points, weights = self.grid.get_points_and_weights()
-            integral = np.inner(alphas, weights)
+            if self.classes is not None: # adjust complete integral to 0
+                integral1 = np.inner(alphas, weights)/sum(weights)
+                alphas = alphas - integral1
+            integral = np.inner(alphas.clip(min=0.0), weights)/sum(weights)
         if self.debug:
             self.log_util.log_debug("{0}".format(alphas))
         if integral == 0 and self.debug:
@@ -1498,8 +1538,10 @@ class DensityEstimation(AreaOperation):
             self.log_util.log_debug("b Vector: {0}".format(b))
             self.log_util.log_debug("surplus_values: {0}".format(alphas))
             self.log_util.log_debug("Weights: {0}".format(weights))
-
-        return alphas/integral
+        if integral == 0:
+            return alphas
+        else:
+            return alphas/integral
 
     def calculate_B(self, data: Sequence[Sequence[float]], levelvec: Sequence[int]) -> Sequence[float]:
         """This method calculates the B vector for the component grid and the data set of the linear system ((R + λ*I) = B)
@@ -1757,9 +1799,9 @@ class DensityEstimation(AreaOperation):
 
     def print_evaluation_output(self, refinement):
         combi_surpluses = self.surpluses
-        if len(combi_surpluses) == 1:
-            combi_surpluses = combi_surpluses[0]
-        #print("combisurpluses:", combi_surpluses)
+        #if len(combi_surpluses) == 1:
+        #    combi_surpluses = combi_surpluses[0]
+        self.log_util.log_debug("combisurpluses:" + str(combi_surpluses))
 
     def get_global_error_estimate(self, refinement_container, norm):
         if self.reference_solution is None:
@@ -1786,7 +1828,8 @@ class Integration(AreaOperation):
         self.log_util.set_print_prefix('Integration')
         self.log_util.set_log_prefix('Integration')
 
-    def get_distinct_points(self):
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points used in the whole adaptive process
         return self.f.get_f_dict_size()
 
     def get_point_values_component_grid(self, points, component_grid) -> Sequence[Sequence[float]]:
