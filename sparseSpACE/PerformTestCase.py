@@ -1,3 +1,5 @@
+import random
+
 import sparseSpACE
 from sparseSpACE.DimAdaptiveCombi import *
 from sparseSpACE.StandardCombi import *
@@ -313,7 +315,7 @@ class TestCase:
 
 
 class PlotTestCase:
-    def __init__(self, colormap: dict, line_style_map: dict, import_filepath="../", export_filepath="./"):
+    def __init__(self, colormap: dict = None, line_style_map: dict = None, import_filepath="../", export_filepath="./"):
         """
         Initializes the plots
 
@@ -336,8 +338,9 @@ class PlotTestCase:
         import_filepath: From where the CSV files are imported
         export_filepath: Where the plots are written
         """
-        self.colormap = colormap
-        self.line_style_map = line_style_map
+        self.colormap = colormap if colormap is not None else {}
+        self.line_style_map = line_style_map if line_style_map is not None else {}
+
         self.import_filepath = import_filepath
         self.export_filepath = export_filepath
 
@@ -407,10 +410,22 @@ class PlotTestCase:
             if algorithm_subset is not None and name not in algorithm_subset:
                 continue
 
-            color = self.colormap[name]
-            line_style = self.line_style_map[name]
+            # Add entries to style maps for plots
+            if name not in self.colormap:
+                backup_colors = [
+                    'black', 'gray', 'silver', 'indianred', 'red', 'tomato', 'chocolate', 'saddlebrown', 'darkorange', 'goldenrod', 'darkkhaki', 'darkolivegreen', 'lightgreen',
+                    'forestgreen', 'lime', 'turquoise', 'teal', 'cyan', 'steelblue', 'darkslategray', 'slategray', 'royalblue', 'navy', 'indigo', 'darkviolet', 'violet', 'deeppink', 'crimson', 'lightpink'
+                ]
+                self.colormap[name] = random.choice(backup_colors)
 
-            ax.loglog(num_points, error, line_style, color=color, label=name)
+            if name not in self.line_style_map:
+                backup_line_styles = [
+                    '-', '.', '--', '-.'
+                ]
+                self.line_style_map[name] = random.choice(backup_line_styles)
+
+            # Plot
+            ax.loglog(num_points, error, self.line_style_map[name], color=self.colormap[name], label=name)
 
         if legend_title is not None:
             ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
