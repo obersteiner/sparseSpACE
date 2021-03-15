@@ -248,14 +248,13 @@ class TestDEMachineLearning(unittest.TestCase):
                                     0, 1, 1, 1, 0, 0], dtype=np.int64)
         raw_data = (raw_data_samples, raw_data_labels)
         data = deml.DataSet(raw_data, "Cobra_Set")
-
         # test clustering
         clus_object = deml.Clustering(data, number_nearest_neighbors=15, edge_cutting_threshold=0.4)
         clus_object.perform_clustering(masslumping=True, minimum_level=1, maximum_level=5, lambd=0.0, print_metrics=False)
         evaluation = clus_object.evaluate()
-        self.assertEqual(evaluation.get("Wrong mappings"), 22)
+        self.assertEqual(evaluation.get("Wrong mappings"), 0)
         self.assertEqual(evaluation.get("Total mappings"), 50)
-        self.assertEqual(evaluation.get("Percentage correct"), 0.56)
+        self.assertEqual(evaluation.get("Percentage correct"), 1)
 
 
 if __name__ == '__main__':
