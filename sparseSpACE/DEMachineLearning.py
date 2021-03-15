@@ -748,7 +748,7 @@ class DataSet:
             warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
 
         if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
+            plt.savefig(filename+".pdf", bbox_inches='tight')
         plt.show()
         return fig
 
@@ -1342,26 +1342,28 @@ class Classification:
         if plot_class_dataset:
             self._learning_data.plot()
         if plot_class_density_estimation:
-            filename = file_path + '_contour' if file_path is not None else None
-            for x in self._classificators:
+            filenameBase = file_path + '_contour' if file_path is not None else None
+            for i, x in enumerate(self._classificators):
+                filename = filenameBase + str(i) + ".pdf"
                 if filename is not None:
-                    while os.path.isfile(filename + '.png'):
-                        filename = filename + '+'
+                    self.log_util.log_warning("Overwriting existing file!")
                 x.plot(contour=True, filename=filename)
         if plot_class_combi_scheme:
-            filename = file_path + '_combi_scheme' if file_path is not None else None
+            filenameBase = file_path + '_combi_scheme' if file_path is not None else None
+            i=0
             for x, y in zip(self._classificators, self._de_objects):
+                filename = filenameBase + str(i) + ".pdf"
                 if filename is not None:
-                    while os.path.isfile(filename + '.png'):
-                        filename = filename + '+'
-                x.print_resulting_combi_scheme(operation=y, filename=filename)
+                    self.log_util.log_warning("Overwriting existing file!")
+                x.print_resulting_combi_scheme(operation=y, filename=filename, ticks=False)
+                i += 1
         if plot_class_sparsegrid:
-            filename = file_path + '_sparsegrid' if file_path is not None else None
-            for x in self._classificators:
+            filenameBase = file_path + '_sparsegrid' if file_path is not None else None
+            for i, x in enumerate(self._classificators):
+                filename = filenameBase + str(i) + ".pdf"
                 if filename is not None:
-                    while os.path.isfile(filename + '.png'):
-                        filename = filename + '+'
-                x.print_resulting_sparsegrid(markersize=20, filename=filename)
+                    self.log_util.log_warning("Overwriting existing file!")
+                x.print_resulting_sparsegrid(markersize=20, filename=filename, ticks=False)
 
 
 class Clustering:
