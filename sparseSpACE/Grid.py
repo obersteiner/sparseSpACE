@@ -353,7 +353,7 @@ class LagrangeGrid(BasisGrid):
         self.boundary = boundary
         self.a = a
         self.b = b
-        assert len(a) == len(b)
+        assert len(a) == len(b) # TODO a, b are not floats
         self.dim = len(a)
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
@@ -1352,6 +1352,37 @@ class GlobalBasisGrid(GlobalGrid):
         #print(results)
         return results
 
+    def plot_basis(self, support_points=None, evaluation_point=None, function=None, filename=None):
+        if self.basis is None:
+            print("No basis functions constructed")
+            return
+
+        # Iterate over all dimensions and plot each basis
+        for d in range(self.dim):
+            plt.figure()
+
+            if function is not None:
+                evaluation_points = np.linspace(self.a[d], self.b[d], len(support_points) * 100)
+                plt.plot(evaluation_points, [function([point]) for point in evaluation_points],
+                         linestyle=':', color="black")
+
+            # Plit basis functions
+            for i, basis in enumerate(self.basis[d]):
+                evaluation_points = np.linspace(self.a[d], self.b[d], len(basis.knots) * 100)
+                plt.plot(evaluation_points, [basis(point) for point in evaluation_points])
+
+            # Print interpolation grid
+            plt.plot(support_points, np.zeros(len(support_points)), 'bo', markersize=6, color="dimgray")
+
+            # Plot evaluation point
+            if evaluation_point is not None:
+                evaluation_point_value = basis(evaluation_point)
+                plt.plot(evaluation_point, evaluation_point_value,  'bo', markersize=6, color="red")
+                plt.plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
+                         color="red")
+
+            plt.show()
+
 
 class GlobalBSplineGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3, chebyshev=False):
@@ -1461,6 +1492,9 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         return level_coordinate_array_complete
 
 
+# TODO Default Global Lagrange grid with set grid??
+
+# Hierarchical Lagrange Grid
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary

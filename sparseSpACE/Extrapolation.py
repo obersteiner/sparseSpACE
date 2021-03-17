@@ -2487,12 +2487,17 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
                                                         normalized_max_level)
 
             for support_point in support_points:
-                interpolated_extrapolated_weight = weight * self.get_interpolation_weight(support_points, support_point,
-                                                                                          interp_point)
+                interpolation_weight = self.get_interpolation_weight(support_points, support_point, interp_point)
+                interpolated_extrapolated_weight = weight * interpolation_weight
                 weight_dictionary[support_point].append(interpolated_extrapolated_weight)
 
-    def get_interpolation_weight(self, support_points: Sequence[float], basis_point: float, evaluation_point: float)\
-            -> float:
+            self.plot_interpolation_basis(support_points, interp_point)
+
+    def get_interpolation_weight(self, support_points: Sequence[float],
+                                 basis_point: float, evaluation_point: float) -> float:
+        pass
+
+    def plot_interpolation_basis(self, support_points, evaluation_point):
         pass
 
 
@@ -2556,6 +2561,7 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
         """
         super(GlobalBasisGridRombergGridSliceContainerAdapter, self).__init__(function)
         self.max_interpolation_support_points = 7
+        self.interpolation_grid = None
 
     @abstractmethod
     def construct_interpolation_grid(self, support_points):
@@ -2574,6 +2580,7 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
     def get_interpolation_weight(self, support_points, basis_point, evaluation_point) -> float:
         # Interpolation grid is computed beforehand
         interpolation_grid = self.construct_interpolation_grid(support_points)
+        self.interpolation_grid = interpolation_grid
 
         support_point_grid_levels = InterpolationGridSliceContainer.get_levels_for_support_point_grid(support_points)
         interpolation_grid.set_grid([support_points], [support_point_grid_levels])
@@ -2587,6 +2594,9 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
         weight = basis[i](evaluation_point)
 
         return weight
+
+    def plot_interpolation_basis(self, support_points, evaluation_point):
+        self.interpolation_grid.plot_basis(support_points, evaluation_point, self.function)
 
 
 class BSplineRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerAdapter):
