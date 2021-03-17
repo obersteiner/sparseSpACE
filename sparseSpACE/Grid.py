@@ -1352,7 +1352,7 @@ class GlobalBasisGrid(GlobalGrid):
         #print(results)
         return results
 
-    def plot_basis(self, support_points=None, basis_point=None, evaluation_point=None, function=None, filename=None):
+    def plot_basis_functions(self, support_points=None, interpolation_point=None, function=None, filename=None):
         if self.basis is None:
             print("No basis functions constructed")
             return
@@ -1373,16 +1373,58 @@ class GlobalBasisGrid(GlobalGrid):
 
             # Print interpolation grid
             plt.plot(support_points, np.zeros(len(support_points)), 'bo', markersize=6, color="dimgray")
-
-            # Plot evaluation point
-            if evaluation_point is not None:
-                basis = self.basis[d][support_points.index(basis_point)]
-                evaluation_point_value = basis(evaluation_point)
-                plt.plot(evaluation_point, evaluation_point_value,  'bo', markersize=6, color="red")
-                plt.plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
-                         color="red")
+            plt.title("Basis functions for the interpolation of point {}".format(interpolation_point))
 
             plt.show()
+
+    def plot_basis_functions_with_evaluations(self, support_points, evaluation_point, function=None):
+        # Iterate over all dimensions and plot each basis
+        # plt.figure()
+
+        for d in range(self.dim):
+            # TODO plot dimension d
+            columns = 2
+            fig, axes = plt.subplots(figsize=(10, 15), nrows=math.ceil(len(support_points) / columns), ncols=columns)
+            fig.subplots_adjust(hspace=0.5)
+            fig.suptitle("Basis functions for the interpolation of the point {}".format(evaluation_point))
+
+            axes = axes.ravel()
+
+            a = support_points[0]
+            b = support_points[-1]
+
+            for i, basis in enumerate(self.basis[d]):
+                if function is not None:
+                    evaluation_points = np.linspace(a, b, len(support_points) * 100)
+                    axes[i].plot(evaluation_points, [function([point]) for point in evaluation_points],
+                             linestyle=':', color="black")
+
+                # Plot basis functions
+                for j, basis_f in enumerate(self.basis[d]):
+                    evaluation_points = np.linspace(self.a[d], self.b[d], len(basis.knots) * 100)
+                    axes[i].plot(evaluation_points, [basis_f(point) for point in evaluation_points])
+
+                # Print interpolation grid
+                axes[i].plot(support_points, np.zeros(len(support_points)), 'bo', markersize=4, color="black")
+
+                # Plot evaluation point
+                if evaluation_point is not None:
+                    evaluation_point_value = basis(evaluation_point)
+                    axes[i].plot(evaluation_point, evaluation_point_value, 'bo', markersize=4, color="red")
+                    axes[i].plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
+                                 color="red")
+
+                axes[i].set_title("Evaluation using basis function of point {}".format(support_points[i]))
+
+                if len(support_points) < 15:
+                    axes[i].set_xticks(support_points)
+                    axes[i].set_xticklabels(support_points, fontsize=9)
+
+            # Clear unused axes
+            for i in range(len(support_points), len(axes)):
+                fig.delaxes(axes[i])
+
+            fig.show()
 
 
 class GlobalBSplineGrid(GlobalBasisGrid):

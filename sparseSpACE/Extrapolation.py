@@ -2493,15 +2493,20 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
                 interpolated_extrapolated_weight = weight * interpolation_weight
                 weight_dictionary[support_point].append(interpolated_extrapolated_weight)
 
-                # TODO add a flag for plotting this
-                # Plot basis functions
-                self.plot_interpolation_basis(support_points, support_point, interp_point)
+            # TODO add a flag for plotting this
+            # Plot basis functions
+            self.plot_interpolation_basis_functions(support_points, interp_point)
+            self.plot_interpolation_basis_functions_with_evaluations(support_points, interp_point)
 
     def get_interpolation_weight(self, support_points: Sequence[float],
                                  basis_point: float, evaluation_point: float) -> float:
         pass
 
-    def plot_interpolation_basis(self, support_points: Sequence[float], basis_point: float, evaluation_point: float):
+    def plot_interpolation_basis_functions(self, support_points: Sequence[float], interpolation_point: float):
+        pass
+
+    def plot_interpolation_basis_functions_with_evaluations(self, support_points: Sequence[float],
+                                                            evaluation_point: float):
         pass
 
 
@@ -2547,35 +2552,55 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
         return evaluated_basis
 
     # TODO use plots from GlobalBasisGrid
-    def plot_interpolation_basis(self, support_points, basis_point, evaluation_point):
+    # TODO add function to plot one basis point
+    # TODO add function to plot only basis functions
+    def plot_interpolation_basis_functions_with_evaluations(self, support_points, evaluation_point):
         # Iterate over all dimensions and plot each basis
-        plt.figure()
+        # plt.figure()
+
+        columns = 2
+        fig, axes = plt.subplots(figsize=(10, 15), nrows=math.ceil(len(support_points) / columns), ncols=columns)
+        fig.subplots_adjust(hspace=0.5)
+        fig.suptitle("Basis functions for the interpolation of the point {}".format(evaluation_point))
+
+        axes = axes.ravel()
 
         a = support_points[0]
         b = support_points[-1]
 
-        if self.function is not None:
-            evaluation_points = np.linspace(a, b, len(support_points) * 100)
-            plt.plot(evaluation_points, [self.function([point]) for point in evaluation_points],
-                     linestyle=':', color="black")
+        for i, basis_point in enumerate(support_points):
+            if self.function is not None:
+                evaluation_points = np.linspace(a, b, len(support_points) * 100)
+                axes[i].plot(evaluation_points, [self.function([point]) for point in evaluation_points],
+                         linestyle=':', color="black")
 
-        # Plot basis functions
-        for support_point in support_points:
-            evaluation_points = np.linspace(a, b, len(support_points) * 100)
-            plt.plot(evaluation_points, [self.get_langrange_basis(support_points, support_point, point)
-                                         for point in evaluation_points])
+            # Plot basis functions
+            for support_point in support_points:
+                evaluation_points = np.linspace(a, b, len(support_points) * 100)
+                axes[i].plot(evaluation_points, [self.get_langrange_basis(support_points, support_point, point)
+                                             for point in evaluation_points])
 
-        # Print interpolation grid
-        plt.plot(support_points, np.zeros(len(support_points)), 'bo', markersize=6, color="dimgray")
+            # Print interpolation grid
+            axes[i].plot(support_points, np.zeros(len(support_points)), 'bo', markersize=4, color="black")
 
-        # Plot evaluation point
-        if evaluation_point is not None:
-            evaluation_point_value = self.get_langrange_basis(support_points, basis_point, evaluation_point)
-            plt.plot(evaluation_point, evaluation_point_value, 'bo', markersize=6, color="red")
-            plt.plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
-                     color="red")
+            # Plot evaluation point
+            if evaluation_point is not None:
+                evaluation_point_value = self.get_langrange_basis(support_points, basis_point, evaluation_point)
+                axes[i].plot(evaluation_point, evaluation_point_value, 'bo', markersize=4, color="red")
+                axes[i].plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
+                             color="red")
 
-        plt.show()
+            axes[i].set_title("Evaluation using basis function of point {}".format(basis_point))
+
+            if len(support_points) < 15:
+                axes[i].set_xticks(support_points)
+                axes[i].set_xticklabels(support_points, fontsize=9)
+
+        # Clear unused axes
+        for i in range(len(support_points), len(axes)):
+            fig.delaxes(axes[i])
+
+        fig.show()
 
 
 class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceContainer):
@@ -2631,8 +2656,11 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
 
         return weight
 
-    def plot_interpolation_basis(self, support_points, basis_point, evaluation_point):
-        self.interpolation_grid.plot_basis(support_points, basis_point, evaluation_point, self.function)
+    def plot_interpolation_basis_functions(self, support_points, interpolation_point):
+        self.interpolation_grid.plot_basis_functions(support_points, interpolation_point, self.function)
+
+    def plot_interpolation_basis_functions_with_evaluations(self, support_points, evaluation_point):
+        self.interpolation_grid.plot_basis_functions_with_evaluations(support_points, evaluation_point, self.function)
 
 
 class BSplineRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerAdapter):
