@@ -2486,18 +2486,22 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
                 weight = factory.get_inner_point_weight(normalized_grid_levels[i],
                                                         normalized_max_level)
 
+            print()
             for support_point in support_points:
                 interpolation_weight = self.get_interpolation_weight(support_points, support_point, interp_point)
+                # print(interpolation_weight)
                 interpolated_extrapolated_weight = weight * interpolation_weight
                 weight_dictionary[support_point].append(interpolated_extrapolated_weight)
 
-            self.plot_interpolation_basis(support_points, interp_point)
+                # TODO add a flag for plotting this
+                # Plot basis functions
+                self.plot_interpolation_basis(support_points, support_point, interp_point)
 
     def get_interpolation_weight(self, support_points: Sequence[float],
                                  basis_point: float, evaluation_point: float) -> float:
         pass
 
-    def plot_interpolation_basis(self, support_points, evaluation_point):
+    def plot_interpolation_basis(self, support_points: Sequence[float], basis_point: float, evaluation_point: float):
         pass
 
 
@@ -2541,6 +2545,37 @@ class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
                 evaluated_basis *= (evaluation_point - point) / (basis_point - point)
 
         return evaluated_basis
+
+    # TODO use plots from GlobalBasisGrid
+    def plot_interpolation_basis(self, support_points, basis_point, evaluation_point):
+        # Iterate over all dimensions and plot each basis
+        plt.figure()
+
+        a = support_points[0]
+        b = support_points[-1]
+
+        if self.function is not None:
+            evaluation_points = np.linspace(a, b, len(support_points) * 100)
+            plt.plot(evaluation_points, [self.function([point]) for point in evaluation_points],
+                     linestyle=':', color="black")
+
+        # Plot basis functions
+        for support_point in support_points:
+            evaluation_points = np.linspace(a, b, len(support_points) * 100)
+            plt.plot(evaluation_points, [self.get_langrange_basis(support_points, support_point, point)
+                                         for point in evaluation_points])
+
+        # Print interpolation grid
+        plt.plot(support_points, np.zeros(len(support_points)), 'bo', markersize=6, color="dimgray")
+
+        # Plot evaluation point
+        if evaluation_point is not None:
+            evaluation_point_value = self.get_langrange_basis(support_points, basis_point, evaluation_point)
+            plt.plot(evaluation_point, evaluation_point_value, 'bo', markersize=6, color="red")
+            plt.plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
+                     color="red")
+
+        plt.show()
 
 
 class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceContainer):
@@ -2592,11 +2627,12 @@ class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceCont
 
         i = support_points.index(basis_point)  # Element must be found
         weight = basis[i](evaluation_point)
+        # TODO which basis function should be chosen?
 
         return weight
 
-    def plot_interpolation_basis(self, support_points, evaluation_point):
-        self.interpolation_grid.plot_basis(support_points, evaluation_point, self.function)
+    def plot_interpolation_basis(self, support_points, basis_point, evaluation_point):
+        self.interpolation_grid.plot_basis(support_points, basis_point, evaluation_point, self.function)
 
 
 class BSplineRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerAdapter):

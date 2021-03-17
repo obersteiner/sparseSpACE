@@ -34,13 +34,13 @@ print(grid_levels)
 print()
 
 # -- with Lagrange interpolation
-# run_extrapolation(grid, grid_levels, function, SliceContainerVersion.LAGRANGE_ROMBERG)
+run_extrapolation(grid, grid_levels, function, SliceContainerVersion.LAGRANGE_ROMBERG)
 
 # -- with hierarchical lagrange grid
-run_extrapolation(grid, grid_levels, function, SliceContainerVersion.HIERARCHICAL_LAGRANGE_ROMBERG)
+# run_extrapolation(grid, grid_levels, function, SliceContainerVersion.HIERARCHICAL_LAGRANGE_ROMBERG)
 
 # -- with BSpline interpolation
-run_extrapolation(grid, grid_levels, function, SliceContainerVersion.BSPLINE_ROMBERG)
+# run_extrapolation(grid, grid_levels, function, SliceContainerVersion.BSPLINE_ROMBERG)
 
 
 # --------------------------------------------------------

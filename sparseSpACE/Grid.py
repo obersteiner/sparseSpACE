@@ -1352,7 +1352,7 @@ class GlobalBasisGrid(GlobalGrid):
         #print(results)
         return results
 
-    def plot_basis(self, support_points=None, evaluation_point=None, function=None, filename=None):
+    def plot_basis(self, support_points=None, basis_point=None, evaluation_point=None, function=None, filename=None):
         if self.basis is None:
             print("No basis functions constructed")
             return
@@ -1366,7 +1366,7 @@ class GlobalBasisGrid(GlobalGrid):
                 plt.plot(evaluation_points, [function([point]) for point in evaluation_points],
                          linestyle=':', color="black")
 
-            # Plit basis functions
+            # Plot basis functions
             for i, basis in enumerate(self.basis[d]):
                 evaluation_points = np.linspace(self.a[d], self.b[d], len(basis.knots) * 100)
                 plt.plot(evaluation_points, [basis(point) for point in evaluation_points])
@@ -1376,6 +1376,7 @@ class GlobalBasisGrid(GlobalGrid):
 
             # Plot evaluation point
             if evaluation_point is not None:
+                basis = self.basis[d][support_points.index(basis_point)]
                 evaluation_point_value = basis(evaluation_point)
                 plt.plot(evaluation_point, evaluation_point_value,  'bo', markersize=6, color="red")
                 plt.plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
@@ -1492,9 +1493,7 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         return level_coordinate_array_complete
 
 
-# TODO Default Global Lagrange grid with set grid??
-
-# Hierarchical Lagrange Grid
+# TODO Rename into GlobalHierarchicalLagrangeGrid
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
