@@ -2706,10 +2706,10 @@ class LagrangeRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainer
 
     def construct_interpolation_grid(self, support_points):
         # Prevent circular dependencies
-        from sparseSpACE.Grid import GlobalDefaultLagrangeGrid
+        from sparseSpACE.Grid import GlobalLagrangeGrid
 
         # Interpolation grid is computed beforehand
-        return GlobalDefaultLagrangeGrid([support_points[0]], [support_points[-1]], boundary=True)
+        return GlobalLagrangeGrid([support_points[0]], [support_points[-1]], boundary=True)
 
 
 class HierarchicalLagrangeRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerAdapter):
@@ -2732,10 +2732,10 @@ class HierarchicalLagrangeRombergGridSliceContainer(GlobalBasisGridRombergGridSl
 
     def construct_interpolation_grid(self, support_points):
         # Prevent circular dependencies
-        from sparseSpACE.Grid import GlobalLagrangeGrid
+        from sparseSpACE.Grid import GlobalHierarchicalLagrangeGrid
 
         # Interpolation grid is computed beforehand
-        return GlobalLagrangeGrid([support_points[0]], [support_points[-1]], boundary=True)
+        return GlobalHierarchicalLagrangeGrid([support_points[0]], [support_points[-1]], boundary=True)
 
 
 class TrapezoidalGridSlice(ExtrapolationGridSlice):

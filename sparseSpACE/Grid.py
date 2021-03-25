@@ -1535,8 +1535,7 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         return level_coordinate_array_complete
 
 
-# TODO Rename into GlobalLagrangeGrid
-class GlobalDefaultLagrangeGrid(GlobalBasisGrid):
+class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
@@ -1596,8 +1595,7 @@ class GlobalDefaultLagrangeGrid(GlobalBasisGrid):
         return spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
 
 
-# TODO Rename into GlobalHierarchicalLagrangeGrid
-class GlobalLagrangeGrid(GlobalBasisGrid):
+class GlobalHierarchicalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
         self.boundary = boundary
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
@@ -1703,7 +1701,7 @@ class GlobalLagrangeGrid(GlobalBasisGrid):
         assert False
 
 
-class GlobalLagrangeGridWeighted(GlobalLagrangeGrid):
+class GlobalLagrangeGridWeighted(GlobalHierarchicalLagrangeGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], uq_operation, boundary: bool=True, modified_basis: bool=False, p: int=3):
         super().__init__(a, b, boundary=boundary, modified_basis=modified_basis, p=p)
         self.distributions = uq_operation.get_distributions()
