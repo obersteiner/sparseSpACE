@@ -1535,6 +1535,67 @@ class GlobalBSplineGrid(GlobalBasisGrid):
         return level_coordinate_array_complete
 
 
+# TODO Rename into GlobalLagrangeGrid
+class GlobalDefaultLagrangeGrid(GlobalBasisGrid):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
+        self.boundary = boundary
+        self.integrator = IntegratorHierarchicalBasisFunctions(self)
+        self.a = a
+        self.b = b
+        self.dim = len(a)
+        self.length = np.array(b) - np.array(a)
+        self.modified_basis = modified_basis
+        assert p >= 1
+        self.p = p
+        self.coords_gauss = None
+        assert not(modified_basis) or not(boundary)
+        self.surplus_values = {}
+
+    def compute_1D_quad_weights(self, grid_1D: Sequence[float], a: float, b: float, d: int,
+                                grid_levels_1D: Sequence[int]=None) -> Sequence[float]:
+        max_level = max(grid_levels_1D)
+        grid_1D = list(grid_1D)
+        grid_levels_1D = np.asarray(grid_levels_1D)
+        level_coordinate_array = [[] for l in range(max_level+1)]
+        for i, p in enumerate(grid_1D):
+            level_coordinate_array[grid_levels_1D[i]].append(p)
+
+        #print(level_coordinate_array)
+        self.start = a
+        self.end = b
+        # level = 0
+        weights = np.zeros(len(grid_1D))
+        starting_level = 0 if self.boundary else 1
+
+        for l in range(starting_level, max_level + 1):
+            for i in range(len(level_coordinate_array[l])):
+                x_basis = level_coordinate_array[l][i]
+                knots = grid_1D
+
+                if self.modified_basis:
+                    # spline = LagrangeBasisRestrictedModified(self.p, knots.index(x_basis), knots, a, b, l)
+                    RuntimeError("Modified Basis is not supported")
+
+                spline = LagrangeBasis(self.p, knots.index(x_basis), knots)
+                index = grid_1D.index(x_basis)
+                self.basis[d][index] = spline
+                weights[index] = self._get_spline_integral(spline, d)
+
+        if not self.boundary:
+            self.basis[d] = self.basis[d][1:-1]
+
+        for basis in self.basis[d]:
+            assert basis is not None
+
+        return weights
+
+    def _get_spline_integral(self, spline, d=None):
+        if self.coords_gauss is None:
+            self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p/2) + 1)
+
+        return spline.get_integral(self.start, self.end, self.coords_gauss, self.weights_gauss)
+
+
 # TODO Rename into GlobalHierarchicalLagrangeGrid
 class GlobalLagrangeGrid(GlobalBasisGrid):
     def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, modified_basis: bool=False, p: int=3):
