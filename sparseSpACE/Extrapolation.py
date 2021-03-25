@@ -541,9 +541,12 @@ class SliceContainerVersion(Enum):
     SIMPSON_ROMBERG = 2  # Romberg extrapolation with simpson rule as base quadrature rule
 
     # Interpolation before extrapolation
-    LAGRANGE_ROMBERG = 3  # Interpolated grid points are interpolated using Lagrange
-    HIERARCHICAL_LAGRANGE_ROMBERG = 4 # Interpolated grid points are interpolated using hierarchical Lagrange
-    BSPLINE_ROMBERG = 5
+    LAGRANGE_ROMBERG_OLD = 3  # Interpolated grid points are interpolated using Lagrange
+
+    # Interpolation before extrapolation using sparseSpACE grids
+    LAGRANGE_ROMBERG = 4  # Interpolated grid points are interpolated using Lagrange
+    HIERARCHICAL_LAGRANGE_ROMBERG = 5 # Interpolated grid points are interpolated using hierarchical Lagrange
+    BSPLINE_ROMBERG = 6 # Interpolated grid points are interpolated using BSplines
 
 
 class SliceVersion(Enum):
@@ -2509,95 +2512,96 @@ class InterpolationGridSliceContainer(ExtrapolationGridSliceContainer):
                                                             evaluation_point: float):
         pass
 
+
 # This class was replaced with LagrangeRombergGridSliceContainer(GlobalBasisGridRombergGridSliceContainerAdapter)
-# class LagrangeRombergGridSliceContainer(InterpolationGridSliceContainer):
-#     """
-#         This class interpolates as many missing points as possible inside the container and executes a default
-#         Romberg method on this interpolated partial full grid.
-#
-#         For the interpolation we use the closest points to the left and right of this container.
-#     """
-#
-#     def __init__(self, function: Function = None):
-#         """
-#             Constructor of this class.
-#
-#             :param function: for error computation.
-#         """
-#         super(LagrangeRombergGridSliceContainer, self).__init__(function)
-#         self.max_interpolation_support_points = 7
-#
-#     def get_interpolation_weight(self, support_points, basis_point, evaluation_point) -> float:
-#         return self.get_langrange_basis(support_points, basis_point, evaluation_point)
-#
-#     @staticmethod
-#     def get_langrange_basis(support_points: Sequence[float], basis_point: float, evaluation_point: float) -> float:
-#         """
-#         This method computes a lambda expression for the lagrange basis function at basis_point.
-#         Specifically: Let support_points = [x_0, x_1, ... , x_n]
-#         L = product( (evaluation_point - x_k) / (basis_point - x_k) )
-#
-#         :param support_points: an array of support points for the interpolation
-#         :param basis_point: determines basis_point of this lagrange basis function
-#         :param evaluation_point: determines at which point the basis is evaluated
-#         :return: the evaluated basis function L
-#         """
-#
-#         evaluated_basis = 1
-#
-#         for point in support_points:
-#             if point != basis_point:
-#                 evaluated_basis *= (evaluation_point - point) / (basis_point - point)
-#
-#         return evaluated_basis
-#
-#     def plot_interpolation_basis_functions_with_evaluations(self, support_points, evaluation_point):
-#         # Iterate over all dimensions and plot each basis
-#         # plt.figure()
-#
-#         columns = 2
-#         fig, axes = plt.subplots(figsize=(10, 15), nrows=math.ceil(len(support_points) / columns), ncols=columns)
-#         fig.subplots_adjust(hspace=0.5)
-#         fig.suptitle("Basis functions for the interpolation of the point {}".format(evaluation_point))
-#
-#         axes = axes.ravel()
-#
-#         a = support_points[0]
-#         b = support_points[-1]
-#
-#         for i, basis_point in enumerate(support_points):
-#             if self.function is not None:
-#                 evaluation_points = np.linspace(a, b, len(support_points) * 100)
-#                 axes[i].plot(evaluation_points, [self.function([point]) for point in evaluation_points],
-#                          linestyle=':', color="black")
-#
-#             # Plot basis functions
-#             for support_point in support_points:
-#                 evaluation_points = np.linspace(a, b, len(support_points) * 100)
-#                 axes[i].plot(evaluation_points, [self.get_langrange_basis(support_points, support_point, point)
-#                                              for point in evaluation_points])
-#
-#             # Print interpolation grid
-#             axes[i].plot(support_points, np.zeros(len(support_points)), 'bo', markersize=4, color="black")
-#
-#             # Plot evaluation point
-#             if evaluation_point is not None:
-#                 evaluation_point_value = self.get_langrange_basis(support_points, basis_point, evaluation_point)
-#                 axes[i].plot(evaluation_point, evaluation_point_value, 'bo', markersize=4, color="red")
-#                 axes[i].plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
-#                              color="red")
-#
-#             axes[i].set_title("Evaluation using basis function of point {}".format(basis_point))
-#
-#             if len(support_points) < 15:
-#                 axes[i].set_xticks(support_points)
-#                 axes[i].set_xticklabels(support_points, fontsize=9)
-#
-#         # Clear unused axes
-#         for i in range(len(support_points), len(axes)):
-#             fig.delaxes(axes[i])
-#
-#         fig.show()
+class LagrangeRombergGridSliceContainerOld(InterpolationGridSliceContainer):
+    """
+        This class interpolates as many missing points as possible inside the container and executes a default
+        Romberg method on this interpolated partial full grid.
+
+        For the interpolation we use the closest points to the left and right of this container.
+    """
+
+    def __init__(self, function: Function = None):
+        """
+            Constructor of this class.
+
+            :param function: for error computation.
+        """
+        super(LagrangeRombergGridSliceContainerOld, self).__init__(function)
+        self.max_interpolation_support_points = 7
+
+    def get_interpolation_weight(self, support_points, basis_point, evaluation_point) -> float:
+        return self.get_langrange_basis(support_points, basis_point, evaluation_point)
+
+    @staticmethod
+    def get_langrange_basis(support_points: Sequence[float], basis_point: float, evaluation_point: float) -> float:
+        """
+        This method computes a lambda expression for the lagrange basis function at basis_point.
+        Specifically: Let support_points = [x_0, x_1, ... , x_n]
+        L = product( (evaluation_point - x_k) / (basis_point - x_k) )
+
+        :param support_points: an array of support points for the interpolation
+        :param basis_point: determines basis_point of this lagrange basis function
+        :param evaluation_point: determines at which point the basis is evaluated
+        :return: the evaluated basis function L
+        """
+
+        evaluated_basis = 1
+
+        for point in support_points:
+            if point != basis_point:
+                evaluated_basis *= (evaluation_point - point) / (basis_point - point)
+
+        return evaluated_basis
+
+    def plot_interpolation_basis_functions_with_evaluations(self, support_points, evaluation_point):
+        # Iterate over all dimensions and plot each basis
+        # plt.figure()
+
+        columns = 2
+        fig, axes = plt.subplots(figsize=(10, 15), nrows=math.ceil(len(support_points) / columns), ncols=columns)
+        fig.subplots_adjust(hspace=0.5)
+        fig.suptitle("Basis functions for the interpolation of the point {}".format(evaluation_point))
+
+        axes = axes.ravel()
+
+        a = support_points[0]
+        b = support_points[-1]
+
+        for i, basis_point in enumerate(support_points):
+            if self.function is not None:
+                evaluation_points = np.linspace(a, b, len(support_points) * 100)
+                axes[i].plot(evaluation_points, [self.function([point]) for point in evaluation_points],
+                         linestyle=':', color="black")
+
+            # Plot basis functions
+            for support_point in support_points:
+                evaluation_points = np.linspace(a, b, len(support_points) * 100)
+                axes[i].plot(evaluation_points, [self.get_langrange_basis(support_points, support_point, point)
+                                             for point in evaluation_points])
+
+            # Print interpolation grid
+            axes[i].plot(support_points, np.zeros(len(support_points)), 'bo', markersize=4, color="black")
+
+            # Plot evaluation point
+            if evaluation_point is not None:
+                evaluation_point_value = self.get_langrange_basis(support_points, basis_point, evaluation_point)
+                axes[i].plot(evaluation_point, evaluation_point_value, 'bo', markersize=4, color="red")
+                axes[i].plot([evaluation_point, evaluation_point], [0, evaluation_point_value], ':',
+                             color="red")
+
+            axes[i].set_title("Evaluation using basis function of point {}".format(basis_point))
+
+            if len(support_points) < 15:
+                axes[i].set_xticks(support_points)
+                axes[i].set_xticklabels(support_points, fontsize=9)
+
+        # Clear unused axes
+        for i in range(len(support_points), len(axes)):
+            fig.delaxes(axes[i])
+
+        fig.show()
 
 
 class GlobalBasisGridRombergGridSliceContainerAdapter(InterpolationGridSliceContainer):
@@ -2852,6 +2856,8 @@ class ExtrapolationGridSliceContainerFactory:
     def get_grid_slice_container(self, function: Function = None) -> ExtrapolationGridSliceContainer:
         if self.slice_container_version == SliceContainerVersion.ROMBERG_DEFAULT:
             return RombergGridSliceContainer(function)
+        elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG_OLD:
+            return LagrangeRombergGridSliceContainerOld(function)
         elif self.slice_container_version == SliceContainerVersion.LAGRANGE_ROMBERG:
             return LagrangeRombergGridSliceContainer(function)
         elif self.slice_container_version == SliceContainerVersion.SIMPSON_ROMBERG:
