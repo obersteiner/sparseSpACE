@@ -30,7 +30,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                  version: int = 6, operation: GridOperation = None, margin: float = None, timings=None,
                  rebalancing: bool = True, rebalancing_safety_factor: float = 0.1, chebyshev_points=False,
                  use_volume_weighting=False, force_balanced_refinement_tree: bool = False, grid_surplusses=None,
-                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO):
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, use_relative_surplus: bool=False):
         SpatiallyAdaptivBase.__init__(self, a, b, operation=operation, norm=norm, log_level=log_level, print_level=print_level)
         assert self.grid is not None
 
@@ -66,6 +66,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         # If set to true, all grid points have either 0 or two children
         self.force_balanced_refinement_tree = force_balanced_refinement_tree
         self.grid_binary_tree = GridBinaryTree()
+        self.use_relative_surplus = use_relative_surplus
+
 
     def interpolate_points(self, interpolation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo) -> Sequence[Sequence[float]]:
         # check if dedicated interpolation routine is present in grid
@@ -824,7 +826,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 refinements = 0
                 active_indices = set(self.combischeme.get_active_indices())
                 for index in active_indices:
-                    if max(self.lmax) + self.dim - 1 > sum(index) and all(
+                    if max(self.lmax) + self.lmin[0] * (self.dim - 1) > sum(index) and all(
                             [self.lmax[d] > index[d] for d in range(self.dim)]):
                         self.combischeme.update_adaptive_combi(index)
                         refinements += 1
@@ -975,8 +977,9 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 self.rebalance(d)
         for d in range(self.dim):
             refinement_container_d = self.refinement.get_refinement_container_for_dim(d)
+            # search if a refinement_object exceeds the maximum level and by how much
             update_d = self.update_coarsening_values(refinement_container_d, d)
-            if update_d > 0:
+            if update_d > 0: # adjust maximum level if necessary
                 self.raise_lmax(d, update_d)
                 refinement_container_d.update_values(update_d)
         self.scheme = self.combischeme.getCombiScheme(do_print=False)
@@ -985,10 +988,12 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         if isinstance(self.errorEstimator, ErrorCalculatorSingleDimMisclassificationGlobal):
-            self.errorEstimator.calc_global_error(self.operation.data, self)
+            pass
+            #self.errorEstimator.calc_global_error(self.operation.validation_set, self)
         else:
             self.calculate_surplusses(gridPointCoordsAsStripes, children_indices, component_grid)
-
+    """
+    outdated functions
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
     def sum_up_volumes_for_point(self, child_info, grid_points, d):
@@ -1221,6 +1226,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         else:
             evaluations = 0
         return abs(volume), evaluations
+    """
 
     # Sum up the 1-d surplusses along the dim-1 dimensional slice through the point child in dimension d.
     #  The surplusses are calculated based on the left and right parents.
@@ -1252,16 +1258,15 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parent] for d2 in
              range(self.dim)]) for right_parent in right_parents[right_parents_in_grid]]
         if self.grid_surplusses.modified_basis and np.any(np.logical_not(right_parents_in_grid)):
-            filter_right_right = np.logical_and(left_parents_in_grid, np.logical_not(right_parents_in_grid))
+            filter_left_left = np.logical_and(left_parents_in_grid, np.logical_not(right_parents_in_grid))
             points_left_of_left_parents = [get_cross_product_list(
                 [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [left_parent_of_left_parent] for d2 in
-                 range(self.dim)]) for left_parent_of_left_parent in left_parents_of_left_parents[filter_right_right]]
+                 range(self.dim)]) for left_parent_of_left_parent in left_parents_of_left_parents[filter_left_left]]
         if self.grid_surplusses.modified_basis and np.any(np.logical_not(left_parents_in_grid)):
             filter_right_right = np.logical_and(right_parents_in_grid, np.logical_not(left_parents_in_grid))
             points_right_of_right_parents = [get_cross_product_list(
                 [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [right_parents_of_right_parent] for d2
                  in range(self.dim)]) for right_parents_of_right_parent in right_parents_of_right_parents[filter_right_right]]
-
         points_children = [get_cross_product_list(
             [self.grid_surplusses.get_coordinates_dim(d2) if d != d2 else [child] for d2 in range(self.dim)]) for child in children]
 
@@ -1271,7 +1276,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
         exponent = 1  # if not self.do_high_order else 2
         # assert (tuple(point_child) in self.f.f_dict)
         point_values = self.operation.get_point_values_component_grid_multiple(points_children, component_grid)
-        values = point_values
+        values = np.array(point_values) # avoids changes to point_values
         if len(points_left_parents) > 0:
             point_values_left_parents = self.operation.get_point_values_component_grid_multiple(points_left_parents,
                                                                                           component_grid)
@@ -1299,6 +1304,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                         filter_in_grid]
                     left_parents_filtered = left_parents[filter_target_indices][filter_in_grid]
                     children_filtered = children[filter_target_indices][filter_in_grid]
+                    assert len(left_parents_of_left_parents_filtered) == len(left_parents_filtered) == len(children_filtered) == 1
                     point_values_left_parents_filtered = point_values_left_parents[np.logical_not(right_parents_in_grid[left_parents_in_grid])][
                         filter_in_grid]
                     points_left_of_left_parents_filtered = points_left_of_left_parents
@@ -1335,6 +1341,7 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     right_parents_of_right_parents_filtered = right_parents_of_right_parents[filter_target_indices][filter_in_grid]
                     right_parents_filtered = right_parents[filter_target_indices][filter_in_grid]
                     children_filtered = children[filter_target_indices][filter_in_grid]
+                    assert len(right_parents_of_right_parents_filtered) == len(right_parents_filtered) == len(children_filtered) == 1
                     point_values_right_parents_filtered = point_values_right_parents[np.logical_not(left_parents_in_grid[right_parents_in_grid])][filter_in_grid]
                     points_right_of_right_parents_filtered = points_right_of_right_parents
                     point_values_right_of_right_parents_filtered = self.operation.get_point_values_component_grid_multiple(points_right_of_right_parents_filtered,
@@ -1353,6 +1360,8 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                 values[right_parents_in_grid] -= (factors_right_parents * point_values_right_parents.T).T
         widths = np.asarray([(
             self.operation.get_surplus_width(d, right_parent, left_parent)) for (left_parent, right_parent) in zip(left_parents, right_parents)]).reshape((len(children),1)) ** exponent
+        if self.use_relative_surplus and not np.all(point_values == 0): # uses a relative surplus calculation with a limiter at a factor of 10**-1 of max value -> this avoids too extreme blow ups of regions close to 0
+            values /= np.abs(point_values) + np.max(np.abs(point_values)) * 10**-1
         volumes = np.sum(factors * abs(values), axis=1) * widths
         if self.version == 0 or self.version == 2:
             evaluations = size_slize * len(children)  # * (1 + int(left_parent_in_grid) + int(right_parent_in_grid))
@@ -1396,14 +1405,15 @@ class SpatiallyAdaptiveSingleDimensions2(SpatiallyAdaptivBase):
                     volume = surplus_pole[:, index_child] / np.prod(self.grid.numPoints) * self.grid.numPoints[d] * self.grid.weights[d][index_child]
                     evaluations = np.prod(self.grid.numPoints) / self.grid.numPoints[d]
                 else:
-                    if True:#not self.grid_surplusses.modified_basis:
-                        volume = volumes[i]
-                        #volume2, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
-                        #if volume != volume2:
-                        #    print(volume, volume2, component_grid, child, left_parent, right_parent)
-                        #    assert False
-                    else:
-                        volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
+                    volume = volumes[i]
+
+                    #if True:#not self.grid_surplusses.modified_basis:
+                    #    #volume2, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
+                    #    #if volume != volume2:
+                    #    #    print(volume, volume2, component_grid, child, left_parent, right_parent)
+                    #    #    assert False
+                    #else:
+                    #    volume, evaluations = self.sum_up_volumes_for_point_vectorized(child_info=child_info, grid_points=grid_points, d=d, component_grid=component_grid)
                     assert volume is not None
 
                 k_old = 0

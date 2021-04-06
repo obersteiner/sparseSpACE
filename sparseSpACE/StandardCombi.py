@@ -247,7 +247,7 @@ class StandardCombi(object):
         :return: Total number of points.
         """
         if distinct_function_evals:
-            return self.operation.get_distinct_points()
+            return self.operation.get_distinct_points(self.scheme)
         numpoints = 0
         for component_grid in self.scheme:
             pointsgrid = self.get_num_points_component_grid(component_grid.levelvector, doNaive)

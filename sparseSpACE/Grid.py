@@ -1093,7 +1093,7 @@ class GlobalTrapezoidalGrid(GlobalGrid):
         # print("Weights of GlobalTrapezoidalGrid: {}".format(grid_1D))
         # print("Levels of GlobalTrapezoidalGrid: {}".format(grid_levels_1D))
 
-        return self.compute_weights(grid_1D, a, b, self.modified_basis)
+        return GlobalTrapezoidalGrid.compute_weights(grid_1D, a, b, self.modified_basis)
 
 
 class GlobalTrapezoidalGridWeighted(GlobalTrapezoidalGrid):
