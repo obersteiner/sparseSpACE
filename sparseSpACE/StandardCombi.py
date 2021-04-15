@@ -112,6 +112,33 @@ class StandardCombi(object):
         :param plotdimension: Dimension of the output vector that should be plotted. (0 if scalar outputs)
         :return: None
         """
+
+        if self.dim == 1:
+            fig = plt.figure(figsize=(20, 10))
+
+            fontsize = 30
+            plt.rcParams.update({'font.size': fontsize})
+            xArray = np.linspace(self.a[0], self.b[0], 10 ** 2)
+            X = [x for x in xArray]
+
+            points = list(X)
+
+            Y = np.zeros(np.shape(X))
+            f_values = np.asarray((self(points)))
+            for i in range(len(X)):
+                Y[i] = f_values[i][plotdimension]
+            points = list(get_cross_product([X, Y]))
+
+            ax = fig.add_subplot(2, 1, 1)
+
+            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot(X, Y)
+
+            plt.show()
+            # reset fontsize to default so it does not affect other figures
+            plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+            return
+
         if self.dim != 2:
             self.log_util.log_warning("Can only plot 2D results")
             return

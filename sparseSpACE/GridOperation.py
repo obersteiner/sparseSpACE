@@ -1880,7 +1880,169 @@ class Regression(AreaOperation):
         self.log_util.set_print_prefix('DensityEstimation')
         self.log_util.set_log_prefix('DensityEstimation')
 
+    def hat_function_non_symmetric_completely_vectorized(self, grid_point_positions: Sequence[Sequence[float]],
+                                                         lower: Sequence[Sequence[float]],
+                                                         upper: Sequence[Sequence[float]],
+                                                         evaluation_points: Sequence[Sequence[float]]) \
+            -> Sequence[float]:
+        """This method calculates the hat function value of the given coordinates with the given parameters
 
+        :param : d-dimensional center point of the hat function
+        :param : d-dimensional list of 2-dimensional tuples that describe the start and end values of the domain of the hat function
+        :param : d-dimensional coordinates whose function value are to be calculated
+        :return: value of the function at the coordinates given by x
+        """
+        #print(np.shape(lower), np.shape(upper), np.shape(grid_point_positions), np.shape(evaluation_points))
+        grid_point_positions = np.asarray(grid_point_positions)
+        evaluation_points = np.hstack([evaluation_points] * len(grid_point_positions)).reshape((len(evaluation_points),len(grid_point_positions),self.dim))
+        lower = np.asarray(lower)
+        upper = np.asarray(upper)
+        assert len(evaluation_points[0][0]) == len(grid_point_positions[0]) == len(lower[0]) == len(upper[0])  # sanity check
+        result = np.ones(len(evaluation_points))
+        if not self.grid.modified_basis:
+            #if self.debug:
+            #    factor2 = np.ones(len(points))
+            #    for i, point in enumerate(points):
+            #        for dim in range(len(x)):
+            #            if x[dim] >= point[dim]:
+            #                # result is linear interpolation between middle and domain end
+            #                factor_part = max(0.0, 1.0 - (1.0 / (domain[i][dim][1] - point[dim])) * (x[dim] - point[dim]))
+            #            elif x[dim] < point[dim]:
+            #                factor_part = max(0.0, 1.0 - (1.0 / (point[dim] - domain[i][dim][0])) * (point[dim] - x[dim]))
+            #            factor2[i] *= factor_part
+
+            filter_upper = upper != grid_point_positions
+            value_1_temp = (evaluation_points[:, filter_upper] - grid_point_positions[filter_upper])
+            value1_temp = 1.0 - value_1_temp / (upper[filter_upper] - grid_point_positions[filter_upper])
+            value1_temp[value1_temp > 1] = 0
+            value1_temp[value1_temp < 0] = 0
+            value1 = np.zeros(np.shape(evaluation_points))
+            value1[:, filter_upper] = value1_temp  #if we are out of support we are <0 if we are on wrong side > 1
+
+            #value1_temp = 1.0 - (evaluation_points - grid_point_positions) / (upper - grid_point_positions)
+            #value1_maximum_filter = np.maximum.reduce([value1_temp, np.zeros(np.shape(evaluation_points))])
+            #value1_2 =  value1_maximum_filter * np.ceil(evaluation_points - grid_point_positions + 10**-30)
+            #print(value1, value1_2)
+            #assert np.all(value1 == value1_2)
+
+            filter_lower = lower != grid_point_positions
+            value_2_temp = (grid_point_positions[filter_lower] - evaluation_points[:,filter_lower])
+            value2_temp = 1.0 - value_2_temp / (grid_point_positions[filter_lower] - lower[filter_lower])
+            # if we are out of support we are <0 if we are on wrong side > 1
+            value2_temp[value2_temp >= 1] = 0
+            value2_temp[value2_temp < 0] = 0
+            value2 = np.zeros(np.shape(evaluation_points))
+            value2[:, filter_lower] = value2_temp
+            #value2_2 = np.maximum.reduce([1.0 - (grid_point_positions - evaluation_points) / (grid_point_positions - lower), np.zeros(np.shape(evaluation_points))]) * np.ceil(grid_point_positions - evaluation_points)
+            result = np.prod(value1 + value2, axis=2)
+            #print(value2, value2_2)
+            #assert np.all(value2_2 == value2)
+            return result
+        else:
+            # not yet implemented
+            assert False
+            for dim in range(len(x)):
+                # if the domain reaches the boundary, we extrapolate with the same slope that's to the neighboring point
+                boundary_check = lambda x: x == 0.0 or x == 1.0
+                if x[dim] >= point[dim]:
+                    # result is linear interpolation between middle and domain end
+                    if boundary_check(domain[dim][1]):
+                        result *= (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+                elif x[dim] < point[dim]:
+                    if boundary_check(domain[dim][0]):
+                        result *= (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+            return result
+
+    def hat_function_non_symmetric_vectorized(self, points: Sequence[float],
+                                              domain: Sequence[float],
+                                              x: Sequence[float]) \
+            -> float:
+        """This method calculates the hat function value of the given coordinates with the given parameters
+
+        :param : d-dimensional center point of the hat function
+        :param : d-dimensional list of 2-dimensional tuples that describe the start and end values of the domain of the hat function
+        :param : d-dimensional coordinates whose function value are to be calculated
+        :return: value of the function at the coordinates given by x
+        """
+        points = np.asarray(points)
+        x = np.asarray(x)
+        domain = np.asarray(domain)
+        assert len(points[0]) == len(x) == len(domain[0])   # sanity check
+        result = np.ones(len(points))
+        if not self.grid.modified_basis:
+            if self.debug:
+                factor2 = np.ones(len(points))
+                for i, point in enumerate(points):
+                    for dim in range(len(x)):
+                        if x[dim] >= point[dim]:
+                            # result is linear interpolation between middle and domain end
+                            factor_part = max(0.0, 1.0 - (1.0 / (domain[i][dim][1] - point[dim])) * (x[dim] - point[dim]))
+                        elif x[dim] < point[dim]:
+                            factor_part = max(0.0, 1.0 - (1.0 / (point[dim] - domain[i][dim][0])) * (point[dim] - x[dim]))
+                        factor2[i] *= factor_part
+            domain = domain.T
+            value1 = (1.0 - (x - points) / (domain[1].T - points)) * np.ceil(x - points + 10**-30)
+            value2 = (1.0 - (points - x) / (points - domain[0].T)) * np.ceil(points - x)
+            factor = np.prod(value1 + value2, axis=1)
+            if self.debug:
+                assert np.all(factor == factor2)
+            result *= factor
+            return result
+        else:
+            # not yet implemented
+            assert False
+            for dim in range(len(x)):
+                # if the domain reaches the boundary, we extrapolate with the same slope that's to the neighboring point
+                boundary_check = lambda x: x == 0.0 or x == 1.0
+                if x[dim] >= point[dim]:
+                    # result is linear interpolation between middle and domain end
+                    if boundary_check(domain[dim][1]):
+                        result *= (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (domain[dim][1] - point[dim])) * (x[dim] - point[dim]))
+                elif x[dim] < point[dim]:
+                    if boundary_check(domain[dim][0]):
+                        result *= (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim])
+                    else:
+                        result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
+            return result
+
+    def take_closest(self, grid_points: Sequence[float], point: float, skip_equal_point: bool = False) \
+            -> Tuple[Tuple[float, float], Tuple[int, int]]:
+        """Assumes gridPoints is sorted. Returns closest two values + indices to point.
+
+        :param grid_points:
+        :param point:
+        :param skip_equal_point:
+        :return: Two values closest to the given point and their indices
+        """
+        pos = bisect_left(grid_points, point)
+        if pos == 0:
+            pos = 1
+        if pos == len(grid_points):
+            # should not happen as point needs to be within the domain
+            assert False
+        before = grid_points[pos - 1]
+        after = grid_points[pos]
+        position_before = pos - 1
+        position_after = pos
+        if skip_equal_point and before == point and position_before != 0:
+            points = [grid_points[pos-2]]
+            indices = [pos-2]
+        else:
+            points = [before]
+            indices = [position_before]
+        if skip_equal_point and after == point and position_after != len(grid_points) - 1:
+            points.append(grid_points[pos+1])
+            indices.append(pos+1)
+        else:
+            points.append(after)
+            indices.append(position_after)
+        return points, indices
 
     def min_max_scale_surplusses(self):
         """Scale the surplusses by the maximum and minimum of the surplusses
@@ -1933,6 +2095,32 @@ class Regression(AreaOperation):
             self.log_util.log_debug("Max: {0} Max{1}".format(max, min))
         self.extrema = (min, max)
         return self.extrema
+
+    def get_grid_points_with_support(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                     skip_equal_point: bool = False, return_boundary: bool = True):
+        """
+
+        :param point: d-dimensional tuple containing the indices of the point
+        :param gridPointCoordsAsStripes: grid coordinates as 1D sequences
+        :param skip_equal_point:
+        :param return_boundary:
+        :return:
+        """
+        hats = []
+        indices = []
+        for d in range(self.dim):
+            if len(gridPointCoordsAsStripes[d]) == 3 and not return_boundary:
+                hats_d = [gridPointCoordsAsStripes[d][1]]
+                indices_d = [1]
+            else:
+                hats_d, indices_d = self.take_closest(gridPointCoordsAsStripes[d], point[d], skip_equal_point)
+                if not return_boundary:
+                    indices_d = [i for (i, h) in zip(indices_d, hats_d) if h != 0 and h != 1]
+                    hats_d = [h for h in hats_d if h != 0 and h != 1]
+            hats.append(hats_d)
+            indices.append(indices_d)
+            assert(len(hats) == len(indices))
+        return hats, indices
 
     def interpolate_points_component_grid(self, component_grid: ComponentGridInfo,
                                           mesh_points_grid: Sequence[Sequence[float]],
@@ -1988,6 +2176,41 @@ class Regression(AreaOperation):
 
             result2 = interpolated_values
             return result2
+
+    def get_hat_domain_for_every_grid_point_vectorized(self, gridPointCoordsAsStripes: Sequence[Sequence[float]]):
+        """This method returns the domain for the basis function centered on the given grid point as a numpy vector.
+
+        :param gridPointCoordsAsStripes: grid coordinates as 1D sequences
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
+        """
+        if self.grid.boundary:
+            coords = [np.array([0.0] + list(gridPointCoordsAsStripes[d]) + [1.0]) for d in range(self.dim)]
+        else:
+            coords = gridPointCoordsAsStripes
+        upper = get_cross_product_numpy_array(
+            [[1] if len(coords[d]) == 3 else np.roll(coords[d], -1)[1:-1] for d in range(self.dim)])
+        lower = get_cross_product_numpy_array(
+            [[0] if len(coords[d]) == 3 else np.roll(coords[d], 1)[1:-1] for d in range(self.dim)])
+        points = get_cross_product_numpy_array([coords[d][1:-1] for d in range(self.dim)])
+        return points, lower, upper
+
+
+    def get_neighbors_optimized(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) -> Tuple[Sequence[Tuple[float, ...]], Sequence[Tuple[int, ...]]]:
+        """This method returns the domain for the basis function centered on the given grid point. Vectorized with numpy
+
+        :param point: d-dimensional Sequence containing the coordinates of the grid point
+        :gridPointCoordsAsStripes: grid coordinates as 1D sequences
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the nrighbouring points in support + an array with their indices
+        """
+        # create a tuple for each point whose elements are the coordinates that are within the domain
+        point_domain, indices_point = self.get_grid_points_with_support(point, gridPointCoordsAsStripes, return_boundary=self.grid.boundary)
+        # d-dimensional coordinates of neighbours in support
+        neighbors = get_cross_product_list(point_domain)
+        # d-dim indices of neighbours in support
+        indices = get_cross_product_list(indices_point)
+        # sanity check
+        assert len(neighbors) == len(indices)
+        return neighbors, indices
 
     def initialize(self):
         """This method is used to initialize the operation with the dataset.
@@ -2148,6 +2371,18 @@ class Regression(AreaOperation):
             ax.set_ylabel('y')
             ax.set_zlabel('z')
             ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
+
+        elif self.dim == 1:
+            mydata = np.zeros((len(self.data),2))
+            for i in range(len(mydata)):
+                mydata[i][0] = self.data[i][0]
+                mydata[i][1] = self.target_values[i]
+            ax = fig.add_subplot(1, 1, 1)
+            x, y = zip(*mydata[:, :self.dim+1])
+            ax.scatter(x, y, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title("#points = %d" % len(mydata[:, :self.dim+1]))
 
         else:
             self.log_util.log_warning("Cannot print data of dimension > 2")
