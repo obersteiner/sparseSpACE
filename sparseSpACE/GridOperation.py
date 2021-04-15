@@ -1538,6 +1538,8 @@ class DensityEstimation(AreaOperation):
             self.log_util.log_debug("b Vector: {0}".format(b))
             self.log_util.log_debug("surplus_values: {0}".format(alphas))
             self.log_util.log_debug("Weights: {0}".format(weights))
+
+
         if integral == 0:
             return alphas
         else:
@@ -1812,6 +1814,373 @@ class DensityEstimation(AreaOperation):
             return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm)
 
 
+class Regression(AreaOperation):
+    def __init__(self, data, target_values: Sequence[float], dim, grid=None, masslumping: bool = False, print_output: bool = False,
+                 lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
+                 numeric_calculation: bool = False, pre_scaled_data: bool = False,
+                 log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, debug: bool=False):
+        """Constructor of the Regression class
+
+        :param data: the data set on which desity estimation is to be performed
+        :param target_values: the target_values of the data points
+        :param dim: the dimensionality of the data
+        :param grid: the grid type (e.g. Trapezoidal)
+        :param masslumping: if true, only the diagonals of the R-matrix will be calculated
+        :param print_output: print to console
+        :param lambd:
+        :param classes: set of class labels for each data point. labels must be in the set {[0.0, 1.0], [0.0, -1.0]}; only two labels allowed
+        :param validation_set_size: the size of the validation set; must be between [0.0, 1.0]
+        :param reuse_old_values: if true, old b-vector and R-matrix values will be reused
+        :param numeric_calculation: use numeric calculation instead of analytic
+        :param pre_scaled_data: if true, data will not be scaled during initialization
+        :param log_level: Set the log level. Only statements of the given level or higher will be written to the log file
+        :param print_level: Set the level for print statements. Only statements of the given level or higher will be written to the console
+        """
+        self.data = data
+        self.target_values = target_values
+        self.validation_set = None
+        self.validation_classes = None
+        self.use_complete_validation = True
+        if self.use_complete_validation:
+            self.validation_set_size = 1
+        else:
+            self.validation_set_size = validation_set_size
+        self.dim = dim
+        if grid is None:
+            self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
+        else:
+            self.grid = grid
+        self.lambd = lambd
+        self.masslumping = masslumping
+        self.surpluses = {}
+        self.initialized = False
+        self.scaled = pre_scaled_data
+        self.extrema = None
+        self.reference_solution = None
+        self.debug = debug
+        self.classes = classes
+        self.reuse_old_values = reuse_old_values
+        self.old_R = {}  # for reuse_old_values
+        self.old_B = {}  # for reuse_old_values
+        self.new_B = {}  # for reuse_old_values
+        self.old_grid_coord = {}  # for reuse_old_values; keys are a list of the max levels for each dimension
+        self.new_grid_coord = {}
+        self.sorted_data = []  # for reuse_old_values; keys are the dimensions
+        self.data_bins = [{} for d in range(dim)]
+        self.max_levels = []
+        self.numeric_calculation = numeric_calculation
+        self.dimension_wise = False
+        self.print_output = print_output
+        self.log_util = LogUtility(log_level=log_level, print_level=print_level)
+        # for compatibility with old code
+        if print_output is True and print_level == print_levels.NONE:
+            self.log_util.set_print_level(print_levels.INFO)
+        if self.debug:
+            self.log_util.log_debug('DensityEstimation debug: {0}'.format(self.debug))
+        self.log_util.set_print_prefix('DensityEstimation')
+        self.log_util.set_log_prefix('DensityEstimation')
+
+
+
+    def min_max_scale_surplusses(self):
+        """Scale the surplusses by the maximum and minimum of the surplusses
+        """
+        #scaler = preprocessing.MinMaxScaler(feature_range=(-1, 1))
+        X = self.surpluses[list(self.surpluses.keys())[0]]
+        for i in range(1, len(self.surpluses.keys())):
+            key = list(self.surpluses.keys())[i]
+            X = np.concatenate([X, self.surpluses[key]])
+        maximum = max(np.max(X), np.abs(np.min(X)))
+        #minimum = np.min(X)
+        for key in self.surpluses.keys():
+            surplus = self.surpluses[key]
+            #surplus = 2 * ((surplus - maximum) / (maximum - minimum)) - 1
+            #surplus = (surplus / (maximum / 2)) - 1
+            surplus = surplus / maximum
+            self.surpluses[key] = surplus
+        self.log_util.log_info('min max scaled surplusses')
+        #print('stop here')
+        #X_std = (X - maximum) / (maximum - minimum)
+
+        #transform(self.data)
+
+    def post_processing(self):
+        """This method is used to compute the minimum and maximum surplus of the component grid
+        so they can be used when plotting the heat map for the combi scheme when calling print_resulting_combi_scheme
+        It gets called in the perform_operation function of StandardCombi
+        When old values are reused, the current b-vector and grid point coordiates get saved for the next
+        refinement iteration
+
+        :return: Tuple of minimum and maximum surplus
+        """
+        if self.reuse_old_values:
+            # copy values, not references
+            self.old_B = {}
+            self.old_grid_coord = {}
+            for key in self.new_B.keys():
+                self.old_B[key] = list(self.new_B[key])
+            for key in self.new_grid_coord.keys():
+                self.old_grid_coord[key] = list(self.new_grid_coord[key])
+
+            self.new_B = {}
+            self.new_grid_coord = {}
+
+        surpluses = np.concatenate(list(self.get_result().values()))
+        max = np.max(surpluses)
+        min = np.min(surpluses)
+        # if self.print_output:
+        if self.debug:
+            self.log_util.log_debug("Max: {0} Max{1}".format(max, min))
+        self.extrema = (min, max)
+        return self.extrema
+
+    def interpolate_points_component_grid(self, component_grid: ComponentGridInfo,
+                                          mesh_points_grid: Sequence[Sequence[float]],
+                                          evaluation_points: Sequence[Tuple[float, ...]]):
+        """Interpolate the given evaluation points on the given component grid
+
+        :param component_grid: Class object containing the level vector and coefficient of the component grid
+        :param mesh_points_grid: Sequence containing the d-dimensional grid points
+        :param evaluation_points: The d-dimensional points to be evaluated
+        """
+        if self.grid.boundary:
+            result1 = super().interpolate_points_component_grid(component_grid, mesh_points_grid, evaluation_points)
+            return result1
+        else:
+            surplus_values = self.surpluses[tuple(component_grid.levelvector)]
+            threshold = 200
+            if self.grid.get_num_points() < threshold and not self.dimension_wise:
+                self.grid.numPoints = 2 ** np.asarray(component_grid.levelvector)
+                if self.grid.boundary:
+                    self.grid.numPoints += 1
+                else:
+                    self.grid.numPoints -= 1
+                hats = np.array(get_cross_product_range_list(self.grid.numPoints)) + 1
+                hat_evaluations = self.hat_function_in_support_completely_vectorized(ivecs=hats, lvec=np.asarray(component_grid.levelvector), points=np.asarray(evaluation_points))
+                interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
+                interpolated_values = interpolated_values.reshape(((len(evaluation_points), self.point_output_length())))
+            else:
+                if not isinstance(self.grid, GlobalGrid) and not isinstance(self.grid, GlobalTrapezoidalGrid):
+                    self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+                if mesh_points_grid is None:
+                    mesh_points_grid = self.grid.coordinate_array_with_boundary
+                if self.grid.get_num_points() < threshold:
+                    points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(mesh_points_grid)
+                    hat_evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, evaluation_points)
+                    interpolated_values = np.sum(hat_evaluations * np.asarray(surplus_values), axis=1)
+                    interpolated_values = interpolated_values.reshape(
+                        ((len(evaluation_points), self.point_output_length())))
+
+                else:
+                    interpolated_values = np.zeros((len(evaluation_points), self.point_output_length()))
+                    num_points = [len(mesh_points_grid[d]) - 2*int(not(self.grid.boundary)) for d in range(self.dim)]
+                    offsets = np.array([int(np.prod(num_points[d+1:])) for d in range(self.dim)])
+                    hat_support_cache = {}
+                    for i, p in enumerate(evaluation_points):
+                        hats, indices = self.get_neighbors_optimized(p, mesh_points_grid)
+                        supports = [hat_support_cache[hat] if hat in hat_support_cache else self.get_grid_points_with_support(hat, mesh_points_grid, skip_equal_point=True)[0] for hat in hats]
+                        for j, hat in enumerate(hats):
+                            hat_support_cache[hat] = supports[j]
+                        evaluations = self.hat_function_non_symmetric_vectorized(hats, supports, p)
+                        for hat, hat_position, j in zip(hats, indices, range(len(hats))):
+                            hat_index = np.inner(np.array(hat_position) - 1,offsets)
+                            interpolated_values[i] += surplus_values[hat_index] * evaluations[j]
+
+            result2 = interpolated_values
+            return result2
+
+    def initialize(self):
+        """This method is used to initialize the operation with the dataset.
+        If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
+        It gets called in the perform_operation function of StandardCombi
+
+        :return:
+        """
+        scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+        if (isinstance(self.data, str)):
+            dataCSV = []
+            with open(self.data, "r", newline="") as file:
+                has_header = csv.Sniffer().has_header(file.read(2048))
+                file.seek(0)
+                reader = csv.reader(file)
+                if has_header:
+                    next(reader)
+                for row in reader:
+                    dataCSV.append([float(i) for i in row])
+                scaler.fit(dataCSV)
+                if not self.scaled and (any([(x < 0) for x in scaler.data_min_])) \
+                        or (any([(x > 1) for x in scaler.data_max_])):
+                    self.data = scaler.transform(dataCSV)
+                    self.scaled = True
+        elif (isinstance(self.data, tuple)):
+            self.data = self.data[0]
+            scaler.fit(self.data)
+            if not self.scaled and (any([(x < 0) for x in scaler.data_min_])) \
+                    or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
+        else:
+            scaler.fit(self.data)
+            if not self.scaled and (any([(x < 0) for x in scaler.data_min_])) \
+                    or (any([(x > 1) for x in scaler.data_max_])):
+                self.data = scaler.transform(self.data)
+                self.scaled = True
+        self.initialized = True
+
+
+    def get_result(self) -> Dict[Sequence[int], Sequence[float]]:
+        return self.surpluses
+
+    def get_component_grid_values(self, component_grid: ComponentGridInfo, mesh_points_grid: Sequence[Sequence[float]]) \
+            -> Sequence[float]:
+        """This method fills up the surplus array with zeros for the points on the boundary so it can be properly used when interpolating
+
+        :param component_grid: ComponentGridInfo of the specified component grid
+        :param mesh_points_grid: Points of the component grid, with boundary points
+        :return: Surpluses for the component_grid filled up with zero on the boundary
+        """
+        surpluses = list(self.get_result().get(tuple(component_grid.levelvector)))
+        if len(mesh_points_grid) > len(surpluses):
+            mesh_points = get_cross_product(mesh_points_grid)
+            values = np.array([surpluses.pop(0) if self.grid.point_not_zero(p) else 0 for p in mesh_points])
+        else:
+            values = np.asarray(surpluses)
+        return values.reshape((len(values), 1))
+
+    def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
+        """This method calculates the surpluses for the the specified component grid
+
+        :param component_grid: ComponentGridInfo of the specified component grid
+        :return: Surpluses of the component grid
+        """
+        if self.dimension_wise:
+            self.grid.setCurrentArea(np.zeros(len(component_grid.levelvector)), np.ones(len(component_grid.levelvector)), component_grid.levelvector)
+        else:
+            numPoints = 2**(np.asarray(component_grid.levelvector, dtype=int))
+            if self.grid.boundary:
+                numPoints += 1
+            else:
+                numPoints -= 1
+            self.grid.numPoints = numPoints
+        # currently routine only tested without boundaries and without adaptivity!
+        assert not self.grid.boundary and not self.dimension_wise
+        surpluses = self.solve_regression(component_grid.levelvector)
+        self.surpluses.update({tuple(component_grid.levelvector): surpluses})
+        return surpluses
+
+
+    def hat_function_in_support_completely_vectorized(self, ivecs: Sequence[Sequence[int]],
+                                                      lvec: Sequence[int],
+                                                      points: Sequence[float]) \
+            -> float:
+        """
+        This method calculates the value of the hat function at the point x
+
+        :param ivecs: Vector with indeces of the hat functions
+        :param lvec: Levelvector of the component grid
+        :param points: datapoints
+        :return: Value of the hat function at points, for different ivecs (numpy array shape(nPoints,nIvecs))
+        """
+        dim = len(lvec)
+        results = np.empty(len(ivecs))
+        points = np.hstack([points]*len(ivecs)).reshape((len(points),len(ivecs),self.dim))
+        inner_calculation = 1 - abs(2 ** lvec * points - ivecs)
+        max_filter = np.maximum.reduce([inner_calculation, np.zeros(np.shape(points))] )
+        result = np.prod(max_filter, axis=2)
+        assert np.all(result >= 0)
+        assert(len(result[0]) == len(ivecs))
+        assert(len(result) == len(points))
+        return result
+
+    def build_A_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+
+        hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+        A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
+
+        return A
+
+    def solve_regression(self, levelvec: Sequence[int]) -> Sequence[float]:
+        """Calculates the surpluses of the component grid for the specified dataset
+
+        :param levelvec: Levelvector of the component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+
+        A = self.build_A_matrix(levelvec)
+
+        y = self.target_values
+
+        alphas, res, rank, s = np.linalg.lstsq(A, y, rcond=None)
+
+        return alphas
+
+    def plot_dataset(self, filename: str = None):
+        """
+        This method plots the data set specified for this operation
+
+        :param filename: If set the plot will be saved to the specified filename
+        :return: Matplotlib figure
+        """
+
+        if self.initialized == False:
+            self.initialize()
+        fontsize = 30
+        plt.rcParams.update({'font.size': fontsize})
+        fig = plt.figure(figsize=(10, 10))
+        if self.dim == 2:
+            ax = fig.add_subplot(1, 1, 1)
+            x, y = zip(*self.data[:, :self.dim])
+            ax.scatter(x, y, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title("M = %d" % len(self.data[:, :self.dim]))
+
+        elif self.dim == 3:
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            x, y, z = zip(*self.data[:, :self.dim])
+            ax.scatter(x, y, z, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+            ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
+
+        else:
+            self.log_util.log_warning("Cannot print data of dimension > 2")
+
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        #plt.show()
+        # reset fontsize to default so it does not affect other figures
+        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+        return fig
+
+    def plot_component_grid(self, combiObject: "StandardCombi",
+                            component_grid: ComponentGridInfo,
+                            grid: Axes3D,
+                            pointsPerDim: int = 100) \
+            -> None:
+        """This method plots the contour plot of the component grid specified by the ComponentGridInfo.
+        This method is used by print_resulting_combi_scheme in StandardCombi
+
+        :param component_grid:  ComponentGridInfo of the specified component grid.
+        :param grid: Axes3D of the
+        :param levels: the amount of different levels for the contourf plot
+        :param pointsPerDim: amount of points to be plotted in each dimension
+        :return: None
+        """
+        X = np.linspace(0.0, 1.0, pointsPerDim)
+        Y = np.linspace(0.0, 1.0, pointsPerDim)
+        X, Y = np.meshgrid(X, Y)
+        Z = combiObject.interpolate_points(list(map(lambda x, y: (x, y), X.flatten(), Y.flatten())), component_grid)
+        Z = Z.reshape((100, 100))
+        #t = cm.coolwarm
+        #tt = colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1])
+        grid.imshow(Z, extent=[0.0, 1.0, 0.0, 1.0], origin='lower', cmap=cm.coolwarm, norm=colors.PowerNorm(gamma=0.95, vmin=self.extrema[0], vmax=self.extrema[1]))
 
 class Integration(AreaOperation):
     def __init__(self, f: Function, grid: Grid, dim: int, reference_solution: Sequence[float] = None,
