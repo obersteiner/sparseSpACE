@@ -1819,7 +1819,7 @@ class DensityEstimation(MachineLearning):
 
 
 class Regression(MachineLearning):
-    def __init__(self, data, target_values: Sequence[float], dim, grid=None, masslumping: bool = False, print_output: bool = False,
+    def __init__(self, data, target_values: Sequence[float], regularization, dim, grid=None, masslumping: bool = False, print_output: bool = False,
                  lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
                  numeric_calculation: bool = False, pre_scaled_data: bool = False,
                  log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, debug: bool=False):
@@ -1842,6 +1842,7 @@ class Regression(MachineLearning):
         """
         self.data = data
         self.target_values = target_values
+        self.regularization = regularization
         self.validation_set = None
         self.validation_classes = None
         self.use_complete_validation = True
@@ -1901,7 +1902,10 @@ class Regression(MachineLearning):
             self.grid.numPoints = numPoints
         # currently routine only tested without boundaries and without adaptivity!
         assert not self.grid.boundary and not self.dimension_wise
-        surpluses = self.solve_regression(component_grid.levelvector)
+        if(self.regularization == 0):
+            surpluses = self.solve_regression(component_grid.levelvector)
+        else:
+            surpluses = self.solve_regression_smooth(component_grid.levelvector)
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
         return surpluses
 
@@ -1915,7 +1919,6 @@ class Regression(MachineLearning):
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
 
-        print(A)
         return A
 
     def solve_regression(self, levelvec: Sequence[int]) -> Sequence[float]:
@@ -1933,6 +1936,53 @@ class Regression(MachineLearning):
 
         return alphas
 
+    def build_left_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+
+        hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+        A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
+
+        number_points = len(self.target_values)
+
+        x = np.dot(A.T, A)
+        y = (1/number_points) * x
+        z = np.identity(y.shape[0])
+
+        return y + self.regularization*z
+
+    def build_right_vector(self, levelvec: Sequence[int]) -> Sequence[float]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+
+        hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+        A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
+
+        number_points = len(self.target_values)
+
+        return (1/number_points) * A.T.dot(self.target_values)
+
+    def solve_regression_smooth(self, levelvec: Sequence[int]) -> Sequence[float]:
+        """Calculates the surpluses of the component grid for the specified dataset
+
+        :param levelvec: Levelvector of the component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+
+        left = self.build_left_matrix(levelvec)
+
+        right = self.build_right_vector(levelvec)
+
+        alphas, res, rank, s = np.linalg.lstsq(left, right, rcond=None)
+
+        return alphas
+
     def plot_dataset(self, filename: str = None):
         """
         This method plots the data set specified for this operation
@@ -1947,12 +1997,31 @@ class Regression(MachineLearning):
         plt.rcParams.update({'font.size': fontsize})
         fig = plt.figure(figsize=(10, 10))
         if self.dim == 2:
-            ax = fig.add_subplot(1, 1, 1)
+            plt.rcParams.update({'font.size': fontsize})
+
             x, y = zip(*self.data[:, :self.dim])
-            ax.scatter(x, y, s=125)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_title("M = %d" % len(self.data[:, :self.dim]))
+
+            fig = plt.figure(figsize=(20, 10))
+
+            X, Y = np.meshgrid(x, y, indexing="ij")
+
+            Z = np.zeros(np.shape(X))
+            f_values = self.target_values
+
+            for var in range(len(self.target_values)):
+                Z[var][var] = f_values[var]
+
+            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            # TODO make colorbar look nicer
+            fig.colorbar(p, ax=ax)
+
+            plt.show()
+            # reset fontsize to default so it does not affect other figures
+            plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
 
         elif self.dim == 3:
             ax = fig.add_subplot(1, 1, 1, projection='3d')
