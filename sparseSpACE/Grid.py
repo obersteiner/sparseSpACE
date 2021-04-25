@@ -349,11 +349,11 @@ class BasisGrid(Grid):
 
 
 class LagrangeGrid(BasisGrid):
-    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, p: int=3, modified_basis: bool=False):
         self.boundary = boundary
         self.a = a
         self.b = b
-        assert len(a) == len(b) # TODO a, b are not floats
+        assert len(a) == len(b)
         self.dim = len(a)
         self.integrator = IntegratorHierarchicalBasisFunctions(self)
         self.grids = [LagrangeGrid1D(a=a[d], b=b[d], boundary=self.boundary, p=p, modified_basis=modified_basis) for d in range(self.dim)]
@@ -367,7 +367,7 @@ class LagrangeGrid(BasisGrid):
 
 
 class LagrangeGrid1D(Grid1d):
-    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, p: int=3, modified_basis: bool=False):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p  # max order of lagrange polynomials
         self.coords_gauss, self.weights_gauss = legendre.leggauss(int(self.p / 2) + 1)
@@ -483,7 +483,7 @@ class LagrangeGrid1D(Grid1d):
 
 
 class BSplineGrid(BasisGrid):
-    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, p: int=3, modified_basis: bool=False):
         self.boundary = boundary
         self.a = a
         self.b = b
@@ -500,7 +500,7 @@ class BSplineGrid(BasisGrid):
         return self.p > 1
 
 class BSplineGrid1D(Grid1d):
-    def __init__(self, a: float, b: float, boundary: bool=True, p: int=3, modified_basis: bool=False):
+    def __init__(self, a: Sequence[float], b: Sequence[float], boundary: bool=True, p: int=3, modified_basis: bool=False):
         super().__init__(a=a, b=b, boundary=boundary)
         self.p = p #spline order
         assert p % 2 == 1
