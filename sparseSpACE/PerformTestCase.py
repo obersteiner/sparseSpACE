@@ -6,6 +6,7 @@ from sparseSpACE.StandardCombi import *
 from sparseSpACE.GridOperation import *
 import matplotlib.cm as mplcm
 import matplotlib, numpy as np, matplotlib.pyplot as plt
+from pathlib import Path
 
 import csv
 import matplotlib.pyplot as plt
@@ -37,6 +38,11 @@ class TestCase:
 
         self.errorArrayDimAdaptiveArray = []
         self.numFEvalIdealDimAdaptiveArray = []
+
+        # Create folder if it does not exist
+        if not Path(filepath).is_dir():
+            p = Path(filepath)
+            p.mkdir(parents=True, exist_ok=True)
 
         self.filepath = filepath
         self.save_csv = save_csv
