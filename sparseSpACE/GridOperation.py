@@ -1946,10 +1946,12 @@ class Regression(MachineLearning):
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
 
-        number_points = len(self.target_values)
+        m = 1
+        for i in range(len(self.grid.numPoints)):
+            m = m * self.grid.numPoints[i]
 
         x = np.dot(A.T, A)
-        y = (1/number_points) * x
+        y = (1/m) * x
         z = np.identity(y.shape[0])
 
         return y + self.regularization*z
@@ -1964,9 +1966,13 @@ class Regression(MachineLearning):
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
 
-        number_points = len(self.target_values)
+        m = 1
+        for i in range(len(self.grid.numPoints)):
+            m = m * self.grid.numPoints[i]
 
-        return (1/number_points) * A.T.dot(self.target_values)
+        m = len(self.target_values)
+
+        return (1/m) * A.T.dot(self.target_values)
 
     def solve_regression_smooth(self, levelvec: Sequence[int]) -> Sequence[float]:
         """Calculates the surpluses of the component grid for the specified dataset
