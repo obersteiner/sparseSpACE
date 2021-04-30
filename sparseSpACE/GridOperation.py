@@ -300,6 +300,18 @@ class MachineLearning(AreaOperation):
 
         #transform(self.data)
 
+
+    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
+        self.grid = grid
+        self.grid_surplusses = grid_surplusses
+        self.refinement_container = refinement_container
+        self.version = version
+        self.lmin = lmin
+        self.lmax = lmax
+        self.a = a
+        self.b = b
+        self.dimension_wise = True
+
     def initialize(self):
         """This method is used to initialize the operation with the dataset.
         If a path to a .csv file was specified, it gets read in and scaled to the intervall (0,1)
@@ -666,6 +678,12 @@ class MachineLearning(AreaOperation):
                         result *= max(0.0, 1.0 - (1.0 / (point[dim] - domain[dim][0])) * (point[dim] - x[dim]))
             return result
 
+    def get_distinct_points(self, combi_scheme):
+        # Here we return all points that are used in the current combination scheme
+        # Redundant points are intentionally not removed here as they cannot share point values between grids!
+        s = sum([len(self.surpluses[tuple(component_grid.levelvector)]) for component_grid in combi_scheme])
+        return s
+
     def hat_function_in_support_completely_vectorized(self, ivecs: Sequence[Sequence[int]],
                                                       lvec: Sequence[int],
                                                       points: Sequence[float]) \
@@ -688,6 +706,55 @@ class MachineLearning(AreaOperation):
         assert(len(result[0]) == len(ivecs))
         assert(len(result) == len(points))
         return result
+
+    def get_point_values_component_grid_multiple(self, pointsets: Sequence[Sequence[Sequence[float]]], component_grid: ComponentGridInfo) \
+            -> Sequence[Sequence[Sequence[float]]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        temp = []
+        for points in pointsets:
+            temp.append(self.get_point_values_component_grid(points, component_grid))
+        return np.asarray(temp)
+
+    def get_point_values_component_grid(self, points: Sequence[float], component_grid: ComponentGridInfo) \
+            -> Sequence[Sequence[float]]:
+        """This method returns the values in the component grid at the given points.
+
+        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
+        :param component_grid: Component grid which we want to evaluate.
+        :return: Values at points (same order).
+        """
+        if self.debug:
+            mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
+            mesh_points = list(get_cross_product(mesh_points_grid))
+            points_list = list(points)
+            #print(points_list, mesh_points)
+            #points_indices = [mesh_points.index(p) for p in points_list]
+            nodal_values = list(self.get_result().get(tuple(component_grid.levelvector)))
+            if len(nodal_values) > 0 and len(points_list) > 0:
+                pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
+                validPoint = lambda x: True if x in mesh_points else False
+                values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
+                values_indices = [nodal_values.index(s) for s in values]
+                if (len(nodal_values) == 0 or len(points_list) == 0 or len(values) == 0):
+                    self.log_util.log_debug('Operation DensityEstimation; error, stop here with debugger')
+                    self.log_util.log_debug('second print to prevent the stupid debugger from skipping lines again')
+                return values.reshape((len(values), 1))
+            else:
+                return np.zeros((len(points_list), 1))
+        else:
+            mesh_points_grid = (self.grid.coordinate_array[d] for d in range(self.dim))
+            mesh_points = list(get_cross_product(mesh_points_grid))
+            nodal_values = self.get_result().get(tuple(component_grid.levelvector))
+            points_list = list(points)
+            pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
+            validPoint = lambda x: True if x in mesh_points else False
+            values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
+            return values.reshape((len(values), 1))
 
     def plot_component_grid(self, combiObject: "StandardCombi",
                             component_grid: ComponentGridInfo,
@@ -780,11 +847,7 @@ class DensityEstimation(MachineLearning):
     def get_reference_solution(self) -> None:
         return None
 
-    def get_distinct_points(self, combi_scheme):
-        # Here we return all points that are used in the current combination scheme
-        # Redundant points are intentionally not removed here as they cannot share point values between grids!
-        s = sum([len(self.surpluses[tuple(component_grid.levelvector)]) for component_grid in combi_scheme])
-        return s
+
 
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
         """This method calculates the surpluses for the the specified component grid
@@ -822,17 +885,6 @@ class DensityEstimation(MachineLearning):
 
         self.refinement_container.value += np.array(abs(surpluses.sum() / surpluses.size)) * component_grid.coefficient
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
-
-    def init_dimension_wise(self, grid, grid_surplusses, refinement_container, lmin, lmax, a, b, version=2):
-        self.grid = grid
-        self.grid_surplusses = grid_surplusses
-        self.refinement_container = refinement_container
-        self.version = version
-        self.lmin = lmin
-        self.lmax = lmax
-        self.a = a
-        self.b = b
-        self.dimension_wise = True
 
     def initialize_evaluation_dimension_wise(self, refinement_container):
         """Initializes the evaluation of the dimension wise refinement depending on the member variables
@@ -875,54 +927,8 @@ class DensityEstimation(MachineLearning):
         self.sorted_data = [np.argsort(self.data[:,d]) for d in range(self.data.shape[1])]
         self.max_levels = [max(self.lmax) for x in range(self.dim)]
 
-    def get_point_values_component_grid_multiple(self, pointsets: Sequence[Sequence[Sequence[float]]], component_grid: ComponentGridInfo) \
-            -> Sequence[Sequence[Sequence[float]]]:
-        """This method returns the values in the component grid at the given points.
 
-        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
-        :param component_grid: Component grid which we want to evaluate.
-        :return: Values at points (same order).
-        """
-        temp = []
-        for points in pointsets:
-            temp.append(self.get_point_values_component_grid(points, component_grid))
-        return np.asarray(temp)
 
-    def get_point_values_component_grid(self, points: Sequence[float], component_grid: ComponentGridInfo) \
-            -> Sequence[Sequence[float]]:
-        """This method returns the values in the component grid at the given points.
-
-        :param points: Points where we want to evaluate the componenet grid (should coincide with grid points)
-        :param component_grid: Component grid which we want to evaluate.
-        :return: Values at points (same order).
-        """
-        if self.debug:
-            mesh_points_grid = [self.grid.coordinate_array[d] for d in range(self.dim)]
-            mesh_points = list(get_cross_product(mesh_points_grid))
-            points_list = list(points)
-            #print(points_list, mesh_points)
-            #points_indices = [mesh_points.index(p) for p in points_list]
-            nodal_values = list(self.get_result().get(tuple(component_grid.levelvector)))
-            if len(nodal_values) > 0 and len(points_list) > 0:
-                pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
-                validPoint = lambda x: True if x in mesh_points else False
-                values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
-                values_indices = [nodal_values.index(s) for s in values]
-                if (len(nodal_values) == 0 or len(points_list) == 0 or len(values) == 0):
-                    self.log_util.log_debug('Operation DensityEstimation; error, stop here with debugger')
-                    self.log_util.log_debug('second print to prevent the stupid debugger from skipping lines again')
-                return values.reshape((len(values), 1))
-            else:
-                return np.zeros((len(points_list), 1))
-        else:
-            mesh_points_grid = (self.grid.coordinate_array[d] for d in range(self.dim))
-            mesh_points = list(get_cross_product(mesh_points_grid))
-            nodal_values = self.get_result().get(tuple(component_grid.levelvector))
-            points_list = list(points)
-            pickPoint = lambda x: nodal_values[mesh_points.index(x)] if self.grid.point_not_zero(x) else 0
-            validPoint = lambda x: True if x in mesh_points else False
-            values = np.array([pickPoint(p) for p in points_list if validPoint(p)])
-            return values.reshape((len(values), 1))
 
     def check_adjacency(self, ivec: Sequence[int], jvec: Sequence[int]) -> bool:
         """This method checks if the two hat functions specified by ivec and jvec are adjacent to each other
@@ -1885,6 +1891,145 @@ class Regression(MachineLearning):
         self.log_util.set_print_prefix('DensityEstimation')
         self.log_util.set_log_prefix('DensityEstimation')
 
+    def print_evaluation_output(self, refinement):
+        combi_surpluses = self.surpluses
+        #if len(combi_surpluses) == 1:
+        #    combi_surpluses = combi_surpluses[0]
+        self.log_util.log_debug("combisurpluses:" + str(combi_surpluses))
+
+    def get_global_error_estimate(self, refinement_container, norm):
+        if self.reference_solution is None:
+            return None
+        elif LA.norm(self.reference_solution) == 0.0:
+            return LA.norm(abs(self.surpluses), norm)
+        else:
+            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm)
+
+    def get_neighbors(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) \
+            -> Sequence[Tuple[float, float]]:
+        """This method returns the points neighboring the given grid point.
+
+        :param point: d-dimensional Sequence containing the coordinates of the grid point
+        :gridPointCoordsAsStripes: grid coordinates as 1D sequences
+        :return: d-dimenisional Sequence of 2-dimensional tuples containing the start and end of the function domain in each dimension
+        """
+        # check if the coordinate is on the boundary and if we have points on the boundary
+        boundary_check = lambda x: self.grid.boundary if (x == 0 or x == 1.0) else True
+
+        # create a tuple for each point whose elements are the coordinates that are within the domain
+        neighbor_tuple = lambda n: tuple((n[d] for d in range(0, self.dim) if
+                                          n[d] >= point_domain[d][0] and n[d] <= point_domain[d][1] and boundary_check(
+                                              n[d])))
+        if self.debug:
+            all_points = list(get_cross_product(gridPointCoordsAsStripes))
+            point_domain = self.get_hat_domain(point, gridPointCoordsAsStripes)
+            # pick only tuples where both coordinates are within the domain
+            neighbors = [neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim]
+            return neighbors
+        else:
+            all_points = get_cross_product(gridPointCoordsAsStripes)
+            point_domain = self.get_hat_domain(point, gridPointCoordsAsStripes)
+            # pick only tuples where both coordinates are within the domain
+            neighbors = (neighbor_tuple(p) for p in all_points if len(neighbor_tuple(p)) == self.dim)
+            return neighbors
+
+    def initialize_evaluation_dimension_wise(self, refinement_container):
+        """Initializes the evaluation of the dimension wise refinement depending on the member variables
+        If classes were passed, a validation set is created from the given classes through random sampling.
+        The validation set has an equal amount of samples for each class.
+
+        :param refinement_container:
+        """
+        self.initialize()
+        if self.classes is not None:
+            if not self.validation_set_size:
+                if self.validation_set is not None:
+                    # read the validation set to the data set, otherwise the data set will get smaller and smaller
+                    # with each iteration
+                    self.data = np.concatenate((self.data, self.validation_set))
+                    self.classes = np.concatenate((self.classes, self.validation_classes))
+                class_a = np.where(self.classes > 0)[0]
+                class_b = np.where(self.classes < 0)[0]
+                picks_a = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_a))
+                picks_b = min(int(len(self.classes) * (self.validation_set_size / 2)), len(class_b))
+                validation_a = np.random.choice(class_a, size=picks_a, replace=False).flatten()
+                validation_b = np.random.choice(class_b, size=picks_b, replace=False).flatten()
+                validation_indices = np.concatenate((validation_a, validation_b), axis=None)
+                self.validation_set = np.copy(self.data[validation_indices])
+                self.validation_classes = np.copy(self.classes[validation_indices])
+                self.data = np.delete(self.data, validation_indices, axis=0)
+                self.classes = np.delete(self.classes, validation_indices)
+            else:
+                self.validation_set = np.copy(self.data)
+                self.validation_classes = np.copy(self.classes)
+
+            # DEBUG: add deleted data back to check if removed data and labels were misaligned
+            # self.data = np.concatenate((self.data, self.validation_set))
+            # self.classes = np.concatenate((self.classes, self.validation_classes))
+            # DEBUG: comment out the delete stuff above and use this for completely unaltered data set
+            # self.validation_set = self.data
+            # self.validation_classes = self.classes
+
+        refinement_container.value = np.zeros(1)
+        self.sorted_data = [np.argsort(self.data[:,d]) for d in range(self.data.shape[1])]
+        self.max_levels = [max(self.lmax) for x in range(self.dim)]
+
+
+    def calculate_operation_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                           grid_point_levels: Sequence[Sequence[int]], component_grid: ComponentGridInfo):
+        """This method is used to compute the operation in the dimension-wise refinement strategy.
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Grid point levels as list of 1D lists
+        :param component_grid: Component grid on which operation should be applied.
+        :return: None
+        """
+        self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
+        surpluses = self.solve_regression_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)
+
+        self.refinement_container.value += np.array(abs(surpluses.sum() / surpluses.size)) * component_grid.coefficient
+        self.surpluses.update({tuple(component_grid.levelvector): surpluses})
+
+    def solve_regression_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                                grid_point_levels: Sequence[Sequence[int]],
+                                                component_grid: ComponentGridInfo) \
+            -> Sequence[float]:
+        """Calculates the surpluses of the component grid for the specified dataset
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Gridpoint levels as list of 1D lists
+        :param component_grid:  component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+        A = self.build_A_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+        y = self.target_values
+
+        alphas, res, rank, s = np.linalg.lstsq(A, y, rcond=None)
+
+        return alphas
+
+
+    def build_A_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                      grid_point_levels: Sequence[Sequence[int]]) \
+            -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
+        non-equidistant grids (usually used adaptive schemes)
+
+        :param gridPointCoordsAsStripes: d-dimensional sequence of coordinate lists. the lists include coordinates at
+                                         the domain boundary, even if there are no boundary points.
+        :param grid_point_levels: d-dimensional sequence of integer lists
+        :return: R matrix of the component grid specified by the levelvector
+        """
+
+        points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
+
+
+        evaluations = self.hat_function_non_symmetric_completely_vectorized(points, lower, upper, self.data)
+
+        return evaluations
+
+
     def evaluate_levelvec(self, component_grid: ComponentGridInfo) -> Sequence[float]:
         """This method calculates the surpluses for the the specified component grid
 
@@ -1950,6 +2095,7 @@ class Regression(MachineLearning):
         for i in range(len(self.grid.numPoints)):
             m = m * self.grid.numPoints[i]
 
+        m = len(self.target_values)
         x = np.dot(A.T, A)
         y = (1/m) * x
         z = np.identity(y.shape[0])
