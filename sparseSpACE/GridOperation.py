@@ -1986,7 +1986,10 @@ class Regression(MachineLearning):
         """
         self.grid_surplusses.set_grid(gridPointCoordsAsStripes, grid_point_levels)
         self.grid.set_grid(gridPointCoordsAsStripes, grid_point_levels)
-        surpluses = self.solve_regression_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)
+        if self.regularization == 0:
+            surpluses = self.solve_regression_dimension_wise(gridPointCoordsAsStripes, grid_point_levels, component_grid)
+        else:
+            surpluses = self.solve_regression_dimension_wise_smooth(gridPointCoordsAsStripes, grid_point_levels, component_grid)
 
         self.refinement_container.value += np.array(abs(surpluses.sum() / surpluses.size)) * component_grid.coefficient
         self.surpluses.update({tuple(component_grid.levelvector): surpluses})
@@ -2006,6 +2009,28 @@ class Regression(MachineLearning):
         y = self.target_values
 
         alphas, res, rank, s = np.linalg.lstsq(A, y, rcond=None)
+
+        return alphas
+
+    def solve_regression_dimension_wise_smooth(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                                grid_point_levels: Sequence[Sequence[int]],
+                                                component_grid: ComponentGridInfo) \
+            -> Sequence[float]:
+        """Calculates the surpluses of the component grid for the specified dataset
+
+        :param gridPointCoordsAsStripes: Gridpoints as list of 1D lists
+        :param grid_point_levels: Gridpoint levels as list of 1D lists
+        :param component_grid:  component grid
+        :return: Surpluses of the component grid for the specified dataset
+        """
+        A = self.build_A_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+
+        y = self.target_values
+
+        left_side = (1/len(y)) * np.dot(A.T, A) + self.regularization*np.identity(len(A[0]))
+        right_side = (1/len(y)) * A.T.dot(y)
+
+        alphas, res, rank, s = np.linalg.lstsq(left_side, right_side, rcond=None)
 
         return alphas
 
