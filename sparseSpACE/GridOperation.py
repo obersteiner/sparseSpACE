@@ -1857,6 +1857,7 @@ class Regression(MachineLearning):
         else:
             self.validation_set_size = validation_set_size
         self.dim = dim
+        # TODO currently only running without boundary points
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
         else:
@@ -2106,6 +2107,57 @@ class Regression(MachineLearning):
 
         return alphas
 
+    def build_C_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+        dim = len(levelvec)
+        diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
+
+        grid_size = self.grid.get_num_points()
+        R = np.zeros((grid_size, grid_size))
+
+        index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
+
+
+        R[np.diag_indices_from(R)] += (diag_val + self.lambd)
+
+        for i in range(grid_size - 1):
+            for j in range(i + 1, grid_size):
+                res = 0.0
+
+                for k in range(dim):
+                    index_ik = index_list[i][k]
+                    index_jk = index_list[j][k]
+
+                    # basis function overlap fully
+                    if index_ik == index_jk:
+                        res += (2 ** (levelvec[k] + 1)) #* 3)
+                    # basis function do not overlap
+                    elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
+                            >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
+                        res += 0
+                        #break
+                    # basis functions overlap partly
+                    else:
+                        res += -(2 ** (levelvec[k]))# * 12)
+
+                if res == 0:
+                    self.log_util.log_debug("-" * 100)
+                    self.log_util.log_debug("Skipping calculation")
+                    self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
+                else:
+                    R[i, j] = res
+                    R[j, i] = res
+                    self.log_util.log_debug("-" * 100)
+                    self.log_util.log_debug("Calculating")
+                    self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
+                    self.log_util.log_debug("Result: {0}".format(res))
+        return R
+
+
     def build_left_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
         """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
 
@@ -2123,7 +2175,8 @@ class Regression(MachineLearning):
         m = len(self.target_values)
         x = np.dot(A.T, A)
         y = (1/m) * x
-        z = np.identity(y.shape[0])
+        z = self.build_C_matrix(levelvec)
+        #z = np.identity(y.shape[0])
 
         return y + self.regularization*z
 
