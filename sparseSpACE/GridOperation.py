@@ -2013,6 +2013,126 @@ class Regression(MachineLearning):
 
         return alphas
 
+    def calculate_C_entry(self, point_i: Sequence[float], domain_i: Sequence[Tuple[float, float]],
+                                       point_j: Sequence[float], domain_j: Sequence[Tuple[float, float]]) \
+            -> float:
+        """This method calculates the R-value between two hat functions analytically.
+
+        :param point_i: first point
+        :param point_j: second point
+        :param domain_i: domain of first point
+        :param domain_j: domain of second point
+        :return: R-value of the two hat functions.
+        """
+
+        #truth1 = all((point_i[d] == point_j[d] for d in range(self.dim)))
+        same_domain = all((domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
+        #if truth1:
+        #    print("Test")
+        #    print(truth2)
+
+        res = 0.0
+        # for all dimensions
+        for d in range(0, len(point_i)):
+
+
+            # domains do not overlap
+            if domain_i[d][1] < domain_j[d][0] or domain_j[d][1] < domain_i[d][0]:
+                res += 0
+            # domains are the same (also points i and j)
+            elif same_domain:
+                b = domain_i[d][1] - domain_i[d][0]
+                m = 1 / (point_i[d] - domain_i[d][0])
+
+                res += b * (m ** 2)
+            # partially overlapping
+            else:
+                if point_i[d] < point_j[d]:
+                    b = domain_i[d][1] - domain_j[d][0]
+                    mi = 1 / (point_i[d] - domain_i[d][0])
+                    mj = 1 / (point_j[d] - domain_j[d][0])
+                    res += -(mi*mj*b)
+                else:
+                    b = domain_j[d][1] - domain_i[d][0]
+                    mi = 1 / (point_i[d] - domain_i[d][0])
+                    mj = 1 / (point_j[d] - domain_j[d][0])
+
+                    res += -(mi * mj * b)
+
+        return res
+        """
+            if point_i[d] != point_j[d]:
+                m = 1.0 / abs(point_i[d] - point_j[d])  # slope
+                # f_2(x) = 1 - slope * (x - min(point_i[d], point_j[d])) = c - slope * x
+                a = min(point_i[d], point_j[d])  # lower end of integral
+                b = max(point_i[d], point_j[d])  # upper end of integral
+
+                # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
+                integral_calc = lambda x, m, p, q: 0.5*(m**2)*(x**2)*(p + q) - (1/3)*(m**2)*(x**3) - x*(m*p + 1)*(m*q - 1)
+                #integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
+
+                integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
+
+                res *= integral
+            else:
+                if point_i[d] != domain_i[d][0]:
+                    m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
+                    # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
+                    integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
+                    # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                else:
+                    integral_1 = lambda x, m, p: 0
+                    m1 = 0
+                if point_i[d] != domain_j[d][1]:
+                    m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
+                    # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
+                    integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
+                    # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                else:
+                    integral_2 = lambda x, m, p: 0
+                    m2 = 0
+                a = domain_i[d][0]  # lower end of first integral
+                p = point_i[d] # upper end of first integral, lower end of second integral
+                c = domain_i[d][1]  # upper end of second integral
+
+                integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (integral_2(c, m2, p) - integral_2(p, m2, p))
+
+                res *= integral
+        return res"""
+
+    def build_C_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                      grid_point_levels: Sequence[Sequence[int]]) \
+            -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
+        non-equidistant grids (usually used adaptive schemes)
+
+        :param gridPointCoordsAsStripes: d-dimensional sequence of coordinate lists. the lists include coordinates at
+                                         the domain boundary, even if there are no boundary points.
+        :param grid_point_levels: d-dimensional sequence of integer lists
+        :return: R matrix of the component grid specified by the levelvector
+        """
+        #if not self.grid.boundary:
+        #    points = get_cross_product_list([points_d[1:-1] for points_d in gridPointCoordsAsStripes])
+        #else:
+        #    points = get_cross_product_list(gridPointCoordsAsStripes)
+        points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
+        grid_size = len(points)
+
+
+        R = np.zeros((grid_size, grid_size))
+
+
+        for i in range(0, len(points)):
+            for j in range(i, len(points)):
+
+                res = self.calculate_C_entry(points[i], list(zip(lower[i], upper[i])), points[j], list(zip(lower[j], upper[j])))
+
+                R[i][j] = res
+                R[j][i] = res
+
+
+        return R
+
     def solve_regression_dimension_wise_smooth(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                                 grid_point_levels: Sequence[Sequence[int]],
                                                 component_grid: ComponentGridInfo) \
@@ -2028,7 +2148,9 @@ class Regression(MachineLearning):
 
         y = self.target_values
 
-        left_side = (1/len(y)) * np.dot(A.T, A) + self.regularization*np.identity(len(A[0]))
+        #left_side = (1/len(y)) * np.dot(A.T, A) + self.regularization*np.identity(len(A[0]))
+        left_side = (1 / len(y)) * np.dot(A.T, A) + self.regularization * self.build_C_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+
         right_side = (1/len(y)) * A.T.dot(y)
 
         alphas, res, rank, s = np.linalg.lstsq(left_side, right_side, rcond=None)
@@ -2134,7 +2256,7 @@ class Regression(MachineLearning):
 
                     # basis function overlap fully
                     if index_ik == index_jk:
-                        res += (2 ** (levelvec[k] + 1)) #* 3)
+                        res += (2 ** (levelvec[k] + 1))
                     # basis function do not overlap
                     elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
                             >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
@@ -2142,7 +2264,7 @@ class Regression(MachineLearning):
                         #break
                     # basis functions overlap partly
                     else:
-                        res += -(2 ** (levelvec[k]))# * 12)
+                        res += -(2 ** (levelvec[k]))
 
                 if res == 0:
                     self.log_util.log_debug("-" * 100)
