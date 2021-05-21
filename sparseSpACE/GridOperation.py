@@ -2029,7 +2029,7 @@ class Regression(MachineLearning):
         same_domain = all((domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
         #if truth1:
         #    print("Test")
-        #    print(truth2)
+        #    print(truth2)<
 
         res = 0.0
         # for all dimensions
@@ -2236,7 +2236,7 @@ class Regression(MachineLearning):
         :return: R matrix of the component grid specified by the levelvector
         """
         dim = len(levelvec)
-        diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
+        #diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
 
         grid_size = self.grid.get_num_points()
         R = np.zeros((grid_size, grid_size))
@@ -2244,27 +2244,51 @@ class Regression(MachineLearning):
         index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
 
 
-        R[np.diag_indices_from(R)] += (diag_val + self.lambd)
+        #R[np.diag_indices_from(R)] += (diag_val + self.lambd)
 
         for i in range(grid_size - 1):
-            for j in range(i + 1, grid_size):
+            for j in range(i, grid_size):
                 res = 0.0
 
-                for k in range(dim):
-                    index_ik = index_list[i][k]
-                    index_jk = index_list[j][k]
 
-                    # basis function overlap fully
-                    if index_ik == index_jk:
-                        res += (2 ** (levelvec[k] + 1))
-                    # basis function do not overlap
-                    elif max((index_ik - 1) * 2 ** (levelvec[k] - 1), (index_jk - 1) * 2 ** (levelvec[k] - 1)) \
-                            >= min((index_ik + 1) * 2 ** (levelvec[k] - 1), (index_jk + 1) * 2 ** (levelvec[k] - 1)):
-                        res += 0
-                        #break
-                    # basis functions overlap partly
-                    else:
-                        res += -(2 ** (levelvec[k]))
+                for k in range(dim):
+
+                    temp_res = 1.
+                    for m in range(dim):
+
+                        index_im = index_list[i][m]
+                        index_jm = index_list[j][m]
+
+                        #print(index_jm)
+                        #print(index_im)
+                        if m == k:
+                            # basis function overlap fully
+                            if index_im == index_jm:
+                                temp_res *= (2 ** (levelvec[k] + 1))
+                            # basis function do not overlap
+                            elif abs(index_jm - index_im) > 1:#max((index_im - 1) * 2 ** (levelvec[k] - 1), (index_jm - 1) * 2 ** (levelvec[k] - 1)) \
+                                  #  >= min((index_im + 1) * 2 ** (levelvec[k] - 1),
+                                   #        (index_jm + 1) * 2 ** (levelvec[k] - 1)):
+                                temp_res *= 0
+                                break
+                            # basis functions overlap partly
+                            else:
+                                temp_res *= -(2 ** (levelvec[k]))
+                        else:
+                            # basis function overlap fully
+                            if index_im == index_jm:
+                                temp_res *= 1 / (2 ** (levelvec[k] - 1) * 3)
+                            # basis function do not overlap
+                            elif abs(index_jm - index_im) > 1: #max((index_im - 1) * 2 ** (levelvec[k] - 1), (index_jm - 1) * 2 ** (levelvec[k] - 1)) \
+                                    #>= min((index_im + 1) * 2 ** (levelvec[k] - 1),
+                                     #      (index_jm + 1) * 2 ** (levelvec[k] - 1)):
+                                temp_res = 0
+                                break
+                            # basis functions overlap partly
+                            else:
+                                temp_res *= 1 / (2 ** (levelvec[k] - 1) * 12)
+
+                    res += temp_res
 
                 if res == 0:
                     self.log_util.log_debug("-" * 100)
@@ -2277,6 +2301,8 @@ class Regression(MachineLearning):
                     self.log_util.log_debug("Calculating")
                     self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
                     self.log_util.log_debug("Result: {0}".format(res))
+
+        print(R)
         return R
 
 
@@ -2290,17 +2316,12 @@ class Regression(MachineLearning):
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
 
-        m = 1
-        for i in range(len(self.grid.numPoints)):
-            m = m * self.grid.numPoints[i]
-
         m = len(self.target_values)
-        x = np.dot(A.T, A)
-        y = (1/m) * x
-        z = self.build_C_matrix(levelvec)
+        #y = (1/m) * np.dot(A.T, A)
+        #z = self.build_C_matrix(levelvec)
         #z = np.identity(y.shape[0])
 
-        return y + self.regularization*z
+        return (1/m) * np.dot(A.T, A) + self.regularization * self.build_C_matrix(levelvec)
 
     def build_right_vector(self, levelvec: Sequence[int]) -> Sequence[float]:
         """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
@@ -2311,10 +2332,6 @@ class Regression(MachineLearning):
 
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
-
-        m = 1
-        for i in range(len(self.grid.numPoints)):
-            m = m * self.grid.numPoints[i]
 
         m = len(self.target_values)
 
@@ -2349,31 +2366,13 @@ class Regression(MachineLearning):
         plt.rcParams.update({'font.size': fontsize})
         fig = plt.figure(figsize=(10, 10))
         if self.dim == 2:
-            plt.rcParams.update({'font.size': fontsize})
-
-            x, y = zip(*self.data[:, :self.dim])
-
-            fig = plt.figure(figsize=(20, 10))
-
-            X, Y = np.meshgrid(x, y, indexing="ij")
-
-            Z = np.zeros(np.shape(X))
-            f_values = self.target_values
-
-            for var in range(len(self.target_values)):
-                Z[var][var] = f_values[var]
-
-            # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
             ax = fig.add_subplot(1, 1, 1, projection='3d')
-
-            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            # TODO make colorbar look nicer
-            fig.colorbar(p, ax=ax)
-
-            plt.show()
-            # reset fontsize to default so it does not affect other figures
-            plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+            x, y = zip(*self.data[:, :self.dim])
+            ax.scatter(x, y, self.target_values, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('target values')
+            ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
 
         elif self.dim == 3:
             ax = fig.add_subplot(1, 1, 1, projection='3d')
