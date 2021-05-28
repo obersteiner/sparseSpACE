@@ -753,6 +753,54 @@ class DataSet:
         return fig
 
 
+class DataSetRegression(DataSet):
+    """DataSet class with same behavior as super class but with adapted plot method
+       for better visualization of Regression data sets
+    """
+
+    def plot(self, plot_labels: bool = True, filename: str = None) -> plt.Figure:
+        """Plot DataSet.
+
+        Plotting is only available for dimensions 2 and 3.
+
+        :param plot_labels: Optional. Conditional parameter, which indicates whether labels should be coloured for plotting.
+        :param filename: Optional. pass a filename (e.g. /path/to/folder/myPlot.png) to save the figure
+        :return: Figure, which is plotted.
+        """
+        plt.rc('font', size=30)
+        plt.rc('axes', titlesize=40)
+        plt.rc('figure', figsize=(12.0, 12.0))
+        fig = plt.figure()
+
+        if self._dim == 2:
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            x, y = zip(*self.get_data()[0][:, :self._dim])
+            ax.scatter(x, y, self.get_data()[1], s=125)
+            ax.set_xlabel('x0')
+            ax.set_ylabel('x1')
+            ax.set_zlabel('target values')
+            ax.set_title("#points = %d" % len(self.get_data()[0][:, :self._dim]))
+        elif self._dim == 1:
+            mydata = np.zeros((len(self.get_data()[0]), 2))
+            for i in range(len(mydata)):
+                mydata[i][0] = self.get_data[0][i][0]
+                mydata[i][1] = self.get_data[1][i]
+            ax = fig.add_subplot(1, 1, 1)
+            x, y = zip(*mydata[:, :self.dim + 1])
+            ax.scatter(x, y, s=125)
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_title("#points = %d" % len(mydata[:, :self.dim + 1]))
+        else:
+            warnings.formatwarning = lambda msg, ctg, fname, lineno, file=None, line=None: "%s:%s: %s: %s\n" % (fname, lineno, ctg.__name__, msg)
+            warnings.warn("Invalid dimension for plotting. Couldn't plot DataSet.", stacklevel=3)
+
+        if filename is not None:
+            plt.savefig(filename+".pdf", bbox_inches='tight')
+        plt.show()
+        return fig
+
+
 class Classification:
     """Type of objects, that classify data based on some previously performed learning.
     """
