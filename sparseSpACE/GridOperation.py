@@ -1825,7 +1825,7 @@ class DensityEstimation(MachineLearning):
 
 
 class Regression(MachineLearning):
-    def __init__(self, data, target_values: Sequence[float], regularization, dim, grid=None, masslumping: bool = False, print_output: bool = False,
+    def __init__(self, data, target_values: Sequence[float], regularization, dim, regularization_matrix=0, grid=None, masslumping: bool = False, print_output: bool = False,
                  lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
                  numeric_calculation: bool = False, pre_scaled_data: bool = False,
                  log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, debug: bool=False):
@@ -1857,6 +1857,12 @@ class Regression(MachineLearning):
         else:
             self.validation_set_size = validation_set_size
         self.dim = dim
+        # 0 -> C, I otherwise
+        self.regularization_matrix = regularization_matrix
+        if regularization_matrix == 0:
+            print("Matrix used: C")
+        else:
+            print("Matrix used: I")
         # TODO currently only running without boundary points
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
@@ -2024,12 +2030,7 @@ class Regression(MachineLearning):
         :param domain_j: domain of second point
         :return: R-value of the two hat functions.
         """
-
-        #truth1 = all((point_i[d] == point_j[d] for d in range(self.dim)))
         same_domain = all((domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
-        #if truth1:
-        #    print("Test")
-        #    print(truth2)<
 
         res = 0.0
         # for all dimensions
@@ -2060,45 +2061,6 @@ class Regression(MachineLearning):
                     res += -(mi * mj * b)
 
         return res
-        """
-            if point_i[d] != point_j[d]:
-                m = 1.0 / abs(point_i[d] - point_j[d])  # slope
-                # f_2(x) = 1 - slope * (x - min(point_i[d], point_j[d])) = c - slope * x
-                a = min(point_i[d], point_j[d])  # lower end of integral
-                b = max(point_i[d], point_j[d])  # upper end of integral
-
-                # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
-                integral_calc = lambda x, m, p, q: 0.5*(m**2)*(x**2)*(p + q) - (1/3)*(m**2)*(x**3) - x*(m*p + 1)*(m*q - 1)
-                #integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
-
-                integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
-
-                res *= integral
-            else:
-                if point_i[d] != domain_i[d][0]:
-                    m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
-                    # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
-                    integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
-                    # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
-                else:
-                    integral_1 = lambda x, m, p: 0
-                    m1 = 0
-                if point_i[d] != domain_j[d][1]:
-                    m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
-                    # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
-                    integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
-                    # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
-                else:
-                    integral_2 = lambda x, m, p: 0
-                    m2 = 0
-                a = domain_i[d][0]  # lower end of first integral
-                p = point_i[d] # upper end of first integral, lower end of second integral
-                c = domain_i[d][1]  # upper end of second integral
-
-                integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (integral_2(c, m2, p) - integral_2(p, m2, p))
-
-                res *= integral
-        return res"""
 
     def build_C_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                       grid_point_levels: Sequence[Sequence[int]]) \
@@ -2111,27 +2073,102 @@ class Regression(MachineLearning):
         :param grid_point_levels: d-dimensional sequence of integer lists
         :return: R matrix of the component grid specified by the levelvector
         """
-        #if not self.grid.boundary:
-        #    points = get_cross_product_list([points_d[1:-1] for points_d in gridPointCoordsAsStripes])
-        #else:
-        #    points = get_cross_product_list(gridPointCoordsAsStripes)
+
         points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
         grid_size = len(points)
 
-
-        R = np.zeros((grid_size, grid_size))
-
+        C = np.zeros((grid_size, grid_size))
 
         for i in range(0, len(points)):
             for j in range(i, len(points)):
 
-                res = self.calculate_C_entry(points[i], list(zip(lower[i], upper[i])), points[j], list(zip(lower[j], upper[j])))
+                point_i = points[i]
+                domain_i = list(zip(lower[i], upper[i]))
+                point_j = points[j]
+                domain_j = list(zip(lower[j], upper[j]))
 
-                R[i][j] = res
-                R[j][i] = res
+                same_domain = all((domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
+
+                res = 0.0
+
+                # for all dimensions
+                for d in range(0, len(point_i)):
+                    temp_res = 1.0
+
+                    for n in range(0, len(point_i)):
+                        if n == d:
+                            # domains do not overlap
+                            if domain_i[d][1] < domain_j[d][0] or domain_j[d][1] < domain_i[d][0]:
+                                temp_res *= 0
+                            # domains are the same (also points i and j)
+                            elif same_domain or point_i[d] == point_j[d]:
+                                b1 = point_i[d] - domain_i[d][0]
+                                m1 = 1 / b1
+
+                                b2 = domain_i[d][1] - point_i[d]
+                                m2 = 1 / b2
+
+                                temp_res *= b1 * m1**2 + b2 * m2**2
+
+                            # partially overlapping
+                            else:
+                                if point_i[d] < point_j[d]:
+                                    b = point_j[d] - point_i[d]
+                                    m = 1 / (point_j[d] - point_i[d])
+                                    temp_res *= -(m * m * b)
+                                else:
+                                    b = point_i[d] - point_j[d]
+                                    m = 1 / (point_i[d] - point_j[d])
+
+                                    temp_res *= -(m * m * b)
+                        else:
+                            if point_i[d] != point_j[d]:
+                                m = 1.0 / abs(point_i[d] - point_j[d])  # slope
+                                # f_2(x) = 1 - slope * (x - min(point_i[d], point_j[d])) = c - slope * x
+                                a = min(point_i[d], point_j[d])  # lower end of integral
+                                b = max(point_i[d], point_j[d])  # upper end of integral
+
+                                # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
+                                integral_calc = lambda x, m, p, q: 0.5 * (m ** 2) * (x ** 2) * (p + q) - (1 / 3) * (
+                                            m ** 2) * (x ** 3) - x * (m * p + 1) * (m * q - 1)
+                                # integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
+
+                                integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
+
+                                temp_res *= integral
+                            else:
+                                if point_i[d] != domain_i[d][0]:
+                                    m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
+                                    # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
+                                    integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
+                                    # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                                else:
+                                    integral_1 = lambda x, m, p: 0
+                                    m1 = 0
+                                if point_i[d] != domain_j[d][1]:
+                                    m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
+                                    # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
+                                    integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
+                                    # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                                else:
+                                    integral_2 = lambda x, m, p: 0
+                                    m2 = 0
+                                a = domain_i[d][0]  # lower end of first integral
+                                p = point_i[d]  # upper end of first integral, lower end of second integral
+                                c = domain_i[d][1]  # upper end of second integral
+
+                                integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (
+                                            integral_2(c, m2, p) - integral_2(p, m2, p))
+
+                            temp_res *= integral
 
 
-        return R
+                    res += temp_res
+
+                C[i][j] = res
+                C[j][i] = res
+
+        return C
 
     def solve_regression_dimension_wise_smooth(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                                 grid_point_levels: Sequence[Sequence[int]],
@@ -2148,11 +2185,12 @@ class Regression(MachineLearning):
 
         y = self.target_values
 
-        #left_side = (1/len(y)) * np.dot(A.T, A) + self.regularization*np.identity(len(A[0]))
-        left_side = (1 / len(y)) * np.dot(A.T, A) + self.regularization * self.build_C_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+        if self.regularization_matrix == 0:
+            left_side = (1 / len(y)) * np.dot(A.T, A) + self.regularization * self.build_C_matrix_dimension_wise(gridPointCoordsAsStripes, grid_point_levels)
+        else:
+            left_side = (1 / len(y)) * np.dot(A.T, A) + self.regularization * np.identity(len(A[0]))
 
         right_side = (1/len(y)) * A.T.dot(y)
-
         alphas, res, rank, s = np.linalg.lstsq(left_side, right_side, rcond=None)
 
         return alphas
@@ -2236,20 +2274,15 @@ class Regression(MachineLearning):
         :return: R matrix of the component grid specified by the levelvector
         """
         dim = len(levelvec)
-        #diag_val = np.prod([1 / (2 ** (levelvec[k] - 1) * 3) for k in range(dim)])
 
         grid_size = self.grid.get_num_points()
-        R = np.zeros((grid_size, grid_size))
+        C = np.zeros((grid_size, grid_size))
 
         index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
-
-
-        #R[np.diag_indices_from(R)] += (diag_val + self.lambd)
 
         for i in range(grid_size - 1):
             for j in range(i, grid_size):
                 res = 0.0
-
 
                 for k in range(dim):
 
@@ -2259,29 +2292,25 @@ class Regression(MachineLearning):
                         index_im = index_list[i][m]
                         index_jm = index_list[j][m]
 
-                        #print(index_jm)
-                        #print(index_im)
                         if m == k:
+
                             # basis function overlap fully
                             if index_im == index_jm:
                                 temp_res *= (2 ** (levelvec[k] + 1))
                             # basis function do not overlap
-                            elif abs(index_jm - index_im) > 1:#max((index_im - 1) * 2 ** (levelvec[k] - 1), (index_jm - 1) * 2 ** (levelvec[k] - 1)) \
-                                  #  >= min((index_im + 1) * 2 ** (levelvec[k] - 1),
-                                   #        (index_jm + 1) * 2 ** (levelvec[k] - 1)):
-                                temp_res *= 0
+                            elif abs(index_jm - index_im) > 1:
+                                temp_res = 0
                                 break
                             # basis functions overlap partly
                             else:
                                 temp_res *= -(2 ** (levelvec[k]))
+
                         else:
                             # basis function overlap fully
                             if index_im == index_jm:
                                 temp_res *= 1 / (2 ** (levelvec[k] - 1) * 3)
                             # basis function do not overlap
-                            elif abs(index_jm - index_im) > 1: #max((index_im - 1) * 2 ** (levelvec[k] - 1), (index_jm - 1) * 2 ** (levelvec[k] - 1)) \
-                                    #>= min((index_im + 1) * 2 ** (levelvec[k] - 1),
-                                     #      (index_jm + 1) * 2 ** (levelvec[k] - 1)):
+                            elif abs(index_jm - index_im) > 1:
                                 temp_res = 0
                                 break
                             # basis functions overlap partly
@@ -2295,39 +2324,38 @@ class Regression(MachineLearning):
                     self.log_util.log_debug("Skipping calculation")
                     self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
                 else:
-                    R[i, j] = res
-                    R[j, i] = res
+                    C[i, j] = res
+                    C[j, i] = res
                     self.log_util.log_debug("-" * 100)
                     self.log_util.log_debug("Calculating")
                     self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
                     self.log_util.log_debug("Result: {0}".format(res))
 
-        print(R)
-        return R
+        return C
 
 
     def build_left_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        """This method constructs the matrix of the left side of the equation
 
         :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid specified by the levelvector
+        :return: matrix of the left side of the equation
         """
 
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
         A = self.hat_function_in_support_completely_vectorized(hats, np.array(levelvec, dtype=int), self.data)
 
         m = len(self.target_values)
-        #y = (1/m) * np.dot(A.T, A)
-        #z = self.build_C_matrix(levelvec)
-        #z = np.identity(y.shape[0])
 
-        return (1/m) * np.dot(A.T, A) + self.regularization * self.build_C_matrix(levelvec)
+        if self.regularization_matrix == 0:
+            return (1/m) * np.dot(A.T, A) + self.regularization * self.build_C_matrix(levelvec)
+        else:
+            return (1/m) * np.dot(A.T, A) + self.regularization * np.identity(A[0].shape[0])
 
     def build_right_vector(self, levelvec: Sequence[int]) -> Sequence[float]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        """This method constructs the right vector of the equation
 
         :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid specified by the levelvector
+        :return: right vector of the equation
         """
 
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
@@ -2369,8 +2397,8 @@ class Regression(MachineLearning):
             ax = fig.add_subplot(1, 1, 1, projection='3d')
             x, y = zip(*self.data[:, :self.dim])
             ax.scatter(x, y, self.target_values, s=125)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
+            ax.set_xlabel('x0')
+            ax.set_ylabel('x1')
             ax.set_zlabel('target values')
             ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
 
