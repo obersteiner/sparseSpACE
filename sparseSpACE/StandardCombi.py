@@ -259,7 +259,12 @@ class StandardCombi(object):
         return numpoints
 
     # prints every single component grid of the combination and orders them according to levels
-    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border: bool=True, linewidth: float=2.0, show_levelvec: bool=True, show_coefficient: bool=False, fontsize: int=40, figsize: float=10, fill_boundary_points: bool=False, consider_not_null: bool=False, operation: GridOperation=None, add_complete_full_grid_space: bool=False):
+    def print_resulting_combi_scheme(self, filename: str=None, add_refinement: bool=True, ticks: bool=True,
+                                     markersize: int=20, show_border: bool=True, linewidth: float=2.0,
+                                     show_levelvec: bool=True, show_coefficient: bool=False, fontsize: int=40,
+                                     figsize: float=10, fill_boundary_points: bool=False, consider_not_null: bool=False,
+                                     operation: GridOperation=None, add_complete_full_grid_space: bool=False,
+                                     show_nodal_basis=False, fade_full_grid: bool=True):
         """This method plots the the combination scheme including the points and maybe additional refinement structures.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -282,6 +287,15 @@ class StandardCombi(object):
             return None
         ncols = self.lmax[0] - self.lmin[0] + 1
         nrows = self.lmax[1] - self.lmin[1] + 1
+
+        # Increment for indexing when nodal basis plot is enabled
+        inc = 0
+
+        if show_nodal_basis:
+            ncols += 1
+            nrows += 1
+            inc = 1
+
         fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
             # spine = axis.spines.values()
@@ -303,8 +317,8 @@ class StandardCombi(object):
                 operation.plot_component_grid(scheme[0], ax)
         else:
 
-            for i in range(lmax[0] - lmin[0] + 1):
-                for j in range(lmax[1] - lmin[1] + 1):
+            for i in range(inc + lmax[0] - lmin[0] + 1):
+                for j in range(inc + lmax[1] - lmin[1] + 1):
                     ax[j, i].axis('off')
             if add_complete_full_grid_space:
                 combischeme_full = CombiScheme(self.dim)
@@ -314,9 +328,10 @@ class StandardCombi(object):
                     component_grids_full.append(ComponentGridInfo(levelvector, 0))
                 scheme = component_grids_full + scheme
             for component_grid in scheme:
-                grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), (component_grid.levelvector[0] - lmin[0])]
+                grid = ax[lmax[1] - lmin[1] - (component_grid.levelvector[1] - lmin[1]), inc + (component_grid.levelvector[0] - lmin[0])]
                 self.plot_points_component_grid(component_grid, consider_not_null, fill_boundary_points, grid,
-                                                linewidth, markersize, operation, show_border, ticks)
+                                                linewidth, markersize, operation, show_border, ticks,
+                                                fade_full_grid=fade_full_grid)
                 if show_levelvec:
                     grid.set_title(str(tuple(component_grid.levelvector)))
                 if component_grid.coefficient != 0:
@@ -330,12 +345,37 @@ class StandardCombi(object):
                 #    grid.spines[axis].set_visible(False)
                 if operation is not None:
                     operation.plot_component_grid(self, component_grid, grid)
-            if True:
-                self.plot_outer_axis(fig, linewidth)
+
+                if show_nodal_basis:
+                    if (component_grid.levelvector[1] == 1):
+                        points_1d = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
+                        points = points_1d[0][0]
+                        nodal_ax = ax[lmax[0], component_grid.levelvector[0]]
+
+                        for i in range(1, len(points) - 1):
+                            nodal_ax.plot([points[i-1], points[i], points[i+1]], [0,1,0])
+
+                        # Boundary functions
+                        nodal_ax.plot([points[0], points[1]], [1,0], color="dimgrey", linestyle=':')
+                        nodal_ax.plot([points[-2], points[-1]], [0,1], color="grey", linestyle='--')
+
+                    if (component_grid.levelvector[0] == 1):
+                        points_1d = self.get_points_component_grid_1D_arrays(component_grid.levelvector)
+                        points = points_1d[0][1]
+                        nodal_ax = ax[lmax[1] - component_grid.levelvector[1], 0]
+
+                        for i in range(1, len(points) - 1):
+                            nodal_ax.plot([0, 1, 0], [points[i-1], points[i], points[i+1]])
+
+                        # Boundary functions
+                        nodal_ax.plot([1, 0], [points[0], points[1]], color="dimgrey", linestyle=':')
+                        nodal_ax.plot([0, 1], [points[-2], points[-1]], color="grey", linestyle='--')
+
+            self.plot_outer_axis(fig, linewidth)
 
         if filename is not None:
-            plt.savefig(filename)
-        fig.set_tight_layout(False)
+            plt.savefig(filename, bbox_inches='tight')
+
         plt.show()
         # reset fontsize to default so it does not affect other figures
         #plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
@@ -375,7 +415,7 @@ class StandardCombi(object):
                      length_includes_head=True, clip_on=False)
 
     def plot_points_component_grid(self, component_grid, consider_not_null, fill_boundary_points, grid, linewidth,
-                                   markersize, operation, show_border, ticks):
+                                   markersize, operation, show_border, ticks, fade_full_grid=False):
         points = self.get_points_component_grid(component_grid.levelvector)
         points_not_null = self.get_points_component_grid_not_null(component_grid.levelvector)
         x_array = [p[0] for p in points]
@@ -405,13 +445,18 @@ class StandardCombi(object):
             offsety = 0.04 * (self.b[1] - self.a[1])
             grid.set_xlim([self.a[0] - offsetx, self.b[0] + offsetx])
             grid.set_ylim([self.a[1] - offsety, self.b[1] + offsety])
+
+        color = 'black'
+        if component_grid.coefficient == 0 and fade_full_grid:
+            color = 'lightgrey'
+
         if consider_not_null:
             self.plot_points(points=points, grid=grid, markersize=markersize, color="red",
                              fill_boundary=fill_boundary_points)
-            self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color="black",
+            self.plot_points(points=points_not_null, grid=grid, markersize=markersize, color=color,
                              fill_boundary=fill_boundary_points)
         else:
-            self.plot_points(points=points, grid=grid, markersize=markersize, color="black",
+            self.plot_points(points=points, grid=grid, markersize=markersize, color=color,
                              fill_boundary=fill_boundary_points)
         grid.spines['top'].set_visible(False)
         grid.spines['right'].set_visible(False)
@@ -435,7 +480,11 @@ class StandardCombi(object):
         if not ticks:
             grid.axis('off')
 
-    def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20, show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40, figsize: float=10, sparse_grid_spaces: bool=True, fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False):
+    def print_subspaces(self, filename: str=None, add_refinement: bool=True, ticks: bool=True, markersize: int=20,
+                        show_border=True, linewidth: float=2.0, show_levelvec: bool=True, fontsize: int=40,
+                        figsize: float=10, sparse_grid_spaces: bool=True,
+                        fade_full_grid: bool=True, fill_boundary_points=False, consider_not_null: bool=False,
+                        show_hierarchical_basis: bool=False):
         """This method plots the the subspaces of the generated sparse grid. It might not plot them exactly for adaptive sparse grids.
 
         :param filename: If set the plot will be set to the specified filename.
@@ -461,7 +510,14 @@ class StandardCombi(object):
         if dim != 2:
             self.log_util.log_warning("Cannot print combischeme of dimension > 2")
             return None
-        fig, ax = plt.subplots(ncols=self.lmax[0] - self.lmin[0] + 1, nrows=self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
+
+        # Increment for indexing when nodal basis plot is enabled
+        inc = 0
+
+        if show_hierarchical_basis:
+            inc = 1
+
+        fig, ax = plt.subplots(ncols=inc + self.lmax[0] - self.lmin[0] + 1, nrows= inc + self.lmax[1] - self.lmin[1] + 1, figsize=(figsize*self.lmax[0], figsize*self.lmax[1]))
         # for axis in ax:
         #    spine = axis.spines.values()
         #    spine.set_visible(False)
@@ -514,8 +570,8 @@ class StandardCombi(object):
                 self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
         else:
 
-            for i in range(lmax[0] - lmin[0] + 1):
-                for j in range(lmax[1] - lmin[1] + 1):
+            for i in range(inc + lmax[0] - lmin[0] + 1):
+                for j in range(inc + lmax[1] - lmin[1] + 1):
                     ax[j, i].axis('off')
             if sparse_grid_spaces:
                 if self.combischeme.initialized_adaptive:
@@ -534,7 +590,7 @@ class StandardCombi(object):
                 y_array = [p[1] for p in points]
                 x_array_not_null = [[p[0] for p in points_not_null]]
                 y_array_not_null = [[p[1] for p in points_not_null]]
-                grid = ax[lmax[1] - lmin[1] - (levelvector[1] - lmin[1]), (levelvector[0] - lmin[0])]
+                grid = ax[lmax[1] - lmin[1] - (levelvector[1] - lmin[1]), inc + (levelvector[0] - lmin[0])]
                 grid.axis('on')
                 for axdir in ("x", "y"):
                     grid.tick_params(axis=axdir, labelcolor='#345040')
@@ -604,34 +660,47 @@ class StandardCombi(object):
                 if add_refinement:
                     self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
 
-                if True:
-                    #fig, overax = plt.subplots()
-                    #overax = SubplotZero(fig, 111)
-                    #fig.add_subplot(overax)
+                # Plot hierarchical basis
+                if show_hierarchical_basis:
+                    if (levelvector[1] == 1):
+                        points_x = list(set(map(lambda point: point[0], points)))
+                        points_x.sort()
+                        nodal_ax = ax[lmax[0], levelvector[0]]
+                        points_list = self.get_points_component_grid_1D_arrays(levelvector)[0][0].tolist()
 
-                    overax = fig.add_axes([0.1,0.1,0.8,0.8])
-                    overax.patch.set_alpha(0)
-                    #overax.axis('off')
-                    #overax.set_xticks(np.linspace(0.5/(ncols+1),1 - 0.5/(ncols+1), ncols), range(self.lmin[0], self.lmax[0]+1))
-                    #overax.set_yticks(np.linspace(0.5/(nrows+1),1 - 0.5/(nrows+1), nrows), range(self.lmin[1], self.lmax[1]+1))
-                    overax.set_xticks([],[])
-                    overax.set_yticks([],[])
-                    overax.set_xlabel("$l_1$")
-                    overax.set_ylabel("$l_2$")
-                    #plt.rcParams['axes.linewidth'] = 1
-                    for direction in ["left", "bottom"]:
-                        # adds arrows at the ends of each axis
-                        #overax.spines[direction].set_axisline_style("-|>")
+                        # TOD Fix plotting of hierarchical basis
+                        for i in range(1, len(points_list), 2):
+                            nodal_ax.plot([
+                                points_list[i-1],
+                                points_list[i],
+                                points_list[i+1]
+                            ], [0,1,0])
 
-                        # adds X and Y-axis from the origin
-                        overax.spines[direction].set_visible(True)
-                    for direction in ["right", "top"]:
-                        # hides borders
-                        overax.spines[direction].set_visible(False)
-                    overax.arrow(0, 0, 0., 1, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
-                    length_includes_head= True, clip_on = False)
-                    overax.arrow(0, 0, 1, 0.0, fc='k', ec='k', lw = linewidth, head_width=linewidth/100, head_length=linewidth/100, overhang = 0.3,
-                    length_includes_head= True, clip_on = False)
+                        # Boundary functions
+                        if (levelvector[0] == 1):
+                            nodal_ax.plot([points_x[0], points_x[-1]], [0,1], color="grey", linestyle='--')
+                            nodal_ax.plot([points_x[0], points_x[-1]], [1,0], color="grey", linestyle='--')
+
+                    if (levelvector[0] == 1):
+                        points_y = list(set(map(lambda point: point[1], points)))
+                        points_y.sort()
+                        nodal_ax = ax[lmax[1] - levelvector[1], 0]
+                        points_list = self.get_points_component_grid_1D_arrays(levelvector)[0][1].tolist()
+
+                        for i in range(1, len(points_list), 2):
+                            nodal_ax.plot([0,1,0], [
+                                points_list[i-1],
+                                points_list[i],
+                                points_list[i+1]
+                            ])
+
+                        # Boundary functions
+                        if (levelvector[1] == 1):
+                            nodal_ax.plot([0,1], [points_y[0], points_y[-1]], color="grey", linestyle='--')
+                            nodal_ax.plot([1,0], [points_y[0], points_y[-1]], color="grey", linestyle='--')
+
+            # TODO: check if that exchange is okay?
+            self.plot_outer_axis(fig, linewidth)
 
 
                 # for axis in ['top', 'bottom', 'left', 'right']:
@@ -640,8 +709,10 @@ class StandardCombi(object):
         # ax1.set_ylim([self.lmin[1] - 0.5, self.lmax[1] + 0.5])
         # ax1.set_xlim([self.lmin[0] - 0.5, self.lmax[0] + 0.5])
         #plt.tight_layout()
+
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
+
         plt.show()
         plt.rcdefaults()
         return fig
