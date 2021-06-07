@@ -11,7 +11,6 @@ from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *  # For reference solution calculation
 from bisect import bisect_left
 
-from sparseSpACE.StandardCombi import StandardCombi
 from sparseSpACE.Utils import *
 import time
 import sys
@@ -1872,6 +1871,7 @@ class Regression(MachineLearning):
         self.reference_solution = None
         self.debug = debug
         self.scaled = False
+        self.classes = None
         self.reuse_old_values = False
         self.dimension_wise = False
         self.print_output = print_output
@@ -1891,7 +1891,9 @@ class Regression(MachineLearning):
         dataSet.scale_range(rangee)
         self.data, self.target_values = dataSet.get_data()[0], dataSet.get_data()[1]
 
-    def train(self, percentage_of_testdata, minimum_level, maximum_level) -> StandardCombi:
+    def train(self, percentage_of_testdata, minimum_level, maximum_level):
+        from sparseSpACE.StandardCombi import StandardCombi
+
         self.data, self.test_data, self.target_values, self.test_target_values = sklearn.model_selection.train_test_split(self.data, self.target_values, test_size=percentage_of_testdata)
 
         a = np.zeros(self.dim)
@@ -1903,7 +1905,36 @@ class Regression(MachineLearning):
 
         return combiObject
 
-    def test(self, combiObject: StandardCombi):
+    def train_spatially_adaptive(self, percentage_of_testdata, margin, tolerance, max_evaluations):
+        from sparseSpACE.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
+        from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
+
+        self.data, self.test_data, self.target_values, self.test_target_values = sklearn.model_selection.train_test_split(self.data, self.target_values, test_size=percentage_of_testdata)
+
+        a = np.zeros(self.dim)
+        b = np.ones(self.dim)
+
+        errorOperator = ErrorCalculatorSingleDimVolumeGuided()
+
+        self.grid = GlobalTrapezoidalGrid(a=a, b=b, modified_basis=False, boundary=False)
+
+        a = np.zeros(self.dim)
+        b = np.ones(self.dim)
+
+        adaptiveCombiInstanceSingleDim = SpatiallyAdaptiveSingleDimensions2(np.ones(self.dim) * a, np.ones(self.dim) * b,
+                                                                            margin=margin, operation=self,
+                                                                            rebalancing=False)
+
+        adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator, tolerance, do_plot=False, max_evaluations=max_evaluations)
+
+        return adaptiveCombiInstanceSingleDim
+
+    def test_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        learned_targets = adaptiveCombiInstanceSingleDim(self.test_data)
+
+        return sklearn.metrics.mean_squared_error(self.test_target_values, learned_targets)
+
+    def test(self, combiObject):
         learned_targets = combiObject(self.test_data)
 
         return sklearn.metrics.mean_squared_error(self.test_target_values, learned_targets)
