@@ -1,19 +1,10 @@
 import sparseSpACE.DEMachineLearning as deml
+import numpy
+import scipy
+import math
 
-#print("I am working!")
-
-#Basically copied code from Tutorial_DEMachineLearning
-#prepare Dataset
-samples = 500
-dimension = 2
-labels = 6
-#vllt anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
-#gaussian quantiles, classification.. kann man einstellen
-sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
-data = deml.DataSet(sklearn_dataset, name='Input_Set')
-data_moons = data.copy()
-data_moons.set_name('Moon_Set')
-def perform_optimization_grid_simple():
+#performs Grid Optimization
+def perform_GO_classification(data):
 	#sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15)
 	#data = deml.DataSet(sklearn_dataset, name='Input_Set')
 	#for storing the current best evaluation and time
@@ -58,13 +49,48 @@ def perform_optimization_grid_simple():
 					print ("END OF CURRENT EVALUATION \n")
 	print("In the end, best evaluation is " + str(best_evaluation)  + " with masslump = " + str (best_masslump) + ", lamb = " + str(best_lambd) + ", min_level = " + str(best_min_lv) + ", one_vs_others = " + str(best_one_vs_others) + " and time = " + str(best_time))
 
-def perform_optimization_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
+#returns evaluation for certain Parameters on a certain data set
+def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 	classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
 	evaluation = classification.evaluate()
 	print("Percentage of correct mappings",evaluation["Percentage correct"])
+	return evaluation["Percentage correct"]
 
+#TODO: will perform Bayesian Optimization; Inputs are the data, amount of iterations(amt_it)
+def perform_BO_classification(data, amt_it: int):
+	print("I should do Bayesian Optimization for " + str(amt_it) + " iteration!")
+	#dummy value for beta
+	beta = 0.5
+	#use squared exp. kernel as covariance function, with parameters sigma_k and l_k
+	sigma_k = 1
+	l_k = 0.5
+	k = lambda x: x
+	mu = lambda x: x**2+4
+	sigma = lambda x: x**2
+	alpha = lambda x: mu(x)+(beta**(0.5))*sigma(x)
+	for i in range (0, amt_it, 1):
+		beta = get_beta(i)
+		print("beta: " + str(beta) + " mu(x): " + str(mu(2)) + " sigma(x): " + str(sigma(2)))
+		print(alpha(2))
 
-perform_optimization_at(data_moons, 0.0, False, 1, False)
-#perform_optimization_grid_simple()
+#TODO: will calculate and return current beta
+def get_beta(cur_it: int):
+	beta = cur_it/2
+	return beta
+
+#print("I am working!")
+
+#Basically copied code from Tutorial_DEMachineLearning
+#prepare Dataset
+samples = 500
+dimension = 2
+labels = 6
+#vllt anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
+#gaussian quantiles, classification.. kann man einstellen
+sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
+data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
+data_moons = data1.copy()
+data_moons.set_name('Moon_Set')
+perform_BO_classification(data_moons, 5)
 #print("I was working!")
