@@ -41,6 +41,8 @@ class StandardCombi(object):
         # for compatibility with old code
         if print_output is True and print_level == print_levels.NONE:
             self.log_util.set_print_level(print_levels.INFO)
+
+        self.time_used = 0.0
         self.log_util.set_print_prefix('StandardCombi')
         self.log_util.set_log_prefix('StandardCombi')
 
@@ -73,6 +75,9 @@ class StandardCombi(object):
         """
         return self.operation.interpolate_points_component_grid(component_grid, mesh_points_grid=None,
                                                  evaluation_points=interpolation_points)
+
+    def get_time_used(self):
+        return self.time_used
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation grid using the Combination Technique.
@@ -246,7 +251,8 @@ class StandardCombi(object):
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        self.log_util.log_info("Time used (s):" + str(time.perf_counter() - start_time))
+        self.time_used = time.perf_counter() - start_time
+        self.log_util.log_info("Time used (s):" + str(self.time_used))
         self.log_util.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:

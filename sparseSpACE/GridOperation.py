@@ -1,3 +1,4 @@
+import sklearn
 from numpy import linalg as LA
 from math import isclose, isinf
 from sparseSpACE.Grid import *
@@ -9,6 +10,8 @@ import scipy.stats as sps
 from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *  # For reference solution calculation
 from bisect import bisect_left
+
+from sparseSpACE.StandardCombi import StandardCombi
 from sparseSpACE.Utils import *
 import time
 import sys
@@ -1825,68 +1828,51 @@ class DensityEstimation(MachineLearning):
 
 
 class Regression(MachineLearning):
-    def __init__(self, data, target_values: Sequence[float], regularization, dim, regularization_matrix=0, grid=None, masslumping: bool = False, print_output: bool = False,
-                 lambd: float = 0.0, classes = None, validation_set_size: float = 0.20, reuse_old_values: bool = False,
-                 numeric_calculation: bool = False, pre_scaled_data: bool = False,
+    def __init__(self, data, target_values: Sequence[float], regularization, regularization_matrix='C', rangee=[0.05, 0.95], grid=None, print_output: bool = False,
                  log_level: int = log_levels.INFO, print_level: int = print_levels.INFO, debug: bool=False):
         """Constructor of the Regression class
 
         :param data: the data set on which desity estimation is to be performed
         :param target_values: the target_values of the data points
+        :param regularization: parameter lambda
         :param dim: the dimensionality of the data
+        :param regularization_matrix: indicates which matrix to use (C or I)
+        :param rangee: range where the data will be scales to
         :param grid: the grid type (e.g. Trapezoidal)
-        :param masslumping: if true, only the diagonals of the R-matrix will be calculated
         :param print_output: print to console
-        :param lambd:
-        :param classes: set of class labels for each data point. labels must be in the set {[0.0, 1.0], [0.0, -1.0]}; only two labels allowed
-        :param validation_set_size: the size of the validation set; must be between [0.0, 1.0]
-        :param reuse_old_values: if true, old b-vector and R-matrix values will be reused
-        :param numeric_calculation: use numeric calculation instead of analytic
-        :param pre_scaled_data: if true, data will not be scaled during initialization
         :param log_level: Set the log level. Only statements of the given level or higher will be written to the log file
         :param print_level: Set the level for print statements. Only statements of the given level or higher will be written to the console
         """
+        if(len(data) == 0):
+            raise Exception("Data must not be empty!")
+        if (len(data) != len(target_values)):
+            raise Exception("Data and targets must have the same length!")
         self.data = data
         self.target_values = target_values
+        self.test_data = None
+        self.test_target_values = None
         self.regularization = regularization
-        self.validation_set = None
-        self.validation_classes = None
-        self.use_complete_validation = True
-        if self.use_complete_validation:
-            self.validation_set_size = 1
-        else:
-            self.validation_set_size = validation_set_size
-        self.dim = dim
+        self.dim = len(self.data[0])
         # 0 -> C, I otherwise
         self.regularization_matrix = regularization_matrix
-        if regularization_matrix == 0:
+        if regularization_matrix == 'C':
             print("Matrix used: C")
-        else:
+        elif regularization_matrix == 'I':
             print("Matrix used: I")
+        else:
+            raise Exception("No valid matrix specified! Possible options: C or I")
         # TODO currently only running without boundary points
         if grid is None:
             self.grid = TrapezoidalGrid(a=np.zeros(self.dim), b=np.ones(self.dim), boundary=False)
         else:
             self.grid = grid
-        self.lambd = lambd
-        self.masslumping = masslumping
         self.surpluses = {}
         self.initialized = False
-        self.scaled = pre_scaled_data
         self.extrema = None
         self.reference_solution = None
         self.debug = debug
-        self.classes = classes
-        self.reuse_old_values = reuse_old_values
-        self.old_R = {}  # for reuse_old_values
-        self.old_B = {}  # for reuse_old_values
-        self.new_B = {}  # for reuse_old_values
-        self.old_grid_coord = {}  # for reuse_old_values; keys are a list of the max levels for each dimension
-        self.new_grid_coord = {}
-        self.sorted_data = []  # for reuse_old_values; keys are the dimensions
-        self.data_bins = [{} for d in range(dim)]
-        self.max_levels = []
-        self.numeric_calculation = numeric_calculation
+        self.scaled = False
+        self.reuse_old_values = False
         self.dimension_wise = False
         self.print_output = print_output
         self.log_util = LogUtility(log_level=log_level, print_level=print_level)
@@ -1897,6 +1883,30 @@ class Regression(MachineLearning):
             self.log_util.log_debug('DensityEstimation debug: {0}'.format(self.debug))
         self.log_util.set_print_prefix('DensityEstimation')
         self.log_util.set_log_prefix('DensityEstimation')
+        self.scale_data(rangee)
+
+    def scale_data(self, rangee):
+        from sparseSpACE.DEMachineLearning import DataSetRegression
+        dataSet = DataSetRegression((self.data, self.target_values))
+        dataSet.scale_range(rangee)
+        self.data, self.target_values = dataSet.get_data()[0], dataSet.get_data()[1]
+
+    def train(self, percentage_of_testdata, minimum_level, maximum_level) -> StandardCombi:
+        self.data, self.test_data, self.target_values, self.test_target_values = sklearn.model_selection.train_test_split(self.data, self.target_values, test_size=percentage_of_testdata)
+
+        a = np.zeros(self.dim)
+        b = np.ones(self.dim)
+
+        combiObject = StandardCombi(a, b, self)
+
+        combiObject.perform_operation(minimum_level, maximum_level)
+
+        return combiObject
+
+    def test(self, combiObject: StandardCombi):
+        learned_targets = combiObject(self.test_data)
+
+        return sklearn.metrics.mean_squared_error(self.test_target_values, learned_targets)
 
     def print_evaluation_output(self, refinement):
         combi_surpluses = self.surpluses
@@ -2380,58 +2390,17 @@ class Regression(MachineLearning):
 
         return alphas
 
-    def plot_dataset(self, filename: str = None):
+    def plot_dataset(self):
         """
         This method plots the data set specified for this operation
 
-        :param filename: If set the plot will be saved to the specified filename
-        :return: Matplotlib figure
+        :return: nothing
         """
+        from sparseSpACE.DEMachineLearning import DataSetRegression
+        dataSet = DataSetRegression((self.data, self.target_values))
+        dataSet.plot()
 
-        if self.initialized == False:
-            self.initialize()
-        fontsize = 30
-        plt.rcParams.update({'font.size': fontsize})
-        fig = plt.figure(figsize=(10, 10))
-        if self.dim == 2:
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
-            x, y = zip(*self.data[:, :self.dim])
-            ax.scatter(x, y, self.target_values, s=125)
-            ax.set_xlabel('x0')
-            ax.set_ylabel('x1')
-            ax.set_zlabel('target values')
-            ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
 
-        elif self.dim == 3:
-            ax = fig.add_subplot(1, 1, 1, projection='3d')
-            x, y, z = zip(*self.data[:, :self.dim])
-            ax.scatter(x, y, z, s=125)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_zlabel('z')
-            ax.set_title("#points = %d" % len(self.data[:, :self.dim]))
-
-        elif self.dim == 1:
-            mydata = np.zeros((len(self.data),2))
-            for i in range(len(mydata)):
-                mydata[i][0] = self.data[i][0]
-                mydata[i][1] = self.target_values[i]
-            ax = fig.add_subplot(1, 1, 1)
-            x, y = zip(*mydata[:, :self.dim+1])
-            ax.scatter(x, y, s=125)
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            ax.set_title("#points = %d" % len(mydata[:, :self.dim+1]))
-
-        else:
-            self.log_util.log_warning("Cannot print data of dimension > 2")
-
-        if filename is not None:
-            plt.savefig(filename, bbox_inches='tight')
-        #plt.show()
-        # reset fontsize to default so it does not affect other figures
-        plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
-        return fig
 
 class Integration(AreaOperation):
     def __init__(self, f: Function, grid: Grid, dim: int, reference_solution: Sequence[float] = None,
