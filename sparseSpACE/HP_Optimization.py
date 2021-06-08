@@ -1,6 +1,6 @@
 import sparseSpACE.DEMachineLearning as deml
-import numpy
-import scipy
+import numpy as np
+import scipy as sp
 import math
 
 #performs Grid Optimization
@@ -58,17 +58,20 @@ def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_l
 	return evaluation["Percentage correct"]
 
 #TODO: will perform Bayesian Optimization; Inputs are the data, amount of iterations(amt_it)
-def perform_BO_classification(data, amt_it: int):
+def perform_BO_classification(data, amt_it: int, dim: int):
+	
 	print("I should do Bayesian Optimization for " + str(amt_it) + " iteration!")
 	#dummy value for beta
 	beta = 0.5
-	#use squared exp. kernel as covariance function, with parameters sigma_k and l_k
+	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
 	sigma_k = 1
 	l_k = 0.5
-	k = lambda x: x
+	#if creation of covariance matrices is done in another function k(x) needs to be outside
+	k = lambda x, y: (sigma_k**2)*math.exp((-0.5/l_k**2)*np.linalg.norm(x-y)**2)
 	mu = lambda x: x**2+4
-	sigma = lambda x: x**2
-	alpha = lambda x: mu(x)+(beta**(0.5))*sigma(x)
+	sigma_sqrd = lambda x: k(x, x)
+	sigma = lambda x: math.sqrt(sigma_sqrd(x))
+	alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 	for i in range (0, amt_it, 1):
 		beta = get_beta(i)
 		print("beta: " + str(beta) + " mu(x): " + str(mu(2)) + " sigma(x): " + str(sigma(2)))
@@ -78,6 +81,16 @@ def perform_BO_classification(data, amt_it: int):
 def get_beta(cur_it: int):
 	beta = cur_it/2
 	return beta
+
+#TODO: will return initial evidence set
+def get_init_evidence(data, dim: int, amt_it: int):
+	#hard-coded x-values. Order:[lambd: float, massl:bool, min_lv: 0<int<5, one_vs_others: bool]
+	#But: all values as float, rounded as neccessary. Bool: 0=False
+	#TODO: x-values should eventually be random, and 1+dim(=amt of Parameters) many
+	x = np.array([[0.1, 1, 1, 1], [1.1, 0, 3, 1], [0.005, 1, 2, 0], [2.0, 0, 1, 0], [0.00001, 1, 1, 1]])
+	#y-values should be evaluation at x
+	y = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+	return x, y
 
 #print("I am working!")
 
@@ -92,5 +105,5 @@ sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random
 data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
-perform_BO_classification(data_moons, 5)
+perform_BO_classification(data_moons, 5, dimension)
 #print("I was working!")
