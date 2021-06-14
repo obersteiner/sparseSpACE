@@ -1885,6 +1885,24 @@ class Regression(MachineLearning):
         self.log_util.set_log_prefix('DensityEstimation')
         self.scale_data(rangee)
 
+    def optimize_coefficients(self, combiObject):
+        error_vec = np.zeros(len(combiObject.scheme))
+        coefficients = np.zeros(len(combiObject.scheme))
+        for i in range(len(combiObject.scheme)):
+            learned_targets = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=self.data)
+            error_vec[i] = sklearn.metrics.mean_squared_error(self.target_values, learned_targets)
+            coefficients[i] = combiObject.scheme[i].coefficient
+
+
+        for i in range(len(combiObject.scheme)):
+            coefficients[i] = coefficients[i] / error_vec[i]
+
+        length = np.sum(coefficients)
+
+        for i in range(len(combiObject.scheme)):
+            combiObject.scheme[i].coefficient = coefficients[i] / length
+
+
     def scale_data(self, rangee):
         from sparseSpACE.DEMachineLearning import DataSetRegression
         dataSet = DataSetRegression((self.data, self.target_values))
