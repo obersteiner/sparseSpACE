@@ -1885,14 +1885,21 @@ class Regression(MachineLearning):
         self.log_util.set_log_prefix('DensityEstimation')
         self.scale_data(rangee)
 
-    def optimize_coefficients(self, combiObject):
+    def optimize_coefficients(self, combiObject, option=1):
+        if option == 1:
+            self.optimize_coefficients_linear_system(combiObject)
+        elif option == 2:
+            self.optimize_coefficients_minimize_whole_error(combiObject)
+        else:
+            self.optimize_coefficients_error_per_grid(combiObject)
+
+    def optimize_coefficients_error_per_grid(self, combiObject):
         error_vec = np.zeros(len(combiObject.scheme))
         coefficients = np.zeros(len(combiObject.scheme))
         for i in range(len(combiObject.scheme)):
             learned_targets = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=self.data)
             error_vec[i] = sklearn.metrics.mean_squared_error(self.target_values, learned_targets)
             coefficients[i] = combiObject.scheme[i].coefficient
-
 
         for i in range(len(combiObject.scheme)):
             coefficients[i] = coefficients[i] / error_vec[i]
@@ -1902,6 +1909,71 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
+    def optimize_coefficients_minimize_whole_error(self, combiObject):
+        matrix = np.zeros((len(combiObject.scheme), self.dim))
+
+        for i in range(len(combiObject.scheme)):
+            solutions = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=self.data)
+            for j in range(self.dim):
+                matrix[i][j] = solutions[j]
+
+        print(matrix.shape, self.target_values.shape)
+
+        coefficients, res, rank, s = np.linalg.lstsq(matrix, self.target_values, rcond = None)
+
+        length = np.sum(coefficients)
+
+        for i in range(len(combiObject.scheme)):
+            combiObject.scheme[i].coefficient = coefficients[i] / length
+
+    def build_matrix(self, combiObject) -> Sequence[Sequence[float]]:
+        matrix = np.zeros((len(combiObject.scheme), len(combiObject.scheme)))
+
+        for i in range(len(combiObject.scheme)):
+            for j in range(len(matrix)):
+                sum = 0
+                for p in range(len(self.data)):
+                    #learned_targets = self.interpolate_points_component_grid(combiObject.scheme[i],
+                    #                                                         mesh_points_grid=None,
+                    #                                                         evaluation_points=self.data)
+                    sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[p]]) * \
+                           self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None, evaluation_points=[self.data[p]])
+
+                sum *= 1/len(self.data)
+
+                matrix[i][j] = sum
+                matrix[j][i] = sum
+
+        return matrix
+
+    def build_vector(self, combiObject) -> Sequence[float]:
+        vector = np.zeros(len(combiObject.scheme))
+
+        for i in range(len(vector)):
+            sum = 0
+            for p in range(len(self.data)):
+                sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[p]]) * \
+                       self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[p]])
+
+            sum *= 1/len(self.data)
+
+            vector[i] = sum
+
+        return vector
+
+
+    def optimize_coefficients_linear_system(self, combiObject):
+        matrix = self.build_matrix(combiObject)
+
+        vector = self.build_vector(combiObject)
+
+        coefs, res, rank, s = np.linalg.lstsq(matrix, vector, rcond=None)
+
+        len_coefs = np.sum(coefs)
+        coefs = coefs / len_coefs
+
+        for i in range(len(combiObject.scheme)):
+            combiObject.scheme[i].coefficient = coefs[i]
 
     def scale_data(self, rangee):
         from sparseSpACE.DEMachineLearning import DataSetRegression
