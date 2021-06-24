@@ -1887,10 +1887,13 @@ class Regression(MachineLearning):
 
     def optimize_coefficients(self, combiObject, option=1):
         if option == 1:
+            print("Garcke")
             self.optimize_coefficients_linear_system(combiObject)
         elif option == 2:
+            print("Own ansatz will be performed")
             self.optimize_coefficients_minimize_whole_error(combiObject)
         else:
+            print("Untuitive first ansatz")
             self.optimize_coefficients_error_per_grid(combiObject)
 
     def optimize_coefficients_error_per_grid(self, combiObject):
@@ -1910,12 +1913,12 @@ class Regression(MachineLearning):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
     def optimize_coefficients_minimize_whole_error(self, combiObject):
-        matrix = np.zeros((len(combiObject.scheme), self.dim))
+        matrix = np.zeros((len(self.target_values), len(combiObject.scheme)))
 
         for i in range(len(combiObject.scheme)):
-            solutions = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=self.data)
-            for j in range(self.dim):
-                matrix[i][j] = solutions[j]
+            for j in range(len(self.target_values)):
+                partial_solution = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[j]])
+                matrix[j][i] = partial_solution
 
         print(matrix.shape, self.target_values.shape)
 
