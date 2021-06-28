@@ -1,3 +1,4 @@
+import numpy as np
 import sklearn
 from numpy import linalg as LA
 from math import isclose, isinf
@@ -1929,6 +1930,117 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
+    def build_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas:Sequence[int]) -> Sequence[Sequence[float]]:
+        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+
+        :param levelvec: Levelvector of the component grid
+        :return: R matrix of the component grid specified by the levelvector
+        """
+        dim = len(levelvec)
+
+        num_points = 1
+        for i in range(len(levelvec)):
+            num_points *= 2**levelvec[i] - 1
+
+        grid_size = num_points
+        C = np.zeros((grid_size, grid_size))
+
+        list_with_number_points = [2**levelvec[i]-1 for i in range(len(levelvec))]
+
+        index_list = np.array(get_cross_product_range_list(list_with_number_points), dtype=int) + 1
+
+
+        for i in range(grid_size - 1):
+            for j in range(i, grid_size):
+                res = 0.0
+
+                for k in range(dim):
+
+                    temp_res = 1.
+                    for m in range(dim):
+
+                        index_im = index_list[i][m] -1
+                        index_jm = index_list[j][m] -1
+
+                        if m == k:
+
+                            # basis function overlap fully
+                            if index_im == index_jm:
+                                temp_res *= (2 ** (levelvec[k] + 1)) * alphas[index_jm]
+                            # basis function do not overlap
+                            elif abs(index_jm - index_im) > 1:
+                                temp_res = 0
+                                break
+                            # basis functions overlap partly
+                            else:
+                                temp_res *= -(2 ** (levelvec[k])) * (alphas[index_im] + alphas[index_jm]) / 2
+
+                        else:
+                            # basis function overlap fully
+                            if index_im == index_jm:
+                                temp_res *= 1 / (2 ** (levelvec[k] - 1) * 3) * alphas[index_jm]
+                            # basis function do not overlap
+                            elif abs(index_jm - index_im) > 1:
+                                temp_res = 0
+                                break
+                            # basis functions overlap partly
+                            else:
+                                temp_res *= 1 / (2 ** (levelvec[k] - 1) * 12) * (alphas[index_im] + alphas[index_jm]) / 2
+
+                    res += temp_res
+
+                if res == 0:
+                    self.log_util.log_debug("-" * 100)
+                    self.log_util.log_debug("Skipping calculation")
+                    self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
+                else:
+                    C[i, j] = res
+                    C[j, i] = res
+                    self.log_util.log_debug("-" * 100)
+                    self.log_util.log_debug("Calculating")
+                    self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
+                    self.log_util.log_debug("Result: {0}".format(res))
+
+        return C
+
+    def compute_regularization_term_opticom(self, levelvec_i: Sequence[int], levelvec_j: Sequence[int]):
+        # maybe add assert len(levelvec_i) == len(levelvec_j)
+
+        levelvec_new = np.array((levelvec_i))
+        for i in range(len(levelvec_i)):
+            levelvec_new[i] = max(levelvec_j[i], levelvec_i[i])
+
+
+        num_points = 1
+        for i in range((len(levelvec_new))):
+            num_points *= 2**levelvec_new[i] -1
+
+        points_per_dimensions_list = []
+
+        for d in range(len(levelvec_new)):
+            points_per_dim_d = []
+            for n in range(2**levelvec_new[d] - 1):
+                points_per_dim_d.append(n*2.**-levelvec_new[d])
+
+            points_per_dimensions_list.append(points_per_dim_d)
+
+        evaluation_points = get_cross_product_list(points_per_dimensions_list)
+
+
+        alphas = self.interpolate_points_component_grid(ComponentGridInfo(levelvec_i, 1), mesh_points_grid=None,
+                                              evaluation_points=evaluation_points)
+
+        matrix_C = self.build_C_matrix_with_alphas(levelvec_new, alphas)
+
+        sum_all = 0
+        for i in range(len(matrix_C)):
+            for j in range(len(matrix_C[0])):
+                sum_all += matrix_C[i][j]
+
+        return sum_all
+
+
+
     def build_matrix(self, combiObject) -> Sequence[Sequence[float]]:
         matrix = np.zeros((len(combiObject.scheme), len(combiObject.scheme)))
 
@@ -1942,10 +2054,11 @@ class Regression(MachineLearning):
                     sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[p]]) * \
                            self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None, evaluation_points=[self.data[p]])
 
+                    sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i].levelvector, combiObject.scheme[j].levelvector)
+
                 sum *= 1/len(self.data)
 
                 matrix[i][j] = sum
-                matrix[j][i] = sum
 
         return matrix
 
@@ -1964,7 +2077,7 @@ class Regression(MachineLearning):
 
         return vector
 
-
+    # Garcke
     def optimize_coefficients_linear_system(self, combiObject):
         matrix = self.build_matrix(combiObject)
 
