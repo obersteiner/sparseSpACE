@@ -2054,9 +2054,9 @@ class Regression(MachineLearning):
                     sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None, evaluation_points=[self.data[p]]) * \
                            self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None, evaluation_points=[self.data[p]])
 
-                    sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i].levelvector, combiObject.scheme[j].levelvector)
 
                 sum *= 1/len(self.data)
+                sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i].levelvector, combiObject.scheme[j].levelvector)
 
                 matrix[i][j] = sum
 
