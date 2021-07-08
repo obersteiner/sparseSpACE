@@ -2166,7 +2166,7 @@ class Regression(MachineLearning):
 
         return combiObject
 
-    def train_spatially_adaptive(self, percentage_of_testdata, margin, tolerance, max_evaluations):
+    def train_spatially_adaptive(self, percentage_of_testdata, margin, tolerance, max_evaluations, do_plot=False):
         from sparseSpACE.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
         from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
@@ -2188,7 +2188,7 @@ class Regression(MachineLearning):
                                                                             margin=margin, operation=self,
                                                                             rebalancing=False)
 
-        adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator, tolerance, do_plot=False,
+        adaptiveCombiInstanceSingleDim.performSpatiallyAdaptiv(1, 2, errorOperator, tolerance, do_plot=do_plot,
                                                                max_evaluations=max_evaluations)
 
         return adaptiveCombiInstanceSingleDim
@@ -2586,7 +2586,7 @@ class Regression(MachineLearning):
 
         index_list = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
 
-        for i in range(grid_size - 1):
+        for i in range(grid_size):
             for j in range(i, grid_size):
                 res = 0.0
 
