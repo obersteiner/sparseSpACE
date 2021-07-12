@@ -1939,6 +1939,17 @@ class Regression(MachineLearning):
             print("Untuitive first ansatz")
             self.optimize_coefficients_error_per_grid(combiObject)
 
+    def optimize_coefficients_spatially_adaptive(self, adaptiveCombiInstanceSingleDim, option=1):
+        if option == 1:
+            print("Garcke ansatz")
+            self.optimize_coefficients_linear_system_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+        elif option == 2:
+            print("Own ansatz")
+            self.optimize_coefficients_minimize_whole_error_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+        else:
+            print("Intuitive first ansatz")
+            self.optimize_coefficients_error_per_grid_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+
     def optimize_coefficients_error_per_grid(self, combiObject):
         error_vec = np.zeros(len(combiObject.scheme))
         coefficients = np.zeros(len(combiObject.scheme))
@@ -1956,6 +1967,22 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
+    def optimize_coefficients_error_per_grid_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        error_vec = np.zeros(len(adaptiveCombiInstanceSingleDim.scheme))
+        coefficients = np.zeros(len(adaptiveCombiInstanceSingleDim.scheme))
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            learned_targets = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[i])
+            error_vec[i] = sklearn.metrics.mean_squared_error(self.validation_target_values, learned_targets)
+            coefficients[i] = adaptiveCombiInstanceSingleDim.scheme[i].coefficient
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            coefficients[i] = coefficients[i] / error_vec[i]
+
+        length = np.sum(coefficients)
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
+
     def optimize_coefficients_minimize_whole_error(self, combiObject):
         matrix = np.zeros((len(self.validation_target_values), len(combiObject.scheme)))
 
@@ -1965,8 +1992,6 @@ class Regression(MachineLearning):
                                                                           evaluation_points=[self.validation_data[j]])
                 matrix[j][i] = partial_solution
 
-                # hstack oder vstack bzw matrix besser aufbauen
-
         # print(matrix.shape, self.validation_target_values.shape)
 
         coefficients, res, rank, s = np.linalg.lstsq(matrix, self.validation_target_values, rcond=None)
@@ -1975,6 +2000,23 @@ class Regression(MachineLearning):
 
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefficients[i] / length
+
+    def optimize_coefficients_minimize_whole_error_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        matrix = np.zeros((len(self.validation_target_values), len(adaptiveCombiInstanceSingleDim.scheme)))
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            for j in range(len(self.validation_target_values)):
+                partial_solution = adaptiveCombiInstanceSingleDim.interpolate_points([self.validation_data[j]], adaptiveCombiInstanceSingleDim.scheme[i])
+                matrix[j][i] = partial_solution
+
+        # print(matrix.shape, self.validation_target_values.shape)
+
+        coefficients, res, rank, s = np.linalg.lstsq(matrix, self.validation_target_values, rcond=None)
+
+        length = np.sum(coefficients)
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
 
     def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> \
     Sequence[Sequence[float]]:
@@ -2060,10 +2102,6 @@ class Regression(MachineLearning):
         for i in range(len(levelvec_i)):
             levelvec_new[i] = max(levelvec_j[i], levelvec_i[i])
 
-        #num_points = 1
-        #for i in range((len(levelvec_new))):
-        #    num_points *= 2 ** levelvec_new[i] - 1
-
         points_per_dimensions_list = []
 
         for d in range(len(levelvec_new)):
@@ -2084,17 +2122,25 @@ class Regression(MachineLearning):
 
         return sum_all
 
-    def build_matrix_opticom(self, combiObject) -> Sequence[Sequence[float]]:
+    def build_matrix_opticom(self, combiObject) -> (Sequence[Sequence[float]], Sequence[float]):
         matrix = np.zeros((len(combiObject.scheme), len(combiObject.scheme)))
+        vector = np.zeros((len(combiObject.scheme)))
 
         for i in range(len(combiObject.scheme)):
             for j in range(i, len(matrix)):
-                sum = 0.
-                for p in range(len(self.validation_data)):
-                    sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
-                                                                  evaluation_points=[self.validation_data[p]]) * \
-                           self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
-                                                                  evaluation_points=[self.validation_data[p]])
+                #sum = 0.
+                #for p in range(len(self.validation_data)):
+                #    sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
+                #                                                  evaluation_points=[self.validation_data[p]]) * \
+                #           self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
+                #                                                  evaluation_points=[self.validation_data[p]])
+
+                vec_i = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
+                                                                  evaluation_points=self.validation_data)
+                vec_j = self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
+                                                               evaluation_points=self.validation_data)
+
+                sum = np.dot(vec_i.flatten(), vec_j.flatten())
 
                 sum *= 1 / len(self.validation_data)
                 sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i],
@@ -2102,31 +2148,37 @@ class Regression(MachineLearning):
 
                 matrix[i][j] = sum
                 matrix[j][i] = sum
+                if i == j:
+                    vector[i] = sum
 
-        return matrix
+        return matrix, vector
 
+    """
     def build_vector_opticom(self, combiObject) -> Sequence[float]:
         vector = np.zeros(len(combiObject.scheme))
 
         for i in range(len(vector)):
-            sum = 0
+            sum = 0.
             for p in range(len(self.validation_data)):
                 sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
                                                               evaluation_points=[self.validation_data[p]]) * \
                        self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
                                                               evaluation_points=[self.validation_data[p]])
 
+                sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i],
+                                                                                      combiObject.scheme[i])
+
             sum *= 1 / len(self.validation_data)
 
             vector[i] = sum
 
-        return vector
+        return vector"""
 
     # Garcke
     def optimize_coefficients_linear_system(self, combiObject):
-        matrix_opticom = self.build_matrix_opticom(combiObject)
+        matrix_opticom, vector_opticom = self.build_matrix_opticom(combiObject)
 
-        vector_opticom = self.build_vector_opticom(combiObject)
+        #vector_opticom = self.build_vector_opticom(combiObject)
 
         coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
 
@@ -2135,6 +2187,32 @@ class Regression(MachineLearning):
 
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefs[i]
+
+    def sum_C_matrix_with_alphas_spatially_adaptive(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> \
+    Sequence[Sequence[float]]:
+        return
+
+    def compute_regularization_term_opticom_spatially_adaptive(self, scheme_i:ComponentGridInfo, scheme_j: ComponentGridInfo):
+        return
+
+    def build_matrix_opticom_spatially_adaptive(self, combiObject) -> Sequence[Sequence[float]]:
+        return
+
+    def build_vector_opticom_spatially_adaptive(self, combiObject) -> Sequence[float]:
+        return
+
+    def optimize_coefficients_linear_system_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        matrix_opticom = self.build_matrix_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+
+        vector_opticom = self.build_vector_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+
+        coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
+
+        len_coefs = np.sum(coefs)
+        coefs = coefs / len_coefs
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefs[i]
 
     def scale_data(self, rangee):
         from sparseSpACE.DEMachineLearning import DataSetRegression
@@ -2172,6 +2250,8 @@ class Regression(MachineLearning):
 
         self.training_data, self.test_data, self.training_target_values, self.test_target_values = sklearn.model_selection.train_test_split(
             self.data, self.target_values, test_size=percentage_of_testdata)
+        self.training_data, self.validation_data, self.training_target_values, self.validation_target_values = sklearn.model_selection.train_test_split(
+            self.training_data, self.training_target_values, test_size=0.15)
 
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
