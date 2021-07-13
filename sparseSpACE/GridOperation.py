@@ -2018,8 +2018,7 @@ class Regression(MachineLearning):
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
 
-    def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> \
-    Sequence[Sequence[float]]:
+    def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
         """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
 
         :param levelvec: Levelvector of the component grid
@@ -2128,13 +2127,6 @@ class Regression(MachineLearning):
 
         for i in range(len(combiObject.scheme)):
             for j in range(i, len(matrix)):
-                #sum = 0.
-                #for p in range(len(self.validation_data)):
-                #    sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
-                #                                                  evaluation_points=[self.validation_data[p]]) * \
-                #           self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
-                #                                                  evaluation_points=[self.validation_data[p]])
-
                 vec_i = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
                                                                   evaluation_points=self.validation_data)
                 vec_j = self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
@@ -2153,32 +2145,9 @@ class Regression(MachineLearning):
 
         return matrix, vector
 
-    """
-    def build_vector_opticom(self, combiObject) -> Sequence[float]:
-        vector = np.zeros(len(combiObject.scheme))
-
-        for i in range(len(vector)):
-            sum = 0.
-            for p in range(len(self.validation_data)):
-                sum += self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
-                                                              evaluation_points=[self.validation_data[p]]) * \
-                       self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
-                                                              evaluation_points=[self.validation_data[p]])
-
-                sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i],
-                                                                                      combiObject.scheme[i])
-
-            sum *= 1 / len(self.validation_data)
-
-            vector[i] = sum
-
-        return vector"""
-
     # Garcke
     def optimize_coefficients_linear_system(self, combiObject):
         matrix_opticom, vector_opticom = self.build_matrix_opticom(combiObject)
-
-        #vector_opticom = self.build_vector_opticom(combiObject)
 
         coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
 
@@ -2188,23 +2157,155 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefs[i]
 
-    def sum_C_matrix_with_alphas_spatially_adaptive(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> \
-    Sequence[Sequence[float]]:
-        return
+    def sum_C_matrix_with_alphas_spatially_adaptive(self, gridPointCoordsAsStripes, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
+        points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
+        grid_size = len(points)
 
-    def compute_regularization_term_opticom_spatially_adaptive(self, scheme_i:ComponentGridInfo, scheme_j: ComponentGridInfo):
-        return
+        sum = 0.
 
-    def build_matrix_opticom_spatially_adaptive(self, combiObject) -> Sequence[Sequence[float]]:
-        return
+        for i in range(0, len(points)):
+            for j in range(i, len(points)):
 
-    def build_vector_opticom_spatially_adaptive(self, combiObject) -> Sequence[float]:
-        return
+                point_i = points[i]
+                domain_i = list(zip(lower[i], upper[i]))
+                point_j = points[j]
+                domain_j = list(zip(lower[j], upper[j]))
 
+                same_domain = all(
+                    (domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
+
+                res = 0.0
+
+                # for all dimensions
+                for d in range(0, len(point_i)):
+                    temp_res = 1.0
+
+                    for n in range(0, len(point_i)):
+                        if n == d:
+                            # domains do not overlap
+                            if domain_i[d][1] < domain_j[d][0] or domain_j[d][1] < domain_i[d][0]:
+                                temp_res *= 0
+                            # domains are the same (also points i and j)
+                            elif same_domain or point_i[d] == point_j[d]:
+                                b1 = point_i[d] - domain_i[d][0]
+                                m1 = 1 / b1
+
+                                b2 = domain_i[d][1] - point_i[d]
+                                m2 = 1 / b2
+
+                                temp_res *= b1 * m1 ** 2 + b2 * m2 ** 2
+
+                            # partially overlapping
+                            else:
+                                if point_i[d] < point_j[d]:
+                                    b = point_j[d] - point_i[d]
+                                    m = 1 / (point_j[d] - point_i[d])
+                                    temp_res *= -(m * m * b)
+                                else:
+                                    b = point_i[d] - point_j[d]
+                                    m = 1 / (point_i[d] - point_j[d])
+
+                                    temp_res *= -(m * m * b)
+                        else:
+                            if point_i[d] != point_j[d]:
+                                m = 1.0 / abs(point_i[d] - point_j[d])  # slope
+                                # f_2(x) = 1 - slope * (x - min(point_i[d], point_j[d])) = c - slope * x
+                                a = min(point_i[d], point_j[d])  # lower end of integral
+                                b = max(point_i[d], point_j[d])  # upper end of integral
+
+                                # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
+                                integral_calc = lambda x, m, p, q: 0.5 * (m ** 2) * (x ** 2) * (p + q) - (1 / 3) * (
+                                        m ** 2) * (x ** 3) - x * (m * p + 1) * (m * q - 1)
+                                # integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
+
+                                integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
+
+                                temp_res *= integral
+                            else:
+                                if point_i[d] != domain_i[d][0]:
+                                    m1 = 1.0 / abs(point_i[d] - domain_i[d][0])  # left slope
+                                    # calc integral of: int (1 - m*(p - x)) * (1 - m*(p - x)) dx
+                                    integral_1 = lambda x, m, p: -((m * (p - x) - 1) ** 3 / (3 * m))
+                                    # integral_1_alt = lambda x, m, p: x - 2*m*p*x + m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                                else:
+                                    integral_1 = lambda x, m, p: 0
+                                    m1 = 0
+                                if point_i[d] != domain_j[d][1]:
+                                    m2 = 1.0 / abs(domain_j[d][1] - point_j[d])  # right slope
+                                    # calc integral of: int (1 - m*(x - p)) * (1 - m*(x - p)) dx
+                                    integral_2 = lambda x, m, p: -((m * (p - x) + 1) ** 3 / (3 * m))
+                                    # integral_2_alt = lambda x, m, p: x + 2*m*p*x - m*x**2 + (m**2)*(p**2)*x - (m**2)*p*(x**2) + ((m**2)*(x**3))/3
+                                else:
+                                    integral_2 = lambda x, m, p: 0
+                                    m2 = 0
+                                a = domain_i[d][0]  # lower end of first integral
+                                p = point_i[d]  # upper end of first integral, lower end of second integral
+                                c = domain_i[d][1]  # upper end of second integral
+
+                                integral = (integral_1(p, m1, p) - integral_1(a, m1, p)) + (
+                                        integral_2(c, m2, p) - integral_2(p, m2, p))
+
+                            temp_res *= integral * alphas_i[i] * alphas_j[j]
+
+                    res += temp_res
+
+                sum += res
+                if i != j:
+                    sum += res
+
+        return sum
+
+    def compute_regularization_term_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim, scheme_i:ComponentGridInfo, scheme_j: ComponentGridInfo):
+
+        levelvec_i = scheme_i.levelvector
+        levelvec_j = scheme_j.levelvector
+        levelvec_new = np.array((levelvec_i))
+        for i in range(len(levelvec_i)):
+            levelvec_new[i] = max(levelvec_j[i], levelvec_i[i])
+
+        points_per_dimensions_list = []
+
+        point_coords, point_levels, children_indices = adaptiveCombiInstanceSingleDim.get_point_coord_for_each_dim(levelvec_new)
+
+        for d in range(len(levelvec_new)):
+            points_per_dimensions_list.append(point_coords[d])
+
+        evaluation_points = get_cross_product_list(points_per_dimensions_list)
+
+        alphas_i = adaptiveCombiInstanceSingleDim.interpolate_points(evaluation_points, scheme_i)
+        alphas_j = adaptiveCombiInstanceSingleDim.interpolate_points(evaluation_points, scheme_j)
+
+        sum_all = self.sum_C_matrix_with_alphas_spatially_adaptive(point_coords, levelvec_new, alphas_i, alphas_j)
+
+        return sum_all
+
+    def build_matrix_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim) -> (Sequence[Sequence[float]], Sequence[float]):
+        matrix = np.zeros((len(adaptiveCombiInstanceSingleDim.scheme), len(adaptiveCombiInstanceSingleDim.scheme)))
+        vector = np.zeros((len(adaptiveCombiInstanceSingleDim.scheme)))
+
+        for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
+            for j in range(i, len(matrix)):
+
+                vec_i = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[i])
+                vec_j = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[j])
+
+                sum = np.dot(vec_i.flatten(), vec_j.flatten())
+
+                sum *= 1 / len(self.validation_data)
+                sum += self.regularization * self.compute_regularization_term_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim,
+                                                                                      adaptiveCombiInstanceSingleDim.scheme[i],
+                                                                                      adaptiveCombiInstanceSingleDim.scheme[j])
+
+                matrix[i][j] = sum
+                matrix[j][i] = sum
+                if i == j:
+                    vector[i] = sum
+
+        return matrix, vector
+
+    # Garcke
     def optimize_coefficients_linear_system_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
-        matrix_opticom = self.build_matrix_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
-
-        vector_opticom = self.build_vector_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
+        matrix_opticom, vector_opticom = self.build_matrix_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
 
         coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
 
