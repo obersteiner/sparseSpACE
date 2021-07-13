@@ -51,6 +51,18 @@ def perform_GO_classification(data):
 					print ("END OF CURRENT EVALUATION \n")
 	print("In the end, best evaluation is " + str(best_evaluation)  + " with masslump = " + str (best_masslump) + ", lamb = " + str(best_lambd) + ", min_level = " + str(best_min_lv) + ", one_vs_others = " + str(best_one_vs_others) + " and time = " + str(best_time))
 
+#performs random optimization
+def perform_RO_classification(data, amt_it: int, dim: int):
+	best_evaluation = 0
+	best_x = [1, 1, 1, 1]
+	for i in range (0, amt_it, 1):
+		x = create_random_x()
+		new_eval = perform_evaluation_at(data, x[0], x[1], x[2], x[3])
+		if new_eval>best_evaluation:
+			best_x = x
+			best_evaluation = new_eval
+	print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(x))
+
 #returns evaluation for certain Parameters on a certain data set
 def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
@@ -85,7 +97,7 @@ def perform_BO_classification(data, amt_it: int, dim: int):
 	alpha_neg = lambda x: -alpha(x)
 	for i in range (0, amt_it, 1):
 		print("iteration: " + str(i))
-		beta = get_beta(i)
+		beta = get_beta(i+1)
 		print("beta: " + str(beta))
 		#value that will be evaluated and added to the evidence set
 		new_x=fmin(alpha_neg, [0, 0, 0, 0]) #Note: Vielleicht kann man die Auswertung bounden, damit keine Werte weit weg vom Möglichen rauskommen
@@ -170,10 +182,25 @@ def check_if_in_array(x, array):
             break
     return False
 
-#TODO: will calculate and return current beta
-def get_beta(cur_it: int):
-	beta = cur_it/2
+#TODO: will calculate and return current beta. t is current iteration
+def get_beta(t: int):
+	r: float = 1.5
+	d: int = 4
+	delta: float = 0.1
+	a: float = 1
+	b: float = 1
+	beta = 2*math.log(t**2*2*math.pi**2/3*delta)+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
+	print(beta)
 	return beta
+
+#TODO: get new beta is mu dominated, and new beta and l if not. Currently mock function
+def get_new_beta_and_l(cur_beta: float):
+	global l_k #is l_k should be changed permanently
+	beta_h = 100
+	l_h = 20
+	new_beta = (cur_beta+beta_h)/2
+	new_l = 10
+	return new_beta, new_l
 
 #Basically copied code from Tutorial_DEMachineLearning
 #prepare Dataset
@@ -186,4 +213,6 @@ sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random
 data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
-perform_BO_classification(data_moons, 6, dimension)
+#perform_BO_classification(data_moons, 6, dimension)
+#print(get_beta(1))
+perform_RO_classification(data_moons, 10, dimension)
