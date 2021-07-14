@@ -2394,7 +2394,7 @@ class Regression(MachineLearning):
         dataSet.scale_range(rangee)
         self.data, self.target_values = dataSet.get_data()[0], dataSet.get_data()[1]
 
-    def train(self, percentage_of_testdata: float, minimum_level: int, maximum_level: int):
+    def train(self, percentage_of_testdata: float, minimum_level: int, maximum_level: int, noisy_data: bool = False):
         """This method trains the regression object (weights are calculated)
 
         :param percentage_of_testdata: part of the data that will be used for testing
@@ -2405,12 +2405,23 @@ class Regression(MachineLearning):
         from sparseSpACE.StandardCombi import StandardCombi
 
         self.training_data, self.test_data, self.training_target_values, self.test_target_values = sklearn.model_selection.train_test_split(
-            self.data, self.target_values, test_size=percentage_of_testdata)
+            self.data, self.target_values, test_size=percentage_of_testdata, random_state=1)
         self.training_data, self.validation_data, self.training_target_values, self.validation_target_values = sklearn.model_selection.train_test_split(
-            self.training_data, self.training_target_values, test_size=0.15)
+            self.training_data, self.training_target_values, test_size=0.15, random_state=1)
+
+        if noisy_data:
+            print("Using noisy data")
+            maximum_of_data = max(self.target_values)
+
+            noise_training = np.random.normal(0, maximum_of_data * 0.001, len(self.training_target_values))
+            noise_validation = np.random.normal(0, maximum_of_data * 0.001, len(self.validation_target_values))
+
+            self.training_target_values = self.training_target_values + noise_training
+            self.validation_target_values = self.validation_target_values + noise_validation
 
         self.validation_data = np.append(self.training_data, self.validation_data, 0)
         self.validation_target_values = np.append(self.training_target_values, self.validation_target_values)
+
 
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
@@ -2435,9 +2446,9 @@ class Regression(MachineLearning):
         from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
         self.training_data, self.test_data, self.training_target_values, self.test_target_values = sklearn.model_selection.train_test_split(
-            self.data, self.target_values, test_size=percentage_of_testdata)
+            self.data, self.target_values, test_size=percentage_of_testdata, random_state=1)
         self.training_data, self.validation_data, self.training_target_values, self.validation_target_values = sklearn.model_selection.train_test_split(
-            self.training_data, self.training_target_values, test_size=0.15)
+            self.training_data, self.training_target_values, test_size=0.15, random_state=1)
 
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
