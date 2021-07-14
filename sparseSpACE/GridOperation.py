@@ -1356,7 +1356,7 @@ class DensityEstimation(MachineLearning):
 
                 # calc integral of: int (1 - m*(q - x)) * (1 - m*(x - p)) dx
                 integral_calc = lambda x, m, p, q: 0.5 * (m ** 2) * (x ** 2) * (p + q) - (1 / 3) * (m ** 2) * (
-                            x ** 3) - x * (m * p + 1) * (m * q - 1)
+                        x ** 3) - x * (m * p + 1) * (m * q - 1)
                 # integral_calc_alt = lambda x, m, p, q: x - m*q*x + m*p*x + ((m**2)*q*(x**2))/2 - (m**2)*q*p*x - ((m**2)*(x**3))/3 + ((m**2)*(x**2)*p)/2
 
                 integral = integral_calc(b, m, a, b) - integral_calc(a, m, a, b)
@@ -1895,7 +1895,6 @@ class Regression(MachineLearning):
         self.test_target_values = None
         self.regularization = regularization
         self.dim = len(self.data[0])
-        # 0 -> C, I otherwise
         self.regularization_matrix = regularization_matrix
         if regularization_matrix == 'C':
             print("Matrix used: C")
@@ -1928,7 +1927,13 @@ class Regression(MachineLearning):
         self.log_util.set_log_prefix('DensityEstimation')
         self.scale_data(rangee)
 
-    def optimize_coefficients(self, combiObject, option=1):
+    def optimize_coefficients(self, combiObject, option: int = 1):
+        """This method performs Opticom and updates the coefficients of the component grids
+
+        :param combiObject: combiObject (of type StandardCombi)
+        :param option: option of Opticom (1, 2 or 3)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         if option == 1:
             print("Garcke ansatz")
             self.optimize_coefficients_linear_system(combiObject)
@@ -1939,7 +1944,13 @@ class Regression(MachineLearning):
             print("Untuitive first ansatz")
             self.optimize_coefficients_error_per_grid(combiObject)
 
-    def optimize_coefficients_spatially_adaptive(self, adaptiveCombiInstanceSingleDim, option=1):
+    def optimize_coefficients_spatially_adaptive(self, adaptiveCombiInstanceSingleDim, option: int = 1):
+        """This method performs Opticom and updates the coefficients of the component grids (spatially adaptive version)
+
+        :param adaptiveCombiInstanceSingleDim: object (of type SpatiallyAdaptivBase)
+        :param option: option of Opticom (1, 2 or 3)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         if option == 1:
             print("Garcke ansatz")
             self.optimize_coefficients_linear_system_spatially_adaptive(adaptiveCombiInstanceSingleDim)
@@ -1951,6 +1962,11 @@ class Regression(MachineLearning):
             self.optimize_coefficients_error_per_grid_spatially_adaptive(adaptiveCombiInstanceSingleDim)
 
     def optimize_coefficients_error_per_grid(self, combiObject):
+        """This method performs the third option for Opticom (according to the errors per grid)
+
+        :param combiObject: object (of type StandardCombi)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         error_vec = np.zeros(len(combiObject.scheme))
         coefficients = np.zeros(len(combiObject.scheme))
         for i in range(len(combiObject.scheme)):
@@ -1968,10 +1984,17 @@ class Regression(MachineLearning):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
     def optimize_coefficients_error_per_grid_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        """This method performs the third option for Opticom (according to the errors per grid) in the spatially adaptive version
+
+        :param adaptiveCombiInstanceSingleDim: object (of type SpatiallyAdaptivBase)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         error_vec = np.zeros(len(adaptiveCombiInstanceSingleDim.scheme))
         coefficients = np.zeros(len(adaptiveCombiInstanceSingleDim.scheme))
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
-            learned_targets = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[i])
+            learned_targets = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data,
+                                                                                adaptiveCombiInstanceSingleDim.scheme[
+                                                                                    i])
             error_vec[i] = sklearn.metrics.mean_squared_error(self.validation_target_values, learned_targets)
             coefficients[i] = adaptiveCombiInstanceSingleDim.scheme[i].coefficient
 
@@ -1984,6 +2007,11 @@ class Regression(MachineLearning):
             adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
 
     def optimize_coefficients_minimize_whole_error(self, combiObject):
+        """This method performs the second option for Opticom (with the validation set)
+
+        :param combiObject: object (of type StandardCombi)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         matrix = np.zeros((len(self.validation_target_values), len(combiObject.scheme)))
 
         for i in range(len(combiObject.scheme)):
@@ -1991,8 +2019,6 @@ class Regression(MachineLearning):
                 partial_solution = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
                                                                           evaluation_points=[self.validation_data[j]])
                 matrix[j][i] = partial_solution
-
-        # print(matrix.shape, self.validation_target_values.shape)
 
         coefficients, res, rank, s = np.linalg.lstsq(matrix, self.validation_target_values, rcond=None)
 
@@ -2002,14 +2028,18 @@ class Regression(MachineLearning):
             combiObject.scheme[i].coefficient = coefficients[i] / length
 
     def optimize_coefficients_minimize_whole_error_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        """This method performs the second option for Opticom (with the validation set) in the spatially adaptive version
+
+        :param adaptiveCombiInstanceSingleDim: object (of type SpatiallyAdaptivBase)
+        :return: no return value (directly sets the coefficients of the component grids)
+        """
         matrix = np.zeros((len(self.validation_target_values), len(adaptiveCombiInstanceSingleDim.scheme)))
 
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             for j in range(len(self.validation_target_values)):
-                partial_solution = adaptiveCombiInstanceSingleDim.interpolate_points([self.validation_data[j]], adaptiveCombiInstanceSingleDim.scheme[i])
+                partial_solution = adaptiveCombiInstanceSingleDim.interpolate_points([self.validation_data[j]],
+                                                                            adaptiveCombiInstanceSingleDim.scheme[i])
                 matrix[j][i] = partial_solution
-
-        # print(matrix.shape, self.validation_target_values.shape)
 
         coefficients, res, rank, s = np.linalg.lstsq(matrix, self.validation_target_values, rcond=None)
 
@@ -2019,13 +2049,14 @@ class Regression(MachineLearning):
             adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
 
     def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        """This method sums the cells of the C matrix (but with the according weights of the basis functions)
 
         :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid specified by the levelvector
+        :param alphas_i: weights of \phi_i
+        :param alphas_j: weights of \phi_j
+        :return: sum of the cells of the matrix
         """
         dim = len(levelvec)
-
         num_points = 1
         for i in range(len(levelvec)):
             num_points *= 2 ** levelvec[i] - 1
@@ -2050,7 +2081,6 @@ class Regression(MachineLearning):
                         index_jm = index_list[j][m] - 1
 
                         if m == k:
-
                             # basis function overlap fully
                             if index_im == index_jm:
                                 temp_res *= (2 ** (levelvec[k] + 1)) * alphas_i[index_jm] * alphas_j[index_jm]
@@ -2073,7 +2103,7 @@ class Regression(MachineLearning):
                             # basis functions overlap partly
                             else:
                                 temp_res *= 1 / (2 ** (levelvec[k] - 1) * 12) * (
-                                            alphas_i[index_im] * alphas_j[index_jm])
+                                        alphas_i[index_im] * alphas_j[index_jm])
 
                     res += temp_res
 
@@ -2089,12 +2119,15 @@ class Regression(MachineLearning):
                     self.log_util.log_debug("Calculating")
                     self.log_util.log_debug("Gridpoints: {0} {1}".format(index_list[i], index_list[j]))
                     self.log_util.log_debug("Result: {0}".format(res))
-
         return sum
 
-    def compute_regularization_term_opticom(self, scheme_i:ComponentGridInfo, scheme_j: ComponentGridInfo):
-        # maybe add assert len(levelvec_i) == len(levelvec_j)
+    def compute_regularization_term_opticom(self, scheme_i: ComponentGridInfo, scheme_j: ComponentGridInfo):
+        """This method calculates the regularization term for Opticom (Garcke)
 
+        :param scheme_i: information about the componentGrid_i
+        :param scheme_j: information about the componentGrid_j
+        :return: regularization term for Opticom
+        """
         levelvec_i = scheme_i.levelvector
         levelvec_j = scheme_j.levelvector
         levelvec_new = np.array((levelvec_i))
@@ -2121,14 +2154,19 @@ class Regression(MachineLearning):
 
         return sum_all
 
-    def build_matrix_opticom(self, combiObject) -> (Sequence[Sequence[float]], Sequence[float]):
+    def build_matrix_opticom(self, combiObject) -> Tuple[Sequence[Sequence[float]], Sequence[float]]:
+        """This method calculates the matrix and the vector for Opticom (Garcke)
+
+        :param combiObject: object of type StandardCombi
+        :return: tuple of the resulting matrix and vector
+        """
         matrix = np.zeros((len(combiObject.scheme), len(combiObject.scheme)))
         vector = np.zeros((len(combiObject.scheme)))
 
         for i in range(len(combiObject.scheme)):
             for j in range(i, len(matrix)):
                 vec_i = self.interpolate_points_component_grid(combiObject.scheme[i], mesh_points_grid=None,
-                                                                  evaluation_points=self.validation_data)
+                                                               evaluation_points=self.validation_data)
                 vec_j = self.interpolate_points_component_grid(combiObject.scheme[j], mesh_points_grid=None,
                                                                evaluation_points=self.validation_data)
 
@@ -2145,8 +2183,12 @@ class Regression(MachineLearning):
 
         return matrix, vector
 
-    # Garcke
     def optimize_coefficients_linear_system(self, combiObject):
+        """This method performs the first option of Opticom (Garcke)
+
+        :param combiObject: opject of type StandardCombi
+        :return: no return type (directly sets the modified coefficients of the component grids)
+        """
         matrix_opticom, vector_opticom = self.build_matrix_opticom(combiObject)
 
         coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
@@ -2157,12 +2199,17 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefs[i]
 
-    def sum_C_matrix_with_alphas_spatially_adaptive(self, gridPointCoordsAsStripes, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
+    def sum_C_matrix_with_alphas_spatially_adaptive(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
+        """This method sums the C matrix (spatially adaptive version) with the according weights of the basis functions
+
+        :param gridPointCoordsAsStripes: grid points in each dimension as list
+        :param alphas_i: weights of the basis functions i
+        :param alphas_j: weights of the basis functions j
+        :return: sum of the matrix C
+        """
         points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
-        grid_size = len(points)
 
         sum = 0.
-
         for i in range(0, len(points)):
             for j in range(i, len(points)):
 
@@ -2255,8 +2302,16 @@ class Regression(MachineLearning):
 
         return sum
 
-    def compute_regularization_term_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim, scheme_i:ComponentGridInfo, scheme_j: ComponentGridInfo):
+    def compute_regularization_term_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim,
+                                                               scheme_i: ComponentGridInfo,
+                                                               scheme_j: ComponentGridInfo):
+        """This method calculates the regularization term for Opticom (Garcke) spatially adaptive version
 
+        :param adaptiveCombiInstanceSingleDim: object of type SpatiallyAdaptivBase
+        :param scheme_i: information about the componentGrid_i
+        :param scheme_j: information about the componentGrid_j
+        :return: regularization term for Opticom
+        """
         levelvec_i = scheme_i.levelvector
         levelvec_j = scheme_j.levelvector
         levelvec_new = np.array((levelvec_i))
@@ -2265,7 +2320,8 @@ class Regression(MachineLearning):
 
         points_per_dimensions_list = []
 
-        point_coords, point_levels, children_indices = adaptiveCombiInstanceSingleDim.get_point_coord_for_each_dim(levelvec_new)
+        point_coords, point_levels, children_indices = adaptiveCombiInstanceSingleDim.get_point_coord_for_each_dim(
+            levelvec_new)
 
         for d in range(len(levelvec_new)):
             points_per_dimensions_list.append(point_coords[d])
@@ -2275,26 +2331,34 @@ class Regression(MachineLearning):
         alphas_i = adaptiveCombiInstanceSingleDim.interpolate_points(evaluation_points, scheme_i)
         alphas_j = adaptiveCombiInstanceSingleDim.interpolate_points(evaluation_points, scheme_j)
 
-        sum_all = self.sum_C_matrix_with_alphas_spatially_adaptive(point_coords, levelvec_new, alphas_i, alphas_j)
+        sum_all = self.sum_C_matrix_with_alphas_spatially_adaptive(point_coords, alphas_i, alphas_j)
 
         return sum_all
 
-    def build_matrix_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim) -> (Sequence[Sequence[float]], Sequence[float]):
+    def build_matrix_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim) -> Tuple[Sequence[Sequence[float]], Sequence[float]]:
+        """This method calculates the matrix and the vector for the Opticom Garcke (spatially adaptive version)
+
+        :param adaptiveCombiInstanceSingleDim: object of type SpatiallyAdaptivBase
+        :return: matrix and vector for Opticom (Garcke)
+        """
         matrix = np.zeros((len(adaptiveCombiInstanceSingleDim.scheme), len(adaptiveCombiInstanceSingleDim.scheme)))
         vector = np.zeros((len(adaptiveCombiInstanceSingleDim.scheme)))
 
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             for j in range(i, len(matrix)):
 
-                vec_i = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[i])
-                vec_j = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data, adaptiveCombiInstanceSingleDim.scheme[j])
+                vec_i = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data,
+                                                                          adaptiveCombiInstanceSingleDim.scheme[i])
+                vec_j = adaptiveCombiInstanceSingleDim.interpolate_points(self.validation_data,
+                                                                          adaptiveCombiInstanceSingleDim.scheme[j])
 
                 sum = np.dot(vec_i.flatten(), vec_j.flatten())
 
                 sum *= 1 / len(self.validation_data)
-                sum += self.regularization * self.compute_regularization_term_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim,
-                                                                                      adaptiveCombiInstanceSingleDim.scheme[i],
-                                                                                      adaptiveCombiInstanceSingleDim.scheme[j])
+                sum += self.regularization * self.compute_regularization_term_opticom_spatially_adaptive(
+                    adaptiveCombiInstanceSingleDim,
+                    adaptiveCombiInstanceSingleDim.scheme[i],
+                    adaptiveCombiInstanceSingleDim.scheme[j])
 
                 matrix[i][j] = sum
                 matrix[j][i] = sum
@@ -2303,8 +2367,12 @@ class Regression(MachineLearning):
 
         return matrix, vector
 
-    # Garcke
     def optimize_coefficients_linear_system_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
+        """This method performs Opticom (Garcke)
+
+        :param adaptiveCombiInstanceSingleDim: object of type SpatiallyAdaptivBase
+        :return: no return value (coefficients are directly set)
+        """
         matrix_opticom, vector_opticom = self.build_matrix_opticom_spatially_adaptive(adaptiveCombiInstanceSingleDim)
 
         coefs, res, rank, s = np.linalg.lstsq(matrix_opticom, vector_opticom, rcond=None)
@@ -2315,13 +2383,25 @@ class Regression(MachineLearning):
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefs[i]
 
-    def scale_data(self, rangee):
+    def scale_data(self, rangee: Tuple[float, float]):
+        """This method scales the data set
+
+        :param rangee: range to which the data will be scaled to
+        :return: no return value data is scaled directly
+        """
         from sparseSpACE.DEMachineLearning import DataSetRegression
         dataSet = DataSetRegression((self.data, self.target_values))
         dataSet.scale_range(rangee)
         self.data, self.target_values = dataSet.get_data()[0], dataSet.get_data()[1]
 
-    def train(self, percentage_of_testdata, minimum_level, maximum_level):
+    def train(self, percentage_of_testdata: float, minimum_level: int, maximum_level: int):
+        """This method trains the regression object (weights are calculated)
+
+        :param percentage_of_testdata: part of the data that will be used for testing
+        :param minimum_level: minimum level for the component grids
+        :param maximum_level: maximum level for the component grids
+        :return: combiObject of type StandardCombi
+        """
         from sparseSpACE.StandardCombi import StandardCombi
 
         self.training_data, self.test_data, self.training_target_values, self.test_target_values = sklearn.model_selection.train_test_split(
@@ -2332,10 +2412,6 @@ class Regression(MachineLearning):
         self.validation_data = np.append(self.training_data, self.validation_data, 0)
         self.validation_target_values = np.append(self.training_target_values, self.validation_target_values)
 
-        # print(self.training_data.shape, self.training_target_values.shape)
-        # print(self.validation_data.shape, self.validation_target_values.shape)
-        # print(self.test_data.shape, self.test_target_values.shape)
-
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
 
@@ -2345,7 +2421,16 @@ class Regression(MachineLearning):
 
         return combiObject
 
-    def train_spatially_adaptive(self, percentage_of_testdata, margin, tolerance, max_evaluations, do_plot=False):
+    def train_spatially_adaptive(self, percentage_of_testdata: float, margin: float, tolerance: float, max_evaluations: int, do_plot: bool = False):
+        """This method trains the regression object (weights are calculated) for the spatially adaptive version
+
+        :param percentage_of_testdata: part of the data that will be used for testing
+        :param margin: defines where the grid will be refined (where the error is margin% of the highest error)
+        :param tolerance: defines the first stopping criterion (when the whole error is smaller/ equal than tolerance)
+        :param max_evaluations: defines the second stopping criterion (when the number of evaluations is higher than that)
+        :param do_plot: decide whether to print every refinement step
+        :return: adaptiveCombiInstanceSingleDim of type SpatiallyAdaptivSingleDimension2
+        """
         from sparseSpACE.ErrorCalculator import ErrorCalculatorSingleDimVolumeGuided
         from sparseSpACE.spatiallyAdaptiveSingleDimension2 import SpatiallyAdaptiveSingleDimensions2
 
@@ -2375,11 +2460,20 @@ class Regression(MachineLearning):
         return adaptiveCombiInstanceSingleDim
 
     def test_spatially_adaptive(self, adaptiveCombiInstanceSingleDim):
-        learned_targets = adaptiveCombiInstanceSingleDim(self.test_data)
+        """This method tests the regression object (error is calculated) (spatially adaptive version)
 
+        :param adaptiveCombiInstanceSingleDim: object of type SpatiallyAdaptivBase
+        :return: error calculated wit mean squared error
+        """
+        learned_targets = adaptiveCombiInstanceSingleDim(self.test_data)
         return sklearn.metrics.mean_squared_error(self.test_target_values, learned_targets)
 
     def test(self, combiObject):
+        """This method tests the regression object (error is calculated)
+
+        :param combiObject: object of type StandardCombi
+        :return: error calculated wit mean squared error
+        """
         learned_targets = combiObject(self.test_data)
 
         return sklearn.metrics.mean_squared_error(self.test_target_values, learned_targets)
@@ -2510,13 +2604,13 @@ class Regression(MachineLearning):
     def calculate_C_entry(self, point_i: Sequence[float], domain_i: Sequence[Tuple[float, float]],
                           point_j: Sequence[float], domain_j: Sequence[Tuple[float, float]]) \
             -> float:
-        """This method calculates the R-value between two hat functions analytically.
+        """This method calculates the cell of matrix C (\phi_i and \phi_j)
 
         :param point_i: first point
         :param point_j: second point
         :param domain_i: domain of first point
         :param domain_j: domain of second point
-        :return: R-value of the two hat functions.
+        :return: value of C_i,j
         """
         same_domain = all(
             (domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
@@ -2553,15 +2647,14 @@ class Regression(MachineLearning):
     def build_C_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                       grid_point_levels: Sequence[Sequence[int]]) \
             -> Sequence[Sequence[float]]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
-        non-equidistant grids (usually used adaptive schemes)
+        """This method constructs the C matrix for regression with the spatially adaptive combi technique
+        (AT*A+λ*C) = ATy
 
         :param gridPointCoordsAsStripes: d-dimensional sequence of coordinate lists. the lists include coordinates at
                                          the domain boundary, even if there are no boundary points.
         :param grid_point_levels: d-dimensional sequence of integer lists
-        :return: R matrix of the component grid specified by the levelvector
+        :return: C matrix
         """
-
         points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
         grid_size = len(points)
 
@@ -2687,13 +2780,13 @@ class Regression(MachineLearning):
     def build_A_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                       grid_point_levels: Sequence[Sequence[int]]) \
             -> Sequence[Sequence[float]]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B) for
-        non-equidistant grids (usually used adaptive schemes)
+        """This method constructs the A matrix for regression with the spatially adaptive combi technique
+        (AT*A+λ*C) = ATy
 
         :param gridPointCoordsAsStripes: d-dimensional sequence of coordinate lists. the lists include coordinates at
                                          the domain boundary, even if there are no boundary points.
         :param grid_point_levels: d-dimensional sequence of integer lists
-        :return: R matrix of the component grid specified by the levelvector
+        :return: A matrix
         """
 
         points, lower, upper = self.get_hat_domain_for_every_grid_point_vectorized(gridPointCoordsAsStripes)
@@ -2728,10 +2821,10 @@ class Regression(MachineLearning):
         return surpluses
 
     def build_A_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        """This method constructs the A matrix for the component grid specified by the levelvector ((A + λ*I) = y)
 
         :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid specified by the levelvector
+        :return: A matrix of the component grid specified by the levelvector
         """
 
         hats = np.array(get_cross_product_range_list(self.grid.numPoints), dtype=int) + 1
@@ -2755,10 +2848,10 @@ class Regression(MachineLearning):
         return alphas
 
     def build_C_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        """This method constructs the R matrix for the component grid specified by the levelvector ((R + λ*I) = B)
+        """This method constructs the C matrix for the component grid specified by the levelvector ((AT*A + λ*C) = ATy)
 
         :param levelvec: Levelvector of the component grid
-        :return: R matrix of the component grid specified by the levelvector
+        :return: C matrix of the component grid specified by the levelvector
         """
         dim = len(levelvec)
 
@@ -2821,7 +2914,8 @@ class Regression(MachineLearning):
         return C
 
     def build_left_matrix(self, levelvec: Sequence[int]) -> Sequence[Sequence[float]]:
-        """This method constructs the matrix of the left side of the equation
+        """This method constructs the matrix of the left side of the equation (regression with regularization
+        and normal combi technique)
 
         :param levelvec: Levelvector of the component grid
         :return: matrix of the left side of the equation
@@ -2838,7 +2932,8 @@ class Regression(MachineLearning):
             return (1 / m) * np.dot(A.T, A) + self.regularization * np.identity(A[0].shape[0])
 
     def build_right_vector(self, levelvec: Sequence[int]) -> Sequence[float]:
-        """This method constructs the right vector of the equation
+        """This method constructs the right vector of the equation (regression with regularization
+        and the normal combi technique)
 
         :param levelvec: Levelvector of the component grid
         :return: right vector of the equation
