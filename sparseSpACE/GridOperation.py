@@ -1894,6 +1894,7 @@ class Regression(MachineLearning):
         self.test_data = None
         self.test_target_values = None
         self.regularization = regularization
+        self.regularization_opticom = regularization
         self.dim = len(self.data[0])
         self.regularization_matrix = regularization_matrix
         if regularization_matrix == 'C':
@@ -2139,19 +2140,20 @@ class Regression(MachineLearning):
         for d in range(len(levelvec_new)):
             points_per_dim_d = []
             for n in range(2 ** levelvec_new[d] - 1):
-                points_per_dim_d.append(n * 2. ** -levelvec_new[d])
+                points_per_dim_d.append((n+1) * 2. ** -levelvec_new[d])
 
             points_per_dimensions_list.append(points_per_dim_d)
 
         evaluation_points = get_cross_product_list(points_per_dimensions_list)
+
 
         alphas_i = self.interpolate_points_component_grid(scheme_i, mesh_points_grid=None,
                                                           evaluation_points=evaluation_points)
         alphas_j = self.interpolate_points_component_grid(scheme_j, mesh_points_grid=None,
                                                           evaluation_points=evaluation_points)
 
-        sum_all = self.sum_C_matrix_with_alphas(levelvec_new, alphas_i, alphas_j)
 
+        sum_all = self.sum_C_matrix_with_alphas(levelvec_new, alphas_i, alphas_j)
         return sum_all
 
     def build_matrix_opticom(self, combiObject) -> Tuple[Sequence[Sequence[float]], Sequence[float]]:
@@ -2173,8 +2175,11 @@ class Regression(MachineLearning):
                 sum = np.dot(vec_i.flatten(), vec_j.flatten())
 
                 sum *= 1 / len(self.validation_data)
-                sum += self.regularization * self.compute_regularization_term_opticom(combiObject.scheme[i],
+
+                if self.regularization_opticom != 0.:
+                    sum += self.regularization_opticom * self.compute_regularization_term_opticom(combiObject.scheme[i],
                                                                                       combiObject.scheme[j])
+
 
                 matrix[i][j] = sum
                 matrix[j][i] = sum
@@ -2413,8 +2418,8 @@ class Regression(MachineLearning):
             print("Using noisy data")
             maximum_of_data = max(self.target_values)
 
-            noise_training = np.random.normal(0, maximum_of_data * 0.001, len(self.training_target_values))
-            noise_validation = np.random.normal(0, maximum_of_data * 0.001, len(self.validation_target_values))
+            noise_training = np.random.normal(0, maximum_of_data * 0.01, len(self.training_target_values))
+            noise_validation = np.random.normal(0, maximum_of_data * 0.01, len(self.validation_target_values))
 
             self.training_target_values = self.training_target_values + noise_training
             self.validation_target_values = self.validation_target_values + noise_validation
@@ -2432,7 +2437,7 @@ class Regression(MachineLearning):
 
         return combiObject
 
-    def train_spatially_adaptive(self, percentage_of_testdata: float, margin: float, tolerance: float, max_evaluations: int, do_plot: bool = False):
+    def train_spatially_adaptive(self, percentage_of_testdata: float, margin: float, tolerance: float, max_evaluations: int, do_plot: bool = False, noisy_data: bool = False):
         """This method trains the regression object (weights are calculated) for the spatially adaptive version
 
         :param percentage_of_testdata: part of the data that will be used for testing
@@ -2449,6 +2454,16 @@ class Regression(MachineLearning):
             self.data, self.target_values, test_size=percentage_of_testdata, random_state=1)
         self.training_data, self.validation_data, self.training_target_values, self.validation_target_values = sklearn.model_selection.train_test_split(
             self.training_data, self.training_target_values, test_size=0.15, random_state=1)
+
+        if noisy_data:
+            print("Using noisy data")
+            maximum_of_data = max(np.absolute(self.target_values))
+
+            noise_training = np.random.normal(0, maximum_of_data * 0.01, len(self.training_target_values))
+            noise_validation = np.random.normal(0, maximum_of_data * 0.01, len(self.validation_target_values))
+
+            self.training_target_values = self.training_target_values + noise_training
+            self.validation_target_values = self.validation_target_values + noise_validation
 
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
@@ -2612,17 +2627,18 @@ class Regression(MachineLearning):
 
         return alphas
 
+    """
     def calculate_C_entry(self, point_i: Sequence[float], domain_i: Sequence[Tuple[float, float]],
                           point_j: Sequence[float], domain_j: Sequence[Tuple[float, float]]) \
             -> float:
-        """This method calculates the cell of matrix C (\phi_i and \phi_j)
+        #This method calculates the cell of matrix C (\phi_i and \phi_j)
 
-        :param point_i: first point
-        :param point_j: second point
-        :param domain_i: domain of first point
-        :param domain_j: domain of second point
-        :return: value of C_i,j
-        """
+        #:param point_i: first point
+        #:param point_j: second point
+        #:param domain_i: domain of first point
+        #:param domain_j: domain of second point
+        #:return: value of C_i,j
+        
         same_domain = all(
             (domain_i[d][0] == domain_j[d][0] and domain_i[d][1] == domain_j[d][1] for d in range(self.dim)))
 
@@ -2654,6 +2670,7 @@ class Regression(MachineLearning):
                     res += -(mi * mj * b)
 
         return res
+    """
 
     def build_C_matrix_dimension_wise(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
                                       grid_point_levels: Sequence[Sequence[int]]) \
