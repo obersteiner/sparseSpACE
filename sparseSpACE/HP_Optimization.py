@@ -197,6 +197,10 @@ def get_beta(t: int):
 	print(beta)
 	return beta
 
+#TODO: get l_k and use it
+def get_l_k(t: int):
+	return 0.5
+
 #TODO: get new beta and l. Currently mock function
 def get_new_beta_and_l(cur_beta: float, cur_length, C_x):
 	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
@@ -216,6 +220,9 @@ def get_new_beta_and_l(cur_beta: float, cur_length, C_x):
 def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
 	print("lol")
 	#wait no I need to change the l and the cov function D:
+	global l_k
+	old_l=l_k
+	l_k=l
 	K_matr = get_cov_matrix(C_x, cur_amt_x)
 	print(K_matr)
 	mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
@@ -225,6 +232,26 @@ def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
 	alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 	#negates alpha bc maximum has to be found
 	alpha_neg = lambda x: -alpha(x)
+	new_x=fmin(alpha_neg, [0, 0, 0, 0]) #Note: Vielleicht kann man die Auswertung bounden, damit keine Werte weit weg vom Möglichen rauskommen
+	print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
+	return new_x
+
+def round_x_classification(x):
+	if len(x) < 4:
+		print("Input too short! Returning default values")
+		return [0, 0, 1, 0]
+	if len(x) > 4:
+		print("Input too long! Cropping")
+	#rounds the values of new_x to values usable as HPs - the question is what kind of rounding makes sense
+	#e.g if lambda should be bounded or more values should be rounded to 0
+	lambd = x[0]
+	massl = math.trunc(x[1]) #is true if abs val > 1
+	min_lv = math.trunc(x[2])
+	if(min_lv<1): min_lv = 1
+	elif (min_lv>3): min_lv = 3
+	one_vs_others = math.trunc(x[3])
+	new_x_rd = [lambd, massl, min_lv, one_vs_others]
+	return new_x_rd
 
 #Basically copied code from Tutorial_DEMachineLearning
 #prepare Dataset
