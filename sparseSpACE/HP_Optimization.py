@@ -116,6 +116,10 @@ def perform_BO_classification(data, amt_it: int, dim: int):
 			C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 			cur_amt_x += 1
 		else: 
+			#erstelle neues beta und l - übergebe cur_length / amt_x damit cov stuff darin berechnet werden kann, C_x damit if in ev set geschaut werden kann
+			#erstelle neue cov matrix und vector mit neuem l
+			#berechne neuen wert mit neuem beta und l
+			#ggf ändere vorher schon cov matrix beim testen auf g? weil gebraucht wird für die berechnung
 			print("Dead End! I am crying now")
 			break
 	for i in range(0, cur_amt_x, 1):
@@ -193,14 +197,34 @@ def get_beta(t: int):
 	print(beta)
 	return beta
 
-#TODO: get new beta is mu dominated, and new beta and l if not. Currently mock function
-def get_new_beta_and_l(cur_beta: float):
-	global l_k #is l_k should be changed permanently
+#TODO: get new beta and l. Currently mock function
+def get_new_beta_and_l(cur_beta: float, cur_length, C_x):
+	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
+	#l nachher wieder zurücksetzen - bzw lt?? Was ist das, wie berechnet sich das?
+	global l_k #if l_k should be changed permanently
 	beta_h = 100
 	l_h = 20
+	#0 if in ev set C_x, constant otherwise (3)
+	p = lambda x: check_if_in_array(x, C_x)*3
+	#x[0] is \beta+d\beta, x[1] is l
+	g = lambda x: x
 	new_beta = (cur_beta+beta_h)/2
 	new_l = 10
 	return new_beta, new_l
+
+#TODO acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
+def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
+	print("lol")
+	#wait no I need to change the l and the cov function D:
+	K_matr = get_cov_matrix(C_x, cur_amt_x)
+	print(K_matr)
+	mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
+	sigma_sqrd = lambda x: k(x, x)-get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(get_cov_vector(C_x, x, cur_amt_x)))
+	#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
+	sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
+	alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
+	#negates alpha bc maximum has to be found
+	alpha_neg = lambda x: -alpha(x)
 
 #Basically copied code from Tutorial_DEMachineLearning
 #prepare Dataset
