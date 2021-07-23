@@ -84,32 +84,15 @@ def perform_BO_classification(data, amt_it: int, dim: int):
 	C_x=C[0]
 	C_y=C[1]
 	print("Evidence Set: \n" + str(C))
-	K_matr = get_cov_matrix(C_x, cur_amt_x)
-	print(K_matr)
-	#dummy value for beta
-	beta = 0.5
-	mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
-	sigma_sqrd = lambda x: k(x, x)-get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(get_cov_vector(C_x, x, cur_amt_x)))
-	#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
-	sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
-	alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
-	#negates alpha bc maximum has to be found
-	alpha_neg = lambda x: -alpha(x)
 	for i in range (0, amt_it, 1):
 		print("iteration: " + str(i))
 		beta = get_beta(i+1)
-		print("beta: " + str(beta))
+		l = get_l_k(i)
+		print("beta_i: " + str(beta))
 		#value that will be evaluated and added to the evidence set
-		new_x=fmin(alpha_neg, [0, 0, 0, 0]) #Note: Vielleicht kann man die Auswertung bounden, damit keine Werte weit weg vom Möglichen rauskommen
+		new_x=acq_x(l, beta, C_x, C_y, cur_amt_x)
 		print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
-		#rounds the values of new_x to values usable as HPs - the question is what kind of rounding makes sense, or e.g if lambda should be bounded
-		lambd = new_x[0]
-		massl = math.trunc(new_x[1]) #is true if abs val > 1
-		min_lv = math.trunc(new_x[2])
-		if(min_lv<1): min_lv = 1
-		elif (min_lv>3): min_lv = 3
-		one_vs_others = math.trunc(new_x[3])
-		new_x_rd = [lambd, massl, min_lv, one_vs_others]
+		new_x_rd = round_x_classification(new_x)
 		print("rounded: " + str(new_x_rd))
 		if(not check_if_in_array(new_x_rd, C_x)):
 			C_x[cur_amt_x] = new_x_rd
@@ -202,19 +185,21 @@ def get_l_k(t: int):
 	return 0.5
 
 #TODO: get new beta and l. Currently mock function
-def get_new_beta_and_l(cur_beta: float, cur_length, C_x):
+def get_new_beta_and_l(cur_beta: float, cur_length, cur_x, C_x, C_y, cur_amt_x):
 	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
 	#l nachher wieder zurücksetzen - bzw lt?? Was ist das, wie berechnet sich das?
 	global l_k #if l_k should be changed permanently
 	beta_h = 100
 	l_h = 20
 	#0 if in ev set C_x, constant otherwise (3)
-	p = lambda x: check_if_in_array(x, C_x)*3
+	p = lambda x: check_if_in_array(x, C_x)*5
 	#x[0] is \beta+d\beta, x[1] is l
-	g = lambda x: x
-	new_beta = (cur_beta+beta_h)/2
-	new_l = 10
-	return new_beta, new_l
+	new_x = lambda x: acq_x(x[1], x[0], C_x,C_y, cur_amt_x)
+	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
+	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
+	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g)
+	#result is in the form [new beta, new l]
+	return result
 
 #TODO acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
 def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
