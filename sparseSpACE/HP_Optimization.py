@@ -4,6 +4,7 @@ import scipy as sp
 import math
 import random
 from scipy.optimize import fmin
+from scipy.optimize import minimize
 
 #performs Grid Optimization
 def perform_GO_classification(data):
@@ -99,10 +100,8 @@ def perform_BO_classification(data, amt_it: int, dim: int):
 			C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 			cur_amt_x += 1
 		else: 
-			#erstelle neues beta und l - übergebe cur_length / amt_x damit cov stuff darin berechnet werden kann, C_x damit if in ev set geschaut werden kann
-			#erstelle neue cov matrix und vector mit neuem l
-			#berechne neuen wert mit neuem beta und l
-			#ggf ändere vorher schon cov matrix beim testen auf g? weil gebraucht wird für die berechnung
+			#erstelle neues beta und l und berechne neuen wert damit
+			get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
 			print("Dead End! I am crying now")
 			break
 	for i in range(0, cur_amt_x, 1):
@@ -185,16 +184,17 @@ def get_l_k(t: int):
 	return 0.5
 
 #TODO: get new beta and l. Currently mock function
-def get_new_beta_and_l(cur_beta: float, cur_length, cur_x, C_x, C_y, cur_amt_x):
+def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
 	#l nachher wieder zurücksetzen - bzw lt?? Was ist das, wie berechnet sich das?
 	global l_k #if l_k should be changed permanently
 	beta_h = 100
 	l_h = 20
-	#0 if in ev set C_x, constant otherwise (3)
-	p = lambda x: check_if_in_array(x, C_x)*5
-	#x[0] is \beta+d\beta, x[1] is l
-	new_x = lambda x: acq_x(x[1], x[0], C_x,C_y, cur_amt_x)
+	#0 if rd(x) is in ev set C_x, constant otherwise (5)
+	p = lambda x: check_if_in_array(round_x_classification(x), C_x)*5
+	#gets the x value for certain l (z[1]) and beta (z[0])
+	new_x = lambda z: acq_x(z[1], z[0], C_x,C_y, cur_amt_x)
+	#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
 	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g)
