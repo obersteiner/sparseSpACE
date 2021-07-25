@@ -1927,7 +1927,7 @@ class Regression(MachineLearning):
         self.log_util.set_print_prefix('DensityEstimation')
         self.log_util.set_log_prefix('DensityEstimation')
         self.scale_data(rangee)
-
+        
     def optimize_coefficients(self, combiObject, option: int = 1):
         """This method performs Opticom and updates the coefficients of the component grids
 
@@ -2464,6 +2464,9 @@ class Regression(MachineLearning):
 
             self.training_target_values = self.training_target_values + noise_training
             self.validation_target_values = self.validation_target_values + noise_validation
+
+        self.validation_data = np.append(self.training_data, self.validation_data, 0)
+        self.validation_target_values = np.append(self.training_target_values, self.validation_target_values)
 
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
