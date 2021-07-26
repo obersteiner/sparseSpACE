@@ -99,10 +99,16 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 		#erstelle neues beta und l und berechne neuen wert damit
 		while(check_if_in_array(new_x_rd, C_x)):
 			print("!!!!!!!!!!!Need new beta and l")
+			old_x_rd = new_x_rd
+			print("old x rd was: " + str(old_x_rd))
 			beta_and_l = get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
 			new_x = acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
 			new_x_rd = round_x_classification(new_x)
-			#break
+			print("new x rd is: " + str(new_x_rd))
+			if(old_x_rd==new_x_rd):
+				print("We're in an infinite loop! Getting out")
+				break
+		print("adding " + str(new_x_rd))
 		C_x[cur_amt_x] = new_x_rd
 		C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 		cur_amt_x += 1
@@ -126,7 +132,7 @@ def get_cov_matrix(x, cur_length: int):
 		for j in range (0, cur_length, 1):
 			K[i][j]=k(x[i], x[j])
 	if(np.linalg.det(K) == 0):
-		print("Oh no! The covariance matrix is singular!!")
+		print("Oh no! The covariance matrix is singular!! It is " + str(K))
 	return K
 
 #returns the vector k for a certain input new_x
@@ -200,10 +206,11 @@ def get_l_k(t: int):
 
 #TODO: get new beta and l. Currently mock function
 def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
-	print("Getting new beta and l")
 	global l_k
-	beta_h = 40
-	l_h = 3
+	print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(l_k))
+	#making upper bounds dependable on current values so bounds are never too low
+	beta_h = cur_beta+50
+	l_h = l_k+10
 	#0 if rd(x) is in ev set C_x, constant otherwise (5)
 	p = lambda x: check_if_in_array(round_x_classification(x), C_x)*5
 	#gets the x value for certain l (z[1]) and beta (z[0])
@@ -266,5 +273,5 @@ data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
-perform_BO_classification(data_moons, 5, dimension)
+perform_BO_classification(data_moons, 100, dimension)
 #perform_RO_classification(data_moons, 10, dimension)
