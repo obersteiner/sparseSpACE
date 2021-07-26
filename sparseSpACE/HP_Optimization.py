@@ -183,7 +183,7 @@ def check_if_in_array(x, array):
             break
     return False
 
-#TODO: will calculate and return current beta. t is current iteration
+#calculates and returns current beta. t is current iteration
 def get_beta(t: int):
 	r: float = 1.5
 	d: int = 4
@@ -201,9 +201,7 @@ def get_l_k(t: int):
 #TODO: get new beta and l. Currently mock function
 def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	print("Getting new beta and l")
-	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
-	#l nachher wieder zurücksetzen - bzw lt?? Was ist das, wie berechnet sich das?
-	global l_k #if l_k should be changed permanently
+	global l_k
 	beta_h = 40
 	l_h = 3
 	#0 if rd(x) is in ev set C_x, constant otherwise (5)
@@ -213,7 +211,7 @@ def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
-	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g)
+	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g).x
 	#result is in the form [new beta, new l]
 	return result
 
@@ -233,7 +231,9 @@ def acq_x(beta: float, l: float, C_x, C_y, cur_amt_x):
 	alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 	#negates alpha bc maximum has to be found
 	alpha_neg = lambda x: -alpha(x)
-	new_x=fmin(alpha_neg, [0, 0, 0, 0]) #Note: Vielleicht kann man die Auswertung bounden, damit keine Werte weit weg vom Möglichen rauskommen
+	bounds_an = ((0, 3), (0, 1), (1, 3), (0, 1)) #bounds search space to vicinity of useful values
+	#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
+	new_x=minimize(alpha_neg, [0, 0, 0, 0], method='L-BFGS-B', bounds=bounds_an).x
 	#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 	return new_x
 
@@ -266,5 +266,5 @@ data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
-perform_BO_classification(data_moons, 100, dimension, False)
+perform_BO_classification(data_moons, 5, dimension)
 #perform_RO_classification(data_moons, 10, dimension)
