@@ -74,36 +74,39 @@ def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_l
 
 #TODO: will perform Bayesian Optimization; Currently basically performs BO with Naive rounding and a weird beta
 #Note: HP Input of classification is (lambd:float, massl:bool, min_lv:int <4, one_vs_others:bool)
-def perform_BO_classification(data, amt_it: int, dim: int):
+def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = True):
 	#notes how many x values currently are in the evidence set - starts with amt_HP+1
 	amt_HP = 4
 	cur_amt_x: int = amt_HP+1
 	x_ret = None
 	y_ret = None
-	print("I should do Bayesian Optimization for " + str(amt_it) + " iterations!")
-	C = create_evidence_set(data, amt_it, amt_HP)
+	print("I should do Bayesian Optimization for " + str(amt_it) + " iterations, ev_is_rand is " + str(ev_is_rand) + " !")
+	C = create_evidence_set(data, amt_it, amt_HP, ev_is_rand)
 	C_x=C[0]
+	print("C_x: " + str(C_x))
 	C_y=C[1]
-	print("Evidence Set: \n" + str(C))
+	print("C_y: " + str(C_y))
+	#print("Evidence Set: \n" + str(C))
 	for i in range (0, amt_it, 1):
 		print("iteration: " + str(i))
 		beta = get_beta(i+1)
 		l = get_l_k(i)
-		print("beta_i: " + str(beta))
 		#value that will be evaluated and added to the evidence set
-		new_x=acq_x(l, beta, C_x, C_y, cur_amt_x)
-		print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
+		new_x=acq_x(beta, l, C_x, C_y, cur_amt_x)
+		print("new x: " + str(new_x))
 		new_x_rd = round_x_classification(new_x)
-		print("rounded: " + str(new_x_rd))
-		if(not check_if_in_array(new_x_rd, C_x)):
-			C_x[cur_amt_x] = new_x_rd
-			C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
-			cur_amt_x += 1
-		else: 
-			#erstelle neues beta und l und berechne neuen wert damit
-			get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
-			print("Dead End! I am crying now")
-			break
+		print("new x rd: " + str(new_x_rd))
+		#erstelle neues beta und l und berechne neuen wert damit
+		while(check_if_in_array(new_x_rd, C_x)):
+			print("!!!!!!!!!!!Need new beta and l")
+			beta_and_l = get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
+			new_x = acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
+			new_x_rd = round_x_classification(new_x)
+			#break
+		C_x[cur_amt_x] = new_x_rd
+		C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
+		cur_amt_x += 1
+
 	for i in range(0, cur_amt_x, 1):
 		if(y_ret == None or y_ret<C_y[i]):
 			y_ret = C_y[i]
@@ -122,6 +125,8 @@ def get_cov_matrix(x, cur_length: int):
 	for i in range (0, cur_length, 1):
 		for j in range (0, cur_length, 1):
 			K[i][j]=k(x[i], x[j])
+	if(np.linalg.det(K) == 0):
+		print("Oh no! The covariance matrix is singular!!")
 	return K
 
 #returns the vector k for a certain input new_x
@@ -145,8 +150,18 @@ def create_evidence_set(data, amt_it: int, dim_HP: int, is_random: bool = True):
 				new_x = create_random_x()
 			x[i] = new_x
 			#evaluating takes quite some time, especially for min_lv>1
-			y[i] = perform_evaluation_at(data, new_x[0], new_x[1], new_x[2], new_x[3])
-	#One could hard-code non-random values for testing
+			#y[i] = perform_evaluation_at(data, new_x[0], new_x[1], new_x[2], new_x[3])
+			#needs to be casted to int bc otherwise it's automatically float which doesn't work
+			y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
+	else:
+		#hard-code non-random values for testing - current threw error at it. 24
+		x[0] = [0.20213575, 0., 1., 0.] #[0.79125794, 0, 1, 0]
+		x[1] = [0.80125658, 0., 1., 0.] #[0.69819941, 1, 2, 0]
+		x[2] = [0.09898312, 1., 3., 1.] #[0.35823418, 0, 1, 0]
+		x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
+		x[4] =  [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
+		for i in range(0, dim_HP+1, 1):
+			y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
 	return x, y
 
 #returns a random x for the given purpose
@@ -185,15 +200,16 @@ def get_l_k(t: int):
 
 #TODO: get new beta and l. Currently mock function
 def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
+	print("Getting new beta and l")
 	#wsl fnct für get_x mit beta und l sinnvoll - auch für vorher
 	#l nachher wieder zurücksetzen - bzw lt?? Was ist das, wie berechnet sich das?
 	global l_k #if l_k should be changed permanently
-	beta_h = 100
-	l_h = 20
+	beta_h = 40
+	l_h = 3
 	#0 if rd(x) is in ev set C_x, constant otherwise (5)
 	p = lambda x: check_if_in_array(round_x_classification(x), C_x)*5
 	#gets the x value for certain l (z[1]) and beta (z[0])
-	new_x = lambda z: acq_x(z[1], z[0], C_x,C_y, cur_amt_x)
+	new_x = lambda z: acq_x(z[0], z[1], C_x,C_y, cur_amt_x)
 	#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
@@ -202,14 +218,14 @@ def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	return result
 
 #TODO acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
-def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
-	print("lol")
-	#wait no I need to change the l and the cov function D:
+def acq_x(beta: float, l: float, C_x, C_y, cur_amt_x):
 	global l_k
 	old_l=l_k
 	l_k=l
 	K_matr = get_cov_matrix(C_x, cur_amt_x)
-	print(K_matr)
+	if(np.linalg.det(K_matr) == 0):
+		print("Covariance Matrix is indeed singular!")
+	#print(K_matr)
 	mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
 	sigma_sqrd = lambda x: k(x, x)-get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(get_cov_vector(C_x, x, cur_amt_x)))
 	#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
@@ -218,7 +234,7 @@ def acq_x(l: float, beta: float, C_x, C_y, cur_amt_x):
 	#negates alpha bc maximum has to be found
 	alpha_neg = lambda x: -alpha(x)
 	new_x=fmin(alpha_neg, [0, 0, 0, 0]) #Note: Vielleicht kann man die Auswertung bounden, damit keine Werte weit weg vom Möglichen rauskommen
-	print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
+	#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 	return new_x
 
 def round_x_classification(x):
@@ -249,6 +265,6 @@ sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random
 data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
-#perform_BO_classification(data_moons, 6, dimension)
-#print(get_beta(1))
-perform_RO_classification(data_moons, 10, dimension)
+#perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
+perform_BO_classification(data_moons, 100, dimension, False)
+#perform_RO_classification(data_moons, 10, dimension)
