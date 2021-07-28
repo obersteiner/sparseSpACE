@@ -91,7 +91,13 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 		print("iteration: " + str(i))
 		beta = get_beta(i+1)
 		l = get_l_k(i)
+		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x))==0):
+			print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, at the start of iteration " + str(i))
+			break
+		else:
+			print("Apparently the cov_matr is not singular at the beginning iteration " + str(i))
 		#value that will be evaluated and added to the evidence set
+		print("Getting new x:")
 		new_x=acq_x(beta, l, C_x, C_y, cur_amt_x)
 		print("new x: " + str(new_x))
 		new_x_rd = round_x_classification(new_x)
@@ -116,7 +122,8 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 		C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 		cur_amt_x += 1
 		#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
-		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x)==0)):
+		print("Checking if cov_matr is singular")
+		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x)) == 0):
 			print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, after " + str(i) + " iterations")
 			break
 		else:
@@ -172,11 +179,12 @@ def create_evidence_set(data, amt_it: int, dim_HP: int, is_random: bool = True):
 			y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
 	else:
 		#hard-code non-random values for testing - current threw error at it. 24
+		#use seed for random values instead of hard coded values? -> get used seed
 		x[0] = [0.20213575, 0., 1., 0.] #[0.79125794, 0, 1, 0]
 		x[1] = [0.80125658, 0., 1., 0.] #[0.69819941, 1, 2, 0]
 		x[2] = [0.09898312, 1., 3., 1.] #[0.35823418, 0, 1, 0]
 		x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
-		x[4] =  [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
+		x[4] = [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
 		for i in range(0, dim_HP+1, 1):
 			y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
 	return x, y
@@ -287,5 +295,5 @@ data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
-perform_BO_classification(data_moons, 100, dimension)
+perform_BO_classification(data_moons, 20, dimension)
 #perform_RO_classification(data_moons, 10, dimension)
