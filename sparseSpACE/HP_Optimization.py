@@ -107,11 +107,20 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 			print("new x rd is: " + str(new_x_rd))
 			if(old_x_rd==new_x_rd):
 				print("We're in an infinite loop! Getting out")
+				#problem: after ending infinite loop the value is added, even though it was already in C_x
+				#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
 				break
+		print("out of loop")
 		print("adding " + str(new_x_rd))
 		C_x[cur_amt_x] = new_x_rd
 		C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 		cur_amt_x += 1
+		#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
+		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x)==0)):
+			print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, after " + str(i) + " iterations")
+			break
+		else:
+			print("Apparently the cov_matr is not singular after iteration " + str(i))
 
 	for i in range(0, cur_amt_x, 1):
 		if(y_ret == None or y_ret<C_y[i]):
@@ -126,13 +135,15 @@ l_k = 0.5
 k = lambda x, y: (sigma_k**2)*math.exp((-0.5/l_k**2)*np.linalg.norm(x-y)**2)
 
 #cur_length is needed so that rest of matrix stays Id
-def get_cov_matrix(x, cur_length: int):
-	K = np.identity(len(x))
+def get_cov_matrix(C_x, cur_length: int):
+	K = np.identity(len(C_x))
 	for i in range (0, cur_length, 1):
 		for j in range (0, cur_length, 1):
-			K[i][j]=k(x[i], x[j])
+			K[i][j]=k(C_x[i], C_x[j])
 	if(np.linalg.det(K) == 0):
 		print("Oh no! The covariance matrix is singular!! It is " + str(K))
+		print("Current C_x is: " + str(C_x))
+		#K=None
 	return K
 
 #returns the vector k for a certain input new_x
@@ -209,16 +220,18 @@ def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	global l_k
 	print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(l_k))
 	#making upper bounds dependable on current values so bounds are never too low
-	beta_h = cur_beta+50
-	l_h = l_k+10
+	beta_h = cur_beta+100
+	l_h = l_k+50
 	#0 if rd(x) is in ev set C_x, constant otherwise (5)
-	p = lambda x: check_if_in_array(round_x_classification(x), C_x)*5
+	p = lambda x: check_if_in_array(round_x_classification(x), C_x)*50
 	#gets the x value for certain l (z[1]) and beta (z[0])
 	new_x = lambda z: acq_x(z[0], z[1], C_x,C_y, cur_amt_x)
 	#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
+	print("About to minimize g(...)")
 	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g).x
+	print("New beta: " + str(result[0]) + ", New l: " + str(result[1]))
 	#result is in the form [new beta, new l]
 	return result
 
@@ -230,6 +243,7 @@ def acq_x(beta: float, l: float, C_x, C_y, cur_amt_x):
 	K_matr = get_cov_matrix(C_x, cur_amt_x)
 	if(np.linalg.det(K_matr) == 0):
 		print("Covariance Matrix is indeed singular!")
+		#return a value that's bullshit? like [0, 0, 0, 0] (min lv is >=1)
 	#print(K_matr)
 	mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
 	sigma_sqrd = lambda x: k(x, x)-get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(get_cov_vector(C_x, x, cur_amt_x)))
