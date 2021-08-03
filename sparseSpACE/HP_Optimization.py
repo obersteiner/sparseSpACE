@@ -94,8 +94,12 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x))==0):
 			print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, at the start of iteration " + str(i))
 			break
+		if((get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
+			print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
+			break
 		else:
-			print("Apparently the cov_matr is not singular at the beginning iteration " + str(i))
+			print("Apparently the cov_matr is not singular at the beginning of iteration " + str(i))
+
 		#value that will be evaluated and added to the evidence set
 		print("Getting new x:")
 		new_x=acq_x(beta, l, C_x, C_y, cur_amt_x)
@@ -117,6 +121,9 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 				#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
 				break
 		print("out of loop")
+		if(old_x_rd==new_x_rd):
+			print("There was an infinite loop when getting new x. Ending BO at iteration " + str(i))
+			break
 		print("adding " + str(new_x_rd))
 		C_x[cur_amt_x] = new_x_rd
 		C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
@@ -125,6 +132,9 @@ def perform_BO_classification(data, amt_it: int, dim: int, ev_is_rand: bool = Tr
 		print("Checking if cov_matr is singular")
 		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x)) == 0):
 			print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, after " + str(i) + " iterations")
+			break
+		if((get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
+			print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
 			break
 		else:
 			print("Apparently the cov_matr is not singular after iteration " + str(i))
@@ -150,7 +160,11 @@ def get_cov_matrix(C_x, cur_length: int):
 	if(np.linalg.det(K) == 0):
 		print("Oh no! The covariance matrix is singular!! It is " + str(K))
 		print("Current C_x is: " + str(C_x))
-		#K=None
+		#Maybe change matrix if it is singular? E.g. to scalar*Id, so it's def. not the smallest?
+		#Would have to deal with that in other methods though
+		#Important!! K is inverted. But also it's used some way in g?? Unsure what to do
+		#at least it doesn't crash rn
+		K = np.identity(len(C_x))*(cur_length+10)
 	return K
 
 #returns the vector k for a certain input new_x
@@ -227,6 +241,10 @@ def get_l_k(t: int):
 def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	global l_k
 	print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(l_k))
+	if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x))==0):
+		print("Getting new beta and l, but suddenly the cov matr is singular??")
+	else:
+		print("Apparently the cov_matr is not singular. Getting new beta and l")
 	#making upper bounds dependable on current values so bounds are never too low
 	beta_h = cur_beta+100
 	l_h = l_k+50
@@ -238,6 +256,8 @@ def get_new_beta_and_l(cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 	g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 	bounds_g = ((cur_beta, beta_h), (l_k, l_h))
 	print("About to minimize g(...)")
+	#due to numerical inaccuracies a matrix might become singular with new beta and l 
+	#(even though it wouldn't be) mathematically - how to deal with that??
 	result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g).x
 	print("New beta: " + str(result[0]) + ", New l: " + str(result[1]))
 	#result is in the form [new beta, new l]
@@ -294,6 +314,8 @@ sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random
 data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
+dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels)
+data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
-perform_BO_classification(data_moons, 20, dimension)
+#perform_BO_classification(data_blobs, 20, dimension)
 #perform_RO_classification(data_moons, 10, dimension)
