@@ -188,7 +188,7 @@ class HP_Optimization:
 	                return None
 	        k_vec = np.zeros(len(ev_x))
 	        for i in range (0, cur_length, 1):
-	                k_vec[i] = cov(ev_x[i], new_x)
+	                k_vec[i] = self.cov(ev_x[i], new_x)
 	        return k_vec
 
 	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True):
@@ -274,7 +274,7 @@ class HP_Optimization:
 		l_h = l_k+50
 		#0 if rd(x) is in ev set C_x, constant otherwise (5)
 		#penalty p(x) erhöhen wenn gleicher Wert rauskommt. z.B. immer +50 oder *2 oder anders exponentiell
-		p = lambda x: self.check_if_in_array(round_x_classification(x), C_x)*50
+		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*50
 		#gets the x value for certain l (z[1]) and beta (z[0])
 		new_x = lambda z: self.acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
