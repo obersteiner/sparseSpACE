@@ -62,8 +62,8 @@ class HP_Optimization:
 		best_evaluation = 0
 		best_x = [1, 1, 1, 1]
 		for i in range (0, amt_it, 1):
-			x = create_random_x()
-			new_eval = perform_evaluation_at(x)
+			x = self.create_random_x()
+			new_eval = self.perform_evaluation_at(x)
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
@@ -90,7 +90,7 @@ class HP_Optimization:
 		x_ret = None
 		y_ret = None
 		print("I should do Bayesian Optimization for " + str(amt_it) + " iterations, ev_is_rand is " + str(ev_is_rand) + " !")
-		C = create_evidence_set(amt_it, amt_HP, ev_is_rand)
+		C = self.create_evidence_set(amt_it, amt_HP, ev_is_rand)
 		C_x=C[0]
 		print("C_x: " + str(C_x))
 		C_y=C[1]
@@ -98,12 +98,12 @@ class HP_Optimization:
 		#print("Evidence Set: \n" + str(C))
 		for i in range (0, amt_it, 1):
 			print("iteration: " + str(i))
-			beta = get_beta(i+1)
-			l = get_l_k(i)
-			if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x))==0):
+			beta = self.get_beta(i+1)
+			l = self.get_l_k(i)
+			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 				print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, at the start of iteration " + str(i))
 				break
-			if((get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
+			if((self.get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
 				print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
 				break
 			else:
@@ -111,18 +111,18 @@ class HP_Optimization:
 
 			#value that will be evaluated and added to the evidence set
 			print("Getting new x:")
-			new_x=acq_x(beta, l, C_x, C_y, cur_amt_x)
+			new_x=self.acq_x(beta, l, C_x, C_y, cur_amt_x)
 			print("new x: " + str(new_x))
-			new_x_rd = round_x_classification(new_x)
+			new_x_rd = self.round_x(new_x)
 			print("new x rd: " + str(new_x_rd))
 			#erstelle neues beta und l und berechne neuen wert damit
 			while(check_if_in_array(new_x_rd, C_x)):
 				print("!!!!!!!!!!!Need new beta and l")
 				old_x_rd = new_x_rd
 				print("old x rd was: " + str(old_x_rd))
-				beta_and_l = get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
-				new_x = acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
-				new_x_rd = round_x_classification(new_x)
+				beta_and_l = self.get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
+				new_x = self.acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
+				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
 				if(old_x_rd==new_x_rd):
 					print("We're in an infinite loop! Getting out")
@@ -135,14 +135,14 @@ class HP_Optimization:
 				break
 			print("adding " + str(new_x_rd))
 			C_x[cur_amt_x] = new_x_rd
-			C_y[cur_amt_x] = perform_evaluation_at(new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
+			C_y[cur_amt_x] = self.perform_evaluation_at(new_x_rd)
 			cur_amt_x += 1
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
 			print("Checking if cov_matr is singular")
-			if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x)) == 0):
+			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x)) == 0):
 				print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, after " + str(i) + " iterations")
 				break
-			if((get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
+			if((self.get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
 				print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
 				break
 			else:
@@ -158,8 +158,9 @@ class HP_Optimization:
 	sigma_k = 1
 	l_k = 0.5
 	#since creation of covariance matrices is done in another function k(x) needs to be outside
-	k = lambda x, y: (sigma_k**2)*math.exp((-0.5/l_k**2)*np.linalg.norm(x-y)**2)
+	k = lambda x, y: (self.sigma_k**2)*math.exp((-0.5/self.l_k**2)*np.linalg.norm(x-y)**2)
 
+	"BIS HIER self. eingefügt (hoffentlich)"
 	#cur_length is needed so that rest of matrix stays Id
 	def get_cov_matrix(self, C_x, cur_length: int):
 		K = np.identity(len(C_x))
@@ -329,8 +330,22 @@ class HP_Optimization:
 		one_vs_others = math.trunc(x[3])
 		new_x_rd = []
 		for i in range (0, len(x)):
-			"EEEEEEK"
-			
+			new_x = 1
+			if(len(self.hp_space[i])<3):
+				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
+			elif(self.hp_space[i][0] == "interval"):
+				if(x[i]<self.hp_space[i][1]):
+					new_x = self.hp_space[i][1]
+				elif(x[i]>self.hp_space[i][2]):
+					new_x = self.hp_space[i][2]
+				else:
+					new_x = x[i]
+			elif(self.hp_space[i][0] == "list"):
+				new_x = 1
+				#maybe work with how far away from possible values x[i] is?
+			else:
+				print("Unknown type of space! Using default value 1 for index " + str(i))
+			new_x_rd.append(new_x)
 		return new_x_rd
 
 #Basically copied code from Tutorial_DEMachineLearning
