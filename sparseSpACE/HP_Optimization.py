@@ -67,7 +67,7 @@ class HP_Optimization:
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
-		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(x))
+		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(best_x))
 
 	#returns evaluation for certain Parameters on a certain data set
 	def perform_evaluation_at(self, params):
@@ -301,7 +301,7 @@ class HP_Optimization:
 		mu = lambda x: self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
 		sigma_sqrd = lambda x: self.cov(x, x)-self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(self.get_cov_vector(C_x, x, cur_amt_x)))
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
-		sigma = lambda x: math.sqrt(abs(self.sigma_sqrd(x)))
+		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
 		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
