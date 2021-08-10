@@ -116,7 +116,7 @@ class HP_Optimization:
 			new_x_rd = self.round_x(new_x)
 			print("new x rd: " + str(new_x_rd))
 			#erstelle neues beta und l und berechne neuen wert damit
-			while(check_if_in_array(new_x_rd, C_x)):
+			while(self.check_if_in_array(new_x_rd, C_x)):
 				print("!!!!!!!!!!!Need new beta and l")
 				old_x_rd = new_x_rd
 				print("old x rd was: " + str(old_x_rd))
@@ -158,15 +158,16 @@ class HP_Optimization:
 	sigma_k = 1
 	l_k = 0.5
 	#since creation of covariance matrices is done in another function k(x) needs to be outside
-	k = lambda x, y: (self.sigma_k**2)*math.exp((-0.5/self.l_k**2)*np.linalg.norm(x-y)**2)
+	def cov(self, x, y):
+		k = lambda x, y: (self.sigma_k**2)*math.exp((-0.5/self.l_k**2)*np.linalg.norm(x-y)**2)
+		return k(x, y)
 
-	"BIS HIER self. eingefügt (hoffentlich)"
 	#cur_length is needed so that rest of matrix stays Id
 	def get_cov_matrix(self, C_x, cur_length: int):
 		K = np.identity(len(C_x))
 		for i in range (0, cur_length, 1):
 			for j in range (0, cur_length, 1):
-				K[i][j]=k(C_x[i], C_x[j])
+				K[i][j]=self.cov(C_x[i], C_x[j])
 		if(np.linalg.det(K) == 0):
 			print("Oh no! The covariance matrix is singular!! It is " + str(K))
 			print("Current C_x is: " + str(C_x))
@@ -187,7 +188,7 @@ class HP_Optimization:
 	                return None
 	        k_vec = np.zeros(len(ev_x))
 	        for i in range (0, cur_length, 1):
-	                k_vec[i] = k(ev_x[i], new_x)
+	                k_vec[i] = cov(ev_x[i], new_x)
 	        return k_vec
 
 	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True):
@@ -195,14 +196,14 @@ class HP_Optimization:
 		y = np.zeros((amt_it+dim_HP+1))
 		if(is_random):
 			for i in range(0, dim_HP+1, 1):
-				new_x = create_random_x()
-				while(check_if_in_array(new_x, x)):
-					new_x = create_random_x()
+				new_x = self.create_random_x()
+				while(self.check_if_in_array(new_x, x)):
+					new_x = self.create_random_x()
 				x[i] = new_x
 				#evaluating takes quite some time, especially for min_lv>1
 				#y[i] = perform_evaluation_at(data, new_x[0], new_x[1], new_x[2], new_x[3])
 				#needs to be casted to int bc otherwise it's automatically float which doesn't work
-				y[i] = perform_evaluation_at(x[i])
+				y[i] = self.perform_evaluation_at(x[i])
 		else:
 			#hard-code non-random values for testing - current threw error at it. 24
 			#use seed for random values instead of hard coded values? -> get used seed
@@ -212,7 +213,7 @@ class HP_Optimization:
 			x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
 			x[4] = [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
 			for i in range(0, dim_HP+1, 1):
-				y[i] = perform_evaluation_at(x[i])
+				y[i] = self.perform_evaluation_at(x[i])
 		return x, y
 
 	#returns a random x for the given purpose - needs search space
@@ -264,7 +265,7 @@ class HP_Optimization:
 	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 		global l_k
 		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(l_k))
-		if(np.linalg.det(get_cov_matrix(C_x, cur_amt_x))==0):
+		if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 			print("Getting new beta and l, but suddenly the cov matr is singular??")
 		else:
 			print("Apparently the cov_matr is not singular. Getting new beta and l")
@@ -273,9 +274,9 @@ class HP_Optimization:
 		l_h = l_k+50
 		#0 if rd(x) is in ev set C_x, constant otherwise (5)
 		#penalty p(x) erhöhen wenn gleicher Wert rauskommt. z.B. immer +50 oder *2 oder anders exponentiell
-		p = lambda x: check_if_in_array(round_x_classification(x), C_x)*50
+		p = lambda x: self.check_if_in_array(round_x_classification(x), C_x)*50
 		#gets the x value for certain l (z[1]) and beta (z[0])
-		new_x = lambda z: acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
+		new_x = lambda z: self.acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 		g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 		bounds_g = ((cur_beta, beta_h), (l_k, l_h))
@@ -292,15 +293,15 @@ class HP_Optimization:
 		global l_k
 		old_l=l_k
 		l_k=l
-		K_matr = get_cov_matrix(C_x, cur_amt_x)
+		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
 			print("Covariance Matrix is indeed singular!")
 			#return a value that's bullshit? like [0, 0, 0, 0] (min lv is >=1)
 		#print(K_matr)
-		mu = lambda x: get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
-		sigma_sqrd = lambda x: k(x, x)-get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(get_cov_vector(C_x, x, cur_amt_x)))
+		mu = lambda x: self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
+		sigma_sqrd = lambda x: self.cov(x, x)-self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(self.get_cov_vector(C_x, x, cur_amt_x)))
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
-		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
+		sigma = lambda x: math.sqrt(abs(self.sigma_sqrd(x)))
 		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
