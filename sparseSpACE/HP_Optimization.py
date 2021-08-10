@@ -15,7 +15,7 @@ class HP_Optimization:
 		self.hp_space = hp_space
 
 	#performs Grid Optimization
-	def perform_GO_classification(self, data, lambd_levels):
+	def perform_GO_classification(self, lambd_levels):
 		#sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15)
 		#data = deml.DataSet(sklearn_dataset, name='Input_Set')
 		#for storing the current best evaluation and time
@@ -41,7 +41,7 @@ class HP_Optimization:
 						#use "perform evaluation at"
 						#cur_time = classification._time_used
 						#print ("current time needed = " + str(cur_time))
-						cur_evaluation = perform_evaluation_at(data, cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
+						cur_evaluation = perform_evaluation_at(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
 						print("Percentage of correct mappings",cur_evaluation)
 						#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
 						if(best_evaluation == None or cur_evaluation>best_evaluation):
@@ -58,19 +58,19 @@ class HP_Optimization:
 		#+ " and time = " + str(best_time))
 
 	#performs random optimization
-	def perform_RO_classification(self, data, amt_it: int, dim: int):
+	def perform_RO_classification(self, amt_it: int, dim: int):
 		best_evaluation = 0
 		best_x = [1, 1, 1, 1]
 		for i in range (0, amt_it, 1):
 			x = create_random_x()
-			new_eval = perform_evaluation_at(data, x[0], x[1], x[2], x[3])
+			new_eval = perform_evaluation_at(x[0], x[1], x[2], x[3])
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
 		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(x))
 
 	#returns evaluation for certain Parameters on a certain data set
-	def perform_evaluation_at(self, cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
+	def perform_evaluation_at(self, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
 		#classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 		#classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
 		#evaluation = classification.evaluate()
@@ -83,14 +83,14 @@ class HP_Optimization:
 
 	#TODO: will perform Bayesian Optimization; Currently basically performs BO with Naive rounding and a weird beta
 	#Note: HP Input of classification is (lambd:float, massl:bool, min_lv:int <4, one_vs_others:bool)
-	def perform_BO_classification(self, data, amt_it: int, function = perform_evaluation_at, space = classification_space, ev_is_rand: bool = True):
+	def perform_BO_classification(self, amt_it: int, function = perform_evaluation_at, space = classification_space, ev_is_rand: bool = True):
 		#notes how many x values currently are in the evidence set - starts with amt_HP+1
 		amt_HP = len(space)
 		cur_amt_x: int = amt_HP+1
 		x_ret = None
 		y_ret = None
 		print("I should do Bayesian Optimization for " + str(amt_it) + " iterations, ev_is_rand is " + str(ev_is_rand) + " !")
-		C = create_evidence_set(data, amt_it, amt_HP, ev_is_rand)
+		C = create_evidence_set(amt_it, amt_HP, ev_is_rand)
 		C_x=C[0]
 		print("C_x: " + str(C_x))
 		C_y=C[1]
@@ -135,7 +135,7 @@ class HP_Optimization:
 				break
 			print("adding " + str(new_x_rd))
 			C_x[cur_amt_x] = new_x_rd
-			C_y[cur_amt_x] = perform_evaluation_at(data, new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
+			C_y[cur_amt_x] = perform_evaluation_at(new_x_rd[0], new_x_rd[1], new_x_rd[2], new_x_rd[3])
 			cur_amt_x += 1
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
 			print("Checking if cov_matr is singular")
@@ -189,7 +189,7 @@ class HP_Optimization:
 	                k_vec[i] = k(ev_x[i], new_x)
 	        return k_vec
 
-	def create_evidence_set(self, data, amt_it: int, dim_HP: int, is_random: bool = True):
+	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True):
 		x = np.zeros(shape=(amt_it+dim_HP+1, dim_HP))
 		y = np.zeros((amt_it+dim_HP+1))
 		if(is_random):
@@ -201,7 +201,7 @@ class HP_Optimization:
 				#evaluating takes quite some time, especially for min_lv>1
 				#y[i] = perform_evaluation_at(data, new_x[0], new_x[1], new_x[2], new_x[3])
 				#needs to be casted to int bc otherwise it's automatically float which doesn't work
-				y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
+				y[i] = perform_evaluation_at(x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
 		else:
 			#hard-code non-random values for testing - current threw error at it. 24
 			#use seed for random values instead of hard coded values? -> get used seed
@@ -211,10 +211,10 @@ class HP_Optimization:
 			x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
 			x[4] = [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
 			for i in range(0, dim_HP+1, 1):
-				y[i] = perform_evaluation_at(data, x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
+				y[i] = perform_evaluation_at(x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
 		return x, y
 
-	#returns a random x for the given purpose
+	#returns a random x for the given purpose - needs search space
 	def create_random_x(self, purpose = "classification"):
 		if(purpose == "classification"):
 			return [random.random(), random.randint(0, 1), random.randint(1, 3), random.randint(0, 1)]
@@ -298,6 +298,7 @@ class HP_Optimization:
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		return new_x
 
+	#needs search space
 	def round_x_classification(self, x):
 		if len(x) < 4:
 			print("Input too short! Returning default values")
@@ -346,4 +347,4 @@ def pea_classification(cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_o
 	return evaluation["Percentage correct"]
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 HPO = HP_Optimization(pea_classification, classification_space)
-HPO.perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0)
+HPO.perform_evaluation_at(0.00242204, 0, 1, 0)
