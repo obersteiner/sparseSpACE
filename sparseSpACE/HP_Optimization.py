@@ -41,7 +41,7 @@ class HP_Optimization:
 						#use "perform evaluation at"
 						#cur_time = classification._time_used
 						#print ("current time needed = " + str(cur_time))
-						cur_evaluation = perform_evaluation_at(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
+						cur_evaluation = self.perform_evaluation_at(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
 						print("Percentage of correct mappings",cur_evaluation)
 						#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
 						if(best_evaluation == None or cur_evaluation>best_evaluation):
@@ -63,29 +63,29 @@ class HP_Optimization:
 		best_x = [1, 1, 1, 1]
 		for i in range (0, amt_it, 1):
 			x = create_random_x()
-			new_eval = perform_evaluation_at(x[0], x[1], x[2], x[3])
+			new_eval = perform_evaluation_at(x)
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
 		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(x))
 
 	#returns evaluation for certain Parameters on a certain data set
-	def perform_evaluation_at(self, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
+	def perform_evaluation_at(self, params):
 		#classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 		#classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
 		#evaluation = classification.evaluate()
 		#print("Percentage of correct mappings",evaluation["Percentage correct"])
 		##wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		#return evaluation["Percentage correct"]
-		return self.function(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
+		return self.function(params)
 
-	classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
+	#classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 
 	#TODO: will perform Bayesian Optimization; Currently basically performs BO with Naive rounding and a weird beta
 	#Note: HP Input of classification is (lambd:float, massl:bool, min_lv:int <4, one_vs_others:bool)
-	def perform_BO_classification(self, amt_it: int, function = perform_evaluation_at, space = classification_space, ev_is_rand: bool = True):
+	def perform_BO_classification(self, amt_it: int, ev_is_rand: bool = True):
 		#notes how many x values currently are in the evidence set - starts with amt_HP+1
-		amt_HP = len(space)
+		amt_HP = len(self.hp_space)
 		cur_amt_x: int = amt_HP+1
 		x_ret = None
 		y_ret = None
@@ -201,7 +201,7 @@ class HP_Optimization:
 				#evaluating takes quite some time, especially for min_lv>1
 				#y[i] = perform_evaluation_at(data, new_x[0], new_x[1], new_x[2], new_x[3])
 				#needs to be casted to int bc otherwise it's automatically float which doesn't work
-				y[i] = perform_evaluation_at(x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
+				y[i] = perform_evaluation_at(x[i])
 		else:
 			#hard-code non-random values for testing - current threw error at it. 24
 			#use seed for random values instead of hard coded values? -> get used seed
@@ -211,15 +211,26 @@ class HP_Optimization:
 			x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
 			x[4] = [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
 			for i in range(0, dim_HP+1, 1):
-				y[i] = perform_evaluation_at(x[i][0], int(x[i][1]), int(x[i][2]), int(x[i][3]))
+				y[i] = perform_evaluation_at(x[i])
 		return x, y
 
 	#returns a random x for the given purpose - needs search space
-	def create_random_x(self, purpose = "classification"):
-		if(purpose == "classification"):
-			return [random.random(), random.randint(0, 1), random.randint(1, 3), random.randint(0, 1)]
-		else:
-			print("Invalid Input")
+	def create_random_x(self):
+		res = []
+		for i in range (0, len(self.hp_space)):
+			new_x = 1
+			if (len(self.hp_space[i])<3):
+				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
+			elif (self.hp_space[i][0] == "interval"):
+				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
+			elif (self.hp_space[i][0] == "list"):
+				sel = self.hp_space[i]
+				sel.remove("list")
+				new_x = random.choice(sel)
+			else:
+				print("Unknown type of space! Using default value 1 for index " + str(i))
+			res.append(new_x)
+		return res
 
 	#checks if array has the element x, returns True if yes. Caution: If x has same length but different dimension to the elements of array this may give unintended results
 	#maybe later a threshhold can be added if only part of the matrix should be checked
@@ -299,11 +310,14 @@ class HP_Optimization:
 		return new_x
 
 	#needs search space
-	def round_x_classification(self, x):
-		if len(x) < 4:
+	def round_x(self, x):
+		if len(x) < len(self.hp_space):
 			print("Input too short! Returning default values")
-			return [0, 0, 1, 0]
-		if len(x) > 4:
+			default = np.zeros(len(self.hp_space))
+			if(len(default)>2):
+				default[2] = 1
+			return default
+		if len(x) > len(self.hp_space):
 			print("Input too long! Cropping")
 		#rounds the values of new_x to values usable as HPs - the question is what kind of rounding makes sense
 		#e.g if lambda should be bounded or more values should be rounded to 0
@@ -313,7 +327,10 @@ class HP_Optimization:
 		if(min_lv<1): min_lv = 1
 		elif (min_lv>3): min_lv = 3
 		one_vs_others = math.trunc(x[3])
-		new_x_rd = [lambd, massl, min_lv, one_vs_others]
+		new_x_rd = []
+		for i in range (0, len(x)):
+			"EEEEEEK"
+			
 		return new_x_rd
 
 #Basically copied code from Tutorial_DEMachineLearning
@@ -334,17 +351,24 @@ data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_RO_classification(data_moons, 10, dimension)
 #perform_GO_classification(data_moons, 20)
 #perform_evaluation_at(self, data_moons, 0.828603059876013, 0, 2, 1)
-def pea_classification(cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
-	dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels)
+#parameters are in form lambd, masslump, minlv, one_vs_others
+def pea_classification(params):
+	dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels, random_state=1)
 	data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 	cur_data = data_blobs.copy()
+	#dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
+	#data_moons = deml.DataSet(sklearn_dataset, name='data_moons')
+	#cur_data = data_moons.copy()
 	#should implement a smoother way to put in the data set
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-	classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
+	classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=5, one_vs_others=params[3], print_metrics=False)
 	evaluation = classification.evaluate()
 	print("Percentage of correct mappings",evaluation["Percentage correct"])
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
+
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 HPO = HP_Optimization(pea_classification, classification_space)
-HPO.perform_evaluation_at(0.00242204, 0, 1, 0)
+#HPO.perform_evaluation_at([0.00242204, 0, 1, 0])
+#HPO.perform_BO_classification(5)
+print(HPO.create_random_x())
