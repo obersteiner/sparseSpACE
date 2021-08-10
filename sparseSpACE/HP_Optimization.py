@@ -6,11 +6,11 @@ import random
 from scipy.optimize import fmin
 from scipy.optimize import minimize
 
-#class HP_Optimization gets the data on which the ML Algo works, the function on which HP should be Optimized and search space for the HPs
+#class HP_Optimization gets (data not needed bc only pea needs that which is the function!),
+#the function on which HP should be Optimized and search space for the HPs
 #space is in form [["interval", <start>, <end>], ["list", <l0>, <l1>, <l2>,...], ....]
 class HP_Optimization:
-	def __init__(self, data, function, hp_space):
-		self.data = data
+	def __init__(self, function, hp_space):
 		self.function = function
 		self.hp_space = hp_space
 
@@ -71,12 +71,13 @@ class HP_Optimization:
 
 	#returns evaluation for certain Parameters on a certain data set
 	def perform_evaluation_at(self, cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
-		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-		classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
-		evaluation = classification.evaluate()
-		print("Percentage of correct mappings",evaluation["Percentage correct"])
-		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
-		return evaluation["Percentage correct"]
+		#classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
+		#classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
+		#evaluation = classification.evaluate()
+		#print("Percentage of correct mappings",evaluation["Percentage correct"])
+		##wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
+		#return evaluation["Percentage correct"]
+		return self.function(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
 
 	classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 
@@ -332,7 +333,11 @@ data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_RO_classification(data_moons, 10, dimension)
 #perform_GO_classification(data_moons, 20)
 #perform_evaluation_at(self, data_moons, 0.828603059876013, 0, 2, 1)
-def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
+def pea_classification(cur_lambd: float, cur_massl: bool, cur_min_lv: int, cur_one_vs_others: bool):
+	dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels)
+	data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
+	cur_data = data_blobs.copy()
+	#should implement a smoother way to put in the data set
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 	classification.perform_classification(masslumping=cur_massl, lambd=cur_lambd, minimum_level=cur_min_lv, maximum_level=5, one_vs_others=cur_one_vs_others, print_metrics=False)
 	evaluation = classification.evaluate()
@@ -340,5 +345,5 @@ def perform_evaluation_at(cur_data, cur_lambd: float, cur_massl: bool, cur_min_l
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
-HPO = HP_Optimization(data_moons, perform_evaluation_at, classification_space)
+HPO = HP_Optimization(pea_classification, classification_space)
 HPO.perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0)
