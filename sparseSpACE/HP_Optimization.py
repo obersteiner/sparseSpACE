@@ -314,11 +314,9 @@ class HP_Optimization:
 	#needs search space
 	def round_x(self, x):
 		if len(x) < len(self.hp_space):
-			print("Input too short! Returning default values")
-			default = np.zeros(len(self.hp_space))
-			if(len(default)>2):
-				default[2] = 1
-			return default
+			print("Input too short! Returning default values rd(0) for missing values")
+			for k in range (len(x), len(self.hp_space)):
+				x.append(0)
 		if len(x) > len(self.hp_space):
 			print("Input too long! Cropping")
 		#rounds the values of new_x to values usable as HPs - the question is what kind of rounding makes sense
@@ -330,7 +328,7 @@ class HP_Optimization:
 		elif (min_lv>3): min_lv = 3
 		one_vs_others = math.trunc(x[3])
 		new_x_rd = []
-		for i in range (0, len(x)):
+		for i in range (0, len(self.hp_space)):
 			new_x = 1
 			if(len(self.hp_space[i])<3):
 				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
@@ -342,8 +340,14 @@ class HP_Optimization:
 				else:
 					new_x = x[i]
 			elif(self.hp_space[i][0] == "list"):
-				new_x = 1
-				#maybe work with how far away from possible values x[i] is?
+				new_x = self.hp_space[i][1]
+				dis = abs(x[i]-self.hp_space[i][1])
+				#takes the value in the list that is least away from x
+				for j in range (2, len(self.hp_space[i])):
+					cur_dis = abs(x[i]-self.hp_space[i][j])
+					if(cur_dis < dis):
+						dis = cur_dis
+						new_x = self.hp_space[i][j]
 			else:
 				print("Unknown type of space! Using default value 1 for index " + str(i))
 			new_x_rd.append(new_x)
@@ -383,8 +387,10 @@ def pea_classification(params):
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
 
-classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
+classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1], ["interval", 3, 4, 5], ["blues", 4, 5, 6]]
 HPO = HP_Optimization(pea_classification, classification_space)
 #HPO.perform_evaluation_at([0.00242204, 0, 1, 0])
 #HPO.perform_BO_classification(5)
-print(HPO.create_random_x())
+print(HPO.round_x([0.345]))
+print(HPO.round_x([-3.75, -1000, -3, 1.567890234, 3.757575, 3000000, 4, 5, 4.5677]))
+print(HPO.round_x([-3.75, -1000, -3, 1.567890234, 3.757575, 5]))
