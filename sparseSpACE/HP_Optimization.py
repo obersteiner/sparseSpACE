@@ -77,7 +77,10 @@ class HP_Optimization:
 		#print("Percentage of correct mappings",evaluation["Percentage correct"])
 		##wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		#return evaluation["Percentage correct"]
-		return self.function(params)
+		print("performing evaluation at " + str(params))
+		res = self.function(params)
+		print("returning " + str(res))
+		return res
 
 	#classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 
@@ -114,11 +117,12 @@ class HP_Optimization:
 			new_x=self.acq_x(beta, l, C_x, C_y, cur_amt_x)
 			print("new x: " + str(new_x))
 			new_x_rd = self.round_x(new_x)
+			old_x_rd = None
 			print("new x rd: " + str(new_x_rd))
 			#erstelle neues beta und l und berechne neuen wert damit
 			while(self.check_if_in_array(new_x_rd, C_x)):
 				print("!!!!!!!!!!!Need new beta and l")
-				old_x_rd = new_x_rd
+				old_x_rd = new_x_rd.copy()
 				print("old x rd was: " + str(old_x_rd))
 				beta_and_l = self.get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
 				new_x = self.acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
@@ -191,7 +195,8 @@ class HP_Optimization:
 	                k_vec[i] = self.cov(ev_x[i], new_x)
 	        return k_vec
 
-	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True):
+#maybe give method the non-rand values instead of hardcoding them?
+	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True, non_rand_values = None):
 		x = np.zeros(shape=(amt_it+dim_HP+1, dim_HP))
 		y = np.zeros((amt_it+dim_HP+1))
 		if(is_random):
@@ -218,17 +223,19 @@ class HP_Optimization:
 
 	#returns a random x for the given purpose - needs search space
 	def create_random_x(self):
+		print("creating random x")
 		res = []
 		for i in range (0, len(self.hp_space)):
 			new_x = 1
 			if (len(self.hp_space[i])<3):
-				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
+				print("Too little Arguments! HP Space index " + str(i) + ": " + str(self.hp_space[i]))
 			elif (self.hp_space[i][0] == "interval"):
 				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
 			elif (self.hp_space[i][0] == "list"):
-				sel = self.hp_space[i]
+				sel = self.hp_space[i].copy()
 				sel.remove("list")
 				new_x = random.choice(sel)
+				print("hp_space[" + str(i) + "] is now " + str(self.hp_space[i]))
 			else:
 				print("Unknown type of space! Using default value 1 for index " + str(i))
 			res.append(new_x)
@@ -263,15 +270,14 @@ class HP_Optimization:
 
 	#TODO: get new beta and l. Currently mock function
 	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
-		global l_k
-		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(l_k))
+		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(self.l_k))
 		if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 			print("Getting new beta and l, but suddenly the cov matr is singular??")
 		else:
 			print("Apparently the cov_matr is not singular. Getting new beta and l")
 		#making upper bounds dependable on current values so bounds are never too low
 		beta_h = cur_beta+100
-		l_h = l_k+50
+		l_h = self.l_k+50
 		#0 if rd(x) is in ev set C_x, constant otherwise (5)
 		#penalty p(x) erhöhen wenn gleicher Wert rauskommt. z.B. immer +50 oder *2 oder anders exponentiell
 		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*50
@@ -279,7 +285,7 @@ class HP_Optimization:
 		new_x = lambda z: self.acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 		g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
-		bounds_g = ((cur_beta, beta_h), (l_k, l_h))
+		bounds_g = ((cur_beta, beta_h), (self.l_k, l_h))
 		print("About to minimize g(...)")
 		#due to numerical inaccuracies a matrix might become singular with new beta and l
 		#(even though it wouldn't be) mathematically - how to deal with that??
@@ -290,9 +296,8 @@ class HP_Optimization:
 
 	#TODO acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
-		global l_k
-		old_l=l_k
-		l_k=l
+		old_l=self.l_k
+		self.l_k=l
 		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
 			print("Covariance Matrix is indeed singular!")
@@ -313,6 +318,7 @@ class HP_Optimization:
 
 	#needs search space
 	def round_x(self, x):
+		print("rounding x")
 		if len(x) < len(self.hp_space):
 			print("Input too short! Returning default values rd(0) for missing values")
 			for k in range (len(x), len(self.hp_space)):
@@ -321,16 +327,11 @@ class HP_Optimization:
 			print("Input too long! Cropping")
 		#rounds the values of new_x to values usable as HPs - the question is what kind of rounding makes sense
 		#e.g if lambda should be bounded or more values should be rounded to 0
-		lambd = x[0]
-		massl = math.trunc(x[1]) #is true if abs val > 1
-		min_lv = math.trunc(x[2])
-		if(min_lv<1): min_lv = 1
-		elif (min_lv>3): min_lv = 3
-		one_vs_others = math.trunc(x[3])
 		new_x_rd = []
 		for i in range (0, len(self.hp_space)):
 			new_x = 1
 			if(len(self.hp_space[i])<3):
+				print("Too little Arguments! HP Space index " + str(i) + ": " + str(self.hp_space[i]))
 				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
 			elif(self.hp_space[i][0] == "interval"):
 				if(x[i]<self.hp_space[i][1]):
@@ -362,8 +363,6 @@ labels = 6
 #gaussian quantiles, classification.. kann man einstellen
 sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
 data1 = deml.DataSet(sklearn_dataset, name='Input_Set')
-data_moons = data1.copy()
-data_moons.set_name('Moon_Set')
 dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels)
 data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
@@ -373,12 +372,16 @@ data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_evaluation_at(self, data_moons, 0.828603059876013, 0, 2, 1)
 #parameters are in form lambd, masslump, minlv, one_vs_others
 def pea_classification(params):
-	dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels, random_state=1)
-	data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
-	cur_data = data_blobs.copy()
+	if(len(params)<4):
+		print("too little params for pea_classification. Returning 0.0")
+		return 0.0
+	params = [params[0], int(params[1]), int(params[2]), int(params[3])]
+	#dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels, random_state=1)
+	#data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
+	#cur_data = data_blobs.copy()
 	#dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
 	#data_moons = deml.DataSet(sklearn_dataset, name='data_moons')
-	#cur_data = data_moons.copy()
+	cur_data = data_moons.copy()
 	#should implement a smoother way to put in the data set
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 	classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=5, one_vs_others=params[3], print_metrics=False)
@@ -387,10 +390,9 @@ def pea_classification(params):
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
 
-classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1], ["interval", 3, 4, 5], ["blues", 4, 5, 6]]
+data_moons = data1.copy()
+data_moons.set_name('Moon_Set')
+classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 HPO = HP_Optimization(pea_classification, classification_space)
 #HPO.perform_evaluation_at([0.00242204, 0, 1, 0])
-#HPO.perform_BO_classification(5)
-print(HPO.round_x([0.345]))
-print(HPO.round_x([-3.75, -1000, -3, 1.567890234, 3.757575, 3000000, 4, 5, 4.5677]))
-print(HPO.round_x([-3.75, -1000, -3, 1.567890234, 3.757575, 5]))
+HPO.perform_BO_classification(20)
