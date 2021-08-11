@@ -3,6 +3,7 @@ import numpy as np
 import scipy as sp
 import math
 import random
+import itertools
 from scipy.optimize import fmin
 from scipy.optimize import minimize
 
@@ -15,52 +16,65 @@ class HP_Optimization:
 		self.hp_space = hp_space
 
 	#performs Grid Optimization
-	def perform_GO_classification(self, lambd_levels):
+	def perform_GO(self, int_levels):
 		#sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15)
 		#data = deml.DataSet(sklearn_dataset, name='Input_Set')
 		#for storing the current best evaluation and time
 		best_evaluation = None
 		#best_time = None
 		#storing the parameters of the best evaluation
-		best_lambd = None
-		best_masslump = None
-		best_min_lv = None
-		best_one_vs_others = None
+		best_x = None
 		#todo: split Dataset??
 		#original classification: classification = deml.Classification(data, split_percentage=0.8, split_evenly=True, shuffle_data=True)
 		#original settings: classification.perform_classification(masslumping=True, lambd=0.0, minimum_level=1, maximum_level=5, print_metrics=True)
 		#perform grid search for lambd_levels many lambd between 0 and 1 and all values for the rest
 		#Note: lambd vllt besser logarithmisch, sehr kleine Werte oft besser (1/10, 1/100, 1/1000)
 		#für for-schleife karthesisches produkt aus HO um alle tupel zu bilden und über diese tupel zu iterieren für beliebig dimensional
-		for cur_lambd_it in range (0, lambd_levels, 1):
-			cur_lambd = cur_lambd_it/lambd_levels
-			#Note: lambd vor Allem sinnvoll wenn masslumping aus ist, sollte kaum unterschied machen wenn an
-			for cur_massl in [True, False]:
-				for cur_min_lv in range (1, 3, 1):
-					for cur_one_vs_others in [True, False]:
-						#use "perform evaluation at"
-						#cur_time = classification._time_used
-						#print ("current time needed = " + str(cur_time))
-						cur_evaluation = self.perform_evaluation_at(cur_lambd, cur_massl, cur_min_lv, cur_one_vs_others)
-						print("Percentage of correct mappings",cur_evaluation)
-						#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
-						if(best_evaluation == None or cur_evaluation>best_evaluation):
-							best_evaluation = cur_evaluation
-							best_lambd = cur_lambd
-							#best_time = cur_time0
-							best_masslump = cur_massl
-							best_min_lv = cur_min_lv
-							best_one_vs_others = cur_one_vs_others
-							print("Best evaluation is now " + str(best_evaluation) + " with lambd = " + str(best_lambd) + ", masslump = " + str(best_masslump) + ", min_level = " + str(best_min_lv) + ", one_vs_others = " + str(best_one_vs_others)) #+ " and time = " + str(best_time))
-						else:	print("Best evaluation is still " + str(best_evaluation) + " with lambd = " + str(best_lambd) + ", masslump = " + str(best_masslump) + ", min_level = " + str(best_min_lv) + ", one_vs_others = " + str(best_one_vs_others)) #+ " and time = " + str(best_time))
-						print ("END OF CURRENT EVALUATION \n")
-		print("In the end, best evaluation is " + str(best_evaluation)  + " with lambd = " + str(best_lambd) + ", masslump = " + str(best_masslump) + ", min_level = " + str(best_min_lv) + ", one_vs_others = " + str(best_one_vs_others))
+		#Note: lambd vor Allem sinnvoll wenn masslumping aus ist, sollte kaum unterschied machen wenn an
+		search_space = self.cart_prod_hp_space(int_levels)
+		for x in search_space:
+			#use "perform evaluation at"
+			#cur_time = classification._time_used
+			#print ("current time needed = " + str(cur_time))
+			cur_evaluation = self.perform_evaluation_at(x)
+			print("Percentage of correct mappings",cur_evaluation)
+			#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
+			if(best_evaluation == None or cur_evaluation>best_evaluation):
+				best_evaluation = cur_evaluation
+				best_x = x
+				print("Best evaluation is now " + str(best_evaluation) + " at " + str(x))
+			else:	print("Best evaluation is still " + str(best_evaluation) + " at " + str(x))
+			print ("END OF CURRENT EVALUATION \n")
+		print("In the end, best evaluation is " + str(best_evaluation)  + " at " + str(x))
 		#+ " and time = " + str(best_time))
 
+	def cart_prod_hp_space(self, interval_levels):
+	    res = []
+	    for i in range (0, len(self.hp_space)):
+	        new = []
+	        if(len(self.hp_space[i])<3):
+	            print("please enter enough values for hp_space")
+	            new.append(1)
+	        elif(self.hp_space[i][0] == "interval"):
+	            h = self.hp_space[i][2]-self.hp_space[i][1]
+	            dh = h /interval_levels
+	            #currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
+	            for j in range (0, interval_levels+1):
+	                new.append(self.hp_space[i][1]+j*dh)
+	        elif(self.hp_space[i][0] == "list"):
+	            new = self.hp_space[i].copy()
+	            new.remove("list")
+	        else:
+	            print("please enter valid types for hp_space")
+	            new.append[1]
+	        res.append(new)
+	    res_cart = list(itertools.product(*res))
+	    return res_cart
+
 	#performs random optimization
-	def perform_RO_classification(self, amt_it: int, dim: int):
+	def perform_RO(self, amt_it: int):
 		best_evaluation = 0
-		best_x = [1, 1, 1, 1]
+		best_x = None
 		for i in range (0, amt_it, 1):
 			x = self.create_random_x()
 			new_eval = self.perform_evaluation_at(x)
@@ -84,9 +98,9 @@ class HP_Optimization:
 
 	#classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 
-	#TODO: will perform Bayesian Optimization; Currently basically performs BO with Naive rounding and a weird beta
+	#performs Bayesian Optimization
 	#Note: HP Input of classification is (lambd:float, massl:bool, min_lv:int <4, one_vs_others:bool)
-	def perform_BO_classification(self, amt_it: int, ev_is_rand: bool = True):
+	def perform_BO(self, amt_it: int, ev_is_rand: bool = True):
 		#notes how many x values currently are in the evidence set - starts with amt_HP+1
 		amt_HP = len(self.hp_space)
 		cur_amt_x: int = amt_HP+1
@@ -195,7 +209,7 @@ class HP_Optimization:
 	                k_vec[i] = self.cov(ev_x[i], new_x)
 	        return k_vec
 
-#maybe give method the non-rand values instead of hardcoding them?
+	#maybe give method the non-rand values instead of hardcoding them?
 	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True, non_rand_values = None):
 		x = np.zeros(shape=(amt_it+dim_HP+1, dim_HP))
 		y = np.zeros((amt_it+dim_HP+1))
@@ -268,7 +282,7 @@ class HP_Optimization:
 	def get_l_k(self, t: int):
 		return 0.5
 
-	#TODO: get new beta and l. Currently mock function
+	#gets new beta and l if old beta and l give values that are already in C
 	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
 		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(self.l_k))
 		if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
@@ -294,7 +308,32 @@ class HP_Optimization:
 		#result is in the form [new beta, new l]
 		return result
 
-	#TODO acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
+	def get_bounds(self):
+		res = []
+		for i in range(0, len(self.hp_space)):
+			new = [0, 1]
+			#should one be able to enter just one value for "list"??
+			if(len(self.hp_space[i])<3):
+				print("please enter a valid hp_space")
+			elif(self.hp_space[i][0] == "interval"):
+				new = self.hp_space[i].copy()
+				new.remove("interval")
+				new = [new[0], new[1]]
+			elif(self.hp_space[i][0] == "list"):
+				max = self.hp_space[i][1]
+				min = max
+				for j in range (2, len(self.hp_space[i])):
+					if(self.hp_space[i][j]<min):
+						min = self.hp_space[i][j]
+					if(self.hp_space[i][j]>max):
+						max = self.hp_space[i][j]
+				new = [min, max]
+			else:
+				print("please enter a valid hp_space")
+			res.append(new)
+		return res
+
+	#acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
 		old_l=self.l_k
 		self.l_k=l
@@ -310,9 +349,10 @@ class HP_Optimization:
 		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
-		bounds_an = ((0, 3), (0, 1), (1, 3), (0, 1)) #bounds search space to vicinity of useful values
+		bounds_an = self.get_bounds() #bounds search space to vicinity of useful values
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
-		new_x=minimize(alpha_neg, [0, 0, 0, 0], method='L-BFGS-B', bounds=bounds_an).x
+		x0 = np.zeros(len(self.hp_space))
+		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		return new_x
 
@@ -368,7 +408,6 @@ data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
 #perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
 #perform_BO_classification(data_blobs, 20)
 #perform_RO_classification(data_moons, 10, dimension)
-#perform_GO_classification(data_moons, 20)
 #perform_evaluation_at(self, data_moons, 0.828603059876013, 0, 2, 1)
 #parameters are in form lambd, masslump, minlv, one_vs_others
 def pea_classification(params):
@@ -381,7 +420,7 @@ def pea_classification(params):
 	#cur_data = data_blobs.copy()
 	#dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
 	#data_moons = deml.DataSet(sklearn_dataset, name='data_moons')
-	cur_data = data_moons.copy()
+	cur_data = data.copy()
 	#should implement a smoother way to put in the data set
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 	classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=5, one_vs_others=params[3], print_metrics=False)
@@ -389,10 +428,16 @@ def pea_classification(params):
 	print("Percentage of correct mappings",evaluation["Percentage correct"])
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
-
+def simple_test(params):
+	return params[0]
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
+data = data_moons.copy()
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
-HPO = HP_Optimization(pea_classification, classification_space)
+simple_space = [["interval", 6.456, 10.2123]]
+HPO = HP_Optimization(simple_test, simple_space)
 #HPO.perform_evaluation_at([0.00242204, 0, 1, 0])
-HPO.perform_BO_classification(20)
+#HPO.perform_BO(20)
+#print(HPO.cart_prod_hp_space(5))
+HPO.perform_BO(5)
+
