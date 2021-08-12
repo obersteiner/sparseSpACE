@@ -14,6 +14,30 @@ class HP_Optimization:
 	def __init__(self, function, hp_space):
 		self.function = function
 		self.hp_space = hp_space
+		self.check_hp_space()
+
+	def check_hp_space(self):
+		if(len(self.hp_space)<1):
+			print("Please enter values for hp_space! Using default value ['list', 1], but will likely throw errors")
+			hp_space.append(["list", 1])
+			return 0
+		for i in range(0, len(self.hp_space)):
+			if(len(self.hp_space[i])<2):
+				print("Please enter at least a descriptor and one value for hp_space index " + str(i))
+				print("Default value ['list', 1] will be used")
+				hp_space[i] = ["list", 1]
+			elif(self.hp_space[i][0]=="interval"):
+				if(len(self.hp_space[i])<3):
+					self.hp_space[i].append(self.hp_space[i][1])
+				elif(self.hp_space[i][1]>self.hp_space[i][2]):
+					self.hp_space[i] = ["interval", self.hp_space[i][2], self.hp_space[i][1]]
+				else:
+					self.hp_space[i] = ["interval", self.hp_space[i][1], self.hp_space[i][2]]
+			elif(self.hp_space[i][0]=="list"):
+				self.hp_space[i] = self.hp_space[i]
+			else:
+				print("Unknown descriptor for hp_space at index " + str(i) +". Using ['list', <first value given>]")
+				self.hp_space[i] = ["list", self.hp_space[i][1]]
 
 	#performs Grid Optimization
 	def perform_GO(self, int_levels):
@@ -49,27 +73,33 @@ class HP_Optimization:
 		#+ " and time = " + str(best_time))
 
 	def cart_prod_hp_space(self, interval_levels):
-	    res = []
-	    for i in range (0, len(self.hp_space)):
-	        new = []
-	        if(len(self.hp_space[i])<3):
-	            print("please enter enough values for hp_space")
-	            new.append(1)
-	        elif(self.hp_space[i][0] == "interval"):
-	            h = self.hp_space[i][2]-self.hp_space[i][1]
-	            dh = h /interval_levels
-	            #currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
-	            for j in range (0, interval_levels+1):
-	                new.append(self.hp_space[i][1]+j*dh)
-	        elif(self.hp_space[i][0] == "list"):
-	            new = self.hp_space[i].copy()
-	            new.remove("list")
-	        else:
-	            print("please enter valid types for hp_space")
-	            new.append[1]
-	        res.append(new)
-	    res_cart = list(itertools.product(*res))
-	    return res_cart
+		res = []
+		for i in range (0, len(self.hp_space)):
+			new = []
+			if(len(self.hp_space[i])<2):
+				print("please at least 1 value for hp_space list")
+				new.append(1)
+			elif(self.hp_space[i][0] == "list"):
+				new = self.hp_space[i].copy()
+				new.remove("list")
+			elif(len(self.hp_space[i])<3):
+				print("please enter at least 2 values for hp_space interval. Using the value given")
+				new.append(self.hp_space[i][1])
+			elif(self.hp_space[i][0] == "interval"):
+				h = self.hp_space[i][2]-self.hp_space[i][1]
+				dh = h /interval_levels
+				#currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
+				if(h == 0):
+					new.append(self.hp_space[i][1])
+				else:
+					for j in range (0, interval_levels+1):
+						new.append(self.hp_space[i][1]+j*dh)
+			else:
+				print("please enter valid types for hp_space! Using the first value given")
+				new.append(self.hp_space[i][1])
+			res.append(new)
+		res_cart = list(itertools.product(*res))
+		return res_cart
 
 	#performs random optimization
 	def perform_RO(self, amt_it: int):
@@ -202,18 +232,18 @@ class HP_Optimization:
 	def get_cov_vector(self, ev_x, new_x, cur_length: int):
 	        #somehow the rest of the function would still work even if x is wrong size, but no idea why / what it does. Better to check
 	        if(len(ev_x[0]) != len(new_x)):
-	                print("Input x has the wrong size")
+	                print("Input x for cov_vector has the wrong size")
 	                return None
 	        k_vec = np.zeros(len(ev_x))
 	        for i in range (0, cur_length, 1):
 	                k_vec[i] = self.cov(ev_x[i], new_x)
 	        return k_vec
 
-	#maybe give method the non-rand values instead of hardcoding them?
-	def create_evidence_set(self, amt_it: int, dim_HP: int, is_random: bool = True, non_rand_values = None):
+	#creates evidence set using random values
+	def create_evidence_set(self, amt_it: int, dim_HP: int, non_rand_values = None):
 		x = np.zeros(shape=(amt_it+dim_HP+1, dim_HP))
 		y = np.zeros((amt_it+dim_HP+1))
-		if(is_random):
+		if(non_rand_values == None):
 			for i in range(0, dim_HP+1, 1):
 				new_x = self.create_random_x()
 				while(self.check_if_in_array(new_x, x)):
@@ -224,15 +254,9 @@ class HP_Optimization:
 				#needs to be casted to int bc otherwise it's automatically float which doesn't work
 				y[i] = self.perform_evaluation_at(x[i])
 		else:
-			#hard-code non-random values for testing - current threw error at it. 24
-			#use seed for random values instead of hard coded values? -> get used seed
-			x[0] = [0.20213575, 0., 1., 0.] #[0.79125794, 0, 1, 0]
-			x[1] = [0.80125658, 0., 1., 0.] #[0.69819941, 1, 2, 0]
-			x[2] = [0.09898312, 1., 3., 1.] #[0.35823418, 0, 1, 0]
-			x[3] = [0.88249225, 1., 1., 0.] #[0.51043662, 1, 1, 0]
-			x[4] = [0.1321559, 1., 2., 1.] #[0.54776247, 0, 1, 0]
-			for i in range(0, dim_HP+1, 1):
-				y[i] = self.perform_evaluation_at(x[i])
+			for j in range(0, dim_HP+1, 1):
+				x[j] = non_rand_values[j]
+				y[j] = self.perform_evaluation_at(x[j])
 		return x, y
 
 	#returns a random x for the given purpose - needs search space
@@ -241,17 +265,21 @@ class HP_Optimization:
 		res = []
 		for i in range (0, len(self.hp_space)):
 			new_x = 1
-			if (len(self.hp_space[i])<3):
-				print("Too little Arguments! HP Space index " + str(i) + ": " + str(self.hp_space[i]))
-			elif (self.hp_space[i][0] == "interval"):
-				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
+			if (len(self.hp_space[i])<2):
+				print("Please enter at least 1 value for hp_space list!")
 			elif (self.hp_space[i][0] == "list"):
 				sel = self.hp_space[i].copy()
 				sel.remove("list")
 				new_x = random.choice(sel)
 				print("hp_space[" + str(i) + "] is now " + str(self.hp_space[i]))
+			elif (len(self.hp_space[i])<3):
+				print("Please enter at least 2 values for hp_space interval! Using the 1 value given")
+				new_x = self.hp_space[i][1]
+			elif (self.hp_space[i][0] == "interval"):
+				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
 			else:
-				print("Unknown type of space! Using default value 1 for index " + str(i))
+				print("Unknown type of space! Using first value given for index " + str(i))
+				new_x = self.hp_space[i][1]
 			res.append(new_x)
 		return res
 
@@ -311,14 +339,10 @@ class HP_Optimization:
 	def get_bounds(self):
 		res = []
 		for i in range(0, len(self.hp_space)):
-			new = [0, 1]
+			new = [1, 1]
 			#should one be able to enter just one value for "list"??
-			if(len(self.hp_space[i])<3):
-				print("please enter a valid hp_space")
-			elif(self.hp_space[i][0] == "interval"):
-				new = self.hp_space[i].copy()
-				new.remove("interval")
-				new = [new[0], new[1]]
+			if(len(self.hp_space[i])<2):
+				print("please enter at least 1 value for hp_space list. Using default values [1, 1]")
 			elif(self.hp_space[i][0] == "list"):
 				max = self.hp_space[i][1]
 				min = max
@@ -328,8 +352,16 @@ class HP_Optimization:
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
 				new = [min, max]
+			elif(len(self.hp_space[i])<3):
+				print("please enter at least 2 values for hp_space interval. Using the one value given")
+				new = [hp_space[i][1], hp_space[i][1]]
+			elif(self.hp_space[i][0] == "interval"):
+				new = self.hp_space[i].copy()
+				new.remove("interval")
+				new = [new[0], new[1]]
 			else:
-				print("please enter a valid hp_space")
+				print("please enter a valid hp_space. Using first value given")
+				new = [hp_space[i][1], hp_space[i][1]]
 			res.append(new)
 		return res
 
@@ -370,16 +402,8 @@ class HP_Optimization:
 		new_x_rd = []
 		for i in range (0, len(self.hp_space)):
 			new_x = 1
-			if(len(self.hp_space[i])<3):
-				print("Too little Arguments! HP Space index " + str(i) + ": " + str(self.hp_space[i]))
-				print("Too little arguments in HP Space! Using default value 1 for index " + str(i))
-			elif(self.hp_space[i][0] == "interval"):
-				if(x[i]<self.hp_space[i][1]):
-					new_x = self.hp_space[i][1]
-				elif(x[i]>self.hp_space[i][2]):
-					new_x = self.hp_space[i][2]
-				else:
-					new_x = x[i]
+			if(len(self.hp_space[i])<2):
+				print("Please enter at least 1 value for hp_space list. Index: " + str(i) + ": " + str(self.hp_space[i]))
 			elif(self.hp_space[i][0] == "list"):
 				new_x = self.hp_space[i][1]
 				dis = abs(x[i]-self.hp_space[i][1])
@@ -389,8 +413,19 @@ class HP_Optimization:
 					if(cur_dis < dis):
 						dis = cur_dis
 						new_x = self.hp_space[i][j]
+			elif(len(self.hp_space[i])<3):
+				print("Please enter at least 2 values for hp_space interval. Using the one value given")
+				new_x = self.hp_space[i][1]
+			elif(self.hp_space[i][0] == "interval"):
+				if(x[i]<self.hp_space[i][1]):
+					new_x = self.hp_space[i][1]
+				elif(x[i]>self.hp_space[i][2]):
+					new_x = self.hp_space[i][2]
+				else:
+					new_x = x[i]
 			else:
-				print("Unknown type of space! Using default value 1 for index " + str(i))
+				print("Unknown type of space! Using first value given for index " + str(i))
+				new_x = self.hp_space[i][1]
 			new_x_rd.append(new_x)
 		return new_x_rd
 
@@ -428,16 +463,37 @@ def pea_classification(params):
 	print("Percentage of correct mappings",evaluation["Percentage correct"])
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 	return evaluation["Percentage correct"]
+def pea_classification_dimension_wise(params):
+	if(len(params)<4):
+		print("too little params for pea_classification. Returning 0.0")
+		return 0.0
+	params = [float(params[0]), int(params[1]), int(params[2]), int(params[3])]
+	#dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels, random_state=1)
+	#data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
+	#cur_data = data_blobs.copy()
+	#dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
+	#data_moons = deml.DataSet(sklearn_dataset, name='data_moons')
+	cur_data = data.copy()
+	#should implement a smoother way to put in the data set
+	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
+	classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=5, one_vs_others=params[3], print_metrics=False)
+	evaluation = classification.evaluate()
+	print("Percentage of correct mappings",evaluation["Percentage correct"])
+	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
+	return evaluation["Percentage correct"]
+
 def simple_test(params):
 	return params[0]
 data_moons = data1.copy()
 data_moons.set_name('Moon_Set')
 data = data_moons.copy()
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
-simple_space = [["interval", 6.456, 10.2123]]
-HPO = HP_Optimization(simple_test, simple_space)
+simple_space = [["interval", 1, 0], ["liste", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
+HPO = HP_Optimization(pea_classification_dimension_wise, simple_space)
 #HPO.perform_evaluation_at([0.00242204, 0, 1, 0])
 #HPO.perform_BO(20)
 #print(HPO.cart_prod_hp_space(5))
-HPO.perform_BO(5)
-
+HPO.perform_GO(5)
+#print(HPO.round_x([-1, -1, -1, -1]))
+#HPO.check_hp_space()
+#print(HPO.hp_space)
