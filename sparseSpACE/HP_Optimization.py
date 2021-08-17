@@ -427,15 +427,28 @@ class HP_Optimization:
 		return new_x_rd
 
 class Optimize_Classification:
-	def __init__(self, data, samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
-		self.data = data
+	def __init__(self, data_name: str = "moons", samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
 		self.samples = samples
 		self.dimension = dimension
 		self.labels = labels
+		self.data = self.create_data(data_name)
 		self.max_lv = max_lv
 		self.max_evals = max_evals
 		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1]]
 		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
+
+	def create_data(self, name: str = "moons"):
+		dataset = deml.datasets.make_moons(n_samples=self.samples, noise=0.15, random_state=1)
+		if(name == "blobs"):
+			dataset = deml.datasets.make_blobs(n_samples=self.samples, n_features=self.dimension, centers=self.labels)
+		elif(name == "circles"):
+			dataset = deml.datasets.make_circles(n_samples=self.samples, noise=0.05)
+		elif(name == "classification"):
+			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(labels if labels < 4 else 4))
+		else:
+			print("This is not a valid name for a dataset, using moons")
+		data = deml.DataSet(dataset, name="data_"+name)
+		return data
 
 	def pea_classification(self, params):
 		if(len(params)<4):
@@ -473,81 +486,11 @@ class Optimize_Classification:
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		return evaluation["Percentage correct"]
 
-#Basically copied code from Tutorial_DEMachineLearning
-#prepare Dataset
-samples = 500
-dimension = 2
-labels = 6
-#vllt anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
-#gaussian quantiles, classification.. kann man einstellen
-dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
-data_moons = deml.DataSet(dataset_moons, name='Moon_Set')
-dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels)
-data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
-dataset_circles = deml.datasets.make_circles(n_samples=samples, noise=0.05)
-data_circles = deml.DataSet(dataset_circles, name='Circle_Set')
-dataset_class = deml.datasets.make_classification(n_samples=samples, n_features=dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(labels if labels < 4 else 4))
-data_class = deml.DataSet(dataset_class, name='Classification_Set')
-#perform_evaluation_at(data_moons, 0.00242204, 0, 1, 0) #.98 evaluation!
-#perform_BO_classification(data_blobs, 20)
-#perform_RO_classification(data_moons, 10, dimension)
-#perform_evaluation_at(self, data_moons, 0.828603059876013, 0, 2, 1)
-#parameters are in form lambd, masslump, minlv, one_vs_others
-def pea_classification(params):
-	if(len(params)<4):
-		print("too little params for pea_classification. Returning 0.0")
-		return 0.0
-	params = [params[0], int(params[1]), int(params[2]), int(params[3])]
-	#dataset_blobs = deml.datasets.make_blobs(n_samples=samples, n_features=dimension, centers=labels, random_state=1)
-	#data_blobs = deml.DataSet(dataset_blobs, name='Blobs_Set')
-	#cur_data = data_blobs.copy()
-	#dataset_moons = deml.datasets.make_moons(n_samples=samples, noise=0.15, random_state=1)
-	#data_moons = deml.DataSet(sklearn_dataset, name='data_moons')
-	cur_data = data.copy()
-	#should implement a smoother way to put in the data set
-	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-	classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=3, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], print_metrics=False)
-	evaluation = classification.evaluate()
-	print("Percentage of correct mappings",evaluation["Percentage correct"])
-	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
-	return evaluation["Percentage correct"]
-def pea_classification_dimension_wise(params):
-	if(len(params)<3):
-		print("too little params for pea_classification. Returning 0.0")
-		#use default values?
-		return 0.0
-	#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool)
-	params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), int(params[4]), float(params[5]), int(params[6])]
-	cur_data = data.copy()
-	error_calculator=sparseSpACE.ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal()
-	ec = None
-	ovo = False
-	if(params[3] == 2):
-		ec = error_calculator
-		ovo = True
-	elif(params[3] == 1):
-		ovo = True
-	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-	classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=3, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], print_metrics=False)
-	evaluation = classification.evaluate()
-	print("Percentage of correct mappings",evaluation["Percentage correct"])
-	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
-	return evaluation["Percentage correct"]
-def optimize_classification_dim_wise(data_in, max_lv: int = 3, max_evals: int = 256):
-	global data
-	data = data_in
-	class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
-	HPO = HP_Optimization(pea_classification_dimension_wise, class_dim_wise_space)
-	HPO.perform_BO(5)
-
+#anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-data = data_moons.copy()
-OC = Optimize_Classification(data = data_moons, max_lv = 2)
-classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
-class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 simple_space = [["interval", 1, 0], ["liste", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space)
-HPO.perform_BO(5)
-#optimize_classification_dim_wise(data_blobs)
+OC = Optimize_Classification(data_name = "circles", dimension = 2)
+HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
+HPO.perform_GO(100)
