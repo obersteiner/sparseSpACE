@@ -444,7 +444,7 @@ class Optimize_Classification:
 		elif(name == "circles"):
 			dataset = deml.datasets.make_circles(n_samples=self.samples, noise=0.05)
 		elif(name == "classification"):
-			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(labels if labels < 4 else 4))
+			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(self.labels if self.labels < 4 else 4))
 		elif(name == "gaussian_quantiles"):
 			dataset = deml.datasets.make_gaussian_quantiles(n_samples=self.samples, n_features=self.dimension, n_classes=self.labels)
 		elif(name == "digits"):
