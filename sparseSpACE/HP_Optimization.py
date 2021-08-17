@@ -351,14 +351,14 @@ class HP_Optimization:
 				new = [min, max]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
-				new = [hp_space[i][1], hp_space[i][1]]
+				new = [self.hp_space[i][1], self.hp_space[i][1]]
 			elif(self.hp_space[i][0] == "interval"):
 				new = self.hp_space[i].copy()
 				new.remove("interval")
 				new = [new[0], new[1]]
 			else:
 				print("please enter a valid hp_space. Using first value given")
-				new = [hp_space[i][1], hp_space[i][1]]
+				new = [self.hp_space[i][1], self.hp_space[i][1]]
 			res.append(new)
 		return res
 
