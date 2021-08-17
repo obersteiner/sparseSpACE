@@ -434,8 +434,8 @@ class Optimize_Classification:
 		self.data = self.create_data(data_name)
 		self.max_lv = max_lv
 		self.max_evals = max_evals
-		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1]]
-		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
+		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1]]
+		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
 
 	def create_data(self, name: str = "moons"):
 		dataset = deml.datasets.make_moons(n_samples=self.samples, noise=0.15, random_state=1)
@@ -501,6 +501,6 @@ def simple_test(params):
 	return params[0]
 simple_space = [["interval", 1, 0], ["liste", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-OC = Optimize_Classification(data_name = "circles", dimension = 2)
+OC = Optimize_Classification(data_name = "iris", dimension = 2)
 HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
-HPO.perform_GO(100)
+HPO.perform_BO(3)
