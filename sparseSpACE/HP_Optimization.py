@@ -20,13 +20,13 @@ class HP_Optimization:
 	def check_hp_space(self):
 		if(len(self.hp_space)<1):
 			print("Please enter values for hp_space! Using default value ['list', 1], but will likely throw errors")
-			hp_space.append(["list", 1])
+			self.hp_space.append(["list", 1])
 			return 0
 		for i in range(0, len(self.hp_space)):
 			if(len(self.hp_space[i])<2):
 				print("Please enter at least a descriptor and one value for hp_space index " + str(i))
 				print("Default value ['list', 1] will be used")
-				hp_space[i] = ["list", 1]
+				self.hp_space[i] = ["list", 1]
 			elif(self.hp_space[i][0]=="interval"):
 				if(len(self.hp_space[i])<3):
 					self.hp_space[i].append(self.hp_space[i][1])
@@ -427,18 +427,56 @@ class HP_Optimization:
 		return new_x_rd
 
 class Optimize_Classification:
-	def __init__{self, data, samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256}
+	def __init__(self, data, samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
 		self.data = data
 		self.samples = samples
 		self.dimension = dimension
 		self.labels = labels
 		self.max_lv = max_lv
 		self.max_evals = max_evals
-	
+		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1]]
+		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
+
+	def pea_classification(self, params):
+		if(len(params)<4):
+			print("too little params for pea_classification. Returning 0.0")
+			return 0.0
+		params = [params[0], int(params[1]), int(params[2]), int(params[3])]
+		cur_data = self.data.copy()
+		#should implement a smoother way to put in the data set
+		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
+		classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=params[3], print_metrics=False)
+		evaluation = classification.evaluate()
+		print("Percentage of correct mappings",evaluation["Percentage correct"])
+		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
+		return evaluation["Percentage correct"]
+
+	def pea_classification_dimension_wise(self, params):
+		if(len(params)<4):
+			print("too little params for pea_classification. Returning 0.0")
+			return 0.0
+		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool)
+		params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), float(params[4]), int(params[5]), int(params[6])]
+		cur_data = self.data.copy()
+		error_calculator=sparseSpACE.ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal()
+		ec = None
+		ovo = False
+		if(params[3] == 2):
+			ec = error_calculator
+			ovo = True
+		elif(params[3] == 1):
+			ovo = True
+		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
+		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], print_metrics=False)
+		evaluation = classification.evaluate()
+		print("Percentage of correct mappings",evaluation["Percentage correct"])
+		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
+		return evaluation["Percentage correct"]
+
 #Basically copied code from Tutorial_DEMachineLearning
 #prepare Dataset
 samples = 500
-dimension = 5
+dimension = 2
 labels = 6
 #vllt anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 #gaussian quantiles, classification.. kann man einstellen
@@ -468,7 +506,7 @@ def pea_classification(params):
 	cur_data = data.copy()
 	#should implement a smoother way to put in the data set
 	classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-	classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=5, one_vs_others=params[3], print_metrics=False)
+	classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=3, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], print_metrics=False)
 	evaluation = classification.evaluate()
 	print("Percentage of correct mappings",evaluation["Percentage correct"])
 	#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
@@ -505,10 +543,11 @@ def optimize_classification_dim_wise(data_in, max_lv: int = 3, max_evals: int = 
 def simple_test(params):
 	return params[0]
 data = data_moons.copy()
-
+OC = Optimize_Classification(data = data_moons, max_lv = 2)
 classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
 simple_space = [["interval", 1, 0], ["liste", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
-#HPO = HP_Optimization(pea_classification_dimension_wise, class_dim_wise_space)
-#HPO.perform_BO(5)
-optimize_classification_dim_wise(data_blobs)
+
+HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space)
+HPO.perform_BO(5)
+#optimize_classification_dim_wise(data_blobs)
