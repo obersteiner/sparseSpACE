@@ -445,6 +445,16 @@ class Optimize_Classification:
 			dataset = deml.datasets.make_circles(n_samples=self.samples, noise=0.05)
 		elif(name == "classification"):
 			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(labels if labels < 4 else 4))
+		elif(name == "gaussian_quantiles"):
+			dataset = deml.datasets.make_gaussian_quantiles(n_samples=self.samples, n_features=self.dimension, n_classes=self.labels)
+		elif(name == "digits"):
+			dataset = deml.datasets.load_digits(return_X_y=True) # hint: try only with max_level <= 3
+		elif(name == "iris"):
+			dataset = deml.datasets.load_iris(return_X_y=True)
+		elif(name == "breast_cancer"):
+			dataset = deml.datasets.load_breast_cancer(return_X_y=True) # hint: try only with max_level <= 4
+		elif(name == "wine"):
+			dataset = deml.datasets.load_wine(return_X_y=True)
 		else:
 			print("This is not a valid name for a dataset, using moons")
 		data = deml.DataSet(dataset, name="data_"+name)
