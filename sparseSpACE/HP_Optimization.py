@@ -34,6 +34,13 @@ class HP_Optimization:
 					self.hp_space[i] = ["interval", self.hp_space[i][2], self.hp_space[i][1]]
 				else:
 					self.hp_space[i] = ["interval", self.hp_space[i][1], self.hp_space[i][2]]
+			elif(self.hp_space[i][0]=="interval_int"):
+				if(len(self.hp_space[i])<3):
+					self.hp_space[i] = ["interval_int", int(self.hp_space[i][1]), int(self.hp_space[i][1])]
+				elif(self.hp_space[i][1]>self.hp_space[i][2]):
+					self.hp_space[i] = ["interval_int", int(self.hp_space[i][2]), int(self.hp_space[i][1])]
+				else:
+					self.hp_space[i] = ["interval_int", int(self.hp_space[i][1]), int(self.hp_space[i][2])]
 			elif(self.hp_space[i][0]=="list"):
 				self.hp_space[i] = self.hp_space[i]
 			else:
@@ -95,6 +102,17 @@ class HP_Optimization:
 				else:
 					for j in range (0, interval_levels+1):
 						new.append(self.hp_space[i][1]+j*dh)
+			elif(self.hp_space[i][0] == "interval_int"):
+				h = int(self.hp_space[i][2]-self.hp_space[i][1])
+				dh = h /interval_levels
+				#currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
+				if(h == 0):
+					new.append(int(self.hp_space[i][1]))
+				else:
+					if(dh<1):
+						dh = 1
+					for j in range (0, self.hp_space[i][2]+1, int(dh)):
+						new.append(int(self.hp_space[i][1]+j*dh))
 			else:
 				print("please enter valid types for hp_space! Using the first value given")
 				new.append(self.hp_space[i][1])
@@ -274,6 +292,8 @@ class HP_Optimization:
 				new_x = self.hp_space[i][1]
 			elif (self.hp_space[i][0] == "interval"):
 				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
+			elif (self.hp_space[i][0] == "interval_int"):
+				new_x = int(random.randrange(int(self.hp_space[i][1]), int(self.hp_space[i][2])))
 			else:
 				print("Unknown type of space! Using first value given for index " + str(i))
 				new_x = self.hp_space[i][1]
@@ -356,6 +376,10 @@ class HP_Optimization:
 				new = self.hp_space[i].copy()
 				new.remove("interval")
 				new = [new[0], new[1]]
+			elif(self.hp_space[i][0] == "interval_int"):
+				new = self.hp_space[i].copy()
+				new.remove("interval_int")
+				new = [new[0], new[1]]
 			else:
 				print("please enter a valid hp_space. Using first value given")
 				new = [self.hp_space[i][1], self.hp_space[i][1]]
@@ -420,6 +444,13 @@ class HP_Optimization:
 					new_x = self.hp_space[i][2]
 				else:
 					new_x = x[i]
+			elif(self.hp_space[i][0] == "interval_int"):
+				if(x[i]<self.hp_space[i][1]):
+					new_x = int(self.hp_space[i][1])
+				elif(x[i]>self.hp_space[i][2]):
+					new_x = int(self.hp_space[i][2])
+				else:
+					new_x = round(x[i])
 			else:
 				print("Unknown type of space! Using first value given for index " + str(i))
 				new_x = self.hp_space[i][1]
@@ -478,7 +509,7 @@ class Optimize_Classification:
 		if(len(params)<4):
 			print("too little params for pea_classification. Returning 0.0")
 			return 0.0
-		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool)
+		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool), 
 		params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), float(params[4]), int(params[5]), int(params[6])]
 		cur_data = self.data.copy()
 		error_calculator=sparseSpACE.ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal()
@@ -499,8 +530,11 @@ class Optimize_Classification:
 #anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-simple_space = [["interval", 1, 0], ["liste", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
+simple_space = [["interval_int", 3.4, 0], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-OC = Optimize_Classification(data_name = "iris", dimension = 2)
-HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
-HPO.perform_BO(3)
+#OC = Optimize_Classification(data_name = "iris", dimension = 2)
+#HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
+HPO = HP_Optimization(simple_test, simple_space)
+print(HPO.hp_space)
+print(HPO.cart_prod_hp_space(2))
+#HPO.perform_BO(3)
