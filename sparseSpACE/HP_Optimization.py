@@ -36,11 +36,11 @@ class HP_Optimization:
 					self.hp_space[i] = ["interval", self.hp_space[i][1], self.hp_space[i][2]]
 			elif(self.hp_space[i][0]=="interval_int"):
 				if(len(self.hp_space[i])<3):
-					self.hp_space[i] = ["interval_int", int(self.hp_space[i][1]), int(self.hp_space[i][1])]
+					self.hp_space[i] = ["interval_int", round(self.hp_space[i][1]), round(self.hp_space[i][1])]
 				elif(self.hp_space[i][1]>self.hp_space[i][2]):
-					self.hp_space[i] = ["interval_int", int(self.hp_space[i][2]), int(self.hp_space[i][1])]
+					self.hp_space[i] = ["interval_int", round(self.hp_space[i][2]), round(self.hp_space[i][1])]
 				else:
-					self.hp_space[i] = ["interval_int", int(self.hp_space[i][1]), int(self.hp_space[i][2])]
+					self.hp_space[i] = ["interval_int", round(self.hp_space[i][1]), round(self.hp_space[i][2])]
 			elif(self.hp_space[i][0]=="list"):
 				self.hp_space[i] = self.hp_space[i]
 			else:
@@ -293,7 +293,8 @@ class HP_Optimization:
 			elif (self.hp_space[i][0] == "interval"):
 				new_x = random.uniform(self.hp_space[i][1], self.hp_space[i][2])
 			elif (self.hp_space[i][0] == "interval_int"):
-				new_x = int(random.randrange(int(self.hp_space[i][1]), int(self.hp_space[i][2])))
+				new_x = int(random.randrange(int(self.hp_space[i][1]), int(self.hp_space[i][2]+1)))
+				#max+1 bc second border value is not included
 			else:
 				print("Unknown type of space! Using first value given for index " + str(i))
 				new_x = self.hp_space[i][1]
@@ -530,11 +531,12 @@ class Optimize_Classification:
 #anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-simple_space = [["interval_int", 3.4, 0], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
+simple_space = [["interval_int", 3.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
 #OC = Optimize_Classification(data_name = "iris", dimension = 2)
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
 HPO = HP_Optimization(simple_test, simple_space)
 print(HPO.hp_space)
-print(HPO.cart_prod_hp_space(2))
+print(HPO.round_x([2.9, 2, 1, 2]))
+#print(HPO.cart_prod_hp_space(2))
 #HPO.perform_BO(3)
