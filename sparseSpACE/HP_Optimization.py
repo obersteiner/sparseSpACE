@@ -12,10 +12,11 @@ from scipy.optimize import minimize
 #the function on which HP should be Optimized and search space for the HPs
 #space is in form [["interval", <start>, <end>], ["list", <l0>, <l1>, <l2>,...], ....]
 class HP_Optimization:
-	def __init__(self, function, hp_space):
+	def __init__(self, function, hp_space, f_max = None):
 		self.function = function
 		self.hp_space = hp_space
 		self.check_hp_space()
+		self.f_max = f_max
 
 	def check_hp_space(self):
 		if(len(self.hp_space)<1):
@@ -48,7 +49,7 @@ class HP_Optimization:
 				self.hp_space[i] = ["list", self.hp_space[i][1]]
 
 	#performs Grid Optimization
-	def perform_GO(self, int_levels):
+	def perform_GO(self, interval_levels = 4, search_space = None):
 		#sklearn_dataset = deml.datasets.make_moons(n_samples=samples, noise=0.15)
 		#data = deml.DataSet(sklearn_dataset, name='Input_Set')
 		#for storing the current best evaluation and time
@@ -63,25 +64,32 @@ class HP_Optimization:
 		#Note: lambd vllt besser logarithmisch, sehr kleine Werte oft besser (1/10, 1/100, 1/1000)
 		#für for-schleife karthesisches produkt aus HO um alle tupel zu bilden und über diese tupel zu iterieren für beliebig dimensional
 		#Note: lambd vor Allem sinnvoll wenn masslumping aus ist, sollte kaum unterschied machen wenn an
-		search_space = self.cart_prod_hp_space(int_levels)
+		if(search_space == None):
+			search_space = self.cart_prod_hp_space(interval_levels)
 		for x in search_space:
 			#use "perform evaluation at"
 			#cur_time = classification._time_used
 			#print ("current time needed = " + str(cur_time))
 			cur_evaluation = self.perform_evaluation_at(x)
-			print("Percentage of correct mappings",cur_evaluation)
+			print("Current Evaluation: ",cur_evaluation)
 			#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
 			if(best_evaluation == None or cur_evaluation>best_evaluation):
 				best_evaluation = cur_evaluation
 				best_x = x
-				print("Best evaluation is now " + str(best_evaluation) + " at " + str(x))
-			else:	print("Best evaluation is still " + str(best_evaluation) + " at " + str(x))
+				print("Best evaluation is now " + str(best_evaluation) + " at " + str(best_x))
+			else:	print("Best evaluation is still " + str(best_evaluation) + " at " + str(best_x))
 			print ("END OF CURRENT EVALUATION \n")
-		print("In the end, best evaluation is " + str(best_evaluation)  + " at " + str(x))
+			if(best_evaluation==self.f_max):
+				print("We've reached the specified maximum of f. Stopping GO.")
+				break
+		print("In the end, best evaluation is " + str(best_evaluation)  + " at " + str(best_x))
+		return best_x, best_evaluation
 		#+ " and time = " + str(best_time))
 
 	def cart_prod_hp_space(self, interval_levels):
 		res = []
+		if (interval_levels == 0 or interval_levels == None):
+			interval_levels = 1
 		for i in range (0, len(self.hp_space)):
 			new = []
 			if(len(self.hp_space[i])<2):
@@ -111,8 +119,9 @@ class HP_Optimization:
 				else:
 					if(dh<1):
 						dh = 1
-					for j in range (0, self.hp_space[i][2]+1, int(dh)):
-						new.append(int(self.hp_space[i][1]+j*dh))
+					#may yield different values than expected due to rounding
+					for j in range (self.hp_space[i][1], self.hp_space[i][2]+1, int(dh)):
+						new.append(int(j))
 			else:
 				print("please enter valid types for hp_space! Using the first value given")
 				new.append(self.hp_space[i][1])
@@ -125,12 +134,17 @@ class HP_Optimization:
 		best_evaluation = 0
 		best_x = None
 		for i in range (0, amt_it, 1):
+			print("Random step " + str(i))
 			x = self.create_random_x()
 			new_eval = self.perform_evaluation_at(x)
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
+			if(best_evaluation == self.f_max):
+				print("We've reached the specified maximum of f. Stopping RO at iteration " + str(i))
+				break
 		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(best_x))
+		return best_x, best_evaluation
 
 	#returns evaluation for certain Parameters on a certain data set
 	def perform_evaluation_at(self, params):
@@ -181,18 +195,22 @@ class HP_Optimization:
 			print("new x: " + str(new_x))
 			new_x_rd = self.round_x(new_x)
 			old_x_rd = None
+			old_beta_and_l = [beta, l]
 			print("new x rd: " + str(new_x_rd))
 			#erstelle neues beta und l und berechne neuen wert damit
+			amt_tries = 0
 			while(self.check_if_in_array(new_x_rd, C_x)):
 				print("!!!!!!!!!!!Need new beta and l")
 				old_x_rd = new_x_rd.copy()
 				print("old x rd was: " + str(old_x_rd))
-				beta_and_l = self.get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y)
-				new_x = self.acq_x(beta_and_l[0], beta_and_l[1], C_x, C_y, cur_amt_x)
+				new_beta_and_l = self.get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y, amt_tries = amt_tries)
+				amt_tries += 1
+				new_x = self.acq_x(new_beta_and_l[0], new_beta_and_l[1], C_x, C_y, cur_amt_x)
 				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
-				if(old_x_rd==new_x_rd):
-					print("We're in an infinite loop! Getting out")
+				if(old_x_rd==new_x_rd and amt_tries == 100):
+					print("We're in an infinite loop? Getting out.")
+					print("This likely means that " + str(new_x_rd) + " is an optimum")
 					#problem: after ending infinite loop the value is added, even though it was already in C_x
 					#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
 					break
@@ -204,6 +222,9 @@ class HP_Optimization:
 			C_x[cur_amt_x] = new_x_rd
 			C_y[cur_amt_x] = self.perform_evaluation_at(new_x_rd)
 			cur_amt_x += 1
+			if(C_y[cur_amt_x-1]==self.f_max):
+                                print("We've reached the specified maximum of f. Stopping BO at iteration " + str(i))
+                                break
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
 			print("Checking if cov_matr is singular")
 			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x)) == 0):
@@ -221,6 +242,7 @@ class HP_Optimization:
 				x_ret = C_x[i]
 		print("The Best value found in " + str(amt_it) + " iterations is " + str(y_ret) + " at " + str(x_ret))
 		return x_ret, y_ret
+
 	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
 	sigma_k = 1
 	l_k = 0.5
@@ -329,18 +351,19 @@ class HP_Optimization:
 		return 0.5
 
 	#gets new beta and l if old beta and l give values that are already in C
-	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y):
+	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y, amt_tries: int=0):
 		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(self.l_k))
+		print("Try: " + str(amt_tries))
 		if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 			print("Getting new beta and l, but suddenly the cov matr is singular??")
 		else:
 			print("Apparently the cov_matr is not singular. Getting new beta and l")
 		#making upper bounds dependable on current values so bounds are never too low
-		beta_h = cur_beta+100
-		l_h = self.l_k+50
+		beta_h = cur_beta+(100*2**amt_tries)
+		l_h = self.l_k+(50*2**amt_tries)
 		#0 if rd(x) is in ev set C_x, constant otherwise (5)
 		#penalty p(x) erhöhen wenn gleicher Wert rauskommt. z.B. immer +50 oder *2 oder anders exponentiell
-		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*50
+		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*(50*2**amt_tries)
 		#gets the x value for certain l (z[1]) and beta (z[0])
 		new_x = lambda z: self.acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
@@ -467,7 +490,7 @@ class Optimize_Classification:
 		self.max_lv = max_lv
 		self.max_evals = max_evals
 		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1]]
-		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1]]
+		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1], ["interval_int", 2, self.max_evals]]
 
 	def create_data(self, name: str = "moons"):
 		dataset = deml.datasets.make_moons(n_samples=self.samples, noise=0.15, random_state=1)
@@ -510,8 +533,8 @@ class Optimize_Classification:
 		if(len(params)<4):
 			print("too little params for pea_classification. Returning 0.0")
 			return 0.0
-		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool), 
-		params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), float(params[4]), int(params[5]), int(params[6])]
+		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool), max_evaluations (int)
+		params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), float(params[4]), int(params[5]), int(params[6]), int(params[7])]
 		cur_data = self.data.copy()
 		error_calculator=sparseSpACE.ErrorCalculator.ErrorCalculatorSingleDimMisclassificationGlobal()
 		ec = None
@@ -522,7 +545,7 @@ class Optimize_Classification:
 		elif(params[3] == 1):
 			ovo = True
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], print_metrics=False)
+		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], max_evaluations = params[7], print_metrics=False)
 		evaluation = classification.evaluate()
 		print("Percentage of correct mappings",evaluation["Percentage correct"])
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
@@ -531,12 +554,17 @@ class Optimize_Classification:
 #anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-simple_space = [["interval_int", 3.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
+simple_space = [["interval_int", 5.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-#OC = Optimize_Classification(data_name = "iris", dimension = 2)
-#HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
-HPO = HP_Optimization(simple_test, simple_space)
-print(HPO.hp_space)
-print(HPO.round_x([2.9, 2, 1, 2]))
-#print(HPO.cart_prod_hp_space(2))
+OC = Optimize_Classification(data_name = "circles", dimension = 2)
+HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, f_max = 1)
+#HPO.perform_BO(5)
+HPO.perform_RO(5)
+
+#print(OC.pea_classification_dimension_wise([0.0, 0, 1, 0, 0.0, 0, 0, 2]))
+
+#HPO = HP_Optimization(simple_test, simple_space)
+#print(HPO.hp_space)
+#HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
+
 #HPO.perform_BO(3)
