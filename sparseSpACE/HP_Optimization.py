@@ -200,7 +200,7 @@ class HP_Optimization:
 			#value that will be evaluated and added to the evidence set
 			print("Getting new x:")
 			new_x=self.acq_x(beta, l, C_x, C_y, cur_amt_x)
-			print("new x: " + str(new_x))
+			print("acq_x gives new x = " + str(new_x))
 			new_x_rd = self.round_x(new_x)
 			old_x_rd = None
 			old_beta_and_l = [beta, l]
@@ -216,9 +216,9 @@ class HP_Optimization:
 				new_x = self.acq_x(new_beta_and_l[0], new_beta_and_l[1], C_x, C_y, cur_amt_x)
 				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
-				if(old_x_rd==new_x_rd and amt_tries == 100):
+				if(old_x_rd==new_x_rd and amt_tries == 10):
 					print("We're in an infinite loop? Getting out.")
-					print("This likely means that " + str(new_x_rd) + " is an optimum")
+					print("This likely means that " + str(new_x_rd) + " is an optimum??")
 					#problem: after ending infinite loop the value is added, even though it was already in C_x
 					#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
 					break
@@ -351,7 +351,7 @@ class HP_Optimization:
 		a: float = 1
 		b: float = 1
 		beta = 2*math.log(t**2*2*math.pi**2/3*delta)+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
-		print(beta)
+		print("get_beta returns: " + str(beta))
 		return beta
 
 	#TODO: get l_k and use it
@@ -422,21 +422,30 @@ class HP_Optimization:
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
 		old_l=self.l_k
 		self.l_k=l
+		print("get cov matrix")
 		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
 			print("Covariance Matrix is indeed singular!")
 			#return a value that's bullshit? like [0, 0, 0, 0] (min lv is >=1)
 		#print(K_matr)
+		print("calc mu")
 		mu = lambda x: self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
+		print("calc sigma_sqrd")
 		sigma_sqrd = lambda x: self.cov(x, x)-self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(self.get_cov_vector(C_x, x, cur_amt_x)))
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
+		print("calc sigma")
 		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
+		print("calc alpha")
 		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 		#negates alpha bc maximum has to be found
+		print("calc alpha neg")
 		alpha_neg = lambda x: -alpha(x)
+		print("get bounds")
 		bounds_an = self.get_bounds() #bounds search space to vicinity of useful values
+		print("bounds: " + str(bounds_an))
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
-		x0 = np.zeros(len(self.hp_space))
+		x0 = np.zeros(len(self.hp_space))+2
+		print("getting new x")
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		return new_x
@@ -564,11 +573,16 @@ def simple_test(params):
 	return params[0]
 simple_space = [["interval_int", 5.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-OC = Optimize_Classification(data_name = "circles", dimension = 2)
-HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, f_max = 1)
+OC = Optimize_Classification(data_name = "moons", dimension = 2)
+HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1)
 #HPO.perform_BO(5)
-print(HPO.perform_GO(1)[3])
-
+#y_r = HPO.perform_RO(10)[3]
+sol_b = HPO.perform_BO(10)
+y_b = sol_b[3]
+x_b = sol_b[2]
+#print("y random: " + str(y_r))
+print("y bayesian: " + str(y_b))
+print("x bayesian: " + str(x_b))
 #print(OC.pea_classification_dimension_wise([0.0, 0, 1, 0, 0.0, 0, 0, 2]))
 
 #HPO = HP_Optimization(simple_test, simple_space)
