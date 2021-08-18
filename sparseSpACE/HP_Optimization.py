@@ -57,6 +57,8 @@ class HP_Optimization:
 		#best_time = None
 		#storing the parameters of the best evaluation
 		best_x = None
+		x_set = []
+		y_set = []
 		#todo: split Dataset??
 		#original classification: classification = deml.Classification(data, split_percentage=0.8, split_evenly=True, shuffle_data=True)
 		#original settings: classification.perform_classification(masslumping=True, lambd=0.0, minimum_level=1, maximum_level=5, print_metrics=True)
@@ -66,11 +68,13 @@ class HP_Optimization:
 		#Note: lambd vor Allem sinnvoll wenn masslumping aus ist, sollte kaum unterschied machen wenn an
 		if(search_space == None):
 			search_space = self.cart_prod_hp_space(interval_levels)
+		x_set = search_space
 		for x in search_space:
 			#use "perform evaluation at"
 			#cur_time = classification._time_used
 			#print ("current time needed = " + str(cur_time))
 			cur_evaluation = self.perform_evaluation_at(x)
+			y_set.append(cur_evaluation)
 			print("Current Evaluation: ",cur_evaluation)
 			#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
 			if(best_evaluation == None or cur_evaluation>best_evaluation):
@@ -83,7 +87,7 @@ class HP_Optimization:
 				print("We've reached the specified maximum of f. Stopping GO.")
 				break
 		print("In the end, best evaluation is " + str(best_evaluation)  + " at " + str(best_x))
-		return best_x, best_evaluation
+		return best_x, best_evaluation, x_set, y_set
 		#+ " and time = " + str(best_time))
 
 	def cart_prod_hp_space(self, interval_levels):
@@ -133,10 +137,14 @@ class HP_Optimization:
 	def perform_RO(self, amt_it: int):
 		best_evaluation = 0
 		best_x = None
+		x_set = []
+		y_set = []
 		for i in range (0, amt_it, 1):
 			print("Random step " + str(i))
 			x = self.create_random_x()
 			new_eval = self.perform_evaluation_at(x)
+			x_set.append(x)
+			y_set.append(new_eval)
 			if new_eval>best_evaluation:
 				best_x = x
 				best_evaluation = new_eval
@@ -144,7 +152,7 @@ class HP_Optimization:
 				print("We've reached the specified maximum of f. Stopping RO at iteration " + str(i))
 				break
 		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(best_x))
-		return best_x, best_evaluation
+		return best_x, best_evaluation, x_set, y_set
 
 	#returns evaluation for certain Parameters on a certain data set
 	def perform_evaluation_at(self, params):
@@ -241,7 +249,7 @@ class HP_Optimization:
 				y_ret = C_y[i]
 				x_ret = C_x[i]
 		print("The Best value found in " + str(amt_it) + " iterations is " + str(y_ret) + " at " + str(x_ret))
-		return x_ret, y_ret
+		return x_ret, y_ret, C_x, C_y
 
 	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
 	sigma_k = 1
@@ -559,7 +567,7 @@ simple_space = [["interval_int", 5.4, 0.7], ["list", 1, 3, 4], ["interval", 2], 
 OC = Optimize_Classification(data_name = "circles", dimension = 2)
 HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, f_max = 1)
 #HPO.perform_BO(5)
-HPO.perform_RO(5)
+print(HPO.perform_GO(1)[3])
 
 #print(OC.pea_classification_dimension_wise([0.0, 0, 1, 0, 0.0, 0, 0, 2]))
 
