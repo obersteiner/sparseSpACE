@@ -188,6 +188,7 @@ class HP_Optimization:
 			print("iteration: " + str(i))
 			beta = self.get_beta(i+1)
 			l = self.get_l_k(i)
+			print("beta: " + str(beta) + ", cur_amt_x: " + str(cur_amt_x))
 			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 				print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, at the start of iteration " + str(i))
 				break
@@ -388,10 +389,10 @@ class HP_Optimization:
 	def get_bounds(self):
 		res = []
 		for i in range(0, len(self.hp_space)):
-			new = [1, 1]
+			new = [0, 1]
 			#should one be able to enter just one value for "list"??
 			if(len(self.hp_space[i])<2):
-				print("please enter at least 1 value for hp_space list. Using default values [1, 1]")
+				print("please enter at least 1 value for hp_space list. Using default values [0, 1]")
 			elif(self.hp_space[i][0] == "list"):
 				max = self.hp_space[i][1]
 				min = max
@@ -400,21 +401,21 @@ class HP_Optimization:
 						min = self.hp_space[i][j]
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
-				new = [min, max]
+				new = [min-5, max+5]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
-				new = [self.hp_space[i][1], self.hp_space[i][1]]
+				new = [self.hp_space[i][1]-5, self.hp_space[i][1]+5]
 			elif(self.hp_space[i][0] == "interval"):
 				new = self.hp_space[i].copy()
 				new.remove("interval")
-				new = [new[0], new[1]]
+				new = [new[0]-5, new[1]+5]
 			elif(self.hp_space[i][0] == "interval_int"):
 				new = self.hp_space[i].copy()
 				new.remove("interval_int")
-				new = [new[0], new[1]]
+				new = [new[0]-5, new[1]+5]
 			else:
 				print("please enter a valid hp_space. Using first value given")
-				new = [self.hp_space[i][1], self.hp_space[i][1]]
+				new = [self.hp_space[i][1]-5, self.hp_space[i][1]+5]
 			res.append(new)
 		return res
 
@@ -422,25 +423,18 @@ class HP_Optimization:
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
 		old_l=self.l_k
 		self.l_k=l
-		print("get cov matrix")
 		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
 			print("Covariance Matrix is indeed singular!")
 			#return a value that's bullshit? like [0, 0, 0, 0] (min lv is >=1)
 		#print(K_matr)
-		print("calc mu")
 		mu = lambda x: self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
-		print("calc sigma_sqrd")
 		sigma_sqrd = lambda x: self.cov(x, x)-self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(self.get_cov_vector(C_x, x, cur_amt_x)))
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
-		print("calc sigma")
 		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
-		print("calc alpha")
 		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
 		#negates alpha bc maximum has to be found
-		print("calc alpha neg")
 		alpha_neg = lambda x: -alpha(x)
-		print("get bounds")
 		bounds_an = self.get_bounds() #bounds search space to vicinity of useful values
 		print("bounds: " + str(bounds_an))
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
@@ -448,6 +442,7 @@ class HP_Optimization:
 		print("getting new x")
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
+		print("acq_x returns: " + str(new_x))
 		return new_x
 
 	#needs search space
@@ -527,7 +522,7 @@ class Optimize_Classification:
 			dataset = deml.datasets.load_breast_cancer(return_X_y=True) # hint: try only with max_level <= 4
 		elif(name == "wine"):
 			dataset = deml.datasets.load_wine(return_X_y=True)
-		else:
+		elif(name != "moons"):
 			print("This is not a valid name for a dataset, using moons")
 		data = deml.DataSet(dataset, name="data_"+name)
 		return data
@@ -573,20 +568,26 @@ def simple_test(params):
 	return params[0]
 simple_space = [["interval_int", 5.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
 
-OC = Optimize_Classification(data_name = "moons", dimension = 2)
-HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1)
+OC = Optimize_Classification(data_name = "circles", dimension = 2)
+HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, f_max = 1)
 #HPO.perform_BO(5)
 #y_r = HPO.perform_RO(10)[3]
-sol_b = HPO.perform_BO(10)
-y_b = sol_b[3]
-x_b = sol_b[2]
+#sol_b = HPO.perform_BO(6)
+#y_b = sol_b[3]
+#x_b = sol_b[2]
 #print("y random: " + str(y_r))
-print("y bayesian: " + str(y_b))
-print("x bayesian: " + str(x_b))
+#print("y bayesian: " + str(y_b))
+#print("x bayesian: " + str(x_b))
 #print(OC.pea_classification_dimension_wise([0.0, 0, 1, 0, 0.0, 0, 0, 2]))
 
 #HPO = HP_Optimization(simple_test, simple_space)
 #print(HPO.hp_space)
 #HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
-
-#HPO.perform_BO(3)
+HPO.perform_BO(5)
+art_C_y = np.array([0.96, 0.94, 0.96, 0.94, 0.97, 0.])
+art_C_x = np.array([[0.3273086, 1., 1., 1.], [0.8158708, 0., 1., 0.], [0.47385773, 1., 1., 1.], [0.80103041, 0., 1., 0.], [0.48143013, 0., 1., 1.], [0., 0., 0., 0.]])
+art_beta = 19.99433798961168
+art_l = 0.5
+art_cur_amt_x = 5
+#test_acq_x = HPO.acq_x(art_beta, art_l, art_C_x, art_C_y, art_cur_amt_x)
+#print("test_acq_x: " + str(test_acq_x))
