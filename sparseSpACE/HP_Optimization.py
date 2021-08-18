@@ -12,11 +12,15 @@ from scipy.optimize import minimize
 #the function on which HP should be Optimized and search space for the HPs
 #space is in form [["interval", <start>, <end>], ["list", <l0>, <l1>, <l2>,...], ....]
 class HP_Optimization:
-	def __init__(self, function, hp_space, f_max = None):
+	def __init__(self, function, hp_space, f_max = None, r: float = 3, delta: float = 0.1, a: float = 1., b: float = 1.):
 		self.function = function
 		self.hp_space = hp_space
 		self.check_hp_space()
 		self.f_max = f_max
+		self.r = r
+		self.delta = delta
+		self.a = a
+		self.b = b
 
 	def check_hp_space(self):
 		if(len(self.hp_space)<1):
@@ -217,7 +221,7 @@ class HP_Optimization:
 				new_x = self.acq_x(new_beta_and_l[0], new_beta_and_l[1], C_x, C_y, cur_amt_x)
 				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
-				if(old_x_rd==new_x_rd and amt_tries == 10):
+				if(old_x_rd==new_x_rd and amt_tries == 3):
 					print("We're in an infinite loop? Getting out.")
 					print("This likely means that " + str(new_x_rd) + " is an optimum??")
 					#problem: after ending infinite loop the value is added, even though it was already in C_x
@@ -231,9 +235,9 @@ class HP_Optimization:
 			C_x[cur_amt_x] = new_x_rd
 			C_y[cur_amt_x] = self.perform_evaluation_at(new_x_rd)
 			cur_amt_x += 1
-			if(C_y[cur_amt_x-1]==self.f_max):
-                                print("We've reached the specified maximum of f. Stopping BO at iteration " + str(i))
-                                break
+			if(C_y[cur_amt_x-1]>=self.f_max):
+				print("We've reached the specified maximum of f. Stopping BO at iteration " + str(i))
+				break
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
 			print("Checking if cov_matr is singular")
 			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x)) == 0):
@@ -346,11 +350,11 @@ class HP_Optimization:
 
 	#calculates and returns current beta. t is current iteration
 	def get_beta(self, t: int):
-		r: float = 1.5
-		d: int = 4
-		delta: float = 0.1
-		a: float = 1
-		b: float = 1
+		r: float = self.r
+		d: int = len(self.hp_space)
+		delta: float = self.delta
+		a: float = self.a
+		b: float = self.b
 		beta = 2*math.log(t**2*2*math.pi**2/3*delta)+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
 		print("get_beta returns: " + str(beta))
 		return beta
@@ -401,21 +405,21 @@ class HP_Optimization:
 						min = self.hp_space[i][j]
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
-				new = [min-5, max+5]
+				new = [min-2, max+2]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
-				new = [self.hp_space[i][1]-5, self.hp_space[i][1]+5]
+				new = [self.hp_space[i][1]-2, self.hp_space[i][1]+2]
 			elif(self.hp_space[i][0] == "interval"):
 				new = self.hp_space[i].copy()
 				new.remove("interval")
-				new = [new[0]-5, new[1]+5]
+				new = [new[0]-2, new[1]+2]
 			elif(self.hp_space[i][0] == "interval_int"):
 				new = self.hp_space[i].copy()
 				new.remove("interval_int")
-				new = [new[0]-5, new[1]+5]
+				new = [new[0]-2, new[1]+2]
 			else:
 				print("please enter a valid hp_space. Using first value given")
-				new = [self.hp_space[i][1]-5, self.hp_space[i][1]+5]
+				new = [self.hp_space[i][1]-2, self.hp_space[i][1]+2]
 			res.append(new)
 		return res
 
@@ -436,10 +440,8 @@ class HP_Optimization:
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
 		bounds_an = self.get_bounds() #bounds search space to vicinity of useful values
-		print("bounds: " + str(bounds_an))
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
 		x0 = np.zeros(len(self.hp_space))+2
-		print("getting new x")
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		print("acq_x returns: " + str(new_x))
@@ -566,10 +568,11 @@ class Optimize_Classification:
 #anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-simple_space = [["interval_int", 5.4, 0.7], ["list", 1, 3, 4], ["interval", 2], ["list", 0, 1]]
+simple_space = [["list", 2.4, 0.7, 3.]]
 
-OC = Optimize_Classification(data_name = "circles", dimension = 2)
-HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, f_max = 1)
+OC = Optimize_Classification(data_name = "moons", dimension = 2)
+#HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1, r = 2)
+HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
 #HPO.perform_BO(5)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
@@ -583,7 +586,7 @@ HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_sp
 #HPO = HP_Optimization(simple_test, simple_space)
 #print(HPO.hp_space)
 #HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
-HPO.perform_BO(5)
+HPO.perform_BO(3)
 art_C_y = np.array([0.96, 0.94, 0.96, 0.94, 0.97, 0.])
 art_C_x = np.array([[0.3273086, 1., 1., 1.], [0.8158708, 0., 1., 0.], [0.47385773, 1., 1., 1.], [0.80103041, 0., 1., 0.], [0.48143013, 0., 1., 1.], [0., 0., 0., 0.]])
 art_beta = 19.99433798961168
