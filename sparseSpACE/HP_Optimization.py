@@ -221,11 +221,14 @@ class HP_Optimization:
 				new_x = self.acq_x(new_beta_and_l[0], new_beta_and_l[1], C_x, C_y, cur_amt_x)
 				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
-				if(old_x_rd==new_x_rd and amt_tries == 3):
-					print("We're in an infinite loop? Getting out.")
-					print("This likely means that " + str(new_x_rd) + " is an optimum??")
+				if(old_x_rd==new_x_rd and amt_tries >= 3):
+					print("It seems a beta and l that give a new x cannot be found. Using random new x and then getting out.")
+					print("If a random x that's not in C_x can not be found in 10 tries it is assumed that all possible x have been used already and BO is stopped")
 					#problem: after ending infinite loop the value is added, even though it was already in C_x
 					#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
+					while(self.check_if_in_array(new_x_rd, C_x) and amt_tries < 13):
+						new_x_rd = self.create_random_x()
+						amt_tries += 1
 					break
 			print("out of loop")
 			if(old_x_rd==new_x_rd):
@@ -321,7 +324,6 @@ class HP_Optimization:
 				sel = self.hp_space[i].copy()
 				sel.remove("list")
 				new_x = random.choice(sel)
-				print("hp_space[" + str(i) + "] is now " + str(self.hp_space[i]))
 			elif (len(self.hp_space[i])<3):
 				print("Please enter at least 2 values for hp_space interval! Using the 1 value given")
 				new_x = self.hp_space[i][1]
@@ -385,13 +387,14 @@ class HP_Optimization:
 		print("About to minimize g(...)")
 		#due to numerical inaccuracies a matrix might become singular with new beta and l
 		#(even though it wouldn't be) mathematically - how to deal with that??
-		result = minimize(g, [1, 1], method='L-BFGS-B', bounds=bounds_g).x
+		result = minimize(g, [cur_beta, self.l_k], method='L-BFGS-B', bounds=bounds_g).x
 		print("New beta: " + str(result[0]) + ", New l: " + str(result[1]))
 		#result is in the form [new beta, new l]
 		return result
 
-	def get_bounds(self):
-		res = []
+	def get_bounds_and_x0(self):
+		bounds = []
+		x0 = np.zeros(len(self.hp_space))
 		for i in range(0, len(self.hp_space)):
 			new = [0, 1]
 			#should one be able to enter just one value for "list"??
@@ -420,8 +423,9 @@ class HP_Optimization:
 			else:
 				print("please enter a valid hp_space. Using first value given")
 				new = [self.hp_space[i][1]-2, self.hp_space[i][1]+2]
-			res.append(new)
-		return res
+			bounds.append(new)
+			x0[i] = new[0]
+		return bounds, x0
 
 	#acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
@@ -436,12 +440,13 @@ class HP_Optimization:
 		sigma_sqrd = lambda x: self.cov(x, x)-self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(self.get_cov_vector(C_x, x, cur_amt_x)))
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
 		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
-		alpha = lambda x: mu(x)+(math.sqrt(beta))*sigma(x)
+		alpha = lambda x: mu(x)+(math.sqrt(abs(beta)))*sigma(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
-		bounds_an = self.get_bounds() #bounds search space to vicinity of useful values
+		bounds_and_x0 = self.get_bounds_and_x0() #bounds search space to vicinity of useful values
+		bounds_an = bounds_and_x0[0]
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
-		x0 = np.zeros(len(self.hp_space))+2
+		x0 = bounds_and_x0[1]
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		print("acq_x returns: " + str(new_x))
@@ -570,10 +575,10 @@ def simple_test(params):
 	return params[0]
 simple_space = [["list", 2.4, 0.7, 3.]]
 
-OC = Optimize_Classification(data_name = "moons", dimension = 2)
-#HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1, r = 2)
-HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
-#HPO.perform_BO(5)
+OC = Optimize_Classification(data_name = "circles", dimension = 2)
+HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1, r = 2)
+#HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
+HPO.perform_BO(10)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
@@ -586,7 +591,7 @@ HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
 #HPO = HP_Optimization(simple_test, simple_space)
 #print(HPO.hp_space)
 #HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
-HPO.perform_BO(3)
+#HPO.perform_BO(3)
 art_C_y = np.array([0.96, 0.94, 0.96, 0.94, 0.97, 0.])
 art_C_x = np.array([[0.3273086, 1., 1., 1.], [0.8158708, 0., 1., 0.], [0.47385773, 1., 1., 1.], [0.80103041, 0., 1., 0.], [0.48143013, 0., 1., 1.], [0., 0., 0., 0.]])
 art_beta = 19.99433798961168
