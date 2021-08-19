@@ -231,14 +231,14 @@ class HP_Optimization:
 						amt_tries += 1
 					break
 			print("out of loop")
-			if(old_x_rd==new_x_rd):
-				print("There was an infinite loop when getting new x. Ending BO at iteration " + str(i))
+			if(old_x_rd==new_x_rd or self.check_if_in_array(new_x_rd, C_x)):
+				print("There was an infinite loop when getting new x and / or no new x has been found. Ending BO at iteration " + str(i))
 				break
 			print("adding " + str(new_x_rd))
 			C_x[cur_amt_x] = new_x_rd
 			C_y[cur_amt_x] = self.perform_evaluation_at(new_x_rd)
 			cur_amt_x += 1
-			if(C_y[cur_amt_x-1]>=self.f_max):
+			if(C_y[cur_amt_x-1]==self.f_max):
 				print("We've reached the specified maximum of f. Stopping BO at iteration " + str(i))
 				break
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
@@ -576,7 +576,7 @@ def simple_test(params):
 simple_space = [["list", 2.4, 0.7, 3.]]
 
 OC = Optimize_Classification(data_name = "circles", dimension = 2)
-HPO = HP_Optimization(OC.pea_classification, OC.classification_space, f_max = 1, r = 2)
+HPO = HP_Optimization(simple_test, simple_space, r = 2)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
 HPO.perform_BO(10)
 #y_r = HPO.perform_RO(10)[3]
