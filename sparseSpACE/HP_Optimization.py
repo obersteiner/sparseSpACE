@@ -188,6 +188,8 @@ class HP_Optimization:
 		C_y=C[1]
 		print("C_y: " + str(C_y))
 		#print("Evidence Set: \n" + str(C))
+		#For easier checking in what iterations random x has been used
+		used_random_x = []
 		for i in range (0, amt_it, 1):
 			print("iteration: " + str(i))
 			beta = self.get_beta(i+1)
@@ -222,15 +224,20 @@ class HP_Optimization:
 				new_x_rd = self.round_x(new_x)
 				print("new x rd is: " + str(new_x_rd))
 				if(old_x_rd==new_x_rd and amt_tries >= 3):
-					print("It seems a beta and l that give a new x cannot be found. Using random new x and then getting out.")
-					print("If a random x that's not in C_x can not be found in 10 tries it is assumed that all possible x have been used already and BO is stopped")
-					#problem: after ending infinite loop the value is added, even though it was already in C_x
-					#..this makes the matrix singular. Shouldn't happen though with modified get_beta_and_l
-					while(self.check_if_in_array(new_x_rd, C_x) and amt_tries < 13):
-						new_x_rd = self.create_random_x()
-						amt_tries += 1
-					break
-			print("out of loop")
+					print("It seems a beta and l that give a new x cannot be found. Trying beta = 0 and l = 0.5")
+					new_x = self.acq_x(0, 0.5, C_x, C_y, cur_amt_x)
+					new_x_rd = self.round_x(new_x)
+					if(self.check_if_in_array(new_x_rd, C_x)):
+						print("Beta = 0 didn't help. Using random new x and then getting out.")
+						print("If a random x that's not in C_x can not be found in 10 tries it is assumed that all possible x have been used already and BO is stopped")
+						used_random_x.append(i)
+						while(self.check_if_in_array(new_x_rd, C_x) and amt_tries < 13):
+							new_x_rd = self.create_random_x()
+							amt_tries += 1
+						break
+					else:
+						print("Beta = 0 DID help!")
+			print("out of getting beta and l loop")
 			if(old_x_rd==new_x_rd or self.check_if_in_array(new_x_rd, C_x)):
 				print("There was an infinite loop when getting new x and / or no new x has been found. Ending BO at iteration " + str(i))
 				break
@@ -257,6 +264,9 @@ class HP_Optimization:
 				y_ret = C_y[i]
 				x_ret = C_x[i]
 		print("The Best value found in " + str(amt_it) + " iterations is " + str(y_ret) + " at " + str(x_ret))
+		print("Random x has been used in iterations " + str(used_random_x))
+		print("C_y: " + str(C_y))
+		print("C_x: " + str(C_x))
 		return x_ret, y_ret, C_x, C_y
 
 	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
@@ -286,14 +296,14 @@ class HP_Optimization:
 		return K
 
 	#returns the vector k for a certain input new_x
-	def get_cov_vector(self, ev_x, new_x, cur_length: int):
+	def get_cov_vector(self, C_x, new_x, cur_length: int):
 	        #somehow the rest of the function would still work even if x is wrong size, but no idea why / what it does. Better to check
-	        if(len(ev_x[0]) != len(new_x)):
+	        if(len(C_x[0]) != len(new_x)):
 	                print("Input x for cov_vector has the wrong size")
 	                return None
-	        k_vec = np.zeros(len(ev_x))
+	        k_vec = np.zeros(len(C_x))
 	        for i in range (0, cur_length, 1):
-	                k_vec[i] = self.cov(ev_x[i], new_x)
+	                k_vec[i] = self.cov(C_x[i], new_x)
 	        return k_vec
 
 	#creates evidence set using random values
@@ -378,7 +388,7 @@ class HP_Optimization:
 		l_h = self.l_k+(50*2**amt_tries)
 		#0 if rd(x) is in ev set C_x, constant otherwise (5)
 		#penalty p(x) erhöhen wenn gleicher Wert rauskommt. z.B. immer +50 oder *2 oder anders exponentiell
-		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*(50*2**amt_tries)
+		p = lambda x: self.check_if_in_array(self.round_x(x), C_x)*(200*2**amt_tries)
 		#gets the x value for certain l (z[1]) and beta (z[0])
 		new_x = lambda z: self.acq_x(z[0], z[1], C_x, C_y, cur_amt_x)
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
@@ -408,28 +418,28 @@ class HP_Optimization:
 						min = self.hp_space[i][j]
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
-				new = [min-2, max+2]
+				new = [min-1, max+1]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
-				new = [self.hp_space[i][1]-2, self.hp_space[i][1]+2]
+				new = [self.hp_space[i][1]-1, self.hp_space[i][1]+1]
 			elif(self.hp_space[i][0] == "interval"):
 				new = self.hp_space[i].copy()
 				new.remove("interval")
-				new = [new[0]-2, new[1]+2]
+				new = [new[0]-1, new[1]+1]
 			elif(self.hp_space[i][0] == "interval_int"):
 				new = self.hp_space[i].copy()
 				new.remove("interval_int")
-				new = [new[0]-2, new[1]+2]
+				new = [new[0]-1, new[1]+1]
 			else:
 				print("please enter a valid hp_space. Using first value given")
-				new = [self.hp_space[i][1]-2, self.hp_space[i][1]+2]
+				new = [self.hp_space[i][1]-1, self.hp_space[i][1]+1]
 			bounds.append(new)
 			x0[i] = new[0]
 		return bounds, x0
 
 	#acquire new x for l, beta, C_x, cur_amt_x, using GP-UCB
 	def acq_x(self, beta: float, l: float, C_x, C_y, cur_amt_x):
-		old_l=self.l_k
+		#old_l=self.l_k
 		self.l_k=l
 		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
@@ -441,6 +451,8 @@ class HP_Optimization:
 		#takes sqrt of abs(sigma_sqrd) bc otherwise fmin gives an error - might be an overall warning sign tho
 		sigma = lambda x: math.sqrt(abs(sigma_sqrd(x)))
 		alpha = lambda x: mu(x)+(math.sqrt(abs(beta)))*sigma(x)
+		#trying out stuff:
+		#alpha = lambda x: mu(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
 		bounds_and_x0 = self.get_bounds_and_x0() #bounds search space to vicinity of useful values
@@ -449,7 +461,10 @@ class HP_Optimization:
 		x0 = bounds_and_x0[1]
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
-		print("acq_x returns: " + str(new_x))
+		print("acq_x returns: " + str(new_x) + " with a_neg(new_x) = " + str(alpha_neg(new_x)))
+		print("mu(new_x) = " + str(mu(new_x)) + " , root(beta) = " + str(math.sqrt(beta)) + " , sigma(new_x) = " + str(sigma(new_x)))
+		print("sigma_sqrd(new_x) = " + str(sigma_sqrd(new_x)))
+		print("k_vec(x) = " + str(self.get_cov_vector(C_x, new_x, cur_amt_x)))
 		return new_x
 
 	#needs search space
@@ -573,12 +588,13 @@ class Optimize_Classification:
 #anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
 def simple_test(params):
 	return params[0]
-simple_space = [["list", 2.4, 0.7, 3.]]
+simple_space = [["interval", 20.4, 0.]]
 
-OC = Optimize_Classification(data_name = "circles", dimension = 2)
-HPO = HP_Optimization(simple_test, simple_space, r = 2)
-#HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 2)
-HPO.perform_BO(10)
+OC = Optimize_Classification(data_name = "moons", dimension = 2)
+#HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
+HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, r = 1.5)
+#HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
+HPO.perform_BO(7)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
