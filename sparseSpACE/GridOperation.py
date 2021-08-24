@@ -2711,6 +2711,7 @@ class Regression(MachineLearning):
                     for n in range(0, len(point_i)):
                         if n == d:
                             # domains do not overlap
+                            #print(domain_i[d][0], domain_i[d][1], domain_j[d][0], domain_j[d][1])
                             if domain_i[d][1] < domain_j[d][0] or domain_j[d][1] < domain_i[d][0]:
                                 temp_res *= 0
                             # domains are the same (also points i and j)

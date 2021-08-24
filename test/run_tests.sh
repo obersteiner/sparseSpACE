@@ -10,4 +10,5 @@ python3 test_spatiallyAdaptiveSingleDimension2.py
 python3 test_StandardCombi.py
 python3 test_UncertaintyQuantification.py
 python3 test_Utils.py
+python3 test_Regression.py
 
