@@ -2258,6 +2258,8 @@ class Regression(MachineLearning):
                                     m = 1 / (point_i[d] - point_j[d])
 
                                     temp_res *= -(m * m * b)
+
+                            temp_res *= alphas_i[i] * alphas_j[j]
                         else:
                             if point_i[d] != point_j[d]:
                                 m = 1.0 / abs(point_i[d] - point_j[d])  # slope

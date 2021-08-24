@@ -209,7 +209,7 @@ class TestRegression(unittest.TestCase):
 
 
         value = regression.sum_C_matrix_with_alphas_spatially_adaptive([[0., 0.25, 0.5, 0.75, 1.]], [2, 2, 1], [1, 1, 2])
-        self.assertAlmostEqual(value, 4.)
+        self.assertAlmostEqual(value, -16.)
 
 
 
