@@ -1392,7 +1392,7 @@ class Classification:
         if plot_class_density_estimation:
             filenameBase = file_path + '_contour' if file_path is not None else None
             for i, x in enumerate(self._classificators):
-                filename = filenameBase + str(i) + ".pdf"
+                filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
                 x.plot(contour=True, filename=filename)
@@ -1400,7 +1400,7 @@ class Classification:
             filenameBase = file_path + '_combi_scheme' if file_path is not None else None
             i=0
             for x, y in zip(self._classificators, self._de_objects):
-                filename = filenameBase + str(i) + ".pdf"
+                filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
                 x.print_resulting_combi_scheme(operation=y, filename=filename, ticks=False)
@@ -1408,7 +1408,7 @@ class Classification:
         if plot_class_sparsegrid:
             filenameBase = file_path + '_sparsegrid' if file_path is not None else None
             for i, x in enumerate(self._classificators):
-                filename = filenameBase + str(i) + ".pdf"
+                filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
                 x.print_resulting_sparsegrid(markersize=20, filename=filename, ticks=False)
