@@ -1939,7 +1939,7 @@ class Regression(MachineLearning):
             print("Garcke ansatz")
             self.optimize_coefficients_linear_system(combiObject)
         elif option == 2:
-            print("Own ansatz")
+            print("Least squares based (without regularization) ansatz")
             self.optimize_coefficients_minimize_whole_error(combiObject)
         else:
             print("Untuitive first ansatz")
