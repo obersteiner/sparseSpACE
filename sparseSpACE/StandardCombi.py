@@ -41,6 +41,8 @@ class StandardCombi(object):
         # for compatibility with old code
         if print_output is True and print_level == print_levels.NONE:
             self.log_util.set_print_level(print_levels.INFO)
+
+        self.time_used = 0.0
         self.log_util.set_print_prefix('StandardCombi')
         self.log_util.set_log_prefix('StandardCombi')
 
@@ -73,6 +75,9 @@ class StandardCombi(object):
         """
         return self.operation.interpolate_points_component_grid(component_grid, mesh_points_grid=None,
                                                  evaluation_points=interpolation_points)
+
+    def get_time_used(self):
+        return self.time_used
 
     def interpolate_grid(self, grid_coordinates: Sequence[Sequence[float]]) -> Sequence[Sequence[float]]:
         """This method evaluates the model at the specified interpolation grid using the Combination Technique.
@@ -112,6 +117,33 @@ class StandardCombi(object):
         :param plotdimension: Dimension of the output vector that should be plotted. (0 if scalar outputs)
         :return: None
         """
+
+        if self.dim == 1:
+            fig = plt.figure(figsize=(20, 10))
+
+            fontsize = 30
+            plt.rcParams.update({'font.size': fontsize})
+            xArray = np.linspace(self.a[0], self.b[0], 10 ** 2)
+            X = [x for x in xArray]
+
+            points = list(X)
+
+            Y = np.zeros(np.shape(X))
+            f_values = np.asarray((self(points)))
+            for i in range(len(X)):
+                Y[i] = f_values[i][plotdimension]
+            points = list(get_cross_product([X, Y]))
+
+            ax = fig.add_subplot(2, 1, 1)
+
+            # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax.plot(X, Y)
+
+            plt.show()
+            # reset fontsize to default so it does not affect other figures
+            plt.rcParams.update({'font.size': plt.rcParamsDefault.get('font.size')})
+            return
+
         if self.dim != 2:
             self.log_util.log_warning("Can only plot 2D results")
             return
@@ -219,7 +251,8 @@ class StandardCombi(object):
             self.print_resulting_combi_scheme()
             print("Sparse Grid:")
             self.print_resulting_sparsegrid()
-        self.log_util.log_info("Time used (s):" + str(time.perf_counter() - start_time))
+        self.time_used = time.perf_counter() - start_time
+        self.log_util.log_info("Time used (s):" + str(self.time_used))
         self.log_util.log_info("Number of distinct points used during the refinement (StdCombi): {0}".format(self.get_total_num_points()))
         # return results
         if reference_solution is not None:
