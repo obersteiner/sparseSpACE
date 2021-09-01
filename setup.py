@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="sparseSpACE",
-    version="1.1.0",
+    version="1.1.1",
     description="sparseSpACE - the Sparse Grid Spatially Adaptive Combination Environment implements different variants of the spatially adaptive combination technique",
     long_description=README,
     long_description_content_type="text/markdown",
