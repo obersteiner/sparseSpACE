@@ -5,7 +5,7 @@
 # sparseSpACE - The Sparse Grid Spatially Adaptive Combination Environment
 
 This python projects implements different variants of the spatially adaptive Combination Technique. 
-It was first targeted to solve high dimensional numerical integration with the spatially adaptive Combination Technique but it now supports the implementation of arbitrary grid operations. It supports already numerical integration, interpolation, Uncertainty Quantification, Sparse Grid Density Estimation and PDE calculations. The github page can be found [here](https://github.com/obersteiner/sparseSpACE.git).
+It was first targeted to solve high dimensional numerical integration with the spatially adaptive Combination Technique but it now supports the implementation of arbitrary grid operations. It supports already numerical integration, interpolation, Uncertainty Quantification, Sparse Grid Density Estimation (with classificationa nd clustering), regression, and PDE calculations. The github page can be found [here](https://github.com/obersteiner/sparseSpACE.git).
 
 # Installation
 Install from PyPI using
