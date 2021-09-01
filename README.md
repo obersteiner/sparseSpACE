@@ -1,4 +1,4 @@
-https://img.shields.io/github/license/obersteiner/sparseSpACE
+![GitHub](https://img.shields.io/github/license/obersteiner/sparseSpACE)
 
 # sparseSpACE - The Sparse Grid Spatially Adaptive Combination Environment
 
