@@ -1,3 +1,5 @@
+https://img.shields.io/github/license/obersteiner/sparseSpACE
+
 # sparseSpACE - The Sparse Grid Spatially Adaptive Combination Environment
 
 This python projects implements different variants of the spatially adaptive Combination Technique. 
