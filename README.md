@@ -1,4 +1,5 @@
-![GitHub](https://img.shields.io/github/license/obersteiner/sparseSpACE)
+![GitHub](https://img.shields.io/github/license/obersteiner/sparseSpACE) 
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/obersteiner/sparseSpACE/Python%20package)
 
 # sparseSpACE - The Sparse Grid Spatially Adaptive Combination Environment
 
