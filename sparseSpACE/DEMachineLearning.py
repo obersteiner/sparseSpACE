@@ -1171,7 +1171,7 @@ class Classification:
             start_time = time.time()
             self._calculated_classes_testset = self._classificate(self._testing_data)
             self._time_used += time.time() - start_time
-
+    
     def perform_classification(self,
                                masslumping: bool = True,
                                lambd: float = 0.0,
@@ -1368,7 +1368,9 @@ class Classification:
              plot_class_density_estimation: bool = False,
              plot_class_combi_scheme: bool = False,
              plot_class_sparsegrid: bool = False,
-             file_path: str = None) -> None:
+             file_path: str = None,
+             fontsize: int = 40,
+             ticks: bool = False) -> None:
         """Plot a Classification object.
 
         As most of other public methods of Classification, classification already has to be performed before this method is called. Otherwise an
@@ -1395,7 +1397,7 @@ class Classification:
                 filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
-                x.plot(contour=True, filename=filename)
+                x.plot(contour=True, filename=filename, ticks=ticks)
         if plot_class_combi_scheme:
             filenameBase = file_path + '_combi_scheme' if file_path is not None else None
             i=0
@@ -1403,7 +1405,7 @@ class Classification:
                 filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
-                x.print_resulting_combi_scheme(operation=y, filename=filename, ticks=False)
+                x.print_resulting_combi_scheme(operation=y, filename=filename, ticks=ticks, fontsize=fontsize)
                 i += 1
         if plot_class_sparsegrid:
             filenameBase = file_path + '_sparsegrid' if file_path is not None else None
@@ -1411,7 +1413,7 @@ class Classification:
                 filename = filenameBase + str(i) + ".pdf"  if filenameBase is not None else None
                 if filename is not None:
                     self.log_util.log_warning("Overwriting existing file!")
-                x.print_resulting_sparsegrid(markersize=20, filename=filename, ticks=False)
+                x.print_resulting_sparsegrid(markersize=20, filename=filename, ticks=ticks)
 
 
 class Clustering:

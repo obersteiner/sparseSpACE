@@ -80,7 +80,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
         plt.show()
         return fig
 
-    def add_refinment_to_figure_axe(self, ax, linewidth=1, fontsize=35):
+    def add_refinment_to_figure_axe(self, ax, linewidth=1, fontsize: int=35):
         for i in self.refinement.get_objects():
             startx = i.start[0]
             starty = i.start[1]
@@ -97,7 +97,7 @@ class SpatiallyAdaptiveExtendScheme(SpatiallyAdaptivBase):
                 )
             )
             midpoint = 0.5*(np.asarray(i.start) + np.asarray(i.end))
-            ax.text(midpoint[0] - 0*0.015, midpoint[1]-0.025, str(self.lmax[0] - i.coarseningValue),
+            ax.text(midpoint[0] + 0.0004 * fontsize, midpoint[1]-0.0005 * fontsize, str(self.lmax[0] - i.coarseningValue),
                 fontsize=fontsize, ha='center', color="blue")
 
     # returns the points of a single component grid with refinement
