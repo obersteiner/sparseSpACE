@@ -16,7 +16,7 @@ or (Linux example):
 ```
 git clone https://github.com/obersteiner/sparseSpACE.git
 cd sparseSpACE
-pip install .
+pip install -e .
 ```
 # Tutorials
 
@@ -26,16 +26,17 @@ A short introduction in how to use the framework can be found in the ipynb tutor
 - Extend_Split_Strategy_Tutorial.ipynb
 - Tutorial_DensityEstimation.ipynb
 - Tutorial_DEMachineLearning.ipynb
--Tutorial_Extrapolation.ipynb
+- Tutorial_Extrapolation.ipynb
 - Tutorial_UncertaintyQuantification.ipynb
+- Tutorial_Regression.ipynb
 
 # Plotting
 
-The framework also supports various options for plotting the results. Examples can be found in the ipynb/Diss folder or the other Tutorials.
+The framework also supports various options for plotting the results. Examples can be found in the ipynb/Diss folder and in the Tutorials.
 
 # Software requirements
 
-These software requirements are automatically installed when using pip. But as a reference we list here the necessary libraries and versions:
+These software requirements are automatically installed when using pip. But as a reference we list here the necessary libraries and versions (see requirements.txt):
 - python3 (3.5 or higher)
 - scipy (1.1.0 or higher)
 - numpy
