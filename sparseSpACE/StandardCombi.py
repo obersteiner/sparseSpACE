@@ -106,7 +106,7 @@ class StandardCombi(object):
         """
         return self.interpolate_points(interpolation_points, component_grid) * component_grid.coefficient
 
-    def plot(self, filename: str = None, plotdimension: int = 0, contour=False) -> None:
+    def plot(self, filename: str = None, plotdimension: int = 0, contour=False, ticks: bool=True) -> None:
         """This method plots the model obtained by the Combination Technique.
 
         :param plotdimension: Dimension of the output vector that should be plotted. (0 if scalar outputs)
@@ -143,6 +143,10 @@ class StandardCombi(object):
 
             # p = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            if not ticks:
+                ax.set_xticks(ticks=[])
+                ax.set_yticks(ticks=[])
+                ax.set_zticks(ticks=[])
 
             ax = fig.add_subplot(1, 2, 2)
             # TODO why do I have to transpose here so it plots in the right orientation?
@@ -151,6 +155,9 @@ class StandardCombi(object):
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.1)
             fig.colorbar(p, cax=cax)
+            if not ticks:
+                ax.axis('off')
+
         else:
             fig = plt.figure(figsize=(20, 10))
 
@@ -161,6 +168,8 @@ class StandardCombi(object):
             p = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
             # TODO make colorbar look nicer
             fig.colorbar(p, ax=ax)
+            if not ticks:
+                ax.axis('off')
         # plt.show()
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
@@ -298,7 +307,7 @@ class StandardCombi(object):
             if show_levelvec:
                 ax.set_title(str(tuple(self.lmax)))
             if add_refinement:
-                self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
+                self.add_refinment_to_figure_axe(ax, linewidth=linewidth, fontsize=fontsize*0.75)
             if operation is not None:
                 operation.plot_component_grid(scheme[0], ax)
         else:
@@ -321,7 +330,7 @@ class StandardCombi(object):
                     grid.set_title(str(tuple(component_grid.levelvector)))
                 if component_grid.coefficient != 0:
                     if add_refinement:
-                        self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+                        self.add_refinment_to_figure_axe(grid, linewidth=linewidth, fontsize=fontsize*0.75)
                     if show_coefficient:
                         coefficient = str(int(component_grid.coefficient)) if component_grid.coefficient <= 0 else "+" + str(int(component_grid.coefficient))
                         grid.text(0.55, 0.55, coefficient,
@@ -511,7 +520,7 @@ class StandardCombi(object):
             if not ticks:
                 ax.axis('off')
             if add_refinement:
-                self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
+                self.add_refinment_to_figure_axe(ax, linewidth=linewidth, fontsize=fontsize*0.75)
         else:
 
             for i in range(lmax[0] - lmin[0] + 1):
@@ -602,7 +611,7 @@ class StandardCombi(object):
                 if not ticks:
                     grid.axis('off')
                 if add_refinement:
-                    self.add_refinment_to_figure_axe(grid, linewidth=linewidth)
+                    self.add_refinment_to_figure_axe(grid, linewidth=linewidth, fontsize=fontsize*0.75)
 
                 if True:
                     #fig, overax = plt.subplots()
@@ -763,7 +772,7 @@ class StandardCombi(object):
         if not ticks:
             ax.axis('off')
         if add_refinement and dim == 2:
-            self.add_refinment_to_figure_axe(ax, linewidth=linewidth)
+            self.add_refinment_to_figure_axe(ax, linewidth=linewidth, fontsize=fontsize*0.75)
         if filename is not None:
             plt.savefig(filename, bbox_inches='tight')
         if show_fig:
@@ -870,7 +879,7 @@ class StandardCombi(object):
             self.log_util.log_warning("Grid does not support surplusses")
             return None
 
-    def add_refinment_to_figure_axe(self, ax, linewidth: int=1) -> None:
+    def add_refinment_to_figure_axe(self, ax, linewidth: int=1, fontsize: int=35) -> None:
         """This method is used to add additional refinement info to the specified axe in the matplotlib figure.
 
         :param ax: Axe of a matplotlib figure.
