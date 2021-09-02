@@ -12,15 +12,15 @@ from scipy.optimize import minimize
 #the function on which HP should be Optimized and search space for the HPs
 #space is in form [["interval", <start>, <end>], ["list", <l0>, <l1>, <l2>,...], ....]
 class HP_Optimization:
-	def __init__(self, function, hp_space, f_max = None, r: float = 3, delta: float = 0.1, a: float = 1., b: float = 1.):
+	def __init__(self, function, hp_space, f_max = None):
 		self.function = function
 		self.hp_space = hp_space
 		self.check_hp_space()
 		self.f_max = f_max
-		self.r = r
-		self.delta = delta
-		self.a = a
-		self.b = b
+		self.r = 3.0
+		self.delta = 0.1
+		self.a = 1.0
+		self.b = 1.0
 
 	def check_hp_space(self):
 		if(len(self.hp_space)<1):
@@ -175,7 +175,11 @@ class HP_Optimization:
 
 	#performs Bayesian Optimization
 	#Note: HP Input of classification is (lambd:float, massl:bool, min_lv:int <4, one_vs_others:bool)
-	def perform_BO(self, amt_it: int):
+	def perform_BO(self, amt_it: int, r: float = 3.0, delta: float = 0.1, a: float = 1.0, b: float = 1.0):
+		self.r = r
+		self.delta = delta
+		self.a = a
+		self.b = b
 		#notes how many x values currently are in the evidence set - starts with amt_HP+1
 		amt_HP = len(self.hp_space)
 		cur_amt_x: int = amt_HP+1
@@ -590,11 +594,11 @@ def simple_test(params):
 	return params[0]
 simple_space = [["interval", 20.4, 0.]]
 
-OC = Optimize_Classification(data_name = "moons", dimension = 2)
+OC = Optimize_Classification(data_name = "iris", dimension = 2)
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
-HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space, r = 1.5)
+HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
-HPO.perform_BO(7)
+HPO.perform_BO(3, r = 4)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
