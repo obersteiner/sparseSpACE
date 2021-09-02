@@ -7,6 +7,7 @@ from math import copysign
 
 from sparseSpACE.Utils import LogUtility, print_levels, log_levels
 
+
 # This class is the general interface of an error estimator currently used by the algorithm
 class ErrorCalculator(object):
     # initialization
@@ -23,6 +24,7 @@ class ErrorCalculator(object):
     @abc.abstractmethod
     def calc_error(self, refine_object, norm):
         return
+
 
 # This error estimator does a surplus estimation. It outputs the absolute error.
 class ErrorCalculatorSurplusCell(ErrorCalculator):
@@ -48,9 +50,11 @@ class ErrorCalculatorSurplusCellPunishDepth(ErrorCalculatorSurplusCell):
 class ErrorCalculatorExtendSplit(ErrorCalculator):
     def calc_error(self, refine_object, norm, volume_weights=None):
         if refine_object.switch_to_parent_estimation:
-            return LA.norm(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value), norm)
+            return LA.norm(abs(refine_object.sum_siblings - refine_object.parent_info.previous_value), norm) / (
+                        len(refine_object.value) ** (1 / norm))
         else:
-            return LA.norm(abs(refine_object.value - refine_object.parent_info.previous_value), norm)
+            return LA.norm(abs(refine_object.value - refine_object.parent_info.previous_value), norm) / (
+                        len(refine_object.value) ** (1 / norm))
 
 
 class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
@@ -58,28 +62,30 @@ class ErrorCalculatorSingleDimVolumeGuided(ErrorCalculator):
         # pagoda-volume
         volumes = refine_object.volume
         if volume_weights is None:
-            return LA.norm(abs(volumes), norm)
+            return LA.norm(abs(volumes), norm) / (len(volumes) ** (1 / norm))
         # Normalized volumes
         return LA.norm(abs(volumes * volume_weights), norm)
 
 
 class ErrorCalculatorSingleDimVolumeGuidedPunishedDepth(ErrorCalculator):
     def calc_error(self, refineObj, norm):
-        #width of refineObj:
+        # width of refineObj:
         width = refineObj.end - refineObj.start
         # pagoda-volume
-        volume = LA.norm(refineObj.volume * (width), norm)
+        volume = LA.norm(refineObj.volume * (width), norm) / (len(refineObj.volume) ** (1 / norm))
         return abs(volume)
+
 
 class ErrorCalculatorSingleDimMisclassification(ErrorCalculator):
     def calc_error(self, refine_object, norm, volume_weights=None):
         volumes = refine_object.volume
         if volume_weights is None:
-            #return LA.norm(abs(volumes), norm)
+            # return LA.norm(abs(volumes), norm)
             return abs(volumes)
         # Normalized volumes
-        #return LA.norm(abs(volumes * volume_weights), norm)
+        # return LA.norm(abs(volumes * volume_weights), norm)
         return abs(volumes * volume_weights)
+
 
 class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
     def __init__(self):
@@ -89,10 +95,10 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
     def calc_error(self, refine_object, norm, volume_weights=None):
         volumes = refine_object.volume
         if volume_weights is None:
-            #return LA.norm(abs(volumes), norm)
+            # return LA.norm(abs(volumes), norm)
             return abs(volumes)
         # Normalized volumes
-        #return LA.norm(abs(volumes * volume_weights), norm)
+        # return LA.norm(abs(volumes * volume_weights), norm)
         return abs(volumes * volume_weights)
 
     def calc_global_error(self, data, grid_scheme):
@@ -105,11 +111,13 @@ class ErrorCalculatorSingleDimMisclassificationGlobal(ErrorCalculator):
                 # get the misclassification rate between start and end of refinement_obj
                 hits = sum((1 for i in range(0, len(values))
                             if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                            and copysign(1.0, values[i][0] == copysign(1.0, grid_scheme.operation.validation_classes[i]))))
+                            and copysign(1.0,
+                                         values[i][0] == copysign(1.0, grid_scheme.operation.validation_classes[i]))))
 
                 misses = sum((1 for i in range(0, len(values))
                               if refinement_obj.start <= samples[i][d] <= refinement_obj.end
-                              and copysign(1.0, values[i][0]) != copysign(1.0, grid_scheme.operation.validation_classes[i])))
+                              and copysign(1.0, values[i][0]) != copysign(1.0,
+                                                                          grid_scheme.operation.validation_classes[i])))
 
                 if hits + misses > 0:
                     refinement_obj.add_volume(

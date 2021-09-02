@@ -1859,9 +1859,10 @@ class DensityEstimation(MachineLearning):
         if self.reference_solution is None:
             return None
         elif LA.norm(self.reference_solution) == 0.0:
-            return LA.norm(abs(self.surpluses), norm)
+            return LA.norm(abs(self.surpluses), norm) / (len(self.surpluses) ** (1 / norm))
         else:
-            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm)
+            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm) / (
+                        len(self.surpluses) ** (1 / norm))
 
 
 class Regression(MachineLearning):
@@ -1927,7 +1928,7 @@ class Regression(MachineLearning):
         self.log_util.set_print_prefix('DensityEstimation')
         self.log_util.set_log_prefix('DensityEstimation')
         self.scale_data(rangee)
-        
+
     def optimize_coefficients(self, combiObject, option: int = 1):
         """This method performs Opticom and updates the coefficients of the component grids
 
@@ -2039,7 +2040,8 @@ class Regression(MachineLearning):
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             for j in range(len(self.validation_target_values)):
                 partial_solution = adaptiveCombiInstanceSingleDim.interpolate_points([self.validation_data[j]],
-                                                                            adaptiveCombiInstanceSingleDim.scheme[i])
+                                                                                     adaptiveCombiInstanceSingleDim.scheme[
+                                                                                         i])
                 matrix[j][i] = partial_solution
 
         coefficients, res, rank, s = np.linalg.lstsq(matrix, self.validation_target_values, rcond=None)
@@ -2049,7 +2051,8 @@ class Regression(MachineLearning):
         for i in range(len(adaptiveCombiInstanceSingleDim.scheme)):
             adaptiveCombiInstanceSingleDim.scheme[i].coefficient = coefficients[i] / length
 
-    def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
+    def sum_C_matrix_with_alphas(self, levelvec: Sequence[int], alphas_i: Sequence[int],
+                                 alphas_j: Sequence[int]) -> float:
         """This method sums the cells of the C matrix (but with the according weights of the basis functions)
 
         :param levelvec: Levelvector of the component grid
@@ -2140,18 +2143,16 @@ class Regression(MachineLearning):
         for d in range(len(levelvec_new)):
             points_per_dim_d = []
             for n in range(2 ** levelvec_new[d] - 1):
-                points_per_dim_d.append((n+1) * 2. ** -levelvec_new[d])
+                points_per_dim_d.append((n + 1) * 2. ** -levelvec_new[d])
 
             points_per_dimensions_list.append(points_per_dim_d)
 
         evaluation_points = get_cross_product_list(points_per_dimensions_list)
 
-
         alphas_i = self.interpolate_points_component_grid(scheme_i, mesh_points_grid=None,
                                                           evaluation_points=evaluation_points)
         alphas_j = self.interpolate_points_component_grid(scheme_j, mesh_points_grid=None,
                                                           evaluation_points=evaluation_points)
-
 
         sum_all = self.sum_C_matrix_with_alphas(levelvec_new, alphas_i, alphas_j)
         return sum_all
@@ -2178,8 +2179,7 @@ class Regression(MachineLearning):
 
                 if self.regularization_opticom != 0.:
                     sum += self.regularization_opticom * self.compute_regularization_term_opticom(combiObject.scheme[i],
-                                                                                      combiObject.scheme[j])
-
+                                                                                                  combiObject.scheme[j])
 
                 matrix[i][j] = sum
                 matrix[j][i] = sum
@@ -2204,7 +2204,8 @@ class Regression(MachineLearning):
         for i in range(len(combiObject.scheme)):
             combiObject.scheme[i].coefficient = coefs[i]
 
-    def sum_C_matrix_with_alphas_spatially_adaptive(self, gridPointCoordsAsStripes: Sequence[Sequence[float]], alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
+    def sum_C_matrix_with_alphas_spatially_adaptive(self, gridPointCoordsAsStripes: Sequence[Sequence[float]],
+                                                    alphas_i: Sequence[int], alphas_j: Sequence[int]) -> float:
         """This method sums the C matrix (spatially adaptive version) with the according weights of the basis functions
 
         :param gridPointCoordsAsStripes: grid points in each dimension as list
@@ -2342,7 +2343,8 @@ class Regression(MachineLearning):
 
         return sum_all
 
-    def build_matrix_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim) -> Tuple[Sequence[Sequence[float]], Sequence[float]]:
+    def build_matrix_opticom_spatially_adaptive(self, adaptiveCombiInstanceSingleDim) -> Tuple[
+        Sequence[Sequence[float]], Sequence[float]]:
         """This method calculates the matrix and the vector for the Opticom Garcke (spatially adaptive version)
 
         :param adaptiveCombiInstanceSingleDim: object of type SpatiallyAdaptivBase
@@ -2429,7 +2431,6 @@ class Regression(MachineLearning):
         self.validation_data = np.append(self.training_data, self.validation_data, 0)
         self.validation_target_values = np.append(self.training_target_values, self.validation_target_values)
 
-
         a = np.zeros(self.dim)
         b = np.ones(self.dim)
 
@@ -2439,7 +2440,8 @@ class Regression(MachineLearning):
 
         return combiObject
 
-    def train_spatially_adaptive(self, percentage_of_testdata: float, margin: float, tolerance: float, max_evaluations: int, do_plot: bool = False, noisy_data: bool = False):
+    def train_spatially_adaptive(self, percentage_of_testdata: float, margin: float, tolerance: float,
+                                 max_evaluations: int, do_plot: bool = False, noisy_data: bool = False):
         """This method trains the regression object (weights are calculated) for the spatially adaptive version
 
         :param percentage_of_testdata: part of the data that will be used for testing
@@ -2519,9 +2521,10 @@ class Regression(MachineLearning):
         if self.reference_solution is None:
             return None
         elif LA.norm(self.reference_solution) == 0.0:
-            return LA.norm(abs(self.surpluses), norm)
+            return LA.norm(abs(self.surpluses), norm) / (len(self.surpluses) ** (1 / norm))
         else:
-            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm)
+            return LA.norm(abs((self.reference_solution - self.surpluses) / self.reference_solution), norm) / (
+                        len(self.surpluses) ** (1 / norm))
 
     def get_neighbors(self, point: Sequence[float], gridPointCoordsAsStripes: Sequence[Sequence[float]]) \
             -> Sequence[Tuple[float, float]]:
@@ -2713,7 +2716,7 @@ class Regression(MachineLearning):
                     for n in range(0, len(point_i)):
                         if n == d:
                             # domains do not overlap
-                            #print(domain_i[d][0], domain_i[d][1], domain_j[d][0], domain_j[d][1])
+                            # print(domain_i[d][0], domain_i[d][1], domain_j[d][0], domain_j[d][1])
                             if domain_i[d][1] < domain_j[d][0] or domain_j[d][1] < domain_i[d][0]:
                                 temp_res *= 0
                             # domains are the same (also points i and j)
@@ -3211,9 +3214,10 @@ class Integration(AreaOperation):
         if self.reference_solution is None:
             return None
         elif LA.norm(self.reference_solution) == 0.0:
-            return LA.norm(abs(self.integral), norm)
+            return LA.norm(abs(self.integral), norm) / (len(self.integral) ** (1 / norm))
         else:
-            return LA.norm(abs((self.reference_solution - self.integral) / self.reference_solution), norm)
+            return LA.norm(abs((self.reference_solution - self.integral) / self.reference_solution), norm) / (
+                        len(self.integral) ** (1 / norm))
 
     #    def area_postprocessing(self, area):
     #        area.value = np.array(area.integral)
