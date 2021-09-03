@@ -520,11 +520,14 @@ class HP_Optimization:
 		return new_x_rd
 
 class Optimize_Classification:
-	def __init__(self, data_name: str = "moons", samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
+	def __init__(self, data_name: str = "moons", data = None, samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
 		self.samples = samples
 		self.dimension = dimension
 		self.labels = labels
-		self.data = self.create_data(data_name)
+		if(data == None):
+			self.data = self.create_data(data_name)
+		else:
+			self.data = data
 		self.max_lv = max_lv
 		self.max_evals = max_evals
 		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1]]
@@ -594,7 +597,9 @@ def simple_test(params):
 	return params[0]
 simple_space = [["interval", 20.4, 0.]]
 
-OC = Optimize_Classification(data_name = "iris", dimension = 2)
+dataset_iris = deml.datasets.load_iris(return_X_y=True)
+iris_data = deml.DataSet(dataset_iris, name="data_iris")
+OC = Optimize_Classification(data= iris_data, dimension = 2)
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
 HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
