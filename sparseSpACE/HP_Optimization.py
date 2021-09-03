@@ -423,7 +423,7 @@ class HP_Optimization:
 						min = self.hp_space[i][j]
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
-				new = [min+offset, max-offset]
+				new = [min-offset, max+offset]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
 				new = [self.hp_space[i][1]-offset, self.hp_space[i][1]+offset]
@@ -604,7 +604,7 @@ OC = Optimize_Classification()
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
 HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
-HPO.perform_BO(7)
+HPO.perform_BO(5)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
