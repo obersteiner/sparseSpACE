@@ -408,6 +408,7 @@ class HP_Optimization:
 
 	def get_bounds_and_x0(self):
 		bounds = []
+		offset = 0
 		x0 = np.zeros(len(self.hp_space))
 		for i in range(0, len(self.hp_space)):
 			new = [0, 1]
@@ -422,21 +423,21 @@ class HP_Optimization:
 						min = self.hp_space[i][j]
 					if(self.hp_space[i][j]>max):
 						max = self.hp_space[i][j]
-				new = [min-1, max+1]
+				new = [min+offset, max-offset]
 			elif(len(self.hp_space[i])<3):
 				print("please enter at least 2 values for hp_space interval. Using the one value given")
-				new = [self.hp_space[i][1]-1, self.hp_space[i][1]+1]
+				new = [self.hp_space[i][1]-offset, self.hp_space[i][1]+offset]
 			elif(self.hp_space[i][0] == "interval"):
 				new = self.hp_space[i].copy()
 				new.remove("interval")
-				new = [new[0]-1, new[1]+1]
+				new = [new[0]-offset, new[1]+offset]
 			elif(self.hp_space[i][0] == "interval_int"):
 				new = self.hp_space[i].copy()
 				new.remove("interval_int")
-				new = [new[0]-1, new[1]+1]
+				new = [new[0]-offset, new[1]+offset]
 			else:
 				print("please enter a valid hp_space. Using first value given")
-				new = [self.hp_space[i][1]-1, self.hp_space[i][1]+1]
+				new = [self.hp_space[i][1]-offset, self.hp_space[i][1]+offset]
 			bounds.append(new)
 			x0[i] = new[0]
 		return bounds, x0
@@ -599,11 +600,11 @@ simple_space = [["interval", 20.4, 0.]]
 
 dataset_iris = deml.datasets.load_iris(return_X_y=True)
 iris_data = deml.DataSet(dataset_iris, name="data_iris")
-OC = Optimize_Classification(data= iris_data, dimension = 2)
+OC = Optimize_Classification()
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
-HPO = HP_Optimization(OC.pea_classification_dimension_wise, OC.class_dim_wise_space)
+HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
-HPO.perform_BO(3, r = 4)
+HPO.perform_BO(7)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
@@ -616,11 +617,4 @@ HPO.perform_BO(3, r = 4)
 #HPO = HP_Optimization(simple_test, simple_space)
 #print(HPO.hp_space)
 #HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
-#HPO.perform_BO(3)
-art_C_y = np.array([0.96, 0.94, 0.96, 0.94, 0.97, 0.])
-art_C_x = np.array([[0.3273086, 1., 1., 1.], [0.8158708, 0., 1., 0.], [0.47385773, 1., 1., 1.], [0.80103041, 0., 1., 0.], [0.48143013, 0., 1., 1.], [0., 0., 0., 0.]])
-art_beta = 19.99433798961168
-art_l = 0.5
-art_cur_amt_x = 5
-#test_acq_x = HPO.acq_x(art_beta, art_l, art_C_x, art_C_y, art_cur_amt_x)
-#print("test_acq_x: " + str(test_acq_x))
+
