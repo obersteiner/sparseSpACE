@@ -7,6 +7,7 @@ import random
 import itertools
 from scipy.optimize import fmin
 from scipy.optimize import minimize
+import matplotlib.pyplot as plt
 
 #class HP_Optimization gets (data not needed bc only pea needs that which is the function!),
 #the function on which HP should be Optimized and search space for the HPs
@@ -460,11 +461,16 @@ class HP_Optimization:
 		#alpha = lambda x: mu(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
+		x2 = np.linspace(0, 20, 21)
+		y2 = [alpha_neg(np.array([x_i, 0, 1, 0])) for x_i in x2]
+		plt.plot(x2, y2)
 		bounds_and_x0 = self.get_bounds_and_x0() #bounds search space to vicinity of useful values
 		bounds_an = bounds_and_x0[0]
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
 		x0 = bounds_and_x0[1]
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
+		plt.title(str(new_x))
+		plt.show()
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		print("acq_x returns: " + str(new_x) + " with a_neg(new_x) = " + str(alpha_neg(new_x)))
 		print("mu(new_x) = " + str(mu(new_x)) + " , root(beta) = " + str(math.sqrt(beta)) + " , sigma(new_x) = " + str(sigma(new_x)))
