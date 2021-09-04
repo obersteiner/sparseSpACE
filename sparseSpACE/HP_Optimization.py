@@ -463,14 +463,14 @@ class HP_Optimization:
 		alpha_neg = lambda x: -alpha(x)
 		x2 = np.linspace(0, 20, 21)
 		y2 = [alpha_neg(np.array([x_i, 0, 1, 0])) for x_i in x2]
-		plt.plot(x2, y2)
+		#plt.plot(x2, y2)
 		bounds_and_x0 = self.get_bounds_and_x0() #bounds search space to vicinity of useful values
 		bounds_an = bounds_and_x0[0]
 		#problem: Nelder-Mead (same as fmin) cannot handle bounds -> use L-BFGS-B for now
 		x0 = bounds_and_x0[1]
 		new_x=minimize(alpha_neg, x0, method='L-BFGS-B', bounds=bounds_an).x
-		plt.title(str(new_x))
-		plt.show()
+		#plt.title(str(new_x))
+		#plt.show()
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
 		print("acq_x returns: " + str(new_x) + " with a_neg(new_x) = " + str(alpha_neg(new_x)))
 		print("mu(new_x) = " + str(mu(new_x)) + " , root(beta) = " + str(math.sqrt(beta)) + " , sigma(new_x) = " + str(sigma(new_x)))
@@ -537,8 +537,8 @@ class Optimize_Classification:
 			self.data = data
 		self.max_lv = max_lv
 		self.max_evals = max_evals
-		self.classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1]]
-		self.class_dim_wise_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1], ["interval_int", 2, self.max_evals]]
+		self.classification_space = [["interval", 0, 20], ["list", 0, 1], ["list", 1], ["list", 0, 1]]
+		self.class_dim_wise_space = [["interval", 0, 20], ["list", 0, 1], ["list", 1], ["list", 0, 1, 2], ["interval", 0, 1], ["list", 0, 1], ["list", 0, 1], ["interval_int", 2, self.max_evals]]
 
 	def create_data(self, name: str = "moons"):
 		dataset = deml.datasets.make_moons(n_samples=self.samples, noise=0.15, random_state=1)
@@ -571,7 +571,7 @@ class Optimize_Classification:
 		cur_data = self.data.copy()
 		#should implement a smoother way to put in the data set
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-		classification.perform_classification(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=params[3], print_metrics=False)
+		classification.perform_classification(masslumping=params[1], lambd=10**(-params[0]), minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=params[3], print_metrics=False)
 		evaluation = classification.evaluate()
 		print("Percentage of correct mappings",evaluation["Percentage correct"])
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
@@ -593,7 +593,7 @@ class Optimize_Classification:
 		elif(params[3] == 1):
 			ovo = True
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
-		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=params[0], minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], max_evaluations = params[7], print_metrics=False)
+		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=10**(-params[0]), minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], max_evaluations = params[7], print_metrics=False)
 		evaluation = classification.evaluate()
 		print("Percentage of correct mappings",evaluation["Percentage correct"])
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
@@ -610,7 +610,7 @@ OC = Optimize_Classification()
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
 HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
-HPO.perform_BO(5)
+#HPO.perform_BO(5)
 #y_r = HPO.perform_RO(10)[3]
 #sol_b = HPO.perform_BO(6)
 #y_b = sol_b[3]
