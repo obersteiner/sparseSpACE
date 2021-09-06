@@ -22,6 +22,7 @@ class HP_Optimization:
 		self.delta = 0.1
 		self.a = 1.0
 		self.b = 1.0
+		self.l = 0.5
 
 	def check_hp_space(self):
 		if(len(self.hp_space)<1):
@@ -64,7 +65,6 @@ class HP_Optimization:
 		best_x = None
 		x_set = []
 		y_set = []
-		#todo: split Dataset??
 		#original classification: classification = deml.Classification(data, split_percentage=0.8, split_evenly=True, shuffle_data=True)
 		#original settings: classification.perform_classification(masslumping=True, lambd=0.0, minimum_level=1, maximum_level=5, print_metrics=True)
 		#perform grid search for lambd_levels many lambd between 0 and 1 and all values for the rest
@@ -75,7 +75,6 @@ class HP_Optimization:
 			search_space = self.cart_prod_hp_space(interval_levels)
 		x_set = search_space
 		for x in search_space:
-			#use "perform evaluation at"
 			#cur_time = classification._time_used
 			#print ("current time needed = " + str(cur_time))
 			cur_evaluation = self.perform_evaluation_at(x)
@@ -372,13 +371,15 @@ class HP_Optimization:
 		delta: float = self.delta
 		a: float = self.a
 		b: float = self.b
-		beta = 2*math.log(t**2*2*math.pi**2/3*delta)+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
+		beta = 2*math.log(t**2*2*math.pi**2/(3*delta))+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
 		print("get_beta returns: " + str(beta))
 		return beta
 
-	#TODO: get l_k and use it
+	#TODO: get optimized l_k in each iteration
 	def get_l_k(self, t: int):
-		return 0.5
+		return self.l
+	def set_l_k(self, l: float):
+		self.l = l
 
 	#gets new beta and l if old beta and l give values that are already in C
 	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y, amt_tries: int=0):
