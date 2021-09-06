@@ -408,9 +408,8 @@ class HP_Optimization:
 		#result is in the form [new beta, new l]
 		return result
 
-	def get_bounds_and_x0(self):
+	def get_bounds_and_x0(self, offset = 0):
 		bounds = []
-		offset = 0
 		x0 = np.zeros(len(self.hp_space))
 		for i in range(0, len(self.hp_space)):
 			new = [0, 1]
@@ -462,8 +461,8 @@ class HP_Optimization:
 		#alpha = lambda x: mu(x)
 		#negates alpha bc maximum has to be found
 		alpha_neg = lambda x: -alpha(x)
-		x2 = np.linspace(0, 20, 21)
-		y2 = [alpha_neg(np.array([x_i, 0, 1, 0])) for x_i in x2]
+		#x2 = np.linspace(0, 20, 21)
+		#y2 = [alpha_neg(np.array([x_i, 0, 1, 0])) for x_i in x2]
 		#plt.plot(x2, y2)
 		bounds_and_x0 = self.get_bounds_and_x0() #bounds search space to vicinity of useful values
 		bounds_an = bounds_and_x0[0]
