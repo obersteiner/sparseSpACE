@@ -96,7 +96,7 @@ class HP_Optimization:
 
 	def cart_prod_hp_space(self, interval_levels):
 		res = []
-		if (interval_levels == 0 or interval_levels == None):
+		if (interval_levels == None):
 			interval_levels = 1
 		for i in range (0, len(self.hp_space)):
 			new = []
@@ -111,7 +111,9 @@ class HP_Optimization:
 				new.append(self.hp_space[i][1])
 			elif(self.hp_space[i][0] == "interval"):
 				h = self.hp_space[i][2]-self.hp_space[i][1]
-				dh = h /interval_levels
+				dh = h
+				if(interval_levels > 0):
+					dh = h / interval_levels
 				#currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
 				if(h == 0):
 					new.append(self.hp_space[i][1])
@@ -120,7 +122,9 @@ class HP_Optimization:
 						new.append(self.hp_space[i][1]+j*dh)
 			elif(self.hp_space[i][0] == "interval_int"):
 				h = int(self.hp_space[i][2]-self.hp_space[i][1])
-				dh = h /interval_levels
+				dh = h
+				if (interval_levels>0):
+					dh = h /interval_levels
 				#currently adds 1 more than interval_levels so that both borders are included - is there a better way to do this?
 				if(h == 0):
 					new.append(int(self.hp_space[i][1]))
