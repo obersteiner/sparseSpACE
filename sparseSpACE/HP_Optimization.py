@@ -271,7 +271,7 @@ class HP_Optimization:
 		print("Random x has been used in iterations " + str(used_random_x))
 		print("C_y: " + str(C_y))
 		print("C_x: " + str(C_x))
-		return x_ret, y_ret, C_x, C_y
+		return x_ret, y_ret, C_x, C_y, used_random_x
 
 	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
 	sigma_k = 1
@@ -543,13 +543,13 @@ class Optimize_Classification:
 	def create_data(self, name: str = "moons"):
 		dataset = deml.datasets.make_moons(n_samples=self.samples, noise=0.15, random_state=1)
 		if(name == "blobs"):
-			dataset = deml.datasets.make_blobs(n_samples=self.samples, n_features=self.dimension, centers=self.labels)
+			dataset = deml.datasets.make_blobs(n_samples=self.samples, n_features=self.dimension, centers=self.labels, random_state=1)
 		elif(name == "circles"):
-			dataset = deml.datasets.make_circles(n_samples=self.samples, noise=0.05)
+			dataset = deml.datasets.make_circles(n_samples=self.samples, noise=0.05, random_state=1)
 		elif(name == "classification"):
-			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(self.labels if self.labels < 4 else 4))
+			dataset = deml.datasets.make_classification(n_samples=self.samples, n_features=self.dimension, n_redundant=0, n_clusters_per_class=1, n_informative=2, n_classes=(self.labels if self.labels < 4 else 4), random_state=1)
 		elif(name == "gaussian_quantiles"):
-			dataset = deml.datasets.make_gaussian_quantiles(n_samples=self.samples, n_features=self.dimension, n_classes=self.labels)
+			dataset = deml.datasets.make_gaussian_quantiles(n_samples=self.samples, n_features=self.dimension, n_classes=self.labels, random_state=1)
 		elif(name == "digits"):
 			dataset = deml.datasets.load_digits(return_X_y=True) # hint: try only with max_level <= 3
 		elif(name == "iris"):
@@ -606,7 +606,7 @@ simple_space = [["interval", 20.4, 0.]]
 
 dataset_iris = deml.datasets.load_iris(return_X_y=True)
 iris_data = deml.DataSet(dataset_iris, name="data_iris")
-OC = Optimize_Classification()
+OC = Optimize_Classification(data_name = "moons")
 #HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
 HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
 #HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
