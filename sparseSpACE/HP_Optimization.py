@@ -132,8 +132,11 @@ class HP_Optimization:
 					if(dh<1):
 						dh = 1
 					#may yield different values than expected due to rounding
-					for j in range (self.hp_space[i][1], self.hp_space[i][2]+1, int(dh)):
-						new.append(int(j))
+					if(interval_levels == 0):
+						new.append(int(self.hp_space[i][1]))
+					else:
+						for j in range (self.hp_space[i][1], self.hp_space[i][2]+1, int(dh)):
+							new.append(int(j))
 			else:
 				print("please enter valid types for hp_space! Using the first value given")
 				new.append(self.hp_space[i][1])
