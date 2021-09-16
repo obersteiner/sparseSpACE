@@ -79,18 +79,14 @@ class HP_Optimization:
 			#print ("current time needed = " + str(cur_time))
 			cur_evaluation = self.perform_evaluation_at(x)
 			y_set.append(cur_evaluation)
-			print("Current Evaluation: ",cur_evaluation)
 			#if best_evaluation == None or cur_evaluation > best_evaluation or (cur_evaluation == best_evaluation and (best_time == None or best_time>cur_time)):
 			if(best_evaluation == None or cur_evaluation>best_evaluation):
 				best_evaluation = cur_evaluation
 				best_x = x
-				print("Best evaluation is now " + str(best_evaluation) + " at " + str(best_x))
-			else:	print("Best evaluation is still " + str(best_evaluation) + " at " + str(best_x))
-			print ("END OF CURRENT EVALUATION \n")
 			if(best_evaluation==self.f_max):
-				print("We've reached the specified maximum of f. Stopping GO.")
+				print("The specified maximum of f has been reached. Stopping GO.")
 				break
-		print("In the end, best evaluation is " + str(best_evaluation)  + " at " + str(best_x))
+		print("The best evaluation found with grid search is " + str(best_evaluation)  + " at " + str(best_x))
 		return best_x, best_evaluation, x_set, y_set
 		#+ " and time = " + str(best_time))
 
@@ -101,13 +97,13 @@ class HP_Optimization:
 		for i in range (0, len(self.hp_space)):
 			new = []
 			if(len(self.hp_space[i])<2):
-				print("please at least 1 value for hp_space list")
+				print("please enter at least 1 value for hp_space list")
 				new.append(1)
 			elif(self.hp_space[i][0] == "list"):
 				new = self.hp_space[i].copy()
 				new.remove("list")
 			elif(len(self.hp_space[i])<3):
-				print("please enter at least 2 values for hp_space interval. Using the value given")
+				print("please enter at least 1 value for hp_space interval. Using the value given")
 				new.append(self.hp_space[i][1])
 			elif(self.hp_space[i][0] == "interval"):
 				h = self.hp_space[i][2]-self.hp_space[i][1]
@@ -151,7 +147,6 @@ class HP_Optimization:
 		x_set = []
 		y_set = []
 		for i in range (0, amt_it, 1):
-			print("Random step " + str(i))
 			x = self.create_random_x()
 			new_eval = self.perform_evaluation_at(x)
 			x_set.append(x)
@@ -160,7 +155,7 @@ class HP_Optimization:
 				best_x = x
 				best_evaluation = new_eval
 			if(best_evaluation == self.f_max):
-				print("We've reached the specified maximum of f. Stopping RO at iteration " + str(i))
+				print("The specified maximum of f has been reached. Stopping RO at iteration " + str(i))
 				break
 		print("Best evaluation in " + str(amt_it) + " random steps: " + str(best_evaluation) + " at " + str(best_x))
 		return best_x, best_evaluation, x_set, y_set
@@ -173,9 +168,7 @@ class HP_Optimization:
 		#print("Percentage of correct mappings",evaluation["Percentage correct"])
 		##wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		#return evaluation["Percentage correct"]
-		print("performing evaluation at " + str(params))
 		res = self.function(params)
-		print("returning " + str(res))
 		return res
 
 	#classification_space = [["interval", 0, 1], ["list", 0, 1], ["list", 1, 2, 3], ["list", 0, 1]]
@@ -192,83 +185,62 @@ class HP_Optimization:
 		cur_amt_x: int = amt_HP+1
 		x_ret = None
 		y_ret = None
-		print("I should do Bayesian Optimization for " + str(amt_it) + " iterations!")
+		print("Starting Bayesian Optimization with " + str(amt_it) + " iterations!")
 		C = self.create_evidence_set(amt_it, amt_HP)
 		C_x=C[0]
-		print("C_x: " + str(C_x))
 		C_y=C[1]
-		print("C_y: " + str(C_y))
 		#print("Evidence Set: \n" + str(C))
 		#For easier checking in what iterations random x has been used
 		used_random_x = []
 		for i in range (0, amt_it, 1):
-			print("iteration: " + str(i))
 			beta = self.get_beta(i+1)
 			l = self.get_l_k(i)
-			print("beta: " + str(beta) + ", cur_amt_x: " + str(cur_amt_x))
 			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 				print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, at the start of iteration " + str(i))
 				break
 			if((self.get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
 				print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
 				break
-			else:
-				print("Apparently the cov_matr is not singular at the beginning of iteration " + str(i))
 
 			#value that will be evaluated and added to the evidence set
-			print("Getting new x:")
 			new_x=self.acq_x(beta, l, C_x, C_y, cur_amt_x)
-			print("acq_x gives new x = " + str(new_x))
 			new_x_rd = self.round_x(new_x)
 			old_x_rd = None
 			old_beta_and_l = [beta, l]
-			print("new x rd: " + str(new_x_rd))
 			#erstelle neues beta und l und berechne neuen wert damit
 			amt_tries = 0
 			while(self.check_if_in_array(new_x_rd, C_x)):
-				print("!!!!!!!!!!!Need new beta and l")
+				print("x is already included in C")
 				old_x_rd = new_x_rd.copy()
-				print("old x rd was: " + str(old_x_rd))
 				new_beta_and_l = self.get_new_beta_and_l(beta, cur_amt_x, new_x, C_x, C_y, amt_tries = amt_tries)
 				amt_tries += 1
 				new_x = self.acq_x(new_beta_and_l[0], new_beta_and_l[1], C_x, C_y, cur_amt_x)
 				new_x_rd = self.round_x(new_x)
-				print("new x rd is: " + str(new_x_rd))
 				if(old_x_rd==new_x_rd and amt_tries >= 3):
-					print("It seems a beta and l that give a new x cannot be found. Trying beta = 0 and l = 0.5")
 					new_x = self.acq_x(0, 0.5, C_x, C_y, cur_amt_x)
 					new_x_rd = self.round_x(new_x)
 					if(self.check_if_in_array(new_x_rd, C_x)):
-						print("Beta = 0 didn't help. Using random new x and then getting out.")
-						print("If a random x that's not in C_x can not be found in 10 tries it is assumed that all possible x have been used already and BO is stopped")
 						used_random_x.append(i)
 						while(self.check_if_in_array(new_x_rd, C_x) and amt_tries < 13):
 							new_x_rd = self.create_random_x()
 							amt_tries += 1
 						break
-					else:
-						print("Beta = 0 DID help!")
-			print("out of getting beta and l loop")
 			if(old_x_rd==new_x_rd or self.check_if_in_array(new_x_rd, C_x)):
-				print("There was an infinite loop when getting new x and / or no new x has been found. Ending BO at iteration " + str(i))
+				print("No new x has been found. Ending BO at iteration " + str(i))
 				break
-			print("adding " + str(new_x_rd))
 			C_x[cur_amt_x] = new_x_rd
 			C_y[cur_amt_x] = self.perform_evaluation_at(new_x_rd)
 			cur_amt_x += 1
 			if(C_y[cur_amt_x-1]==self.f_max):
-				print("We've reached the specified maximum of f. Stopping BO at iteration " + str(i))
+				print("The specified maximum of f has been reached. Stopping BO at iteration " + str(i))
 				break
 			#ends everything if cov_matr is singular. Should this be dependant on l? Cov_matr being singular should not depend on l I think
-			print("Checking if cov_matr is singular")
 			if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x)) == 0):
 				print("With the nex x value added the Covariance Matrix is singular.\nBayesian Optimization can not be continued and will be ended here, after " + str(i) + " iterations")
 				break
 			if((self.get_cov_matrix(C_x, cur_amt_x) == np.identity(len(C_x))*(cur_amt_x+10)).all()):
 				print("cov_matr has been modified to be Id*scalar! This means it was singular -> ending at iteration " + str(i))
 				break
-			else:
-				print("Apparently the cov_matr is not singular after iteration " + str(i))
 
 		for i in range(0, cur_amt_x, 1):
 			if(y_ret == None or y_ret<C_y[i]):
@@ -276,8 +248,6 @@ class HP_Optimization:
 				x_ret = C_x[i]
 		print("The Best value found in " + str(amt_it) + " iterations is " + str(y_ret) + " at " + str(x_ret))
 		print("Random x has been used in iterations " + str(used_random_x))
-		print("C_y: " + str(C_y))
-		print("C_x: " + str(C_x))
 		return x_ret, y_ret, C_x, C_y, used_random_x
 
 	#use squared exp. kernel as covariance function k, with parameters sigma_k and l_k
@@ -295,7 +265,7 @@ class HP_Optimization:
 			for j in range (0, cur_length, 1):
 				K[i][j]=self.cov(C_x[i], C_x[j])
 		if(np.linalg.det(K) == 0):
-			print("Oh no! The covariance matrix is singular!! It is " + str(K))
+			print("The covariance matrix is singular! It is " + str(K))
 			print("Current C_x is: " + str(C_x))
 			#Maybe change matrix if it is singular? E.g. to scalar*Id, so it's def. not the smallest?
 			#Would have to deal with that in other methods though
@@ -335,7 +305,6 @@ class HP_Optimization:
 
 	#returns a random x for the given purpose - needs search space
 	def create_random_x(self):
-		print("creating random x")
 		res = []
 		for i in range (0, len(self.hp_space)):
 			new_x = 1
@@ -379,7 +348,6 @@ class HP_Optimization:
 		a: float = self.a
 		b: float = self.b
 		beta = 2*math.log(t**2*2*math.pi**2/(3*delta))+2*d*math.log(t**2*d*b*r*math.sqrt(math.log(4*d*a/delta)))
-		print("get_beta returns: " + str(beta))
 		return beta
 
 	#TODO: get optimized l_k in each iteration
@@ -390,12 +358,8 @@ class HP_Optimization:
 
 	#gets new beta and l if old beta and l give values that are already in C
 	def get_new_beta_and_l(self, cur_beta: float, cur_amt_x, cur_x, C_x, C_y, amt_tries: int=0):
-		print("Getting new beta and l. Current beta: " + str(cur_beta) +", Current l: " + str(self.l_k))
-		print("Try: " + str(amt_tries))
 		if(np.linalg.det(self.get_cov_matrix(C_x, cur_amt_x))==0):
 			print("Getting new beta and l, but suddenly the cov matr is singular??")
-		else:
-			print("Apparently the cov_matr is not singular. Getting new beta and l")
 		#making upper bounds dependable on current values so bounds are never too low
 		beta_h = cur_beta+(100*2**amt_tries)
 		l_h = self.l_k+(50*2**amt_tries)
@@ -407,11 +371,9 @@ class HP_Optimization:
 		#for g: x[0] is \beta+d\beta, x[1] is l. Also d\beta = \beta+d\beta-\beta
 		g = lambda x: (x[0]-cur_beta)+np.linalg.norm(cur_x-new_x(x))+p(new_x(x))
 		bounds_g = ((cur_beta, beta_h), (self.l_k, l_h))
-		print("About to minimize g(...)")
 		#due to numerical inaccuracies a matrix might become singular with new beta and l
 		#(even though it wouldn't be) mathematically - how to deal with that??
 		result = minimize(g, [cur_beta, self.l_k], method='L-BFGS-B', bounds=bounds_g).x
-		print("New beta: " + str(result[0]) + ", New l: " + str(result[1]))
 		#result is in the form [new beta, new l]
 		return result
 
@@ -456,7 +418,7 @@ class HP_Optimization:
 		self.l_k=l
 		K_matr = self.get_cov_matrix(C_x, cur_amt_x)
 		if(np.linalg.det(K_matr) == 0):
-			print("Covariance Matrix is indeed singular!")
+			print("Covariance Matrix is singular!")
 			#return a value that's bullshit? like [0, 0, 0, 0] (min lv is >=1)
 		#print(K_matr)
 		mu = lambda x: self.get_cov_vector(C_x, x, cur_amt_x).dot(np.linalg.inv(K_matr).dot(C_y))
@@ -479,15 +441,10 @@ class HP_Optimization:
 		#plt.title(str(new_x))
 		#plt.show()
 		#print("new x: " + str(new_x) + " with function value: " + str(alpha(new_x)))
-		print("acq_x returns: " + str(new_x) + " with a_neg(new_x) = " + str(alpha_neg(new_x)))
-		print("mu(new_x) = " + str(mu(new_x)) + " , root(beta) = " + str(math.sqrt(beta)) + " , sigma(new_x) = " + str(sigma(new_x)))
-		print("sigma_sqrd(new_x) = " + str(sigma_sqrd(new_x)))
-		print("k_vec(x) = " + str(self.get_cov_vector(C_x, new_x, cur_amt_x)))
 		return new_x
 
 	#needs search space
 	def round_x(self, x):
-		print("rounding x")
 		if len(x) < len(self.hp_space):
 			print("Input too short! Returning default values rd(0) for missing values")
 			for k in range (len(x), len(self.hp_space)):
@@ -566,13 +523,13 @@ class Optimize_Classification:
 		elif(name == "wine"):
 			dataset = deml.datasets.load_wine(return_X_y=True)
 		elif(name != "moons"):
-			print("This is not a valid name for a dataset, using moons")
+			print("This name for the data set is unknown, using moons.\nPlease check that the name is not capitalized, words are separated by _, and that it is written correctly")
 		data = deml.DataSet(dataset, name="data_"+name)
 		return data
 
 	def pea_classification(self, params):
 		if(len(params)<4):
-			print("too little params for pea_classification. Returning 0.0")
+			print("too little parameters for pea_classification. Returning 0.0")
 			return 0.0
 		params = [params[0], int(params[1]), int(params[2]), int(params[3])]
 		cur_data = self.data.copy()
@@ -580,13 +537,12 @@ class Optimize_Classification:
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 		classification.perform_classification(masslumping=params[1], lambd=10**(-params[0]), minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=params[3], print_metrics=False)
 		evaluation = classification.evaluate()
-		print("Percentage of correct mappings",evaluation["Percentage correct"])
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		return evaluation["Percentage correct"]
 
 	def pea_classification_dimension_wise(self, params):
 		if(len(params)<4):
-			print("too little params for pea_classification. Returning 0.0")
+			print("too little parameters for pea_classification. Returning 0.0")
 			return 0.0
 		#lambd, massl, min_lv, one_vs_others / error calc, margin(float 0-1), rebalancing (bool), use_relative_surplus (bool), max_evaluations (int)
 		params = [float(params[0]), int(params[1]), int(params[2]), int(params[3]), float(params[4]), int(params[5]), int(params[6]), int(params[7])]
@@ -602,7 +558,6 @@ class Optimize_Classification:
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 		classification.perform_classification_dimension_wise(masslumping=params[1], lambd=10**(-params[0]), minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=ovo, error_calculator = ec, margin = params[4], rebalancing = params[5], use_relative_surplus = params[6], max_evaluations = params[7], print_metrics=False)
 		evaluation = classification.evaluate()
-		print("Percentage of correct mappings",evaluation["Percentage correct"])
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		return evaluation["Percentage correct"]
 
