@@ -15,7 +15,6 @@ class TestHP_Optimization(unittest.TestCase):
 		self.assertTrue(b)
 		self.assertTrue(HPO.check_if_in_array([4.2, 3.3, 5.2, 9], array))
 		self.assertFalse(HPO.check_if_in_array([1, 0, 0, 0], array))
-		
 		#test get_beta
 		beta_1 = HPO.get_beta(1)
 		self.assertAlmostEqual(beta_1, 34.74985580606742)
@@ -63,12 +62,6 @@ class TestHP_Optimization(unittest.TestCase):
 		res_GO = HPO_simple.perform_GO()
 		np.testing.assert_almost_equal(res_GO[0], [3.3, 4])
 		self.assertAlmostEqual(res_GO[1], 7.3)
-		##test RO - should I even test RO?? It's usually not that close to the optimum
-		#message = "The optimum found by perform_RO is not close enough to the actual optimum"
-		#res_RO = HPO_simple.perform_RO(15)
-		#np.testing.assert_almost_equal(res_RO[0], [3.3, 4], 1, message)
-		#self.assertAlmostEqual(res_RO[1], 7.3, 2)
-
 		#test round x
 		simple_space = [["list", 0.42, 1, 2.5, 3.3], ["interval", 2, 4], ["interval_int", 1, 5]]
 		HPO_simple = hpo.HP_Optimization(simple_function, simple_space)
@@ -106,5 +99,5 @@ class TestHP_Optimization(unittest.TestCase):
 	def simple_function(self, x):
 		return x[0]+x[1]
 
-
-unittest.main()
+if __name__ == '__main__':
+	unittest.main()
