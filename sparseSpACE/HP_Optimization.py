@@ -491,6 +491,16 @@ class HP_Optimization:
 		return new_x_rd
 
 class Optimize_Classification:
+	"""Constructor of the Optimize_Classification class.
+
+	Takes in:
+	:param data_name: The name of a data set to create such a data set.
+		Options are: moons, blobs, circles, classification, gaussian_quantiles,
+		digits, iris, breast_cancer, wine. Can also take in a dataset directly.
+	:param data: Optional. If no data set is given here data is created by name, using "moons" as default
+	:param max_lv & max_evals: Parameters of classification and class_dim_wise that are not otimized
+		but can be specified here
+	"""
 	def __init__(self, data_name: str = "moons", data = None, samples: int = 500, dimension: int = 2, labels: int = 6, max_lv: int = 3, max_evals: int = 256):
 		self.samples = samples
 		self.dimension = dimension
@@ -527,19 +537,38 @@ class Optimize_Classification:
 		data = deml.DataSet(dataset, name="data_"+name)
 		return data
 
+	"""Perform classification with certain HP-input and return evaluation
+	Parameters are:
+	:params[0]: lambd_exp: used to calculate lambda = 10**(-lambd_exp)
+	:params[1]: massl
+	:params[2]: min_lv
+	:params[3]: ove_vs_others
+	"""
 	def pea_classification(self, params):
 		if(len(params)<4):
 			print("too little parameters for pea_classification. Returning 0.0")
 			return 0.0
 		params = [params[0], int(params[1]), int(params[2]), int(params[3])]
 		cur_data = self.data.copy()
-		#should implement a smoother way to put in the data set
 		classification = deml.Classification(cur_data, split_percentage=0.8, split_evenly=True, shuffle_data=False)
 		classification.perform_classification(masslumping=params[1], lambd=10**(-params[0]), minimum_level=params[2], maximum_level=self.max_lv, one_vs_others=params[3], print_metrics=False)
 		evaluation = classification.evaluate()
-		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		return evaluation["Percentage correct"]
 
+	"""Perform dimension wise classification with certain HP-input and return evaluation
+	Parameters are:
+	:params[0]: lambd_exp: used to calculate lambda = 10**(-lambd_exp)
+	:params[1]: massl
+	:params[2]: min_lv
+	:params[3]: ove_vs_others / error calculator.
+		case 0: ovo=false, ec=none;
+		case1: ovo=true, ec=none;
+		case2: ovo=true, ec=error_calculator
+	:params[4]: margin
+	:params[5]: rebalancing
+	:params[6]: use_relative_surplus
+	:params[7]: max_evaluations
+	"""
 	def pea_classification_dimension_wise(self, params):
 		if(len(params)<4):
 			print("too little parameters for pea_classification. Returning 0.0")
@@ -561,28 +590,4 @@ class Optimize_Classification:
 		#wenn Zeit mit reingerechnet werden soll o.ä. in dieser Funktion
 		return evaluation["Percentage correct"]
 
-#anderes dataset ausprobieren?, vllt höhere dimensionen, bis zu dim=10. Note: moons immer 2d, aber z.B.
-def simple_test(params):
-	return params[0]
-simple_space = [["interval", 20.4, 0.]]
-
-dataset_iris = deml.datasets.load_iris(return_X_y=True)
-iris_data = deml.DataSet(dataset_iris, name="data_iris")
-OC = Optimize_Classification(data_name = "moons")
-#HPO = HP_Optimization(OC.pea_classification, OC.classification_space, r = 1.5)
-HPO = HP_Optimization(OC.pea_classification, OC.classification_space)
-#HPO = HP_Optimization(simple_test, simple_space, f_max = 100, r = 21)
-#HPO.perform_BO(5)
-#y_r = HPO.perform_RO(10)[3]
-#sol_b = HPO.perform_BO(6)
-#y_b = sol_b[3]
-#x_b = sol_b[2]
-#print("y random: " + str(y_r))
-#print("y bayesian: " + str(y_b))
-#print("x bayesian: " + str(x_b))
-#print(OC.pea_classification_dimension_wise([0.0, 0, 1, 0, 0.0, 0, 0, 2]))
-
-#HPO = HP_Optimization(simple_test, simple_space)
-#print(HPO.hp_space)
-#HPO.perform_GO(search_space=[[1, 1, 2, 1], [5, 4, 2, 0], [3, 3, 2, 1]])
 
