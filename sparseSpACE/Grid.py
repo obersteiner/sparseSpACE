@@ -636,6 +636,32 @@ class LejaGrid(Grid):
         self.linear_growth_factor = 2
         self.grids = [LejaGrid1D(a=a[d], b=b[d], boundary=self.boundary) for d in range(self.dim)]
 
+    def interpolate(self, evaluation_points: Sequence[Tuple[float, ...]], component_grid: ComponentGridInfo, function_values) -> Sequence[Sequence[float]]:
+        mesh_points_grid = self.coordinate_array_with_boundary
+        mesh_points = get_cross_product_list(mesh_points_grid)
+        interpolation_results = []
+        index_list = get_cross_product_range_list(self.numPoints)
+        test = function_values
+        for evaluation_point in evaluation_points:
+            poly_evaluations = [[] for _ in range(self.dim)]
+            #compute Lagrange polynomial evaluations
+            for d in range(self.dim):
+                for k in range(self.numPoints[d]):
+                    Lagrange_kd = 1
+                    for i in range(self.numPoints[d]):
+                        if not i == k:
+                            Lagrange_kd *= (evaluation_point[d]-self.coordinate_array[d][i]) / (self.coordinate_array[d][k] -self.coordinate_array[d][i])
+                    poly_evaluations[d].append(Lagrange_kd)
+            pInterResult = 0
+
+            for i, point_vector in enumerate(index_list):
+                lagrangeEvaluation = 1
+                for d in range(self.dim):
+                    lagrangeEvaluation *= poly_evaluations[d][point_vector[d]]
+                pInterResult += lagrangeEvaluation * function_values[i][0]
+            interpolation_results.append([pInterResult])
+        return np.array(interpolation_results)
+
 
 class LejaGrid1D(Grid1d):
     def __init__(self, a, b, boundary):

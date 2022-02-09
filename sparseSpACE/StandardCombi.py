@@ -73,6 +73,14 @@ class StandardCombi(object):
         :param component_grid: ComponentGridInfo of the specified component grid.
         :return: List of values (each a numpy array)
         """
+        # check if dedicated interpolation routine is present in grid
+        interpolation_op = getattr(self.grid, "interpolate", None)
+        if callable(interpolation_op):
+            self.grid.setCurrentArea(start=None, end=None, levelvec=component_grid.levelvector)
+            mesh_points_grid = self.grid.coordinate_array_with_boundary
+            function_values = self.operation.get_component_grid_values(component_grid, mesh_points_grid)
+            return self.grid.interpolate(interpolation_points, component_grid, function_values)
+
         return self.operation.interpolate_points_component_grid(component_grid, mesh_points_grid=None,
                                                  evaluation_points=interpolation_points)
 
