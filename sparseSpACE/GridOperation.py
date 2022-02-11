@@ -11,6 +11,7 @@ import scipy.stats as sps
 from sparseSpACE.Function import *
 from sparseSpACE.StandardCombi import *  # For reference solution calculation
 from bisect import bisect_left
+import numpoly
 
 from sparseSpACE.Utils import *
 import time
@@ -3641,8 +3642,16 @@ class UncertaintyQuantification(Integration):
             return
         self.polynomial_degrees = polynomial_degrees
         if not hasattr(polynomial_degrees, "__iter__"):
-            self.pce_polys, self.pce_polys_norms = cp.orth_ttr(polynomial_degrees, self.distributions_joint,
-                                                               retall=True)
+            self.pce_polys, self.pce_polys_norms = cp.expansion.stieltjes(polynomial_degrees, self.distributions_joint, retall=True)
+            self.polys1D, self.norms1D = [None] * self.dim, [None] * self.dim
+            for d in range(self.dim):
+                self.polys1D[d], self.norms1D[d] = cp.expansion.stieltjes(polynomial_degrees,
+                                                                                   self.distributions_chaospy[d],
+                                                                                   retall=True)
+            indices = numpoly.glexindex(start=0, stop=polynomial_degrees + 1, dimensions=self.dim,
+                                        graded=True, reverse=True,
+                                        cross_truncation=1.0)
+            self.indices = indices
             return
 
         # Chaospy does not support different degrees for each dimension, so
@@ -3806,7 +3815,7 @@ class UncertaintyQuantification(Integration):
         # ~ polys = self.pce_polys
         # ~ funcs = [(lambda coords: f(coords) * polys[i](coords)) for i in range(len(polys))]
         # ~ return FunctionCustom(funcs)
-        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms)
+        return FunctionPolysPCE(self.f, self.pce_polys, self.pce_polys_norms, self.polys1D, self.norms1D, self.indices)
 
     def set_PCE_Function(self, polynomial_degrees):
         self.update_function(self.get_PCE_Function(polynomial_degrees))

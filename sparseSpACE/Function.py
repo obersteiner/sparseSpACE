@@ -500,21 +500,30 @@ class FunctionPower(Function):
 
 # This can be used when calculating the PCE
 class FunctionPolysPCE(Function):
-    def __init__(self, function, polys, norms):
+    def __init__(self, function, polys, norms, polys1D, norms1D, indices):
         super().__init__()
         self.function = function
         self.polys = polys
         self.norms = norms
         self.output_dimension = function.output_length() * len(polys)
+        self.polys1D = polys1D
+        self.norms1D = norms1D
+        self.indices = indices
+        self.cache_poly_evaluations = {}
 
     def eval(self, coordinates):
         values = []
         val_f = self.function(coordinates)
-        for i in range(len(self.polys)):
-            val_poly = self.polys[i](*coordinates) / self.norms[i]
-            # Concatenation required for functions with multidimensional output
+        for i in range(len(self.indices)):
+            val_poly = 1
+            for d in range(len(coordinates)):
+                if not (d, self.indices[i][d], coordinates[d]) in self.cache_poly_evaluations:
+                    self.cache_poly_evaluations[(d, self.indices[i][d], coordinates[d])] = self.polys1D[d][self.indices[i][d]](coordinates[d]) / self.norms1D[d][self.indices[i][d]]
+                val_poly *= self.cache_poly_evaluations[(d, self.indices[i][d], coordinates[d])]
             values += [v * val_poly for v in val_f]
         return values
+
+
 
     def getAnalyticSolutionIntegral(self, start, end): assert "Not implemented"
 
@@ -780,6 +789,7 @@ class GenzDiscontinious(Function):
                 result *= (np.exp(-self.coeffs[d] * start[d]) - np.exp(-self.coeffs[d] * end[d])) / self.coeffs[d]
         return result
 
+
 class GenzDiscontinious2(Function):
     def __init__(self, coeffs, border):
         super().__init__()
@@ -844,6 +854,15 @@ class GenzC0(Function):
                         np.exp(self.coeffs[d] * (self.midPoint[d] - end[d]))) / self.coeffs[d]
             result *= one_d_integral
         return result
+
+        # assumes uniform input distributions in 3 dimensional unit cube
+        def get_expectation(self):
+            return self.getAnalyticSolutionIntegral([0, 0, 0], [1, 1, 1])
+        def get_variance(self):
+            f_squared = lambda x, y, z: self.eval([x, y, z]) ** 2
+            mean_of_squared_f = integrate.tplquad(f_squared, 0, 1, lambda x: 0, lambda x: 1, lambda x, y: 0,
+                                                  lambda x, y: 1)[0]
+            return mean_of_squared_f - self.get_expectation() ** 2
 
 
 # This function is the test case function 2 of the paper from Jakeman and Roberts: https://arxiv.org/pdf/1110.0010.pdf
