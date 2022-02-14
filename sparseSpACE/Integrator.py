@@ -3,6 +3,8 @@ from scipy.interpolate import interpn
 from sparseSpACE.Hierarchization import *
 from typing import Callable, Tuple, Sequence
 
+from mpi4py import MPI
+
 # This is the abstract interface of an integrator that integrates a given area specified by start for function f
 # using numPoints many points per dimension
 class IntegratorBase(object):
@@ -115,6 +117,44 @@ class IntegratorArbitraryGrid(IntegratorBase):
             return 0.0
         position = self.grid.getCoordinate(indexvector)
         return f(position) * weight
+
+
+# Added by Jonas Treplin
+class IntegratorParallelArbitraryGrid(IntegratorArbitraryGrid):
+    def __call__(self, f: Callable[[Tuple[float, ...]], float], numPoints: Sequence[int], start: Sequence[float], end: Sequence[float]) -> Sequence[float]:
+        comm = MPI.COMM_WORLD
+        size = comm.Get_size()
+        rank = comm.Get_rank()
+        if rank == 0:
+            dim = len(start)
+            offsets = np.ones(dim, dtype=np.int64)
+            gridsize = np.int64(1)
+
+            for i in range(dim):
+                gridsize *= np.int64(numPoints[i])
+                if i != 0:
+                    offsets[i] = offsets[i - 1] * int(numPoints[i - 1])
+            indexvectors = []
+            for i in range(gridsize):
+                indexvector = np.empty(dim, dtype=int)
+                rest = i
+                for d in range(dim - 1, -1, -1):
+                    indexvector[d] = int(rest / offsets[d])
+                    rest = rest % offsets[d]
+                indexvectors.append(indexvector)
+            chunks = [indexvectors[i::size] for i in range(size)]
+        else:
+            chunks = None
+
+        indexvectors = comm.scatter(chunks, root=0)
+        localresult = 0.0
+        for vec in indexvectors:
+            localresult += self.integrate_point(f, vec)
+        result = comm.gather(localresult)
+        if rank == 0:
+            return sum(result)
+        else:
+            return 0
 
 
 # This integrator computes the integral of an arbitrary grid from the Grid class
